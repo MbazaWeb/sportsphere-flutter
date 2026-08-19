@@ -114,3 +114,31 @@ ShopCatalog businessShopCatalog({
         ShopItem(id: 'donate-csr', name: 'Community CSR Fund', subtitle: 'Grassroots programmes', priceTzs: 20000, kind: ShopItemKind.donation, icon: Icons.favorite_rounded),
       ],
     );
+
+
+ShopCatalog marketplaceCatalog() => const ShopCatalog(
+      sellerName: 'SportSphere Shop',
+      sellerHandle: 'eshop',
+      accent: Color(0xFF009DFF),
+      merch: [
+        ShopItem(id: 'kit-home', name: 'Simba Home Kit 25/26', subtitle: 'Official replica jersey', priceTzs: 65000, kind: ShopItemKind.merch, icon: Icons.checkroom_rounded, badge: 'New'),
+        ShopItem(id: 'kit-away', name: 'Simba Away Kit 25/26', subtitle: 'Official replica jersey', priceTzs: 65000, kind: ShopItemKind.merch, icon: Icons.checkroom_outlined),
+        ShopItem(id: 'yanga-kit', name: 'Yanga Home Kit 25/26', subtitle: 'Official replica jersey', priceTzs: 65000, kind: ShopItemKind.merch, icon: Icons.checkroom_rounded),
+        ShopItem(id: 'scarf', name: 'Club Scarf', subtitle: 'Knit supporter scarf', priceTzs: 18000, kind: ShopItemKind.merch, icon: Icons.volunteer_activism_outlined),
+        ShopItem(id: 'cap', name: 'Training Cap', subtitle: 'Adjustable', priceTzs: 15000, kind: ShopItemKind.merch, icon: Icons.sports_outlined),
+        ShopItem(id: 'ball', name: 'Match Ball', subtitle: 'FIFA quality replica', priceTzs: 35000, kind: ShopItemKind.merch, icon: Icons.sports_soccer_rounded),
+      ],
+      tickets: [
+        ShopItem(id: 'tix-league', name: 'Simba vs Yanga', subtitle: 'Mkapa Stadium · League', priceTzs: 10000, kind: ShopItemKind.ticket, icon: Icons.confirmation_number_rounded, badge: 'Derby'),
+        ShopItem(id: 'tix-vip', name: 'VIP Box Seat', subtitle: 'Includes hospitality', priceTzs: 85000, kind: ShopItemKind.ticket, icon: Icons.event_seat_rounded),
+        ShopItem(id: 'tix-away', name: 'Away Day Ticket', subtitle: 'Next TPL away fixture', priceTzs: 8000, kind: ShopItemKind.ticket, icon: Icons.confirmation_number_outlined),
+      ],
+      memberships: [
+        ShopItem(id: 'mem-fan', name: 'Official Fan Membership', subtitle: 'Season 25/26 · voting + discount', priceTzs: 25000, kind: ShopItemKind.membership, icon: Icons.card_membership_rounded, badge: 'Season'),
+        ShopItem(id: 'mem-gold', name: 'Gold Supporter', subtitle: 'Priority tickets + kit discount', priceTzs: 120000, kind: ShopItemKind.membership, icon: Icons.workspace_premium_rounded),
+      ],
+      donations: [
+        ShopItem(id: 'donate-academy', name: 'Academy Fund', subtitle: 'Youth development', priceTzs: 10000, kind: ShopItemKind.donation, icon: Icons.favorite_rounded),
+        ShopItem(id: 'donate-any', name: 'Club Donation', subtitle: 'Choose any amount', priceTzs: 0, kind: ShopItemKind.donation, icon: Icons.volunteer_activism_rounded),
+      ],
+    );

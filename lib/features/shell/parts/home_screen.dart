@@ -138,70 +138,150 @@ class _CommunityContent extends StatefulWidget {
 }
 
 class _CommunityContentState extends State<_CommunityContent> {
-  final _joined = <String>{};
+  final _joined = <String>{'Simba SC Official Fans'};
+  final _search = TextEditingController();
+  int? _pollVote;
+  String _query = '';
 
   static const _groups = [
-    ('Simba SC Official Fans', '42.1K members'),
-    ('TPL Tactics Room', '8.4K members'),
-    ('Dar Matchday Meetups', '3.2K members'),
-    ('Women in Football TZ', '1.9K members'),
+    ('Simba SC Official Fans', '42.1K members', 'Football · Official', 'Derby week thread is live. Share clips and meet-up points.'),
+    ('TPL Tactics Room', '8.4K members', 'Analysis', 'Post-match xG, lineups and formations.'),
+    ('Dar Matchday Meetups', '3.2K members', 'Local', 'Find fans going to Mkapa this weekend.'),
+    ('Women in Football TZ', '1.9K members', 'Community', 'Players, coaches and fans building the game.'),
+    ('Yanga Union', '31.6K members', 'Football · Official', 'Jangwani updates, away days and chants.'),
+    ('Predictions League', '6.8K members', 'Fantasy', 'Weekly TPL and CAF score predictions.'),
   ];
 
   @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final q = _query.toLowerCase();
+    final groups = _groups.where((g) => q.isEmpty || g.$1.toLowerCase().contains(q)).toList();
+
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
       children: [
-        const Text('Communities',
-            style: TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w800, fontSize: 16)),
-        const SizedBox(height: 12),
-        for (final g in _groups)
+        TextField(
+          controller: _search,
+          onChanged: (v) => setState(() => _query = v),
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: 'Search communities',
+            hintStyle: const TextStyle(color: SportSphereColors.muted),
+            prefixIcon: const Icon(Icons.search_rounded, color: SportSphereColors.muted),
+            filled: true,
+            fillColor: SportSphereColors.surface2,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+          ),
+        ),
+        const SizedBox(height: 16),
+        const Text('Live poll', style: TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w800, fontSize: 15)),
+        const SizedBox(height: 10),
+        GlassContainer(
+          radius: 16,
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Who lifts the next Kariakoo derby?',
+                  style: TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 10),
+              for (final e in ['Simba SC', 'Young Africans', 'Draw'].asMap().entries)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: GestureDetector(
+                    onTap: () => setState(() => _pollVote = e.key),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: _pollVote == e.key
+                            ? SportSphereColors.electricBlue.withValues(alpha: 0.18)
+                            : Colors.white.withValues(alpha: 0.05),
+                        border: Border.all(
+                          color: _pollVote == e.key
+                              ? SportSphereColors.electricBlue
+                              : Colors.white.withValues(alpha: 0.06),
+                        ),
+                      ),
+                      child: Text(e.value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                ),
+              Text(_pollVote == null ? '1.2K votes · tap to vote' : 'Vote saved · 1.2K votes',
+                  style: const TextStyle(color: SportSphereColors.muted, fontSize: 12)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+        const Text('Communities', style: TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w800, fontSize: 15)),
+        const SizedBox(height: 10),
+        for (final g in groups)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: GlassContainer(
               radius: 16,
               padding: const EdgeInsets.all(14),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CircleAvatar(
-                    backgroundColor: SportSphereColors.sportGreen.withValues(alpha: 0.18),
-                    child: const Icon(Icons.groups_rounded, color: SportSphereColors.sportGreen),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(g.$1, style: const TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700)),
-                        Text(g.$2, style: const TextStyle(color: SportSphereColors.muted, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () => setState(() {
-                      if (_joined.contains(g.$1)) {
-                        _joined.remove(g.$1);
-                      } else {
-                        _joined.add(g.$1);
-                      }
-                    }),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        color: _joined.contains(g.$1)
-                            ? Colors.white.withValues(alpha: 0.08)
-                            : SportSphereColors.sportGreen.withValues(alpha: 0.18),
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: SportSphereColors.sportGreen.withValues(alpha: 0.18),
+                        child: const Icon(Icons.groups_rounded, color: SportSphereColors.sportGreen),
                       ),
-                      child: Text(
-                        _joined.contains(g.$1) ? 'Joined' : 'Join',
-                        style: TextStyle(
-                          color: _joined.contains(g.$1) ? SportSphereColors.muted : SportSphereColors.sportGreen,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 12,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(g.$1, style: const TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700)),
+                            Text('${g.$2} · ${g.$3}', style: const TextStyle(color: SportSphereColors.muted, fontSize: 12)),
+                          ],
                         ),
                       ),
-                    ),
+                      GestureDetector(
+                        onTap: () => setState(() {
+                          if (_joined.contains(g.$1)) {
+                            _joined.remove(g.$1);
+                          } else {
+                            _joined.add(g.$1);
+                          }
+                        }),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            color: _joined.contains(g.$1)
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : SportSphereColors.sportGreen.withValues(alpha: 0.18),
+                          ),
+                          child: Text(
+                            _joined.contains(g.$1) ? 'Joined' : 'Join',
+                            style: TextStyle(
+                              color: _joined.contains(g.$1) ? SportSphereColors.muted : SportSphereColors.sportGreen,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(g.$4, style: const TextStyle(color: SportSphereColors.muted, fontSize: 13, height: 1.35)),
+                  const SizedBox(height: 10),
+                  GestureDetector(
+                    onTap: () => _openGroup(context, g),
+                    child: const Text('Open community',
+                        style: TextStyle(color: SportSphereColors.electricBlue, fontWeight: FontWeight.w700, fontSize: 12)),
                   ),
                 ],
               ),
@@ -210,64 +290,45 @@ class _CommunityContentState extends State<_CommunityContent> {
       ],
     );
   }
-}
 
-// ── E-Shop tab ─────────────────────────────────────────────
+  void _openGroup(BuildContext context, (String, String, String, String) g) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF071422),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(4)))),
+            const SizedBox(height: 16),
+            Text(g.$1, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 20)),
+            Text('${g.$2} · ${g.$3}', style: const TextStyle(color: SportSphereColors.muted)),
+            const SizedBox(height: 12),
+            Text(g.$4, style: const TextStyle(color: Colors.white70, height: 1.4)),
+            const SizedBox(height: 16),
+            const Text('Latest', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            const Text('· @david posted a matchday clip', style: TextStyle(color: Colors.white70)),
+            const Text('· @alikingu shared lineup notes', style: TextStyle(color: Colors.white70)),
+            const Text('· Poll: best signing this window', style: TextStyle(color: Colors.white70)),
+            const SizedBox(height: 18),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _EShopContent extends StatelessWidget {
   const _EShopContent();
 
-  static const _items = [
-    ('Home Kit 25/26', 'TZS 65,000'),
-    ('Away Kit 25/26', 'TZS 65,000'),
-    ('Match Ticket', 'TZS 10,000'),
-    ('Fan Membership', 'TZS 25,000'),
-    ('Club Scarf', 'TZS 18,000'),
-    ('Training Cap', 'TZS 15,000'),
-  ];
-
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-      children: [
-        const Text('E-Shop',
-            style: TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w800, fontSize: 16)),
-        const SizedBox(height: 12),
-        for (final item in _items)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: GlassContainer(
-              radius: 16,
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: SportSphereColors.electricBlue.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(Icons.shopping_bag_outlined, color: SportSphereColors.electricBlue),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(item.$1, style: const TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700)),
-                        Text(item.$2, style: const TextStyle(color: SportSphereColors.electricBlue, fontWeight: FontWeight.w800, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                  const Text('View', style: TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700)),
-                ],
-              ),
-            ),
-          ),
-      ],
-    );
+    return ShopTab(catalog: marketplaceCatalog());
   }
 }
 

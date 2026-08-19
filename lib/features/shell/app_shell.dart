@@ -13,6 +13,8 @@ import '../../features/notifications/notifications_provider.dart';
 import '../../features/profile/Profile/fan/fan_profile_view.dart';
 import '../home/widgets/sportlights_tab.dart';
 import '../scores/presentation/pages/scores_page.dart';
+import '../shop/models/shop_models.dart';
+import '../shop/presentation/shop_tab.dart';
 
 part 'parts/home_screen.dart';
 part 'parts/search_fullscreen.dart';
