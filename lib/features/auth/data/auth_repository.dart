@@ -17,18 +17,49 @@ class AuthRepository {
 
   Future<void> signOut() => _tokens.clear();
 
-  /// Placeholder — wire to POST /auth/login when the backend exists.
-  Future<void> login({required String email, required String password}) async {
+  /// Login with email or handle + password.
+  Future<void> login({
+    required String identifier,
+    required String password,
+  }) async {
     final response = await _api.post<Map<String, dynamic>>(
       '/auth/login',
       data: <String, dynamic>{
-        'email': email,
+        'identifier': identifier,
         'password': password,
       },
     );
     final token = response.data?['token'] as String?;
     if (token == null || token.isEmpty) {
       throw StateError('Login response missing token');
+    }
+    await _tokens.write(token);
+  }
+
+  /// Register a new fan account.
+  Future<void> register({
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String handle,
+    required String country,
+    required DateTime dob,
+  }) async {
+    final response = await _api.post<Map<String, dynamic>>(
+      '/auth/register',
+      data: <String, dynamic>{
+        'first_name': firstName,
+        'last_name': lastName,
+        'email': email,
+        'handle': handle,
+        'country': country,
+        'dob': dob.toIso8601String().split('T').first,
+        'role': 'fan',
+      },
+    );
+    final token = response.data?['token'] as String?;
+    if (token == null || token.isEmpty) {
+      throw StateError('Register response missing token');
     }
     await _tokens.write(token);
   }
