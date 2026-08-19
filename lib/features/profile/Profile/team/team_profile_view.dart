@@ -532,7 +532,7 @@ class _TeamHeader extends StatelessWidget {
                         if (profile.isVerified) ...[
                           const SizedBox(width: 6),
                           const Icon(Icons.verified_rounded,
-                              color: SportSphereColors.electricBlue, size: 20),
+                              color: Color(0xFFFFD700), size: 20),
                         ],
                       ],
                     ),

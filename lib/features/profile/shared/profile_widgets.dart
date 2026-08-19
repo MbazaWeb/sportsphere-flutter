@@ -226,12 +226,11 @@ class ProfileNavButton extends StatelessWidget {
 class RoleBadge extends StatelessWidget {
   final String label;
   final Color color;
-  final IconData? icon;
+
   const RoleBadge({
     super.key,
     required this.label,
     required this.color,
-    this.icon,
   });
 
   @override
@@ -243,21 +242,14 @@ class RoleBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, color: color, size: 12),
-            const SizedBox(width: 5),
-          ],
-          Text(label,
-              style: TextStyle(
-                color: color,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.3,
-              )),
-        ],
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.4,
+        ),
       ),
     );
   }
@@ -333,7 +325,7 @@ class _ProfilePostCardState extends State<ProfilePostCard> {
                           if (widget.isVerified) ...[
                             const SizedBox(width: 4),
                             const Icon(Icons.verified_rounded,
-                                color: SportSphereColors.electricBlue, size: 13),
+                                color: Color(0xFFFFD700), size: 13),
                           ],
                         ],
                       ),

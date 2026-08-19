@@ -528,7 +528,7 @@ class _PlayerHeader extends StatelessWidget {
                         if (profile.isVerified) ...[
                           const SizedBox(width: 6),
                           const Icon(Icons.verified_rounded,
-                              color: SportSphereColors.electricBlue, size: 20),
+                              color: Color(0xFFFFD700), size: 20),
                         ],
                       ],
                     ),
@@ -548,11 +548,10 @@ class _PlayerHeader extends StatelessWidget {
                       spacing: 8,
                       runSpacing: 6,
                       children: [
-                        // Player badge — purple
+                        // Player badge — purple, text only
                         RoleBadge(
                           label: 'Player',
                           color: const Color(0xFF9B6DFF),
-                          icon: Icons.sports_soccer_rounded,
                         ),
                         // Club pill
                         _ClubPill(

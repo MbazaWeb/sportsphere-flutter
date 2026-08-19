@@ -398,7 +398,7 @@ class _ProfileHeader extends StatelessWidget {
                           const SizedBox(width: 6),
                           const Icon(
                             Icons.verified_rounded,
-                            color: SportSphereColors.electricBlue,
+                            color: Color(0xFFFFD700),
                             size: 20,
                           ),
                         ],
@@ -981,7 +981,7 @@ class _ProfilePostCardState extends State<_ProfilePostCard> {
                             const SizedBox(width: 4),
                             const Icon(
                               Icons.verified_rounded,
-                              color: SportSphereColors.electricBlue,
+                              color: Color(0xFFFFD700),
                               size: 13,
                             ),
                           ],
