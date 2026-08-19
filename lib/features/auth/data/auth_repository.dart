@@ -1,54 +1,40 @@
-import '../../../core/network/api_client.dart';
-import '../../../core/storage/token_store.dart';
-import 'test_accounts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../domain/auth_state.dart';
 
 class AuthRepository {
-  AuthRepository({
-    required ApiClient api,
-    required TokenStore tokens,
-  })  : _api = api,
-        _tokens = tokens;
+  AuthRepository();
 
-  final ApiClient _api;
-  final TokenStore _tokens;
-  TestAccount? lastDemoAccount;
+  SupabaseClient get _sb => Supabase.instance.client;
 
-  Future<String?> currentToken() => _tokens.read();
+  Session? get currentSession => _sb.auth.currentSession;
 
-  Future<void> saveSession(String token) => _tokens.write(token);
+  Future<String?> currentToken() async => currentSession?.accessToken;
 
   Future<void> signOut() async {
-    lastDemoAccount = null;
-    await _tokens.clear();
+    await _sb.auth.signOut();
   }
 
-  /// Login with email or handle + password.
+  Future<UserProfile?> currentProfile() async {
+    final user = _sb.auth.currentUser;
+    if (user == null) return null;
+    return _profileById(user.id);
+  }
+
   Future<void> login({
     required String identifier,
     required String password,
   }) async {
-    lastDemoAccount = null;
-    final demo = findTestAccount(identifier, password);
-    if (demo != null) {
-      lastDemoAccount = demo;
-      await _tokens.write('demo_${demo.role}_${demo.handle}');
-      return;
-    }
-    final response = await _api.post<Map<String, dynamic>>(
-      '/auth/login',
-      data: <String, dynamic>{
-        'identifier': identifier,
-        'password': password,
-      },
+    final email = await _resolveEmail(identifier);
+    final res = await _sb.auth.signInWithPassword(
+      email: email,
+      password: password,
     );
-    final token = response.data?['token'] as String?;
-    if (token == null || token.isEmpty) {
-      throw StateError('Login response missing token');
+    if (res.session == null) {
+      throw StateError('Login failed');
     }
-    await _tokens.write(token);
   }
 
-  /// Register a new fan account.
   Future<void> register({
     required String firstName,
     required String lastName,
@@ -57,22 +43,62 @@ class AuthRepository {
     required String country,
     required DateTime dob,
   }) async {
-    final response = await _api.post<Map<String, dynamic>>(
-      '/auth/register',
-      data: <String, dynamic>{
+    final cleanHandle = handle.trim().toLowerCase().replaceAll('@', '');
+    final res = await _sb.auth.signUp(
+      email: email.trim(),
+      password: 'Test123',
+      data: {
+        'handle': cleanHandle,
+        'role': 'fan',
         'first_name': firstName,
         'last_name': lastName,
-        'email': email,
-        'handle': handle,
-        'country': country,
-        'dob': dob.toIso8601String().split('T').first,
-        'role': 'fan',
       },
     );
-    final token = response.data?['token'] as String?;
-    if (token == null || token.isEmpty) {
-      throw StateError('Register response missing token');
+    final user = res.user;
+    if (user == null) {
+      throw StateError('Register failed');
     }
-    await _tokens.write(token);
+    await _sb.from('profiles').upsert({
+      'id': user.id,
+      'handle': cleanHandle,
+      'role': 'fan',
+      'first_name': firstName,
+      'last_name': lastName,
+      'email': email.trim(),
+      'country': country,
+    });
+  }
+
+  Future<String> _resolveEmail(String identifier) async {
+    final raw = identifier.trim();
+    if (raw.contains('@') && raw.contains('.') && !raw.startsWith('@')) {
+      return raw.toLowerCase();
+    }
+    final handle = raw.toLowerCase().replaceAll('@', '');
+    final row = await _sb
+        .from('profiles')
+        .select('email')
+        .eq('handle', handle)
+        .maybeSingle();
+    final email = row?['email'] as String?;
+    if (email == null || email.isEmpty) {
+      throw StateError('Unknown handle');
+    }
+    return email;
+  }
+
+  Future<UserProfile?> _profileById(String id) async {
+    final row = await _sb.from('profiles').select().eq('id', id).maybeSingle();
+    if (row == null) return null;
+    return UserProfile(
+      firstName: (row['first_name'] as String?) ?? '',
+      lastName: (row['last_name'] as String?) ?? '',
+      email: (row['email'] as String?) ?? '',
+      handle: (row['handle'] as String?) ?? '',
+      country: (row['country'] as String?) ?? 'Tanzania',
+      dob: DateTime(1995, 1, 1),
+      role: (row['role'] as String?) ?? 'fan',
+      avatarUrl: row['avatar_url'] as String?,
+    );
   }
 }

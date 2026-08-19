@@ -1,24 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/network/api_client.dart';
-import '../../../core/storage/token_store.dart';
 import '../data/auth_repository.dart';
 import '../domain/auth_state.dart';
 
 // ── Providers ──────────────────────────────────────────────────────────────────
 
-final tokenStoreProvider = Provider<TokenStore>((ref) => TokenStore());
-
-final apiClientProvider = Provider<ApiClient>((ref) {
-  final store = ref.watch(tokenStoreProvider);
-  return ApiClient(readToken: store.read);
-});
-
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return AuthRepository(
-    api: ref.watch(apiClientProvider),
-    tokens: ref.watch(tokenStoreProvider),
-  );
+  return AuthRepository();
 });
 
 final authControllerProvider =
@@ -35,10 +23,13 @@ class AuthController extends Notifier<AuthState> {
 
   // ── Hydrate from stored token on app start ─────────────────────────────────
   Future<void> _hydrate() async {
-    final token = await ref.read(authRepositoryProvider).currentToken();
+    final repo = ref.read(authRepositoryProvider);
+    final token = await repo.currentToken();
+    final user = token == null ? null : await repo.currentProfile();
     state = AuthState(
       status: token == null ? AuthStatus.guest : AuthStatus.authenticated,
       token: token,
+      user: user,
     );
   }
 
@@ -55,21 +46,11 @@ class AuthController extends Notifier<AuthState> {
         password: password,
       );
       final token = await repo.currentToken();
-      final demo = repo.lastDemoAccount;
+      final user = await repo.currentProfile();
       state = AuthState(
         status: AuthStatus.authenticated,
         token: token,
-        user: demo == null
-            ? null
-            : UserProfile(
-                firstName: demo.firstName,
-                lastName: demo.lastName,
-                email: demo.email,
-                handle: demo.handle,
-                country: 'Tanzania',
-                dob: DateTime(1995, 1, 1),
-                role: demo.role,
-              ),
+        user: user,
         isLoading: false,
       );
       return true;
