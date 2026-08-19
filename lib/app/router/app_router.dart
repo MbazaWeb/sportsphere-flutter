@@ -58,7 +58,10 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/splash',
-        pageBuilder: (_, __) => const NoTransitionPage(child: SplashScreen()),
+        pageBuilder: (_, state) => const NoTransitionPage(
+          key: ValueKey('splash'),
+          child: SplashScreen(),
+        ),
       ),
       GoRoute(
         path: '/login',
@@ -85,12 +88,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/home',
-        pageBuilder: (_, state) => CustomTransitionPage<void>(
-          key: state.pageKey,
-          child: const SportSphereShell(),
-          transitionDuration: const Duration(milliseconds: 450),
-          transitionsBuilder: (_, anim, __, child) =>
-              FadeTransition(opacity: anim, child: child),
+        pageBuilder: (_, state) => const NoTransitionPage(
+          key: ValueKey('home'),
+          child: SportSphereShell(),
         ),
       ),
 

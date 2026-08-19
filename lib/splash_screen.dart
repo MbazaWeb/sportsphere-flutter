@@ -98,10 +98,8 @@ class _SplashScreenState extends State<SplashScreen>
       CurvedAnimation(parent: _screenFadeCtrl, curve: Curves.easeIn),
     );
 
-    // Sequence
-    _entranceCtrl.forward().then((_) {
-      _progressCtrl.forward().then((_) => _triggerExit());
-    });
+    _entranceCtrl.forward();
+    _progressCtrl.forward().then((_) => _triggerExit());
   }
 
   void _triggerExit() {
@@ -109,10 +107,8 @@ class _SplashScreenState extends State<SplashScreen>
     setState(() => _exiting = true);
     _spinCtrl.stop();
     _exitCtrl.forward().then((_) {
-      _screenFadeCtrl.forward().then((_) {
-        if (!mounted) return;
-        context.go('/home');
-      });
+      if (!mounted) return;
+      context.go('/home');
     });
   }
 
@@ -191,9 +187,23 @@ class _SplashScreenState extends State<SplashScreen>
                   animation: _progress,
                   builder: (context, _) {
                     final pct = (_progress.value * 100).round();
-                    return _ProgressRing(
-                      progress: _progress.value,
-                      label: '$pct%',
+                    return Column(
+                      children: [
+                        _ProgressRing(
+                          progress: _progress.value,
+                          label: '$pct%',
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          pct >= 100 ? 'Ready' : 'Loading',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.55),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.4,
+                          ),
+                        ),
+                      ],
                     );
                   },
                 ),
