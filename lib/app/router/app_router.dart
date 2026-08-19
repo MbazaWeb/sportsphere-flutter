@@ -7,10 +7,10 @@ import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/pages/login_screen.dart';
 import '../../features/auth/presentation/pages/register_screen.dart';
 import '../../features/profile/Profile/fan/fan_profile_view.dart';
+import '../../features/profile/Profile/player/player_profile_view.dart';
 import '../../features/shell/app_shell.dart';
 import '../../splash_screen.dart';
 
-// Routes that require authentication
 const _protectedRoutes = {'/create'};
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -24,15 +24,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (auth.status == AuthStatus.unknown) {
         return loc == '/splash' ? null : '/splash';
       }
-
       if (_protectedRoutes.contains(loc) && !auth.isAuthenticated) {
         return '/login';
       }
-
       if ((loc == '/login' || loc == '/register') && auth.isAuthenticated) {
         return '/home';
       }
-
       if (loc == '/splash') return '/home';
       return null;
     },
@@ -61,9 +58,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             position: Tween<Offset>(
               begin: const Offset(1, 0),
               end: Offset.zero,
-            ).animate(
-              CurvedAnimation(parent: anim, curve: Curves.easeOutCubic),
-            ),
+            ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
             child: child,
           ),
         ),
@@ -78,12 +73,12 @@ final routerProvider = Provider<GoRouter>((ref) {
               FadeTransition(opacity: anim, child: child),
         ),
       ),
-      // Profile route — works for any user's handle
+
+      // Fan profile  /profile/:handle
       GoRoute(
         path: '/profile/:handle',
         pageBuilder: (_, state) {
           final handle = state.pathParameters['handle'] ?? '';
-          // For now resolve to mock data; swap for API lookup when backend ready
           final profile = handle == mockOwnFanProfile.handle
               ? mockOwnFanProfile
               : FanProfileModel(
@@ -105,12 +100,57 @@ final routerProvider = Provider<GoRouter>((ref) {
             child: FanProfileView(profile: profile),
             transitionDuration: const Duration(milliseconds: 350),
             transitionsBuilder: (_, anim, __, child) => SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 0.04),
-                end: Offset.zero,
-              ).animate(
-                CurvedAnimation(parent: anim, curve: Curves.easeOutCubic),
-              ),
+              position: Tween<Offset>(begin: const Offset(0, 0.04), end: Offset.zero)
+                  .animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+              child: FadeTransition(opacity: anim, child: child),
+            ),
+          );
+        },
+      ),
+
+      // Player profile  /player/:handle
+      GoRoute(
+        path: '/player/:handle',
+        pageBuilder: (_, state) {
+          final handle = state.pathParameters['handle'] ?? '';
+          // Resolve to mock; swap for API call when backend ready
+          final profile = handle == mockClatousChama.handle
+              ? mockClatousChama
+              : PlayerProfileModel(
+                  firstName: handle,
+                  lastName: '',
+                  handle: handle,
+                  fullName: handle,
+                  position: 'Forward',
+                  nationality: 'Unknown',
+                  dob: DateTime(1995),
+                  heightCm: 175,
+                  preferredFoot: 'Right',
+                  currentClub: 'Unknown Club',
+                  currentLeague: 'Unknown League',
+                  squadNumber: 0,
+                  contractStatus: 'Active',
+                  accentColor: const Color(0xFF009DFF),
+                  postCount: 0,
+                  fanCount: 0,
+                  followerCount: 0,
+                  followingCount: 0,
+                  career: const [],
+                  seasonStats: const [],
+                  allTimeGoals: 0,
+                  allTimeAssists: 0,
+                  allTimeAppearances: 0,
+                  allTimeMinutes: 0,
+                  allTimeYellowCards: 0,
+                  allTimeRedCards: 0,
+                );
+          return CustomTransitionPage<void>(
+            key: state.pageKey,
+            child: PlayerProfileView(profile: profile),
+            transitionDuration: const Duration(milliseconds: 350),
+            transitionsBuilder: (_, anim, __, child) => SlideTransition(
+              position: Tween<Offset>(begin: const Offset(0, 0.04), end: Offset.zero)
+                  .animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
               child: FadeTransition(opacity: anim, child: child),
             ),
           );
