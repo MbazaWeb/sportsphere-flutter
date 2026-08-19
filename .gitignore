@@ -57,3 +57,8 @@ android/local.properties
 *.before_*
 app_shell.dart.home-tabs.backup
 PUBSPEC_ASSETS.txt
+
+# Local secrets — never commit
+.env
+.env.*
+!.env.example

@@ -42,11 +42,16 @@ class AuthRepository {
     required String handle,
     required String country,
     required DateTime dob,
+    required String password,
   }) async {
     final cleanHandle = handle.trim().toLowerCase().replaceAll('@', '');
+    final taken = await _sb.from('profiles').select('id').eq('handle', cleanHandle).maybeSingle();
+    if (taken != null) {
+      throw StateError('That handle is already taken');
+    }
     final res = await _sb.auth.signUp(
       email: email.trim(),
-      password: 'Test123',
+      password: password,
       data: {
         'handle': cleanHandle,
         'role': 'fan',

@@ -24,6 +24,7 @@ dependencies:
   file_picker: ^11.0.3
   logger: ^2.7.0
   supabase_flutter: ^2.9.0
+  flutter_dotenv: ^5.2.1
 
 dev_dependencies:
   flutter_test:
@@ -35,3 +36,5 @@ flutter:
 
   assets:
     - assets/images/
+    - .env
+    - .env.example
