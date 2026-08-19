@@ -200,7 +200,7 @@ class _PostCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '$handle Â· $time',
+                      '$handle · $time',
                       style: const TextStyle(
                         color: SportSphereColors.muted,
                         fontSize: 11.5,

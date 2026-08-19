@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/theme/colors.dart';
 import '../../core/widgets/glass_container.dart';
+import '../home/widgets/sportlights_tab.dart';
 import '../scores/presentation/pages/scores_page.dart';
 
 part 'parts/home_screen.dart';
