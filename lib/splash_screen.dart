@@ -1,4 +1,3 @@
-import 'features/shell/app_shell.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
