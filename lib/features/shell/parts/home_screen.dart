@@ -131,19 +131,82 @@ class _TrendingContent extends StatelessWidget {
 
 // ── Community tab ──────────────────────────────────────────
 
-class _CommunityContent extends StatelessWidget {
+class _CommunityContent extends StatefulWidget {
   const _CommunityContent();
+  @override
+  State<_CommunityContent> createState() => _CommunityContentState();
+}
+
+class _CommunityContentState extends State<_CommunityContent> {
+  final _joined = <String>{};
+
+  static const _groups = [
+    ('Simba SC Official Fans', '42.1K members'),
+    ('TPL Tactics Room', '8.4K members'),
+    ('Dar Matchday Meetups', '3.2K members'),
+    ('Women in Football TZ', '1.9K members'),
+  ];
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-      children: const [
-        _SimpleCard(title: 'Simba SC Official Fans', subtitle: '42.1K members'),
-        SizedBox(height: 10),
-        _SimpleCard(title: 'TPL Tactics Room', subtitle: '8.4K members'),
-        SizedBox(height: 10),
-        _SimpleCard(title: 'Who wins the next derby?', subtitle: '1.2K votes'),
+      children: [
+        const Text('Communities',
+            style: TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+        const SizedBox(height: 12),
+        for (final g in _groups)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: GlassContainer(
+              radius: 16,
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: SportSphereColors.sportGreen.withValues(alpha: 0.18),
+                    child: const Icon(Icons.groups_rounded, color: SportSphereColors.sportGreen),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(g.$1, style: const TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700)),
+                        Text(g.$2, style: const TextStyle(color: SportSphereColors.muted, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => setState(() {
+                      if (_joined.contains(g.$1)) {
+                        _joined.remove(g.$1);
+                      } else {
+                        _joined.add(g.$1);
+                      }
+                    }),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        color: _joined.contains(g.$1)
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : SportSphereColors.sportGreen.withValues(alpha: 0.18),
+                      ),
+                      child: Text(
+                        _joined.contains(g.$1) ? 'Joined' : 'Join',
+                        style: TextStyle(
+                          color: _joined.contains(g.$1) ? SportSphereColors.muted : SportSphereColors.sportGreen,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -154,16 +217,55 @@ class _CommunityContent extends StatelessWidget {
 class _EShopContent extends StatelessWidget {
   const _EShopContent();
 
+  static const _items = [
+    ('Home Kit 25/26', 'TZS 65,000'),
+    ('Away Kit 25/26', 'TZS 65,000'),
+    ('Match Ticket', 'TZS 10,000'),
+    ('Fan Membership', 'TZS 25,000'),
+    ('Club Scarf', 'TZS 18,000'),
+    ('Training Cap', 'TZS 15,000'),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-      children: const [
-        _SimpleCard(title: 'Home Kit 25/26', subtitle: 'TZS 65,000'),
-        SizedBox(height: 10),
-        _SimpleCard(title: 'Match Ticket', subtitle: 'TZS 10,000'),
-        SizedBox(height: 10),
-        _SimpleCard(title: 'Fan Membership', subtitle: 'TZS 25,000'),
+      children: [
+        const Text('E-Shop',
+            style: TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+        const SizedBox(height: 12),
+        for (final item in _items)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: GlassContainer(
+              radius: 16,
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: SportSphereColors.electricBlue.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(Icons.shopping_bag_outlined, color: SportSphereColors.electricBlue),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(item.$1, style: const TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700)),
+                        Text(item.$2, style: const TextStyle(color: SportSphereColors.electricBlue, fontWeight: FontWeight.w800, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                  const Text('View', style: TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700)),
+                ],
+              ),
+            ),
+          ),
       ],
     );
   }

@@ -48,10 +48,10 @@ const kTestAccounts = <TestAccount>[
 ];
 
 TestAccount? findTestAccount(String identifier, String password) {
-  final id = identifier.trim().toLowerCase().replaceFirst('@', '');
+  final id = identifier.trim().toLowerCase().replaceAll('@', '');
+  if (password != kDemoPassword) return null;
   for (final a in kTestAccounts) {
-    final okId = a.handle.toLowerCase() == id || a.email.toLowerCase() == id;
-    if (okId && a.password == password) return a;
+    if (a.handle.toLowerCase() == id || a.email.toLowerCase() == id) return a;
   }
   return null;
 }
