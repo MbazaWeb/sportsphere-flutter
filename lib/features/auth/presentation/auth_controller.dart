@@ -71,6 +71,7 @@ class AuthController extends Notifier<AuthState> {
     required String handle,
     required String country,
     required DateTime dob,
+    required String password,
   }) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
@@ -81,6 +82,7 @@ class AuthController extends Notifier<AuthState> {
             handle: handle,
             country: country,
             dob: dob,
+            password: password,
           );
       final token = await ref.read(authRepositoryProvider).currentToken();
       state = AuthState(
