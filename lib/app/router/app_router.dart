@@ -6,11 +6,12 @@ import '../../features/auth/domain/auth_state.dart';
 import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/pages/login_screen.dart';
 import '../../features/auth/presentation/pages/register_screen.dart';
+import '../../features/profile/Profile/fan/fan_profile_view.dart';
 import '../../features/shell/app_shell.dart';
 import '../../splash_screen.dart';
 
-// ── Protected routes (require auth) ───────────────────────────────────────────
-const _protectedRoutes = {'/create', '/profile'};
+// Routes that require authentication
+const _protectedRoutes = {'/create'};
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -20,32 +21,25 @@ final routerProvider = Provider<GoRouter>((ref) {
       final auth = ref.read(authControllerProvider);
       final loc = state.uri.toString();
 
-      // Still hydrating — hold on splash
       if (auth.status == AuthStatus.unknown) {
         return loc == '/splash' ? null : '/splash';
       }
 
-      // Auth-only screens redirect guests to login
       if (_protectedRoutes.contains(loc) && !auth.isAuthenticated) {
         return '/login';
       }
 
-      // Auth users sent to login/register → go home
-      if ((loc == '/login' || loc == '/register') &&
-          auth.isAuthenticated) {
+      if ((loc == '/login' || loc == '/register') && auth.isAuthenticated) {
         return '/home';
       }
 
-      // Splash done → home
       if (loc == '/splash') return '/home';
-
       return null;
     },
     routes: [
       GoRoute(
         path: '/splash',
-        pageBuilder: (_, state) =>
-            const NoTransitionPage(child: SplashScreen()),
+        pageBuilder: (_, __) => const NoTransitionPage(child: SplashScreen()),
       ),
       GoRoute(
         path: '/login',
@@ -83,6 +77,44 @@ final routerProvider = Provider<GoRouter>((ref) {
           transitionsBuilder: (_, anim, __, child) =>
               FadeTransition(opacity: anim, child: child),
         ),
+      ),
+      // Profile route — works for any user's handle
+      GoRoute(
+        path: '/profile/:handle',
+        pageBuilder: (_, state) {
+          final handle = state.pathParameters['handle'] ?? '';
+          // For now resolve to mock data; swap for API lookup when backend ready
+          final profile = handle == mockOwnFanProfile.handle
+              ? mockOwnFanProfile
+              : FanProfileModel(
+                  firstName: handle,
+                  lastName: '',
+                  handle: handle,
+                  fanOf: 'SportSphere',
+                  fanOfAccent: const Color(0xFF009DFF),
+                  bio: '',
+                  sport: 'Football',
+                  location: '',
+                  joinedDate: DateTime.now(),
+                  postCount: 0,
+                  followerCount: 0,
+                  followingCount: 0,
+                );
+          return CustomTransitionPage<void>(
+            key: state.pageKey,
+            child: FanProfileView(profile: profile),
+            transitionDuration: const Duration(milliseconds: 350),
+            transitionsBuilder: (_, anim, __, child) => SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.04),
+                end: Offset.zero,
+              ).animate(
+                CurvedAnimation(parent: anim, curve: Curves.easeOutCubic),
+              ),
+              child: FadeTransition(opacity: anim, child: child),
+            ),
+          );
+        },
       ),
     ],
   );

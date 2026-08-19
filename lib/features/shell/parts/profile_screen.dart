@@ -1,111 +1,42 @@
 part of '../app_shell.dart';
 
-class _ProfileScreen extends StatelessWidget {
+class _ProfileScreen extends ConsumerWidget {
   const _ProfileScreen();
 
   @override
-  Widget build(BuildContext context) {
-    return CustomScrollView(
-      slivers: [
-        const SliverToBoxAdapter(
-          child: _PageTitle(
-            title: 'Profile',
-            subtitle: 'Your SportSphere identity',
-          ),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 140),
-          sliver: SliverToBoxAdapter(
-            child: GlassContainer(
-              radius: 24,
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  Container(
-                    width: 88,
-                    height: 88,
-                    padding: const EdgeInsets.all(3),
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: [
-                          SportSphereColors.electricBlue,
-                          SportSphereColors.sportGreen,
-                        ],
-                      ),
-                    ),
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: SportSphereColors.background,
-                      ),
-                      child: ClipOval(
-                        child: Image.asset(
-                          'assets/images/sport_sphere_header_logo.png',
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'SportSphere User',
-                    style: TextStyle(
-                      color: SportSphereColors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  const Text(
-                    '@sportsphere_user',
-                    style: TextStyle(
-                      color: SportSphereColors.muted,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: const [
-                      _ProfileStat(value: '0', label: 'Posts'),
-                      _ProfileStat(value: '0', label: 'Followers'),
-                      _ProfileStat(value: '0', label: 'Following'),
-                    ],
-                  ),
-                  const SizedBox(height: 22),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: FilledButton(
-                      onPressed: () {},
-                      style: FilledButton.styleFrom(
-                        backgroundColor: SportSphereColors.electricBlue,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                      ),
-                      child: const Text(
-                        'Edit Profile',
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authControllerProvider);
+    final user = auth.user;
+
+    // Build a profile model from auth state; fall back to mock for display
+    final profile = user != null
+        ? FanProfileModel(
+            firstName: user.firstName,
+            lastName: user.lastName,
+            handle: user.handle,
+            fanOf: 'SportSphere',
+            fanOfAccent: SportSphereColors.electricBlue,
+            bio: '',
+            sport: 'Football',
+            location: user.country,
+            joinedDate: user.dob,
+            postCount: 0,
+            followerCount: 0,
+            followingCount: 0,
+            avatarAsset: 'assets/images/sport_sphere_icon.png',
+            isVerified: false,
+            isOwnProfile: true,
+          )
+        : mockOwnFanProfile;
+
+    return FanProfileView(profile: profile);
   }
 }
 
+// _PageTitle and _ProfileStat kept for other parts that still reference them
 class _ProfileStat extends StatelessWidget {
   final String value;
   final String label;
-
   const _ProfileStat({required this.value, required this.label});
 
   @override
@@ -133,7 +64,6 @@ class _ProfileStat extends StatelessWidget {
 class _PageTitle extends StatelessWidget {
   final String title;
   final String subtitle;
-
   const _PageTitle({required this.title, required this.subtitle});
 
   @override

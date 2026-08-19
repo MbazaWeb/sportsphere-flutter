@@ -1,31 +1,33 @@
 import 'package:flutter/material.dart';
+import '../../../../core/theme/colors.dart';
 
 class ProfileBadge extends StatelessWidget {
   final String label;
+  final Color? color;
 
   const ProfileBadge({
     super.key,
     required this.label,
+    this.color,
   });
 
   @override
   Widget build(BuildContext context) {
+    final c = color ?? SportSphereColors.electricBlue;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.blue.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: Colors.blue.withValues(alpha: 0.5),
-          width: 1,
-        ),
+        color: c.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: c.withValues(alpha: 0.40)),
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          color: Colors.blue,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
+        style: TextStyle(
+          color: c,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
         ),
       ),
     );

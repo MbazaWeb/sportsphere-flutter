@@ -10,6 +10,7 @@ import '../../core/widgets/glass_container.dart';
 import '../../features/auth/domain/auth_state.dart';
 import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/notifications/notifications_provider.dart';
+import '../../features/profile/Profile/fan/fan_profile_view.dart';
 import '../home/widgets/sportlights_tab.dart';
 import '../scores/presentation/pages/scores_page.dart';
 
