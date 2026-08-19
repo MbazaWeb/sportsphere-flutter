@@ -1,22 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../presentation/widgets/profile_badge.dart';
+
+import '../../data/role_mocks.dart';
+import '../../templates/role_profile_shell.dart';
 
 class SponsorProfileView extends StatelessWidget {
-  const SponsorProfileView({super.key});
+  final String handle;
+  const SponsorProfileView({super.key, this.handle = 'sponsor'});
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('Sponsor Profile'),
-            SizedBox(height: 8),
-            ProfileBadge(label: 'Sponsor'),
-          ],
-        ),
-      ),
-    );
+    return RoleProfileShell(profile: roleProfileFor('sponsor', handle));
   }
 }

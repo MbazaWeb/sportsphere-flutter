@@ -1,22 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../presentation/widgets/profile_badge.dart';
+
+import '../../data/role_mocks.dart';
+import '../../templates/role_profile_shell.dart';
 
 class CompetitionProfileView extends StatelessWidget {
-  const CompetitionProfileView({super.key});
+  final String handle;
+  const CompetitionProfileView({super.key, this.handle = 'competition'});
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('Competition Profile'),
-            SizedBox(height: 8),
-            ProfileBadge(label: 'Competition'),
-          ],
-        ),
-      ),
-    );
+    return RoleProfileShell(profile: roleProfileFor('competition', handle));
   }
 }

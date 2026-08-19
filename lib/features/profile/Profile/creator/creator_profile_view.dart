@@ -1,22 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../presentation/widgets/profile_badge.dart';
+
+import '../../data/role_mocks.dart';
+import '../../templates/role_profile_shell.dart';
 
 class CreatorProfileView extends StatelessWidget {
-  const CreatorProfileView({super.key});
+  final String handle;
+  const CreatorProfileView({super.key, this.handle = 'creator'});
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('Creator Profile'),
-            SizedBox(height: 8),
-            ProfileBadge(label: 'Creator'),
-          ],
-        ),
-      ),
-    );
+    return RoleProfileShell(profile: roleProfileFor('creator', handle));
   }
 }

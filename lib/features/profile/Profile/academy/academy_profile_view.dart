@@ -1,22 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../presentation/widgets/profile_badge.dart';
+
+import '../../data/role_mocks.dart';
+import '../../templates/role_profile_shell.dart';
 
 class AcademyProfileView extends StatelessWidget {
-  const AcademyProfileView({super.key});
+  final String handle;
+  const AcademyProfileView({super.key, this.handle = 'academy'});
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('Academy Profile'),
-            SizedBox(height: 8),
-            ProfileBadge(label: 'Academy'),
-          ],
-        ),
-      ),
-    );
+    return RoleProfileShell(profile: roleProfileFor('academy', handle));
   }
 }

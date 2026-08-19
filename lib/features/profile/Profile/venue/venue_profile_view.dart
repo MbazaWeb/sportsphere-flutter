@@ -1,22 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../presentation/widgets/profile_badge.dart';
+
+import '../../data/role_mocks.dart';
+import '../../templates/role_profile_shell.dart';
 
 class VenueProfileView extends StatelessWidget {
-  const VenueProfileView({super.key});
+  final String handle;
+  const VenueProfileView({super.key, this.handle = 'venue'});
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('Venue Profile'),
-            SizedBox(height: 8),
-            ProfileBadge(label: 'Venue'),
-          ],
-        ),
-      ),
-    );
+    return RoleProfileShell(profile: roleProfileFor('venue', handle));
   }
 }

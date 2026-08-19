@@ -1,22 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../presentation/widgets/profile_badge.dart';
+
+import '../../data/role_mocks.dart';
+import '../../templates/role_profile_shell.dart';
 
 class BusinessProfileView extends StatelessWidget {
-  const BusinessProfileView({super.key});
+  final String handle;
+  const BusinessProfileView({super.key, this.handle = 'business'});
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('Business Profile'),
-            SizedBox(height: 8),
-            ProfileBadge(label: 'Business'),
-          ],
-        ),
-      ),
-    );
+    return RoleProfileShell(profile: roleProfileFor('business', handle));
   }
 }

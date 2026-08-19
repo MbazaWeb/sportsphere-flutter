@@ -1,22 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../presentation/widgets/profile_badge.dart';
+
+import '../../data/role_mocks.dart';
+import '../../templates/role_profile_shell.dart';
 
 class CommentatorProfileView extends StatelessWidget {
-  const CommentatorProfileView({super.key});
+  final String handle;
+  const CommentatorProfileView({super.key, this.handle = 'commentator'});
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('Commentator Profile'),
-            SizedBox(height: 8),
-            ProfileBadge(label: 'Commentator'),
-          ],
-        ),
-      ),
-    );
+    return RoleProfileShell(profile: roleProfileFor('commentator', handle));
   }
 }

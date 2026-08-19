@@ -1,22 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../presentation/widgets/profile_badge.dart';
+
+import '../../data/role_mocks.dart';
+import '../../templates/role_profile_shell.dart';
 
 class CommercialPartnerProfileView extends StatelessWidget {
-  const CommercialPartnerProfileView({super.key});
+  final String handle;
+  const CommercialPartnerProfileView({super.key, this.handle = 'commercial_partner'});
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('Commercial Partner Profile'),
-            SizedBox(height: 8),
-            ProfileBadge(label: 'Commercial Partner'),
-          ],
-        ),
-      ),
-    );
+    return RoleProfileShell(profile: roleProfileFor('commercial_partner', handle));
   }
 }

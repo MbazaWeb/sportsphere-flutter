@@ -1,22 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../presentation/widgets/profile_badge.dart';
+
+import '../../data/role_mocks.dart';
+import '../../templates/role_profile_shell.dart';
 
 class AgentProfileView extends StatelessWidget {
-  const AgentProfileView({super.key});
+  final String handle;
+  const AgentProfileView({super.key, this.handle = 'agent'});
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('Agent Profile'),
-            SizedBox(height: 8),
-            ProfileBadge(label: 'Agent'),
-          ],
-        ),
-      ),
-    );
+    return RoleProfileShell(profile: roleProfileFor('agent', handle));
   }
 }

@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/colors.dart';
+import '../../../shop/models/shop_models.dart';
+import '../../../shop/presentation/shop_tab.dart';
 import '../../shared/profile_widgets.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -322,7 +324,7 @@ class _TeamProfileViewState extends State<TeamProfileView>
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 4, vsync: this);
+    _tabCtrl = TabController(length: 5, vsync: this);
     _tabCtrl.addListener(() => setState(() {}));
   }
 
@@ -352,6 +354,7 @@ class _TeamProfileViewState extends State<TeamProfileView>
               onShare: () {},
               onMore: () => _showMore(context),
               onInfo: () => _tabCtrl.animateTo(1),
+              onShop: () => _tabCtrl.animateTo(4),
             ),
           ),
           SliverPersistentHeader(
@@ -368,6 +371,7 @@ class _TeamProfileViewState extends State<TeamProfileView>
             _AboutTab(profile: p),
             _SquadTab(profile: p),
             _StatsTab(profile: p),
+            ShopTab(catalog: simbaShopCatalog()),
           ],
         ),
       ),
@@ -407,6 +411,7 @@ class _TeamHeader extends StatelessWidget {
   final VoidCallback onShare;
   final VoidCallback onMore;
   final VoidCallback onInfo;
+  final VoidCallback onShop;
 
   const _TeamHeader({
     required this.profile,
@@ -416,6 +421,7 @@ class _TeamHeader extends StatelessWidget {
     required this.onShare,
     required this.onMore,
     required this.onInfo,
+    required this.onShop,
   });
 
   @override
@@ -637,6 +643,7 @@ class _TeamHeader extends StatelessWidget {
               following: following,
               accent: accent,
               onFollow: onFollow,
+              onShop: onShop,
             ),
           ),
 
@@ -652,11 +659,13 @@ class _FollowRow extends StatelessWidget {
   final bool following;
   final Color accent;
   final VoidCallback onFollow;
+  final VoidCallback onShop;
 
   const _FollowRow({
     required this.following,
     required this.accent,
     required this.onFollow,
+    required this.onShop,
   });
 
   @override
@@ -713,6 +722,34 @@ class _FollowRow extends StatelessWidget {
                     ),
                   ),
                 ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Semantics(
+          label: 'Open club shop',
+          button: true,
+          child: GestureDetector(
+            onTap: onShop,
+            child: Container(
+              height: 42,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(21),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.storefront_rounded, size: 16, color: SportSphereColors.white),
+                  SizedBox(width: 6),
+                  Text('Shop',
+                      style: TextStyle(
+                        color: SportSphereColors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      )),
+                ],
               ),
             ),
           ),
@@ -798,6 +835,13 @@ class _TeamTabBar extends StatelessWidget {
               Icon(Icons.bar_chart_rounded, size: 14),
               SizedBox(width: 5),
               Text('Stats'),
+            ]),
+          ),
+          Tab(
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.storefront_rounded, size: 14),
+              SizedBox(width: 5),
+              Text('Shop'),
             ]),
           ),
         ],

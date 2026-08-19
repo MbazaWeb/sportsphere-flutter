@@ -10,10 +10,12 @@ Flutter client (Android / iOS / web) with:
 - Animated splash, then the main shell
 - Home feed tabs: Spotlights, Trending, Community, E-Shop
 - Scores (mock match data)
-- Create and profile placeholders
-- 21 role-specific profile stubs (player, coach, team, league, scout, and more)
+- Full profiles: Fan, Player, Team
+- 20 remaining roles via 3 templates (person / org / commerce)
+- Club shop: merch, tickets, membership, donate + mock checkout
+- Admin console is web-only (not in this client)
 
-Auth, feed APIs, shop, and messaging are scaffolded, not live.
+Auth, feed APIs, and live payments are still scaffolded.
 
 ## Stack
 

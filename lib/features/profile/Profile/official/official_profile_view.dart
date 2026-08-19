@@ -1,22 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../presentation/widgets/profile_badge.dart';
+
+import '../../data/role_mocks.dart';
+import '../../templates/role_profile_shell.dart';
 
 class OfficialProfileView extends StatelessWidget {
-  const OfficialProfileView({super.key});
+  final String handle;
+  const OfficialProfileView({super.key, this.handle = 'official'});
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('Official Profile'),
-            SizedBox(height: 8),
-            ProfileBadge(label: 'Official'),
-          ],
-        ),
-      ),
-    );
+    return RoleProfileShell(profile: roleProfileFor('official', handle));
   }
 }

@@ -1,22 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../presentation/widgets/profile_badge.dart';
+
+import '../../data/role_mocks.dart';
+import '../../templates/role_profile_shell.dart';
 
 class CommunityProfileView extends StatelessWidget {
-  const CommunityProfileView({super.key});
+  final String handle;
+  const CommunityProfileView({super.key, this.handle = 'community'});
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('Community Profile'),
-            SizedBox(height: 8),
-            ProfileBadge(label: 'Community'),
-          ],
-        ),
-      ),
-    );
+    return RoleProfileShell(profile: roleProfileFor('community', handle));
   }
 }
