@@ -10,6 +10,7 @@ class UserProfile {
     required this.dob,
     this.role = 'fan',
     this.avatarUrl,
+    this.bio = '',
   });
 
   final String firstName;
@@ -22,6 +23,7 @@ class UserProfile {
   /// 'fan' by default. Future: 'player', 'coach', 'team', etc. via "Become Pro"
   final String role;
   final String? avatarUrl;
+  final String bio;
 
   String get displayName => '$firstName $lastName';
   String get atHandle => '@$handle';

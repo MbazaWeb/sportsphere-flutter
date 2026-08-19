@@ -16,7 +16,7 @@ class _ProfileScreen extends ConsumerWidget {
             handle: user.handle,
             fanOf: 'SportSphere',
             fanOfAccent: SportSphereColors.electricBlue,
-            bio: '',
+            bio: user.bio.isEmpty ? 'New on SportSphere' : user.bio,
             sport: 'Football',
             location: user.country,
             joinedDate: user.dob,
@@ -29,7 +29,10 @@ class _ProfileScreen extends ConsumerWidget {
           )
         : mockOwnFanProfile;
 
-    return FanProfileView(profile: profile);
+    return FanProfileView(
+      profile: profile,
+      onEdit: user == null ? null : () => showEditProfileSheet(context, user),
+    );
   }
 }
 

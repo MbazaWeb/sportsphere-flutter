@@ -49,6 +49,7 @@ class AuthRepository {
     if (taken != null) {
       throw StateError('That handle is already taken');
     }
+    final dobIso = dob.toIso8601String().split('T').first;
     final res = await _sb.auth.signUp(
       email: email.trim(),
       password: password,
@@ -57,6 +58,8 @@ class AuthRepository {
         'role': 'fan',
         'first_name': firstName,
         'last_name': lastName,
+        'country': country,
+        'dob': dobIso,
       },
     );
     final user = res.user;
@@ -71,7 +74,45 @@ class AuthRepository {
       'last_name': lastName,
       'email': email.trim(),
       'country': country,
+      'dob': dobIso,
+      'bio': '',
     });
+    if (res.session == null) {
+      throw StateError('Confirm your email, then log in.');
+    }
+  }
+
+  Future<UserProfile> updateProfile({
+    required String firstName,
+    required String lastName,
+    required String handle,
+    required String country,
+    required DateTime dob,
+    String bio = '',
+  }) async {
+    final user = _sb.auth.currentUser;
+    if (user == null) {
+      throw StateError('Not signed in');
+    }
+    final cleanHandle = handle.trim().toLowerCase().replaceAll('@', '');
+    final clash = await _sb.from('profiles').select('id').eq('handle', cleanHandle).neq('id', user.id).maybeSingle();
+    if (clash != null) {
+      throw StateError('That handle is already taken');
+    }
+    await _sb.from('profiles').update({
+      'first_name': firstName.trim(),
+      'last_name': lastName.trim(),
+      'handle': cleanHandle,
+      'country': country,
+      'dob': dob.toIso8601String().split('T').first,
+      'bio': bio.trim(),
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('id', user.id);
+    final profile = await _profileById(user.id);
+    if (profile == null) {
+      throw StateError('Profile missing after update');
+    }
+    return profile;
   }
 
   Future<String> _resolveEmail(String identifier) async {
@@ -80,11 +121,7 @@ class AuthRepository {
       return raw.toLowerCase();
     }
     final handle = raw.toLowerCase().replaceAll('@', '');
-    final row = await _sb
-        .from('profiles')
-        .select('email')
-        .eq('handle', handle)
-        .maybeSingle();
+    final row = await _sb.from('profiles').select('email').eq('handle', handle).maybeSingle();
     final email = row?['email'] as String?;
     if (email == null || email.isEmpty) {
       throw StateError('Unknown handle');
@@ -101,9 +138,17 @@ class AuthRepository {
       email: (row['email'] as String?) ?? '',
       handle: (row['handle'] as String?) ?? '',
       country: (row['country'] as String?) ?? 'Tanzania',
-      dob: DateTime(1995, 1, 1),
+      dob: _parseDob(row['dob']),
       role: (row['role'] as String?) ?? 'fan',
       avatarUrl: row['avatar_url'] as String?,
+      bio: (row['bio'] as String?) ?? '',
     );
+  }
+
+  DateTime _parseDob(dynamic value) {
+    if (value is String && value.isNotEmpty) {
+      return DateTime.tryParse(value) ?? DateTime(1995, 1, 1);
+    }
+    return DateTime(1995, 1, 1);
   }
 }

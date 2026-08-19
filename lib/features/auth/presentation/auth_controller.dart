@@ -84,11 +84,13 @@ class AuthController extends Notifier<AuthState> {
             dob: dob,
             password: password,
           );
-      final token = await ref.read(authRepositoryProvider).currentToken();
+      final repo = ref.read(authRepositoryProvider);
+      final token = await repo.currentToken();
+      final user = await repo.currentProfile();
       state = AuthState(
         status: AuthStatus.authenticated,
         token: token,
-        user: UserProfile(
+        user: user ?? UserProfile(
           firstName: firstName,
           lastName: lastName,
           email: email,
@@ -109,6 +111,32 @@ class AuthController extends Notifier<AuthState> {
   }
 
   // ── Sign out ───────────────────────────────────────────────────────────────
+  Future<bool> updateProfile({
+    required String firstName,
+    required String lastName,
+    required String handle,
+    required String country,
+    required DateTime dob,
+    String bio = '',
+  }) async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+    try {
+      final user = await ref.read(authRepositoryProvider).updateProfile(
+            firstName: firstName,
+            lastName: lastName,
+            handle: handle,
+            country: country,
+            dob: dob,
+            bio: bio,
+          );
+      state = state.copyWith(user: user, isLoading: false);
+      return true;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, errorMessage: _friendlyError(e));
+      return false;
+    }
+  }
+
   Future<void> signOut() async {
     await ref.read(authRepositoryProvider).signOut();
     state = const AuthState(status: AuthStatus.guest);

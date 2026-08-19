@@ -157,10 +157,12 @@ class _ProfilePost {
 
 class FanProfileView extends StatefulWidget {
   final FanProfileModel profile;
+  final VoidCallback? onEdit;
 
   const FanProfileView({
     super.key,
     required this.profile,
+    this.onEdit,
   });
 
   @override
@@ -205,6 +207,7 @@ class _FanProfileViewState extends State<FanProfileView>
               onBack: () => Navigator.of(context).maybePop(),
               onMore: () => _showMoreSheet(context),
               onInfo: () => _tabCtrl.animateTo(1),
+              onEdit: widget.onEdit,
             ),
           ),
 
@@ -232,7 +235,7 @@ class _FanProfileViewState extends State<FanProfileView>
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => _MoreSheet(isOwnProfile: p.isOwnProfile),
+      builder: (_) => _MoreSheet(isOwnProfile: p.isOwnProfile, onEdit: widget.onEdit),
     );
   }
 }
@@ -248,6 +251,7 @@ class _ProfileHeader extends StatelessWidget {
   final VoidCallback onBack;
   final VoidCallback onMore;
   final VoidCallback onInfo;
+  final VoidCallback? onEdit;
 
   const _ProfileHeader({
     required this.profile,
@@ -256,6 +260,7 @@ class _ProfileHeader extends StatelessWidget {
     required this.onBack,
     required this.onMore,
     required this.onInfo,
+    this.onEdit,
   });
 
   @override
@@ -475,7 +480,7 @@ class _ProfileHeader extends StatelessWidget {
         if (profile.isOwnProfile)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-            child: _EditProfileButton(),
+            child: _EditProfileButton(onEdit: onEdit),
           ),
 
         const SizedBox(height: 4),
@@ -777,13 +782,15 @@ class _ActionButtons extends StatelessWidget {
 // ── Edit profile button (own profile) ─────────────────────────────────────────
 
 class _EditProfileButton extends StatelessWidget {
+  final VoidCallback? onEdit;
+  const _EditProfileButton({this.onEdit});
   @override
   Widget build(BuildContext context) {
     return Semantics(
       label: 'Edit profile',
       button: true,
       child: GestureDetector(
-        onTap: () {},
+        onTap: onEdit,
         child: Container(
           width: double.infinity,
           height: 40,
@@ -1468,7 +1475,8 @@ class _AboutRow extends StatelessWidget {
 
 class _MoreSheet extends StatelessWidget {
   final bool isOwnProfile;
-  const _MoreSheet({required this.isOwnProfile});
+  final VoidCallback? onEdit;
+  const _MoreSheet({required this.isOwnProfile, this.onEdit});
 
   @override
   Widget build(BuildContext context) {
@@ -1491,7 +1499,10 @@ class _MoreSheet extends StatelessWidget {
             ),
           ),
           if (isOwnProfile) ...[
-            _SheetOption(icon: Icons.edit_outlined, label: 'Edit Profile', onTap: () => Navigator.pop(context)),
+            _SheetOption(icon: Icons.edit_outlined, label: 'Edit Profile', onTap: () {
+              Navigator.pop(context);
+              onEdit?.call();
+            }),
             _SheetOption(icon: Icons.share_outlined, label: 'Share Profile', onTap: () => Navigator.pop(context)),
             _SheetOption(icon: Icons.qr_code_rounded, label: 'QR Code', onTap: () => Navigator.pop(context)),
           ] else ...[
