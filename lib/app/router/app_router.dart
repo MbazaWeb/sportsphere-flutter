@@ -8,6 +8,7 @@ import '../../features/auth/presentation/pages/login_screen.dart';
 import '../../features/auth/presentation/pages/register_screen.dart';
 import '../../features/profile/Profile/fan/fan_profile_view.dart';
 import '../../features/profile/Profile/player/player_profile_view.dart';
+import '../../features/profile/Profile/team/team_profile_view.dart';
 import '../../features/shell/app_shell.dart';
 import '../../splash_screen.dart';
 
@@ -19,8 +20,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: _AuthListenable(ref),
     redirect: (context, state) {
       final auth = ref.read(authControllerProvider);
-      final loc = state.uri.toString();
-
+      final loc  = state.uri.toString();
       if (auth.status == AuthStatus.unknown) {
         return loc == '/splash' ? null : '/splash';
       }
@@ -55,10 +55,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const RegisterScreen(),
           transitionDuration: const Duration(milliseconds: 350),
           transitionsBuilder: (_, anim, __, child) => SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(1, 0),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+            position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+                .animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
             child: child,
           ),
         ),
@@ -74,7 +72,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
 
-      // Fan profile  /profile/:handle
+      // ── Fan profile  /profile/:handle ──────────────────────
       GoRoute(
         path: '/profile/:handle',
         pageBuilder: (_, state) {
@@ -95,70 +93,71 @@ final routerProvider = Provider<GoRouter>((ref) {
                   followerCount: 0,
                   followingCount: 0,
                 );
-          return CustomTransitionPage<void>(
-            key: state.pageKey,
-            child: FanProfileView(profile: profile),
-            transitionDuration: const Duration(milliseconds: 350),
-            transitionsBuilder: (_, anim, __, child) => SlideTransition(
-              position: Tween<Offset>(begin: const Offset(0, 0.04), end: Offset.zero)
-                  .animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
-              child: FadeTransition(opacity: anim, child: child),
-            ),
-          );
+          return _slideTransition(state.pageKey, FanProfileView(profile: profile));
         },
       ),
 
-      // Player profile  /player/:handle
+      // ── Player profile  /player/:handle ────────────────────
       GoRoute(
         path: '/player/:handle',
         pageBuilder: (_, state) {
           final handle = state.pathParameters['handle'] ?? '';
-          // Resolve to mock; swap for API call when backend ready
           final profile = handle == mockClatousChama.handle
               ? mockClatousChama
               : PlayerProfileModel(
-                  firstName: handle,
-                  lastName: '',
-                  handle: handle,
-                  fullName: handle,
-                  position: 'Forward',
-                  nationality: 'Unknown',
-                  dob: DateTime(1995),
-                  heightCm: 175,
-                  preferredFoot: 'Right',
-                  currentClub: 'Unknown Club',
-                  currentLeague: 'Unknown League',
-                  squadNumber: 0,
-                  contractStatus: 'Active',
+                  firstName: handle, lastName: '', handle: handle,
+                  fullName: handle, position: 'Forward', nationality: 'Unknown',
+                  dob: DateTime(1995), heightCm: 175, preferredFoot: 'Right',
+                  currentClub: 'Unknown', currentLeague: 'Unknown',
+                  squadNumber: 0, contractStatus: 'Active',
                   accentColor: const Color(0xFF009DFF),
-                  postCount: 0,
-                  fanCount: 0,
-                  followerCount: 0,
-                  followingCount: 0,
-                  career: const [],
-                  seasonStats: const [],
-                  allTimeGoals: 0,
-                  allTimeAssists: 0,
-                  allTimeAppearances: 0,
-                  allTimeMinutes: 0,
-                  allTimeYellowCards: 0,
-                  allTimeRedCards: 0,
+                  postCount: 0, fanCount: 0, followerCount: 0, followingCount: 0,
+                  career: const [], seasonStats: const [],
+                  allTimeGoals: 0, allTimeAssists: 0, allTimeAppearances: 0,
+                  allTimeMinutes: 0, allTimeYellowCards: 0, allTimeRedCards: 0,
                 );
-          return CustomTransitionPage<void>(
-            key: state.pageKey,
-            child: PlayerProfileView(profile: profile),
-            transitionDuration: const Duration(milliseconds: 350),
-            transitionsBuilder: (_, anim, __, child) => SlideTransition(
-              position: Tween<Offset>(begin: const Offset(0, 0.04), end: Offset.zero)
-                  .animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
-              child: FadeTransition(opacity: anim, child: child),
-            ),
-          );
+          return _slideTransition(state.pageKey, PlayerProfileView(profile: profile));
+        },
+      ),
+
+      // ── Team profile  /team/:handle ─────────────────────────
+      GoRoute(
+        path: '/team/:handle',
+        pageBuilder: (_, state) {
+          final handle = state.pathParameters['handle'] ?? '';
+          final profile = handle == mockSimbaSC.handle
+              ? mockSimbaSC
+              : TeamProfileModel(
+                  name: handle, handle: handle,
+                  sport: 'Football', competition: 'Unknown',
+                  country: 'Unknown', city: 'Unknown',
+                  stadium: 'Unknown', founded: 2000,
+                  coach: 'Unknown', description: '',
+                  accentColor: const Color(0xFF009DFF),
+                  postCount: 0, fanCount: 0, followingCount: 0,
+                  squad: const [], seasonStats: const [],
+                );
+          return _slideTransition(state.pageKey, TeamProfileView(profile: profile));
         },
       ),
     ],
   );
 });
+
+CustomTransitionPage<void> _slideTransition(
+    LocalKey key, Widget child) {
+  return CustomTransitionPage<void>(
+    key: key,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 350),
+    transitionsBuilder: (_, anim, __, child) => SlideTransition(
+      position: Tween<Offset>(
+              begin: const Offset(0, 0.04), end: Offset.zero)
+          .animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+      child: FadeTransition(opacity: anim, child: child),
+    ),
+  );
+}
 
 class _AuthListenable extends ChangeNotifier {
   _AuthListenable(Ref ref) {

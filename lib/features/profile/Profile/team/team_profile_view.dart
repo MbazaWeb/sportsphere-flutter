@@ -1,22 +1,1610 @@
 import 'package:flutter/material.dart';
-import '../../presentation/widgets/profile_badge.dart';
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
-class TeamProfileView extends StatelessWidget {
-  const TeamProfileView({super.key});
+import '../../../../core/theme/colors.dart';
+import '../../shared/profile_widgets.dart';
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODELS
+// ══════════════════════════════════════════════════════════════════════════════
+
+enum SquadRole { player, coach, staff }
+
+class SquadMember {
+  const SquadMember({
+    required this.name,
+    required this.handle,
+    required this.role,
+    required this.subrole,   // e.g. 'Forward', 'Head Coach', 'Physiotherapist'
+    this.squadNumber,
+    this.nationality,
+    this.avatarAsset,
+    this.profileRoute,       // '/player/clatouschama' or '/profile/mbaza'
+  });
+
+  final String name;
+  final String handle;
+  final SquadRole role;
+  final String subrole;
+  final int? squadNumber;
+  final String? nationality;
+  final String? avatarAsset;
+  final String? profileRoute;  // null = no navigable profile yet
+}
+
+class TeamSeasonStats {
+  const TeamSeasonStats({
+    required this.season,
+    required this.competition,
+    required this.matches,
+    required this.wins,
+    required this.draws,
+    required this.losses,
+    required this.goalsFor,
+    required this.goalsAgainst,
+    required this.cleanSheets,
+    required this.leaguePosition,
+  });
+
+  final String season;
+  final String competition;
+  final int matches;
+  final int wins;
+  final int draws;
+  final int losses;
+  final int goalsFor;
+  final int goalsAgainst;
+  final int cleanSheets;
+  final int leaguePosition;
+
+  int get goalDifference => goalsFor - goalsAgainst;
+  int get points => wins * 3 + draws;
+}
+
+class TeamProfileModel {
+  const TeamProfileModel({
+    required this.name,
+    required this.handle,
+    required this.sport,
+    required this.competition,
+    required this.country,
+    required this.city,
+    required this.stadium,
+    required this.founded,
+    required this.coach,
+    required this.description,
+    required this.accentColor,
+    required this.postCount,
+    required this.fanCount,
+    required this.followingCount,
+    required this.squad,
+    required this.seasonStats,
+    this.logoAsset,
+    this.coverAsset,
+    this.isVerified = true,
+    this.isOwnProfile = false,
+    this.joinedDate,
+  });
+
+  final String name;
+  final String handle;
+  final String sport;
+  final String competition;
+  final String country;
+  final String city;
+  final String stadium;
+  final int founded;
+  final String coach;
+  final String description;
+  final Color accentColor;
+
+  final int postCount;
+  final int fanCount;
+  final int followingCount;
+
+  final List<SquadMember> squad;
+  final List<TeamSeasonStats> seasonStats;
+
+  final String? logoAsset;
+  final String? coverAsset;
+  final bool isVerified;
+  final bool isOwnProfile;
+  final DateTime? joinedDate;
+
+  String get atHandle => '@$handle';
+
+  List<SquadMember> get players =>
+      squad.where((m) => m.role == SquadRole.player).toList();
+  List<SquadMember> get coaches =>
+      squad.where((m) => m.role == SquadRole.coach).toList();
+  List<SquadMember> get staff =>
+      squad.where((m) => m.role == SquadRole.staff).toList();
+}
+
+// ── Mock: Simba SC ─────────────────────────────────────────────────────────────
+
+final mockSimbaSC = TeamProfileModel(
+  name: 'Simba SC',
+  handle: 'simbasc',
+  sport: 'Football',
+  competition: 'Tanzania Premier League',
+  country: 'Tanzania',
+  city: 'Dar es Salaam',
+  stadium: 'Benjamin Mkapa Stadium',
+  founded: 1936,
+  coach: 'Sergio Traguil',
+  description:
+      'Simba Sports Club is a professional football club based in Dar es Salaam, Tanzania. Founded in 1936, Simba SC is one of the most successful clubs in East African football and holds the record for most Tanzania Premier League titles.',
+  accentColor: const Color(0xFFE31B23),
+  postCount: 1240,
+  fanCount: 890000,
+  followingCount: 48,
+  logoAsset: 'assets/images/sport_sphere_icon.png',
+  isVerified: true,
+  joinedDate: DateTime(2023, 6, 1),
+  squad: const [
+    // Players
+    SquadMember(
+      name: 'Clatous Chama',
+      handle: 'clatouschama',
+      role: SquadRole.player,
+      subrole: 'Forward',
+      squadNumber: 11,
+      nationality: 'Zambian',
+      profileRoute: '/player/clatouschama',
+    ),
+    SquadMember(
+      name: 'John Bocco',
+      handle: 'johnbocco',
+      role: SquadRole.player,
+      subrole: 'Forward',
+      squadNumber: 9,
+      nationality: 'Tanzanian',
+      profileRoute: '/player/johnbocco',
+    ),
+    SquadMember(
+      name: 'Aishi Manula',
+      handle: 'aishimanula',
+      role: SquadRole.player,
+      subrole: 'Goalkeeper',
+      squadNumber: 1,
+      nationality: 'Tanzanian',
+      profileRoute: '/player/aishimanula',
+    ),
+    SquadMember(
+      name: 'Jonas Mkude',
+      handle: 'jonasmkude',
+      role: SquadRole.player,
+      subrole: 'Midfielder',
+      squadNumber: 8,
+      nationality: 'Tanzanian',
+      profileRoute: '/player/jonasmkude',
+    ),
+    SquadMember(
+      name: 'Pascal Wawa',
+      handle: 'pascalwawa',
+      role: SquadRole.player,
+      subrole: 'Defender',
+      squadNumber: 5,
+      nationality: 'Tanzanian',
+      profileRoute: '/player/pascalwawa',
+    ),
+    SquadMember(
+      name: 'Gnamien Koffi',
+      handle: 'koffi',
+      role: SquadRole.player,
+      subrole: 'Midfielder',
+      squadNumber: 7,
+      nationality: 'Ivorian',
+      profileRoute: '/player/koffi',
+    ),
+    // Coaches
+    SquadMember(
+      name: 'Sergio Traguil',
+      handle: 'traguil',
+      role: SquadRole.coach,
+      subrole: 'Head Coach',
+      nationality: 'Portuguese',
+    ),
+    SquadMember(
+      name: 'Mohamed Mrisho',
+      handle: 'mrisho',
+      role: SquadRole.coach,
+      subrole: 'Assistant Coach',
+      nationality: 'Tanzanian',
+    ),
+    // Staff
+    SquadMember(
+      name: 'Dr. Hassan Ally',
+      handle: 'drhassan',
+      role: SquadRole.staff,
+      subrole: 'Team Doctor',
+    ),
+    SquadMember(
+      name: 'James Otieno',
+      handle: 'otieno',
+      role: SquadRole.staff,
+      subrole: 'Physiotherapist',
+    ),
+  ],
+  seasonStats: const [
+    TeamSeasonStats(
+      season: '2026/27',
+      competition: 'Tanzania Premier League',
+      matches: 22,
+      wins: 15,
+      draws: 4,
+      losses: 3,
+      goalsFor: 48,
+      goalsAgainst: 19,
+      cleanSheets: 9,
+      leaguePosition: 1,
+    ),
+    TeamSeasonStats(
+      season: '2025/26',
+      competition: 'Tanzania Premier League',
+      matches: 30,
+      wins: 22,
+      draws: 5,
+      losses: 3,
+      goalsFor: 67,
+      goalsAgainst: 24,
+      cleanSheets: 14,
+      leaguePosition: 1,
+    ),
+  ],
+);
+
+// ── Mock team posts ────────────────────────────────────────────────────────────
+
+final _teamPosts = <ProfilePost>[
+  const ProfilePost(
+    text: 'Big match tonight! Ready for the challenge. 🦁🔴\nSimba family — make some noise!',
+    hashtags: ['#SimbaSC', '#NguVuMoja'],
+    timeAgo: '2h',
+    likes: 5200,
+    comments: 368,
+    shares: 280,
+    hasImage: true,
+    imageCount: 2,
+  ),
+  const ProfilePost(
+    text: 'Training complete. The squad is focused and ready for Sunday. 💪',
+    hashtags: ['#Simba', '#TrainingDay'],
+    timeAgo: '1d',
+    likes: 3800,
+    comments: 212,
+    shares: 140,
+    hasImage: true,
+    imageCount: 1,
+  ),
+  const ProfilePost(
+    text: 'FULL TIME! Three points secured. Magnificent performance from the whole squad! 🏆',
+    hashtags: ['#SimbaSC', '#WekunduWaMsimbazi'],
+    timeAgo: '3d',
+    likes: 12400,
+    comments: 891,
+    shares: 620,
+    hasImage: true,
+    imageCount: 1,
+    hasVideo: true,
+  ),
+  const ProfilePost(
+    text: 'Congratulations to our fans — you are the 12th player. Asante sana! ❤️',
+    hashtags: ['#SimbaNation'],
+    timeAgo: '5d',
+    likes: 8900,
+    comments: 445,
+    shares: 310,
+    hasImage: false,
+  ),
+];
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SCREEN
+// ══════════════════════════════════════════════════════════════════════════════
+
+class TeamProfileView extends StatefulWidget {
+  final TeamProfileModel profile;
+  const TeamProfileView({super.key, required this.profile});
+
+  @override
+  State<TeamProfileView> createState() => _TeamProfileViewState();
+}
+
+class _TeamProfileViewState extends State<TeamProfileView>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabCtrl;
+  bool _following = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabCtrl = TabController(length: 4, vsync: this);
+    _tabCtrl.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _tabCtrl.dispose();
+    super.dispose();
+  }
+
+  TeamProfileModel get p => widget.profile;
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+    return Scaffold(
+      backgroundColor: SportSphereColors.background,
+      body: NestedScrollView(
+        headerSliverBuilder: (context, _) => [
+          SliverToBoxAdapter(
+            child: _TeamHeader(
+              profile: p,
+              following: _following,
+              onFollow: () {
+                HapticFeedback.lightImpact();
+                setState(() => _following = !_following);
+              },
+              onBack: () => Navigator.of(context).maybePop(),
+              onShare: () {},
+              onMore: () => _showMore(context),
+              onInfo: () => _tabCtrl.animateTo(1),
+            ),
+          ),
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: ProfileTabBarDelegate(
+              tabBar: _TeamTabBar(controller: _tabCtrl),
+            ),
+          ),
+        ],
+        body: TabBarView(
+          controller: _tabCtrl,
           children: [
-            Text('Team Profile'),
-            SizedBox(height: 8),
-            ProfileBadge(label: 'Team'),
+            _SportlightsTab(profile: p),
+            _AboutTab(profile: p),
+            _SquadTab(profile: p),
+            _StatsTab(profile: p),
           ],
         ),
       ),
+    );
+  }
+
+  void _showMore(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ProfileMoreSheet(
+        isOwnProfile: p.isOwnProfile,
+        options: p.isOwnProfile
+            ? [
+                ProfileMoreOption(icon: Icons.edit_outlined, label: 'Edit Profile', onTap: () => Navigator.pop(context)),
+                ProfileMoreOption(icon: Icons.share_outlined, label: 'Share Profile', onTap: () => Navigator.pop(context)),
+                ProfileMoreOption(icon: Icons.qr_code_rounded, label: 'QR Code', onTap: () => Navigator.pop(context)),
+              ]
+            : [
+                ProfileMoreOption(icon: Icons.share_outlined, label: 'Share Profile', onTap: () => Navigator.pop(context)),
+                ProfileMoreOption(icon: Icons.flag_outlined, label: 'Report', onTap: () => Navigator.pop(context), destructive: true),
+              ],
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// HEADER
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _TeamHeader extends StatelessWidget {
+  final TeamProfileModel profile;
+  final bool following;
+  final VoidCallback onFollow;
+  final VoidCallback onBack;
+  final VoidCallback onShare;
+  final VoidCallback onMore;
+  final VoidCallback onInfo;
+
+  const _TeamHeader({
+    required this.profile,
+    required this.following,
+    required this.onFollow,
+    required this.onBack,
+    required this.onShare,
+    required this.onMore,
+    required this.onInfo,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const coverH = 210.0;
+    const logoR  = 46.0;
+    final accent = profile.accentColor;
+    final top    = MediaQuery.of(context).padding.top;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Cover ────────────────────────────────────────────
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // Cover
+            SizedBox(
+              height: coverH,
+              width: double.infinity,
+              child: profile.coverAsset != null
+                  ? Image.asset(profile.coverAsset!, fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          ProfileCoverGradient(accent: accent, icon: Icons.groups_rounded))
+                  : ProfileCoverGradient(accent: accent, icon: Icons.groups_rounded),
+            ),
+
+            // Bottom fade
+            Positioned(
+              bottom: 0, left: 0, right: 0, height: 110,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      SportSphereColors.background.withValues(alpha: 0.97),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Back
+            Positioned(
+              top: top + 8, left: 12,
+              child: ProfileNavButton(
+                icon: Icons.arrow_back_ios_new_rounded,
+                onTap: onBack,
+                semanticsLabel: 'Go back',
+              ),
+            ),
+
+            // Share + More
+            Positioned(
+              top: top + 8, right: 12,
+              child: Row(
+                children: [
+                  ProfileNavButton(
+                    icon: Icons.ios_share_rounded,
+                    onTap: onShare,
+                    semanticsLabel: 'Share profile',
+                  ),
+                  const SizedBox(width: 8),
+                  ProfileNavButton(
+                    icon: Icons.more_horiz_rounded,
+                    onTap: onMore,
+                    semanticsLabel: 'More options',
+                  ),
+                ],
+              ),
+            ),
+
+            // Team logo overlapping cover
+            Positioned(
+              bottom: -(logoR * 0.45),
+              left: 16,
+              child: ProfileAvatar(
+                asset: profile.logoAsset,
+                radius: logoR,
+                accentColor: accent,
+              ),
+            ),
+          ],
+        ),
+
+        SizedBox(height: logoR * 0.45 + 12),
+
+        // ── Identity ─────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Name + verified
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            profile.name,
+                            style: const TextStyle(
+                              color: SportSphereColors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              height: 1.1,
+                            ),
+                          ),
+                        ),
+                        if (profile.isVerified) ...[
+                          const SizedBox(width: 6),
+                          const Icon(Icons.verified_rounded,
+                              color: SportSphereColors.electricBlue, size: 20),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+
+                    // @handle
+                    Text(profile.atHandle,
+                        style: const TextStyle(
+                          color: SportSphereColors.muted, fontSize: 14,
+                        )),
+
+                    const SizedBox(height: 6),
+
+                    // Sport · Competition
+                    Text(
+                      '${profile.sport} · ${profile.competition}',
+                      style: TextStyle(
+                        color: SportSphereColors.muted.withValues(alpha: 0.80),
+                        fontSize: 13,
+                      ),
+                    ),
+
+                    const SizedBox(height: 3),
+
+                    // Location
+                    Row(
+                      children: [
+                        Icon(Icons.place_rounded,
+                            color: SportSphereColors.muted.withValues(alpha: 0.65),
+                            size: 13),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${profile.city}, ${profile.country}',
+                          style: TextStyle(
+                            color: SportSphereColors.muted.withValues(alpha: 0.65),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // ⓘ info shortcut
+              const SizedBox(width: 10),
+              Semantics(
+                label: 'About this team',
+                button: true,
+                child: GestureDetector(
+                  onTap: onInfo,
+                  child: Container(
+                    width: 36, height: 36,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withValues(alpha: 0.07),
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.12)),
+                    ),
+                    child: const Icon(Icons.info_outline_rounded,
+                        color: SportSphereColors.muted, size: 18),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // ── Stats strip ──────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.035),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.07)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ProfileStat(value: formatCount(profile.postCount), label: 'Posts'),
+                const ProfileStatDivider(),
+                ProfileStat(value: formatCount(profile.fanCount), label: 'Fans'),
+                const ProfileStatDivider(),
+                ProfileStat(value: '${profile.followingCount}', label: 'Following'),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 14),
+
+        // ── Follow button ────────────────────────────────────
+        if (!profile.isOwnProfile)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+            child: _FollowRow(
+              following: following,
+              accent: accent,
+              onFollow: onFollow,
+            ),
+          ),
+
+        const SizedBox(height: 4),
+      ],
+    );
+  }
+}
+
+// ── Follow row ─────────────────────────────────────────────────────────────────
+
+class _FollowRow extends StatelessWidget {
+  final bool following;
+  final Color accent;
+  final VoidCallback onFollow;
+
+  const _FollowRow({
+    required this.following,
+    required this.accent,
+    required this.onFollow,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        // Follow / Following
+        Expanded(
+          child: Semantics(
+            label: following ? 'Following this team' : 'Follow this team',
+            button: true,
+            child: GestureDetector(
+              onTap: onFollow,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                height: 42,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(21),
+                  gradient: following
+                      ? null
+                      : const LinearGradient(
+                          colors: [
+                            SportSphereColors.electricBlue,
+                            Color(0xFF0066DD),
+                          ],
+                        ),
+                  color: following
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : null,
+                  border: following
+                      ? Border.all(
+                          color: Colors.white.withValues(alpha: 0.18))
+                      : null,
+                  boxShadow: following
+                      ? null
+                      : [
+                          BoxShadow(
+                            color: SportSphereColors.electricBlue
+                                .withValues(alpha: 0.30),
+                            blurRadius: 14,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                ),
+                child: Center(
+                  child: Text(
+                    following ? 'Following' : 'Follow',
+                    style: TextStyle(
+                      color: following
+                          ? SportSphereColors.muted
+                          : Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+
+        // Notification bell
+        Semantics(
+          label: 'Set team notifications',
+          button: true,
+          child: GestureDetector(
+            onTap: () {},
+            child: Container(
+              height: 42, width: 42,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.06),
+                border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.14)),
+              ),
+              child: const Icon(Icons.notifications_none_rounded,
+                  color: SportSphereColors.muted, size: 20),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TAB BAR — 4 tabs
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _TeamTabBar extends StatelessWidget {
+  final TabController controller;
+  const _TeamTabBar({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: SportSphereColors.background,
+      child: TabBar(
+        controller: controller,
+        isScrollable: true,
+        tabAlignment: TabAlignment.start,
+        labelColor: SportSphereColors.white,
+        unselectedLabelColor: SportSphereColors.muted,
+        labelStyle:
+            const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+        unselectedLabelStyle:
+            const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+        indicator: UnderlineTabIndicator(
+          borderSide: const BorderSide(
+              color: Color(0xFFE31B23), width: 2.5),
+          borderRadius: BorderRadius.circular(4),
+          insets: const EdgeInsets.symmetric(horizontal: 12),
+        ),
+        tabs: const [
+          Tab(
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.bolt_rounded, size: 14),
+              SizedBox(width: 5),
+              Text('Sportlights'),
+            ]),
+          ),
+          Tab(
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.info_outline_rounded, size: 14),
+              SizedBox(width: 5),
+              Text('About'),
+            ]),
+          ),
+          Tab(
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.people_rounded, size: 14),
+              SizedBox(width: 5),
+              Text('Squad'),
+            ]),
+          ),
+          Tab(
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.bar_chart_rounded, size: 14),
+              SizedBox(width: 5),
+              Text('Stats'),
+            ]),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SPORTLIGHTS TAB
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _SportlightsTab extends StatelessWidget {
+  final TeamProfileModel profile;
+  const _SportlightsTab({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(0, 8, 0, 120),
+      itemCount: _teamPosts.length,
+      itemBuilder: (_, i) => ProfilePostCard(
+        post: _teamPosts[i],
+        authorName: profile.name,
+        authorHandle: profile.atHandle,
+        authorAvatarAsset: profile.logoAsset,
+        isVerified: profile.isVerified,
+        accentColor: profile.accentColor,
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ABOUT TAB
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _AboutTab extends StatelessWidget {
+  final TeamProfileModel profile;
+  const _AboutTab({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+      children: [
+        // Club description
+        if (profile.description.isNotEmpty) ...[
+          AboutSection(
+            title: 'About',
+            child: Text(profile.description,
+                style: const TextStyle(
+                  color: SportSphereColors.white,
+                  fontSize: 15,
+                  height: 1.55,
+                )),
+          ),
+          const SizedBox(height: 14),
+        ],
+
+        // Club information
+        AboutSection(
+          title: 'Club Information',
+          child: Column(
+            children: [
+              AboutRow(
+                icon: Icons.shield_rounded,
+                iconColor: profile.accentColor,
+                label: 'Club',
+                value: profile.name,
+                valueColor: profile.accentColor,
+              ),
+              AboutRow(
+                icon: Icons.flag_rounded,
+                iconColor: SportSphereColors.sportOrange,
+                label: 'Country',
+                value: profile.country,
+              ),
+              AboutRow(
+                icon: Icons.place_rounded,
+                iconColor: SportSphereColors.electricBlue,
+                label: 'City',
+                value: profile.city,
+              ),
+              AboutRow(
+                icon: Icons.stadium_rounded,
+                iconColor: SportSphereColors.sportGreen,
+                label: 'Stadium',
+                value: profile.stadium,
+              ),
+              AboutRow(
+                icon: Icons.calendar_today_rounded,
+                iconColor: SportSphereColors.brightBlue,
+                label: 'Founded',
+                value: '${profile.founded}',
+              ),
+              AboutRow(
+                icon: Icons.emoji_events_rounded,
+                iconColor: const Color(0xFFFFD700),
+                label: 'Competition',
+                value: profile.competition,
+              ),
+              AboutRow(
+                icon: Icons.sports_rounded,
+                iconColor: const Color(0xFF9B6DFF),
+                label: 'Head Coach',
+                value: profile.coach,
+                isLast: true,
+              ),
+            ],
+          ),
+        ),
+
+        if (profile.joinedDate != null) ...[
+          const SizedBox(height: 14),
+          AboutSection(
+            title: 'SportSphere',
+            child: AboutRow(
+              icon: Icons.calendar_today_rounded,
+              iconColor: SportSphereColors.electricBlue,
+              label: 'Joined',
+              value: DateFormat('MMMM yyyy').format(profile.joinedDate!),
+              isLast: true,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SQUAD TAB
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _SquadTab extends StatelessWidget {
+  final TeamProfileModel profile;
+  const _SquadTab({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+      children: [
+        if (profile.players.isNotEmpty) ...[
+          _SquadSection(
+            title: 'Players',
+            members: profile.players,
+            accent: profile.accentColor,
+          ),
+          const SizedBox(height: 14),
+        ],
+        if (profile.coaches.isNotEmpty) ...[
+          _SquadSection(
+            title: 'Coaching Staff',
+            members: profile.coaches,
+            accent: profile.accentColor,
+          ),
+          const SizedBox(height: 14),
+        ],
+        if (profile.staff.isNotEmpty)
+          _SquadSection(
+            title: 'Support Staff',
+            members: profile.staff,
+            accent: profile.accentColor,
+          ),
+      ],
+    );
+  }
+}
+
+class _SquadSection extends StatelessWidget {
+  final String title;
+  final List<SquadMember> members;
+  final Color accent;
+
+  const _SquadSection({
+    required this.title,
+    required this.members,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section header
+        Padding(
+          padding: const EdgeInsets.only(left: 2, bottom: 10),
+          child: Text(
+            title.toUpperCase(),
+            style: TextStyle(
+              color: SportSphereColors.muted.withValues(alpha: 0.75),
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.2,
+            ),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xD0071422),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+                color: Colors.white.withValues(alpha: 0.07)),
+          ),
+          child: Column(
+            children: List.generate(members.length, (i) {
+              final member = members[i];
+              final isLast = i == members.length - 1;
+              return _SquadRow(
+                member: member,
+                accent: accent,
+                isLast: isLast,
+              );
+            }),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SquadRow extends StatelessWidget {
+  final SquadMember member;
+  final Color accent;
+  final bool isLast;
+
+  const _SquadRow({
+    required this.member,
+    required this.accent,
+    required this.isLast,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isNavigable = member.profileRoute != null;
+
+    return Column(
+      children: [
+        Semantics(
+          label: '${member.name}, ${member.subrole}',
+          button: isNavigable,
+          child: GestureDetector(
+            onTap: isNavigable
+                ? () => context.push(member.profileRoute!)
+                : null,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  // Avatar / number badge
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: accent.withValues(alpha: 0.10),
+                          border: Border.all(
+                              color: accent.withValues(alpha: 0.22)),
+                        ),
+                        child: member.avatarAsset != null
+                            ? ClipOval(
+                                child: Image.asset(member.avatarAsset!,
+                                    fit: BoxFit.cover))
+                            : Icon(
+                                _roleIcon(member.role),
+                                color: accent.withValues(alpha: 0.7),
+                                size: 22,
+                              ),
+                      ),
+                      // Squad number badge
+                      if (member.squadNumber != null)
+                        Positioned(
+                          bottom: -2,
+                          right: -4,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 5, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: accent,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                  color: SportSphereColors.background,
+                                  width: 1.5),
+                            ),
+                            child: Text(
+                              '#${member.squadNumber}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(width: 14),
+
+                  // Name + subrole
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(member.name,
+                            style: const TextStyle(
+                              color: SportSphereColors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            )),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Text(member.subrole,
+                                style: const TextStyle(
+                                  color: SportSphereColors.muted,
+                                  fontSize: 12,
+                                )),
+                            if (member.nationality != null) ...[
+                              Text(
+                                '  ·  ${member.nationality}',
+                                style: TextStyle(
+                                  color: SportSphereColors.muted
+                                      .withValues(alpha: 0.6),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Chevron if navigable
+                  if (isNavigable)
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: SportSphereColors.muted.withValues(alpha: 0.5),
+                      size: 20,
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (!isLast)
+          Divider(
+            height: 1,
+            indent: 76,
+            color: Colors.white.withValues(alpha: 0.05),
+          ),
+      ],
+    );
+  }
+
+  IconData _roleIcon(SquadRole role) {
+    switch (role) {
+      case SquadRole.player:
+        return Icons.sports_soccer_rounded;
+      case SquadRole.coach:
+        return Icons.sports_rounded;
+      case SquadRole.staff:
+        return Icons.medical_services_rounded;
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// STATS TAB
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _StatsTab extends StatefulWidget {
+  final TeamProfileModel profile;
+  const _StatsTab({required this.profile});
+
+  @override
+  State<_StatsTab> createState() => _StatsTabState();
+}
+
+class _StatsTabState extends State<_StatsTab> {
+  late String _season;
+
+  @override
+  void initState() {
+    super.initState();
+    _season = widget.profile.seasonStats.first.season;
+  }
+
+  TeamSeasonStats get _stats {
+    return widget.profile.seasonStats.firstWhere(
+      (s) => s.season == _season,
+      orElse: () => widget.profile.seasonStats.first,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final stats  = _stats;
+    final accent = widget.profile.accentColor;
+    final seasons = widget.profile.seasonStats.map((s) => s.season).toList();
+
+    return ListView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+      children: [
+        // ── Season filter ────────────────────────────────────
+        Row(
+          children: [
+            Expanded(
+              child: _SeasonDropdown(
+                value: _season,
+                options: seasons,
+                onChanged: (v) => setState(() => _season = v),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: SportSphereColors.surface2,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                ),
+                child: Text(
+                  stats.competition,
+                  style: const TextStyle(
+                    color: SportSphereColors.muted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 18),
+
+        // ── League position banner ───────────────────────────
+        _PositionBanner(stats: stats, accent: accent),
+
+        const SizedBox(height: 18),
+
+        // ── Result distribution ──────────────────────────────
+        _SectionLabel('Results'),
+        const SizedBox(height: 10),
+        _ResultBar(stats: stats),
+        const SizedBox(height: 18),
+
+        // ── Stats grid ───────────────────────────────────────
+        _SectionLabel('Season Statistics'),
+        const SizedBox(height: 10),
+        _TeamStatsGrid(stats: stats),
+      ],
+    );
+  }
+}
+
+// ── Season dropdown ────────────────────────────────────────────────────────────
+
+class _SeasonDropdown extends StatelessWidget {
+  final String value;
+  final List<String> options;
+  final ValueChanged<String> onChanged;
+  const _SeasonDropdown({
+    required this.value,
+    required this.options,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: SportSphereColors.surface2,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          isExpanded: true,
+          dropdownColor: SportSphereColors.surface2,
+          style: const TextStyle(
+            color: SportSphereColors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+          icon: const Icon(Icons.expand_more_rounded,
+              color: SportSphereColors.muted, size: 18),
+          items: options
+              .map((o) => DropdownMenuItem(value: o, child: Text(o)))
+              .toList(),
+          onChanged: (v) => v != null ? onChanged(v) : null,
+        ),
+      ),
+    );
+  }
+}
+
+// ── League position banner ─────────────────────────────────────────────────────
+
+class _PositionBanner extends StatelessWidget {
+  final TeamSeasonStats stats;
+  final Color accent;
+  const _PositionBanner({required this.stats, required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            accent.withValues(alpha: 0.15),
+            accent.withValues(alpha: 0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: accent.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          // Position
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _ordinal(stats.leaguePosition),
+                style: TextStyle(
+                  color: accent,
+                  fontSize: 36,
+                  fontWeight: FontWeight.w900,
+                  height: 1,
+                ),
+              ),
+              Text('League Position',
+                  style: TextStyle(
+                    color: SportSphereColors.muted.withValues(alpha: 0.8),
+                    fontSize: 12,
+                  )),
+            ],
+          ),
+          const Spacer(),
+          // Points
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${stats.points}',
+                style: const TextStyle(
+                  color: SportSphereColors.white,
+                  fontSize: 36,
+                  fontWeight: FontWeight.w900,
+                  height: 1,
+                ),
+              ),
+              const Text('Points',
+                  style: TextStyle(
+                    color: SportSphereColors.muted,
+                    fontSize: 12,
+                  )),
+            ],
+          ),
+          const SizedBox(width: 24),
+          // Matches played
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${stats.matches}',
+                style: const TextStyle(
+                  color: SportSphereColors.white,
+                  fontSize: 36,
+                  fontWeight: FontWeight.w900,
+                  height: 1,
+                ),
+              ),
+              const Text('Played',
+                  style: TextStyle(
+                    color: SportSphereColors.muted,
+                    fontSize: 12,
+                  )),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _ordinal(int n) {
+    switch (n) {
+      case 1:  return '1st';
+      case 2:  return '2nd';
+      case 3:  return '3rd';
+      default: return '${n}th';
+    }
+  }
+}
+
+// ── W/D/L result bar ───────────────────────────────────────────────────────────
+
+class _ResultBar extends StatelessWidget {
+  final TeamSeasonStats stats;
+  const _ResultBar({required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = stats.matches;
+    final wFrac = stats.wins / total;
+    final dFrac = stats.draws / total;
+    final lFrac = stats.losses / total;
+
+    return Column(
+      children: [
+        // Bar
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: SizedBox(
+            height: 10,
+            child: Row(
+              children: [
+                Flexible(
+                  flex: (wFrac * 100).round(),
+                  child: Container(color: SportSphereColors.sportGreen),
+                ),
+                Flexible(
+                  flex: (dFrac * 100).round(),
+                  child: Container(color: SportSphereColors.muted.withValues(alpha: 0.5)),
+                ),
+                Flexible(
+                  flex: (lFrac * 100).round(),
+                  child: Container(color: SportSphereColors.danger),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        // Labels
+        Row(
+          children: [
+            _ResultLabel(color: SportSphereColors.sportGreen, label: 'W', value: stats.wins),
+            const Spacer(),
+            _ResultLabel(color: SportSphereColors.muted, label: 'D', value: stats.draws),
+            const Spacer(),
+            _ResultLabel(color: SportSphereColors.danger, label: 'L', value: stats.losses),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _ResultLabel extends StatelessWidget {
+  final Color color;
+  final String label;
+  final int value;
+  const _ResultLabel({
+    required this.color,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 10, height: 10,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text('$label $value',
+            style: TextStyle(
+              color: SportSphereColors.muted,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            )),
+      ],
+    );
+  }
+}
+
+// ── Team stats grid card ───────────────────────────────────────────────────────
+
+class _TeamStatsGrid extends StatelessWidget {
+  final TeamSeasonStats stats;
+  const _TeamStatsGrid({required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = [
+      _Entry(Icons.calendar_today_rounded, SportSphereColors.electricBlue, 'Matches', '${stats.matches}'),
+      _Entry(Icons.check_circle_outline_rounded, SportSphereColors.sportGreen, 'Wins', '${stats.wins}'),
+      _Entry(Icons.remove_circle_outline_rounded, SportSphereColors.muted, 'Draws', '${stats.draws}'),
+      _Entry(Icons.cancel_outlined, SportSphereColors.danger, 'Losses', '${stats.losses}'),
+      _Entry(Icons.sports_soccer_rounded, const Color(0xFFE31B23), 'Goals For', '${stats.goalsFor}'),
+      _Entry(Icons.shield_outlined, SportSphereColors.sportOrange, 'Goals Against', '${stats.goalsAgainst}'),
+      _Entry(Icons.trending_up_rounded, SportSphereColors.brightBlue, 'Goal Difference',
+          stats.goalDifference >= 0 ? '+${stats.goalDifference}' : '${stats.goalDifference}'),
+      _Entry(Icons.lock_outline_rounded, SportSphereColors.sportGreen, 'Clean Sheets', '${stats.cleanSheets}'),
+    ];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xD0071422),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+      ),
+      child: Column(
+        children: List.generate(entries.length, (i) {
+          final e = entries[i];
+          final isLast = i == entries.length - 1;
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32, height: 32,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: e.color.withValues(alpha: 0.12),
+                      ),
+                      child: Icon(e.icon, color: e.color, size: 16),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(e.label,
+                          style: const TextStyle(
+                            color: SportSphereColors.muted,
+                            fontSize: 14,
+                          )),
+                    ),
+                    Text(e.value,
+                        style: const TextStyle(
+                          color: SportSphereColors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        )),
+                  ],
+                ),
+              ),
+              if (!isLast)
+                Divider(
+                  height: 1,
+                  color: Colors.white.withValues(alpha: 0.05),
+                ),
+            ],
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class _Entry {
+  final IconData icon;
+  final Color color;
+  final String label;
+  final String value;
+  const _Entry(this.icon, this.color, this.label, this.value);
+}
+
+// ── Section label ──────────────────────────────────────────────────────────────
+
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  const _SectionLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Icon(Icons.bar_chart_rounded,
+            color: SportSphereColors.muted, size: 15),
+        const SizedBox(width: 7),
+        Text(
+          text.toUpperCase(),
+          style: TextStyle(
+            color: SportSphereColors.muted.withValues(alpha: 0.75),
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.1,
+          ),
+        ),
+      ],
     );
   }
 }
