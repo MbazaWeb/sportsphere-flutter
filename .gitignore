@@ -43,3 +43,17 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Signing
+android/key.properties
+android/app/upload-keystore.jks
+*.jks
+*.keystore
+android/local.properties
+
+# Local scratch / backups
+*.backup
+*.bak
+*.before_*
+app_shell.dart.home-tabs.backup
+PUBSPEC_ASSETS.txt

@@ -45,5 +45,11 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>SportSphere needs camera access so you can take photos for posts and your profile.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>SportSphere needs photo library access so you can attach images to posts and your profile.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>SportSphere needs permission to save images you choose to keep.</string>
 </dict>
 </plist>
