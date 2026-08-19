@@ -1,1 +1,10 @@
--- See applied schema on project vqyfybuloyqahgoagmzd (profiles, follows, fans, communities, posts).
+# Supabase
+
+Project: `vqyfybuloyqahgoagmzd`
+
+Migrations live in `supabase/migrations/`.
+
+```bash
+supabase link --project-ref vqyfybuloyqahgoagmzd
+supabase db push
+```
