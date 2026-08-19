@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../core/theme/colors.dart';
 import '../../../../core/widgets/glass_container.dart';
-import '../widgets/match_card.dart';
 import '../../domain/models/match_model.dart';
+import '../providers/scores_provider.dart';
+import '../widgets/match_card.dart';
 
-class ScoresPage extends StatefulWidget {
+class ScoresPage extends ConsumerStatefulWidget {
   const ScoresPage({super.key});
 
   @override
-  State<ScoresPage> createState() => _ScoresPageState();
+  ConsumerState<ScoresPage> createState() => _ScoresPageState();
 }
 
-class _ScoresPageState extends State<ScoresPage> with TickerProviderStateMixin {
+class _ScoresPageState extends ConsumerState<ScoresPage>
+    with TickerProviderStateMixin {
   late TabController _mainTabController;
   late TabController _matchesTabController;
 
@@ -38,7 +42,11 @@ class _ScoresPageState extends State<ScoresPage> with TickerProviderStateMixin {
         elevation: 0,
         title: const Text(
           'Scores',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 24),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w900,
+            fontSize: 24,
+          ),
         ),
         bottom: TabBar(
           controller: _mainTabController,
@@ -62,20 +70,24 @@ class _ScoresPageState extends State<ScoresPage> with TickerProviderStateMixin {
   }
 }
 
-class _MatchesView extends StatelessWidget {
-  final TabController tabController;
+// ── Matches view ───────────────────────────────────────────────────────────────
 
+class _MatchesView extends ConsumerWidget {
+  final TabController tabController;
   const _MatchesView({required this.tabController});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       children: [
         TabBar(
           controller: tabController,
           isScrollable: true,
+          tabAlignment: TabAlignment.start,
           indicatorSize: TabBarIndicatorSize.label,
-          labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+          labelColor: SportSphereColors.electricBlue,
+          unselectedLabelColor: SportSphereColors.muted,
+          labelStyle: const TextStyle(fontWeight: FontWeight.w700),
           tabs: const [
             Tab(text: 'Live'),
             Tab(text: 'Today'),
@@ -87,10 +99,10 @@ class _MatchesView extends StatelessWidget {
           child: TabBarView(
             controller: tabController,
             children: [
-              _MatchList(type: 'Live'),
-              _MatchList(type: 'Today'),
-              _MatchList(type: 'Upcoming'),
-              _MatchList(type: 'Results'),
+              _MatchList(provider: liveMatchesProvider),
+              _MatchList(provider: todayMatchesProvider),
+              _MatchList(provider: upcomingMatchesProvider),
+              _MatchList(provider: resultsProvider),
             ],
           ),
         ),
@@ -99,59 +111,85 @@ class _MatchesView extends StatelessWidget {
   }
 }
 
-class _MatchList extends StatelessWidget {
-  final String type;
-
-  const _MatchList({required this.type});
+class _MatchList extends ConsumerWidget {
+  final ProviderListenable<AsyncValue<List<MatchModel>>> provider;
+  const _MatchList({required this.provider});
 
   @override
-  Widget build(BuildContext context) {
-    final matches = [
-      MatchModel(
-        id: '1',
-        homeTeamName: 'Man City',
-        awayTeamName: 'Arsenal',
-        homeTeamLogo: '',
-        awayTeamLogo: '',
-        leagueName: 'Premier League',
-        leagueLogo: '',
-        score: '2 - 1',
-        status: '85\'',
-        startTime: DateTime.now(),
-        isLive: true,
-      ),
-      MatchModel(
-        id: '2',
-        homeTeamName: 'Real Madrid',
-        awayTeamName: 'Barcelona',
-        homeTeamLogo: '',
-        awayTeamLogo: '',
-        leagueName: 'La Liga',
-        leagueLogo: '',
-        score: '0 - 0',
-        status: '21:00',
-        startTime: DateTime.now().add(const Duration(hours: 5)),
-      ),
-    ];
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(provider);
 
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-      itemCount: matches.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        return MatchCard(
-          match: matches[index],
-          onCardTap: () {
-            // TODO: Open match stats, lineups, formation
-          },
-          onTeamTap: () {
-            // TODO: Open team profile
-          },
-        );
-      },
+    return async.when(
+      loading: () => const Center(
+        child: CircularProgressIndicator(
+          color: SportSphereColors.electricBlue,
+          strokeWidth: 2,
+        ),
+      ),
+      error: (e, _) => Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.wifi_off_rounded,
+              color: SportSphereColors.muted,
+              size: 42,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Could not load matches',
+              style: const TextStyle(color: SportSphereColors.muted),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => ref.invalidate(liveMatchesProvider),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+      data: (matches) => matches.isEmpty
+          ? const _EmptyMatches()
+          : ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+              itemCount: matches.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, i) => MatchCard(
+                match: matches[i],
+                onCardTap: () {},
+                onTeamTap: () {},
+              ),
+            ),
     );
   }
 }
+
+class _EmptyMatches extends StatelessWidget {
+  const _EmptyMatches();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.sports_score_rounded,
+            color: SportSphereColors.muted.withValues(alpha: 0.5),
+            size: 48,
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'No matches here',
+            style: TextStyle(color: SportSphereColors.muted),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Standings view ─────────────────────────────────────────────────────────────
 
 class _StandingsView extends StatefulWidget {
   const _StandingsView();
@@ -161,54 +199,105 @@ class _StandingsView extends StatefulWidget {
 }
 
 class _StandingsViewState extends State<_StandingsView> {
-  String selectedSport = 'Football';
-  String selectedLeague = 'Premier League';
+  String _sport = 'Football';
+  String _league = 'Premier League';
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(16),
       child: Column(
         children: [
           Row(
             children: [
               Expanded(
-                child: _DropdownSelector(
+                child: _Dropdown(
                   label: 'Sport',
-                  value: selectedSport,
+                  value: _sport,
                   items: const ['Football', 'Basketball', 'Tennis'],
-                  onChanged: (v) => setState(() => selectedSport = v!),
+                  onChanged: (v) => setState(() => _sport = v!),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _DropdownSelector(
+                child: _Dropdown(
                   label: 'League',
-                  value: selectedLeague,
-                  items: const ['Premier League', 'La Liga', 'Champions League'],
-                  onChanged: (v) => setState(() => selectedLeague = v!),
+                  value: _league,
+                  items: const [
+                    'Premier League',
+                    'La Liga',
+                    'Champions League',
+                    'Tanzania PL',
+                  ],
+                  onChanged: (v) => setState(() => _league = v!),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           Expanded(
             child: GlassContainer(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               child: Column(
                 children: [
+                  // Header
                   Row(
                     children: const [
-                      SizedBox(width: 30, child: Text('#', style: TextStyle(color: SportSphereColors.muted))),
-                      Expanded(child: Text('Team', style: TextStyle(color: SportSphereColors.muted))),
-                      SizedBox(width: 30, child: Text('PL', style: TextStyle(color: SportSphereColors.muted))),
-                      SizedBox(width: 30, child: Text('GD', style: TextStyle(color: SportSphereColors.muted))),
-                      SizedBox(width: 30, child: Text('PTS', style: TextStyle(color: SportSphereColors.muted))),
+                      SizedBox(
+                        width: 28,
+                        child: Text('#',
+                            style: TextStyle(
+                                color: SportSphereColors.muted,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                      Expanded(
+                        child: Text('Team',
+                            style: TextStyle(
+                                color: SportSphereColors.muted,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                      SizedBox(
+                        width: 30,
+                        child: Text('PL',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                color: SportSphereColors.muted,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                      SizedBox(
+                        width: 30,
+                        child: Text('GD',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                color: SportSphereColors.muted,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                      SizedBox(
+                        width: 34,
+                        child: Text('PTS',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                color: SportSphereColors.muted,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700)),
+                      ),
                     ],
                   ),
-                  const Divider(color: Colors.white10),
-                  // Mock Standings
-                  ...List.generate(10, (index) => _StandingRow(index: index + 1)),
+                  const Divider(color: Colors.white10, height: 16),
+                  Expanded(
+                    child: ListView.separated(
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: _mockStandings.length,
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: 2),
+                      itemBuilder: (_, i) =>
+                          _StandingRow(data: _mockStandings[i], rank: i + 1),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -219,13 +308,121 @@ class _StandingsViewState extends State<_StandingsView> {
   }
 }
 
-class _DropdownSelector extends StatelessWidget {
+const _mockStandings = [
+  ('Man City', 28, 34, 67),
+  ('Arsenal', 28, 29, 64),
+  ('Liverpool', 28, 31, 61),
+  ('Aston Villa', 28, 18, 55),
+  ('Tottenham', 28, 9, 50),
+  ('Chelsea', 28, 11, 48),
+  ('Man United', 28, -4, 38),
+  ('Newcastle', 28, 7, 36),
+  ('West Ham', 28, -6, 34),
+  ('Brighton', 28, 5, 32),
+];
+
+class _StandingRow extends StatelessWidget {
+  final (String, int, int, int) data;
+  final int rank;
+  const _StandingRow({required this.data, required this.rank});
+
+  @override
+  Widget build(BuildContext context) {
+    final (name, played, gd, pts) = data;
+    final isTop4 = rank <= 4;
+    final isTop6 = rank <= 6;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      decoration: BoxDecoration(
+        border: Border(
+          left: BorderSide(
+            color: isTop4
+                ? SportSphereColors.electricBlue
+                : isTop6
+                    ? SportSphereColors.sportOrange.withValues(alpha: 0.5)
+                    : Colors.transparent,
+            width: 2,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 28,
+            child: Text(
+              '$rank',
+              style: TextStyle(
+                color: isTop4
+                    ? SportSphereColors.electricBlue
+                    : SportSphereColors.muted,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              name,
+              style: const TextStyle(
+                color: SportSphereColors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 30,
+            child: Text(
+              '$played',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: SportSphereColors.muted,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 30,
+            child: Text(
+              gd >= 0 ? '+$gd' : '$gd',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: gd > 0
+                    ? SportSphereColors.sportGreen
+                    : gd < 0
+                        ? SportSphereColors.danger
+                        : SportSphereColors.muted,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 34,
+            child: Text(
+              '$pts',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: SportSphereColors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Dropdown extends StatelessWidget {
   final String label;
   final String value;
   final List<String> items;
   final ValueChanged<String?> onChanged;
 
-  const _DropdownSelector({
+  const _Dropdown({
     required this.label,
     required this.value,
     required this.items,
@@ -237,8 +434,10 @@ class _DropdownSelector extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: SportSphereColors.muted, fontSize: 12)),
-        const SizedBox(height: 8),
+        Text(label,
+            style: const TextStyle(
+                color: SportSphereColors.muted, fontSize: 11)),
+        const SizedBox(height: 6),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
@@ -250,34 +449,20 @@ class _DropdownSelector extends StatelessWidget {
               value: value,
               isExpanded: true,
               dropdownColor: SportSphereColors.surface2,
-              style: const TextStyle(color: Colors.white),
-              items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+              items: items
+                  .map((e) =>
+                      DropdownMenuItem(value: e, child: Text(e)))
+                  .toList(),
               onChanged: onChanged,
             ),
           ),
         ),
       ],
-    );
-  }
-}
-
-class _StandingRow extends StatelessWidget {
-  final int index;
-  const _StandingRow({required this.index});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        children: [
-          SizedBox(width: 30, child: Text('$index', style: const TextStyle(color: Colors.white))),
-          Expanded(child: Text(index == 1 ? 'Man City' : 'Team $index', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-          const SizedBox(width: 30, child: Text('20', style: TextStyle(color: Colors.white))),
-          const SizedBox(width: 30, child: Text('32', style: TextStyle(color: Colors.white))),
-          const SizedBox(width: 30, child: Text('50', style: TextStyle(color: SportSphereColors.sportGreen, fontWeight: FontWeight.bold))),
-        ],
-      ),
     );
   }
 }

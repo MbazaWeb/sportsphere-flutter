@@ -9,6 +9,7 @@ class _Header extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
       child: Row(
         children: [
+          // Logo
           Expanded(
             child: SizedBox(
               height: 52,
@@ -31,25 +32,37 @@ class _Header extends StatelessWidget {
             ),
           ),
 
-          _HeaderButton(
-            icon: Icons.search_rounded,
-            onTap: () => _showSearch(context),
+          Semantics(
+            label: 'Search',
+            button: true,
+            child: _HeaderButton(
+              icon: Icons.search_rounded,
+              onTap: () => _showSearch(context),
+            ),
           ),
 
           const SizedBox(width: 8),
 
-          _HeaderButton(
-            icon: Icons.notifications_none_rounded,
-            badge: '3',
-            onTap: () => _showNotifications(context),
+          Semantics(
+            label: 'Notifications',
+            button: true,
+            child: _HeaderButton(
+              icon: Icons.notifications_none_rounded,
+              badge: '3',
+              onTap: () => _showNotifications(context),
+            ),
           ),
 
           const SizedBox(width: 8),
 
-          _HeaderButton(
-            icon: Icons.mail_outline_rounded,
-            badge: '2',
-            onTap: () => _showMessages(context),
+          Semantics(
+            label: 'Messages',
+            button: true,
+            child: _HeaderButton(
+              icon: Icons.mail_outline_rounded,
+              badge: '2',
+              onTap: () => _showMessages(context),
+            ),
           ),
         ],
       ),
@@ -62,12 +75,8 @@ class _Header extends StatelessWidget {
         opaque: true,
         fullscreenDialog: true,
         pageBuilder: (_, __, ___) => const _FullScreenSearch(),
-        transitionsBuilder: (_, animation, __, child) {
-          return FadeTransition(
-            opacity: animation,
-            child: child,
-          );
-        },
+        transitionsBuilder: (_, animation, __, child) =>
+            FadeTransition(opacity: animation, child: child),
       ),
     );
   }
@@ -78,12 +87,8 @@ class _Header extends StatelessWidget {
         opaque: true,
         fullscreenDialog: true,
         pageBuilder: (_, __, ___) => const _NotificationsScreen(),
-        transitionsBuilder: (_, animation, __, child) {
-          return FadeTransition(
-            opacity: animation,
-            child: child,
-          );
-        },
+        transitionsBuilder: (_, animation, __, child) =>
+            FadeTransition(opacity: animation, child: child),
       ),
     );
   }
@@ -141,16 +146,12 @@ class _HeaderButton extends StatelessWidget {
               size: 21,
             ),
           ),
-
           if (badge != null)
             Positioned(
               right: -2,
               top: -3,
               child: Container(
-                constraints: const BoxConstraints(
-                  minWidth: 18,
-                  minHeight: 18,
-                ),
+                constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,

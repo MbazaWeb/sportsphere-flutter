@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 
 import '../../app/config/env.dart';
 import 'api_exception.dart';
@@ -21,9 +22,12 @@ class ApiClient {
               ),
             ) {
     _dio.interceptors.add(AuthInterceptor(readToken));
-    _dio.interceptors.add(
-      LogInterceptor(requestBody: false, responseBody: false),
-    );
+    // Only log in debug builds — never in production
+    if (kDebugMode) {
+      _dio.interceptors.add(
+        LogInterceptor(requestBody: false, responseBody: false),
+      );
+    }
   }
 
   final Dio _dio;
@@ -53,6 +57,14 @@ class ApiClient {
     try {
       return await run();
     } on DioException catch (e) {
+      // 401 — token expired, caller should handle sign-out / refresh
+      if (e.response?.statusCode == 401) {
+        throw ApiException(
+          message: 'Session expired. Please log in again.',
+          statusCode: 401,
+          cause: e,
+        );
+      }
       throw ApiException(
         message: e.message ?? 'Network request failed',
         statusCode: e.response?.statusCode,

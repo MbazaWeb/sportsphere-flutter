@@ -9,121 +9,87 @@ import '../../features/auth/presentation/pages/register_screen.dart';
 import '../../features/shell/app_shell.dart';
 import '../../splash_screen.dart';
 
-// ── Router provider (Riverpod-aware so redirect can read auth state) ───────────
+// ── Protected routes (require auth) ───────────────────────────────────────────
+const _protectedRoutes = {'/create', '/profile'};
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final authNotifier = ref.watch(authControllerProvider.notifier);
-
   return GoRouter(
     initialLocation: '/splash',
-    refreshListenable: _AuthNotifierListenable(ref),
+    refreshListenable: _AuthListenable(ref),
     redirect: (context, state) {
-      final authState = ref.read(authControllerProvider);
-      final location = state.uri.toString();
+      final auth = ref.read(authControllerProvider);
+      final loc = state.uri.toString();
 
-      // Still loading — stay on splash
-      if (authState.status == AuthStatus.unknown) {
-        return location == '/splash' ? null : '/splash';
+      // Still hydrating — hold on splash
+      if (auth.status == AuthStatus.unknown) {
+        return loc == '/splash' ? null : '/splash';
       }
 
-      // Auth screens don't need redirect
-      if (location == '/login' || location == '/register') return null;
+      // Auth-only screens redirect guests to login
+      if (_protectedRoutes.contains(loc) && !auth.isAuthenticated) {
+        return '/login';
+      }
 
-      // Splash → move along
-      if (location == '/splash') return '/home';
+      // Auth users sent to login/register → go home
+      if ((loc == '/login' || loc == '/register') &&
+          auth.isAuthenticated) {
+        return '/home';
+      }
+
+      // Splash done → home
+      if (loc == '/splash') return '/home';
 
       return null;
     },
     routes: [
-      // ── Splash ──────────────────────────────────────────────
       GoRoute(
         path: '/splash',
-        pageBuilder: (context, state) => const NoTransitionPage(
-          child: SplashScreen(),
-        ),
+        pageBuilder: (_, state) =>
+            const NoTransitionPage(child: SplashScreen()),
       ),
-
-      // ── Login ────────────────────────────────────────────────
       GoRoute(
         path: '/login',
-        pageBuilder: (context, state) => CustomTransitionPage<void>(
+        pageBuilder: (_, state) => CustomTransitionPage<void>(
           key: state.pageKey,
           child: const LoginScreen(),
           transitionDuration: const Duration(milliseconds: 350),
-          transitionsBuilder: (_, animation, __, child) =>
-              FadeTransition(opacity: animation, child: child),
+          transitionsBuilder: (_, anim, __, child) =>
+              FadeTransition(opacity: anim, child: child),
         ),
       ),
-
-      // ── Register ─────────────────────────────────────────────
       GoRoute(
         path: '/register',
-        pageBuilder: (context, state) => CustomTransitionPage<void>(
+        pageBuilder: (_, state) => CustomTransitionPage<void>(
           key: state.pageKey,
           child: const RegisterScreen(),
           transitionDuration: const Duration(milliseconds: 350),
-          transitionsBuilder: (_, animation, __, child) => SlideTransition(
+          transitionsBuilder: (_, anim, __, child) => SlideTransition(
             position: Tween<Offset>(
               begin: const Offset(1, 0),
               end: Offset.zero,
             ).animate(
-              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+              CurvedAnimation(parent: anim, curve: Curves.easeOutCubic),
             ),
             child: child,
           ),
         ),
       ),
-
-      // ── Main shell (guest or authenticated) ──────────────────
       GoRoute(
         path: '/home',
-        pageBuilder: (context, state) => CustomTransitionPage<void>(
+        pageBuilder: (_, state) => CustomTransitionPage<void>(
           key: state.pageKey,
           child: const SportSphereShell(),
           transitionDuration: const Duration(milliseconds: 450),
-          transitionsBuilder: (_, animation, __, child) =>
-              FadeTransition(opacity: animation, child: child),
+          transitionsBuilder: (_, anim, __, child) =>
+              FadeTransition(opacity: anim, child: child),
         ),
       ),
     ],
   );
 });
 
-// ── Listenable wrapper so GoRouter re-evaluates redirect on auth change ────────
-
-class _AuthNotifierListenable extends ChangeNotifier {
-  _AuthNotifierListenable(Ref ref) {
+class _AuthListenable extends ChangeNotifier {
+  _AuthListenable(Ref ref) {
     ref.listen(authControllerProvider, (_, __) => notifyListeners());
   }
 }
-
-// ── Legacy non-riverpod export (used in app.dart) ─────────────────────────────
-// app.dart will be updated to use routerProvider instead.
-final appRouter = GoRouter(
-  initialLocation: '/splash',
-  routes: [
-    GoRoute(
-      path: '/splash',
-      pageBuilder: (_, state) => const NoTransitionPage(child: SplashScreen()),
-    ),
-    GoRoute(
-      path: '/login',
-      pageBuilder: (_, state) => const NoTransitionPage(child: LoginScreen()),
-    ),
-    GoRoute(
-      path: '/register',
-      pageBuilder: (_, state) =>
-          const NoTransitionPage(child: RegisterScreen()),
-    ),
-    GoRoute(
-      path: '/home',
-      pageBuilder: (_, state) => CustomTransitionPage<void>(
-        key: state.pageKey,
-        child: const SportSphereShell(),
-        transitionDuration: const Duration(milliseconds: 450),
-        transitionsBuilder: (_, animation, __, child) =>
-            FadeTransition(opacity: animation, child: child),
-      ),
-    ),
-  ],
-);
