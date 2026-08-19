@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../../../../core/widgets/glass_container.dart';
@@ -101,8 +102,16 @@ class _MatchesView extends ConsumerWidget {
             children: [
               _MatchList(provider: liveMatchesProvider),
               _MatchList(provider: todayMatchesProvider),
-              _MatchList(provider: upcomingMatchesProvider),
-              _MatchList(provider: resultsProvider),
+              _DatedMatchList(
+                provider: upcomingMatchesProvider,
+                dateProvider: upcomingDateProvider,
+                future: true,
+              ),
+              _DatedMatchList(
+                provider: resultsProvider,
+                dateProvider: resultsDateProvider,
+                future: false,
+              ),
             ],
           ),
         ),
@@ -112,7 +121,7 @@ class _MatchesView extends ConsumerWidget {
 }
 
 class _MatchList extends ConsumerWidget {
-  final ProviderListenable<AsyncValue<List<MatchModel>>> provider;
+  final FutureProvider<List<MatchModel>> provider;
   const _MatchList({required this.provider});
 
   @override
@@ -215,7 +224,17 @@ class _StandingsViewState extends State<_StandingsView> {
                   label: 'Sport',
                   value: _sport,
                   items: const ['Football', 'Basketball', 'Tennis'],
-                  onChanged: (v) => setState(() => _sport = v!),
+                  onChanged: (v) {
+                    if (v == null) return;
+                    setState(() {
+                      _sport = v;
+                      _league = {
+                        'Football': 'Premier League',
+                        'Basketball': 'NBA',
+                        'Tennis': 'ATP Rankings',
+                      }[v] ?? 'Premier League';
+                    });
+                  },
                 ),
               ),
               const SizedBox(width: 12),
@@ -223,12 +242,11 @@ class _StandingsViewState extends State<_StandingsView> {
                 child: _Dropdown(
                   label: 'League',
                   value: _league,
-                  items: const [
-                    'Premier League',
-                    'La Liga',
-                    'Champions League',
-                    'Tanzania PL',
-                  ],
+                  items: _sport == 'Football'
+                      ? const ['Premier League', 'La Liga', 'Champions League', 'Tanzania PL']
+                      : _sport == 'Basketball'
+                          ? const ['NBA', 'EuroLeague', 'BAL']
+                          : const ['ATP Rankings', 'WTA Rankings'],
                   onChanged: (v) => setState(() => _league = v!),
                 ),
               ),
@@ -462,6 +480,87 @@ class _Dropdown extends StatelessWidget {
             ),
           ),
         ),
+      ],
+    );
+  }
+}
+
+
+class _DatedMatchList extends ConsumerWidget {
+  final FutureProvider<List<MatchModel>> provider;
+  final StateProvider<DateTime> dateProvider;
+  final bool future;
+  const _DatedMatchList({required this.provider, required this.dateProvider, required this.future});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selected = ref.watch(dateProvider);
+    final today = DateTime.now();
+    final base = DateTime(today.year, today.month, today.day);
+    final days = future
+        ? [for (var i = 1; i <= 10; i++) base.add(Duration(days: i))]
+        : [for (var i = 10; i >= 1; i--) base.subtract(Duration(days: i))];
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(DateFormat('EEE, d MMM').format(selected),
+                    style: const TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700)),
+              ),
+              TextButton.icon(
+                onPressed: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: selected,
+                    firstDate: future ? base.add(const Duration(days: 1)) : base.subtract(const Duration(days: 30)),
+                    lastDate: future ? base.add(const Duration(days: 30)) : base.subtract(const Duration(days: 1)),
+                  );
+                  if (picked != null) {
+                    ref.read(dateProvider.notifier).state = DateTime(picked.year, picked.month, picked.day);
+                  }
+                },
+                icon: const Icon(Icons.calendar_month_rounded, size: 16),
+                label: const Text('Pick date'),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 60,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            itemCount: days.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (_, i) {
+              final d = days[i];
+              final on = d.year == selected.year && d.month == selected.month && d.day == selected.day;
+              return GestureDetector(
+                onTap: () => ref.read(dateProvider.notifier).state = d,
+                child: Container(
+                  width: 50,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: on ? SportSphereColors.electricBlue.withValues(alpha: 0.2) : SportSphereColors.surface2,
+                    border: Border.all(color: on ? SportSphereColors.electricBlue : Colors.white24),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(DateFormat('E').format(d), style: TextStyle(color: on ? SportSphereColors.electricBlue : SportSphereColors.muted, fontSize: 11)),
+                      Text('${d.day}', style: TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w800)),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        Expanded(child: _MatchList(provider: provider)),
       ],
     );
   }

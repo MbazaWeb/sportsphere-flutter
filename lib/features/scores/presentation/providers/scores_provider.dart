@@ -14,10 +14,22 @@ final todayMatchesProvider = FutureProvider<List<MatchModel>>((ref) {
   return ref.watch(scoresRepositoryProvider).getToday();
 });
 
+final upcomingDateProvider = StateProvider<DateTime>((ref) {
+  final n = DateTime.now();
+  return DateTime(n.year, n.month, n.day).add(const Duration(days: 1));
+});
+
+final resultsDateProvider = StateProvider<DateTime>((ref) {
+  final n = DateTime.now();
+  return DateTime(n.year, n.month, n.day).subtract(const Duration(days: 1));
+});
+
 final upcomingMatchesProvider = FutureProvider<List<MatchModel>>((ref) {
-  return ref.watch(scoresRepositoryProvider).getUpcoming();
+  final day = ref.watch(upcomingDateProvider);
+  return ref.watch(scoresRepositoryProvider).getUpcoming(day: day);
 });
 
 final resultsProvider = FutureProvider<List<MatchModel>>((ref) {
-  return ref.watch(scoresRepositoryProvider).getResults();
+  final day = ref.watch(resultsDateProvider);
+  return ref.watch(scoresRepositoryProvider).getResults(day: day);
 });

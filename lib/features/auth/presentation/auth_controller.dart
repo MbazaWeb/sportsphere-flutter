@@ -49,14 +49,27 @@ class AuthController extends Notifier<AuthState> {
   }) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
-      await ref.read(authRepositoryProvider).login(
-            identifier: identifier,
-            password: password,
-          );
-      final token = await ref.read(authRepositoryProvider).currentToken();
+      final repo = ref.read(authRepositoryProvider);
+      await repo.login(
+        identifier: identifier,
+        password: password,
+      );
+      final token = await repo.currentToken();
+      final demo = repo.lastDemoAccount;
       state = AuthState(
         status: AuthStatus.authenticated,
         token: token,
+        user: demo == null
+            ? null
+            : UserProfile(
+                firstName: demo.firstName,
+                lastName: demo.lastName,
+                email: demo.email,
+                handle: demo.handle,
+                country: 'Tanzania',
+                dob: DateTime(1995, 1, 1),
+                role: demo.role,
+              ),
         isLoading: false,
       );
       return true;

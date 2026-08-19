@@ -18,14 +18,18 @@ class ScoresRepository {
     return _today;
   }
 
-  Future<List<MatchModel>> getUpcoming() async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    return _upcoming;
+  Future<List<MatchModel>> getUpcoming({DateTime? day}) async {
+    await Future.delayed(const Duration(milliseconds: 250));
+    if (day == null) return _upcoming;
+    return _upcoming.where((m) =>
+        m.startTime.year == day.year && m.startTime.month == day.month && m.startTime.day == day.day).toList();
   }
 
-  Future<List<MatchModel>> getResults() async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    return _results;
+  Future<List<MatchModel>> getResults({DateTime? day}) async {
+    await Future.delayed(const Duration(milliseconds: 250));
+    if (day == null) return _results;
+    return _results.where((m) =>
+        m.startTime.year == day.year && m.startTime.month == day.month && m.startTime.day == day.day).toList();
   }
 }
 

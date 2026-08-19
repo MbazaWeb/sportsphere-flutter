@@ -974,7 +974,7 @@ class _FanNote extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'You'll start as a Fan — follow teams, vote in polls, predict matches and join communities. Upgrade to a Pro role anytime.',
+              "You will start as a Fan - follow teams, vote in polls, predict matches and join communities. Upgrade to a Pro role anytime.",
               style: TextStyle(
                 color: SportSphereColors.white.withValues(alpha: 0.82),
                 fontSize: 12.5,

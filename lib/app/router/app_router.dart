@@ -52,7 +52,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       if ((loc == '/login' || loc == '/register') && auth.isAuthenticated) {
         return '/home';
       }
-      if (loc == '/splash') return '/home';
+      // Splash navigates itself after animation.
       return null;
     },
     routes: [

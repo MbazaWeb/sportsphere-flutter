@@ -136,11 +136,15 @@ class _CommunityContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _ComingSoonPlaceholder(
-      icon: Icons.groups_rounded,
-      label: 'Community',
-      subtitle: 'Polls, discussions and fan communities\nfrom around the sport world.',
-      accent: const Color(0xFF76D42B),
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+      children: const [
+        _SimpleCard(title: 'Simba SC Official Fans', subtitle: '42.1K members'),
+        SizedBox(height: 10),
+        _SimpleCard(title: 'TPL Tactics Room', subtitle: '8.4K members'),
+        SizedBox(height: 10),
+        _SimpleCard(title: 'Who wins the next derby?', subtitle: '1.2K votes'),
+      ],
     );
   }
 }
@@ -152,11 +156,15 @@ class _EShopContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _ComingSoonPlaceholder(
-      icon: Icons.shopping_bag_outlined,
-      label: 'E-Shop',
-      subtitle: 'Kits, tickets, merchandise and\nsponsored deals — all in one place.',
-      accent: const Color(0xFF009DFF),
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+      children: const [
+        _SimpleCard(title: 'Home Kit 25/26', subtitle: 'TZS 65,000'),
+        SizedBox(height: 10),
+        _SimpleCard(title: 'Match Ticket', subtitle: 'TZS 10,000'),
+        SizedBox(height: 10),
+        _SimpleCard(title: 'Fan Membership', subtitle: 'TZS 25,000'),
+      ],
     );
   }
 }
@@ -232,6 +240,29 @@ class _ComingSoonPlaceholder extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+
+class _SimpleCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  const _SimpleCard({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassContainer(
+      radius: 16,
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text(subtitle, style: const TextStyle(color: SportSphereColors.muted, fontSize: 12)),
+        ],
       ),
     );
   }

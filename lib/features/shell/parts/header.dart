@@ -1,10 +1,12 @@
 part of '../app_shell.dart';
 
-class _Header extends StatelessWidget {
+class _Header extends ConsumerWidget {
   const _Header();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authControllerProvider);
+    final isGuest = auth.isGuest || auth.status == AuthStatus.unknown;
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
       child: Row(
@@ -43,27 +45,28 @@ class _Header extends StatelessWidget {
 
           const SizedBox(width: 8),
 
-          Semantics(
-            label: 'Notifications',
-            button: true,
-            child: _HeaderButton(
-              icon: Icons.notifications_none_rounded,
-              badge: '3',
-              onTap: () => _showNotifications(context),
+          if (!isGuest) ...[
+            const SizedBox(width: 8),
+            Semantics(
+              label: 'Notifications',
+              button: true,
+              child: _HeaderButton(
+                icon: Icons.notifications_none_rounded,
+                badge: '3',
+                onTap: () => _showNotifications(context),
+              ),
             ),
-          ),
-
-          const SizedBox(width: 8),
-
-          Semantics(
-            label: 'Messages',
-            button: true,
-            child: _HeaderButton(
-              icon: Icons.mail_outline_rounded,
-              badge: '2',
-              onTap: () => _showMessages(context),
+            const SizedBox(width: 8),
+            Semantics(
+              label: 'Messages',
+              button: true,
+              child: _HeaderButton(
+                icon: Icons.mail_outline_rounded,
+                badge: '2',
+                onTap: () => _showMessages(context),
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );

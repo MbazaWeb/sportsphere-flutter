@@ -1,5 +1,6 @@
 import '../../../core/network/api_client.dart';
 import '../../../core/storage/token_store.dart';
+import 'test_accounts.dart';
 
 class AuthRepository {
   AuthRepository({
@@ -10,18 +11,29 @@ class AuthRepository {
 
   final ApiClient _api;
   final TokenStore _tokens;
+  TestAccount? lastDemoAccount;
 
   Future<String?> currentToken() => _tokens.read();
 
   Future<void> saveSession(String token) => _tokens.write(token);
 
-  Future<void> signOut() => _tokens.clear();
+  Future<void> signOut() async {
+    lastDemoAccount = null;
+    await _tokens.clear();
+  }
 
   /// Login with email or handle + password.
   Future<void> login({
     required String identifier,
     required String password,
   }) async {
+    lastDemoAccount = null;
+    final demo = findTestAccount(identifier, password);
+    if (demo != null) {
+      lastDemoAccount = demo;
+      await _tokens.write('demo_${demo.role}_${demo.handle}');
+      return;
+    }
     final response = await _api.post<Map<String, dynamic>>(
       '/auth/login',
       data: <String, dynamic>{
