@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../core/admin/app_admin.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -118,6 +120,11 @@ class _SpotlightItem {
   final List<String> pollOptions;
   final int? pollTotalVotes;
   final int? myPollVote;
+  final Map<int, int> pollCounts;
+  final String? predHome;
+  final String? predAway;
+  final int? predHomeScore;
+  final int? predAwayScore;
 
   const _SpotlightItem({
     required this.type,
@@ -137,6 +144,11 @@ class _SpotlightItem {
     this.pollOptions = const [],
     this.pollTotalVotes,
     this.myPollVote,
+    this.pollCounts = const {},
+    this.predHome,
+    this.predAway,
+    this.predHomeScore,
+    this.predAwayScore,
   });
 
   String get profilePath {
@@ -323,6 +335,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
         var pollOptions = <String>[];
         int? pollVotes;
         int? myVote;
+        var pollCountsMap = <int, int>{};
         final contentText = (r['content'] as String?) ?? '';
         if (postType == 'poll' || type == _SpotlightType.poll) {
           type = _SpotlightType.poll;
@@ -349,8 +362,37 @@ class _SportlightsTabState extends State<SportlightsTab> {
                     .maybeSingle();
                 myVote = v?['optionIdx'] as int?;
               }
+              try {
+                pollCountsMap = await SocialRepository().pollOptionCounts(pollId!);
+              } catch (e) {
+                debugPrint('poll counts: $e');
+              }
             }
-          } catch (_) {}
+          } catch (e) {
+            debugPrint('poll load: $e');
+          }
+        }
+        String? predHome;
+        String? predAway;
+        int? predHs;
+        int? predAs;
+        if (postType == 'prediction' || type == _SpotlightType.prediction) {
+          type = _SpotlightType.prediction;
+          try {
+            final pred = await Supabase.instance.client
+                .from('Prediction')
+                .select()
+                .eq('postId', r['id'])
+                .maybeSingle();
+            if (pred != null) {
+              predHome = pred['homeTeam'] as String?;
+              predAway = pred['awayTeam'] as String?;
+              predHs = pred['predictedHome'] as int?;
+              predAs = pred['predictedAway'] as int?;
+            }
+          } catch (e) {
+            debugPrint('prediction load: $e');
+          }
         }
         items.add(_SpotlightItem(
           type: type,
@@ -370,11 +412,16 @@ class _SportlightsTabState extends State<SportlightsTab> {
           pollOptions: pollOptions,
           pollTotalVotes: pollVotes,
           myPollVote: myVote,
+          pollCounts: pollCountsMap,
+          predHome: predHome,
+          predAway: predAway,
+          predHomeScore: predHs,
+          predAwayScore: predAs,
         ));
       }
       if (mounted) setState(() => _live = items);
-    } catch (_) {
-      // empty feed if API fails — no mock seed
+    } catch (e) {
+      debugPrint('feed load: $e');
     }
   }
 
@@ -714,7 +761,7 @@ class _MediaArea extends StatelessWidget {
       case _SpotlightType.poll:
         return _PollContent(item: item);
       case _SpotlightType.prediction:
-        return const _PredictionContent();
+        return _PredictionContent(item: item);
       case _SpotlightType.video:
         return _VideoContent(item: item);
       default:
@@ -841,6 +888,7 @@ class _PollContent extends StatefulWidget {
 class _PollContentState extends State<_PollContent> {
   int? _voted;
   late int _total;
+  late Map<int, int> _counts;
   bool _busy = false;
   final _social = SocialRepository();
 
@@ -849,6 +897,7 @@ class _PollContentState extends State<_PollContent> {
     super.initState();
     _voted = widget.item.myPollVote;
     _total = widget.item.pollTotalVotes ?? 0;
+    _counts = Map<int, int>.from(widget.item.pollCounts);
   }
 
   Future<void> _onVote(int i) async {
@@ -861,10 +910,12 @@ class _PollContentState extends State<_PollContent> {
     setState(() => _busy = true);
     try {
       await _social.votePoll(pollId, i);
+      final fresh = await _social.pollOptionCounts(pollId);
       if (mounted) {
         setState(() {
           _voted = i;
-          _total += 1;
+          _counts = fresh;
+          _total = fresh.values.fold<int>(0, (a, b) => a + b);
           _busy = false;
         });
       }
@@ -884,10 +935,13 @@ class _PollContentState extends State<_PollContent> {
     final question = (widget.item.content ?? '').trim().isEmpty
         ? 'Poll'
         : widget.item.content!;
-    final n = options.length.clamp(1, 20);
+    final total = _total > 0
+        ? _total
+        : _counts.values.fold<int>(0, (a, b) => a + b);
     final pct = List<int>.generate(options.length, (i) {
-      if (_voted == null) return 0;
-      return _voted == i ? 100 : 0;
+      if (total <= 0) return 0;
+      final c = _counts[i] ?? 0;
+      return ((c / total) * 100).round();
     });
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1025,10 +1079,15 @@ class _PollOption extends StatelessWidget {
 }
 
 class _PredictionContent extends StatelessWidget {
-  const _PredictionContent();
+  final _SpotlightItem item;
+  const _PredictionContent({required this.item});
 
   @override
   Widget build(BuildContext context) {
+    final home = item.predHome ?? 'Home';
+    final away = item.predAway ?? 'Away';
+    final hs = item.predHomeScore ?? 0;
+    final as_ = item.predAwayScore ?? 0;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -1049,19 +1108,27 @@ class _PredictionContent extends StatelessWidget {
               Icon(Icons.analytics_outlined, color: Color(0xFF7FD820)),
             ],
           ),
+          if ((item.content ?? '').isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              item.content!,
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+          ],
           const SizedBox(height: 18),
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _PredictionTeam(name: 'SIMBA'),
+              _PredictionTeam(name: home.toUpperCase()),
               Text(
                 'VS',
                 style: TextStyle(
-                  color: Colors.white54,
+                  color: Colors.white.withValues(alpha: 0.5),
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              _PredictionTeam(name: 'YANGA'),
+              _PredictionTeam(name: away.toUpperCase()),
             ],
           ),
           const SizedBox(height: 18),
@@ -1071,9 +1138,9 @@ class _PredictionContent extends StatelessWidget {
               color: Colors.black.withValues(alpha: 0.25),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Text(
-              '1  -  1',
-              style: TextStyle(
+            child: Text(
+              '$hs  -  $as_',
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 32,
                 fontWeight: FontWeight.w900,
@@ -1157,120 +1224,6 @@ class _GeneratedContent extends StatelessWidget {
 }
 
 
-
-class _PollVoteCard extends StatefulWidget {
-  final _SpotlightItem item;
-  const _PollVoteCard({required this.item});
-
-  @override
-  State<_PollVoteCard> createState() => _PollVoteCardState();
-}
-
-class _PollVoteCardState extends State<_PollVoteCard> {
-  late int? _myVote;
-  late int _total;
-  bool _busy = false;
-  final _social = SocialRepository();
-
-  @override
-  void initState() {
-    super.initState();
-    _myVote = widget.item.myPollVote;
-    _total = widget.item.pollTotalVotes ?? 0;
-  }
-
-  Future<void> _vote(int idx) async {
-    final pollId = widget.item.pollId;
-    if (pollId == null || _busy) return;
-    if (_myVote != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You already voted')),
-      );
-      return;
-    }
-    setState(() => _busy = true);
-    try {
-      await _social.votePoll(pollId, idx);
-      if (mounted) {
-        setState(() {
-          _myVote = idx;
-          _total += 1;
-          _busy = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _busy = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final opts = widget.item.pollOptions;
-    final q = widget.item.content ?? 'Poll';
-    if (opts.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.all(12),
-        child: Text(q, style: const TextStyle(color: Colors.white70)),
-      );
-    }
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            q,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-              fontSize: 15,
-            ),
-          ),
-          const SizedBox(height: 10),
-          for (var i = 0; i < opts.length; i++)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Material(
-                color: _myVote == i
-                    ? const Color(0xFF168CFF).withValues(alpha: 0.35)
-                    : Colors.white.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
-                child: InkWell(
-                  onTap: _busy ? null : () => _vote(i),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            opts[i],
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        if (_myVote == i)
-                          const Icon(Icons.check_circle, color: Color(0xFF22C55E), size: 18),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          Text(
-            '$_total votes',
-            style: const TextStyle(color: Colors.white38, fontSize: 12),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 IconData _typeIcon(_SpotlightType type) {
   switch (type) {
@@ -1430,18 +1383,21 @@ class _EngagementRowState extends State<_EngagementRow> {
     }
     try {
       final nowShared = await _social.toggleShare(id);
+      if (nowShared) {
+        final text = widget.item.content?.trim().isNotEmpty == true
+            ? widget.item.content!
+            : '${widget.item.author} on SportSphere';
+        try {
+          await Share.share(text, subject: 'SportSphere');
+        } catch (e) {
+          debugPrint('OS share: $e');
+        }
+      }
       if (mounted) {
         setState(() {
           _shared = nowShared;
-          _shares += nowShared ? 1 : -1;
-          if (_shares < 0) _shares = 0;
+          _shares = nowShared ? _shares + 1 : (_shares > 0 ? _shares - 1 : 0);
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(nowShared ? 'Shared' : 'Share removed'),
-            duration: const Duration(seconds: 1),
-          ),
-        );
       }
     } catch (e) {
       if (mounted) {
@@ -1582,10 +1538,41 @@ class _CommentSheetState extends State<_CommentSheet> {
     _load();
   }
 
+  List<Map<String, dynamic>> _threadComments(List<Map<String, dynamic>> rows) {
+    final roots = <Map<String, dynamic>>[];
+    final kids = <String, List<Map<String, dynamic>>>{};
+    for (final c in rows) {
+      final pid = c['parentId']?.toString();
+      if (pid == null || pid.isEmpty) {
+        roots.add(c);
+      } else {
+        kids.putIfAbsent(pid, () => []).add(c);
+      }
+    }
+    final out = <Map<String, dynamic>>[];
+    void walk(Map<String, dynamic> node, int depth) {
+      out.add({...node, '_depth': depth});
+      final id = node['id']?.toString() ?? '';
+      for (final k in kids[id] ?? const <Map<String, dynamic>>[]) {
+        walk(k, depth + 1);
+      }
+    }
+    for (final r in roots) {
+      walk(r, 0);
+    }
+    // orphan replies
+    final used = out.map((e) => e['id']?.toString()).toSet();
+    for (final c in rows) {
+      if (!used.contains(c['id']?.toString())) out.add({...c, '_depth': 1});
+    }
+    return out;
+  }
+
   Future<void> _load() async {
     try {
       final rows = await widget.social.listComments(widget.postId);
-      if (mounted) setState(() { _rows = rows; _loading = false; });
+      final threaded = _threadComments(rows);
+      if (mounted) setState(() { _rows = threaded; _loading = false; });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -1752,10 +1739,10 @@ class _CommentSheetState extends State<_CommentSheet> {
                           itemCount: _rows.length,
                           itemBuilder: (_, i) {
                             final c = _rows[i];
-                            final isReply = c['parentId'] != null;
+                            final depth = (c['_depth'] as int?) ?? (c['parentId'] != null ? 1 : 0);
                             final cid = c['id']?.toString() ?? '';
                             return Padding(
-                              padding: EdgeInsets.only(left: isReply ? 20.0 : 0),
+                              padding: EdgeInsets.only(left: depth * 16.0),
                               child: ListTile(
                                 contentPadding: EdgeInsets.zero,
                                 title: _commentBody(c),

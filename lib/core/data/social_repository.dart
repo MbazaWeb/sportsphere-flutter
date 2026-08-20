@@ -256,15 +256,14 @@ class SocialRepository {
           'userId': uid,
           'createdAt': DateTime.now().toIso8601String(),
         });
-        await _bumpPost(postId, 'likeCount', 1);
       } else {
         await _sb
             .from('PostLike')
             .delete()
             .eq('postId', postId)
             .eq('userId', uid);
-        await _bumpPost(postId, 'likeCount', -1);
       }
+      await recountPostCounters(postId);
     } catch (e) {
       debugPrint('Failed to toggle like: $e');
       rethrow;
@@ -274,15 +273,14 @@ class SocialRepository {
   /// Increment/decrement a post counter
   Future<void> _bumpPost(String postId, String col, int delta) async {
     try {
-      // Use RPC first, fallback to direct update
       try {
         await _sb.rpc('increment_post_counter', params: {
           'p_post_id': postId,
           'p_column': col,
           'p_delta': delta,
         });
-      } catch (_) {
-        // Fallback: read and update
+      } catch (e) {
+        debugPrint('increment_post_counter RPC: $e');
         final row = await _sb
             .from('Post')
             .select(col)
@@ -294,6 +292,49 @@ class SocialRepository {
       }
     } catch (e) {
       debugPrint('Failed to update post count: $e');
+    }
+  }
+
+  /// Recompute like/comment/share from source tables (fixes drift).
+  Future<void> recountPostCounters(String postId) async {
+    try {
+      final likes = await _sb
+          .from('PostLike')
+          .select('userId')
+          .eq('postId', postId);
+      final comments = await _sb
+          .from('Comment')
+          .select('id')
+          .eq('postId', postId);
+      int shares = 0;
+      try {
+        final sh = await _sb.from('PostShare').select('userId').eq('postId', postId);
+        shares = (sh as List).length;
+      } catch (e) {
+        debugPrint('recount shares: $e');
+      }
+      await _sb.from('Post').update({
+        'likeCount': (likes as List).length,
+        'commentCount': (comments as List).length,
+        'shareCount': shares,
+      }).eq('id', postId);
+    } catch (e) {
+      debugPrint('recountPostCounters: $e');
+    }
+  }
+
+  Future<Map<int, int>> pollOptionCounts(String pollId) async {
+    try {
+      final rows = await _sb.from('PollVote').select('optionIdx').eq('pollId', pollId);
+      final counts = <int, int>{};
+      for (final r in rows as List) {
+        final i = (r as Map)['optionIdx'] as int? ?? 0;
+        counts[i] = (counts[i] ?? 0) + 1;
+      }
+      return counts;
+    } catch (e) {
+      debugPrint('pollOptionCounts: $e');
+      return {};
     }
   }
 
@@ -319,7 +360,7 @@ class SocialRepository {
           .delete()
           .eq('postId', postId)
           .eq('userId', uid);
-      await _bumpPost(postId, 'shareCount', -1);
+      await recountPostCounters(postId);
       return false;
     }
     await _sb.from('PostShare').upsert({
@@ -327,7 +368,7 @@ class SocialRepository {
       'userId': uid,
       'createdAt': DateTime.now().toIso8601String(),
     });
-    await _bumpPost(postId, 'shareCount', 1);
+    await recountPostCounters(postId);
     return true;
   }
 
@@ -390,7 +431,7 @@ class SocialRepository {
       'createdAt': DateTime.now().toIso8601String(),
     });
 
-    await _bumpPost(postId, 'commentCount', 1);
+    await recountPostCounters(postId);
   }
 
   // ============================================================

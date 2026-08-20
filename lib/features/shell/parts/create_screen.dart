@@ -24,7 +24,7 @@ const _disappearOptions = [
   (label: '7 days', icon: Icons.calendar_today_outlined),
 ];
 
-// ── Mock tag suggestions ───────────────────────────────────────────────────────
+// ── Tag suggestions ────────────────────────────────────────────────────────────
 const _tagSuggestions = [
   (name: 'Simba SC', handle: '@simbasc', icon: Icons.groups_rounded),
   (name: 'Young Africans', handle: '@yanga', icon: Icons.groups_rounded),
@@ -33,7 +33,7 @@ const _tagSuggestions = [
   (name: 'TFF', handle: '@tff_tz', icon: Icons.emoji_events_rounded),
 ];
 
-// ── Mock location suggestions ──────────────────────────────────────────────────
+// ── Location suggestions ──────────────────────────────────────────────────────
 const _locationSuggestions = [
   'Dar es Salaam, Tanzania',
   'National Stadium, DSM',
@@ -88,7 +88,7 @@ class _CreateComposerState extends State<_CreateComposer>
   bool _showDisappearing = false;
   bool _showTag = false;
 
-  // ── Media tiles (mock paths / names) ─────────────────────────
+  // ── Media tiles ─────────────────────────────────────────────
   final List<XFile> _mediaFiles = [];
   final List<String> _mediaTiles = [];
 
@@ -189,7 +189,7 @@ class _CreateComposerState extends State<_CreateComposer>
     _toolbarCtrl.reverse();
   }
 
-  Future<void> _addMockMedia() async {
+  Future<void> _addMedia() async {
     if (_mediaFiles.length >= 4) return;
     final files = await pickAndEditMedia(context, remaining: 4 - _mediaFiles.length);
     if (files.isEmpty) return;
@@ -525,7 +525,7 @@ class _CreateComposerState extends State<_CreateComposer>
           showDisappearing: _showDisappearing,
           showTag: _showTag,
           onToggle: _toggleToolbar,
-          onMedia: _addMockMedia,
+          onMedia: _addMedia,
           onPoll: () => _switchType(_PostType.poll),
           allowPrediction: _canPredict,
           onPrediction: () => _switchType(_PostType.prediction),
