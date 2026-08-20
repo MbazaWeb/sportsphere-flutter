@@ -6,6 +6,7 @@ import '../../../core/theme/colors.dart';
 import '../../../core/branding.dart';
 import '../../shop/presentation/shop_tab.dart';
 import '../shared/profile_widgets.dart';
+import '../presentation/people_list_sheet.dart';
 import '../../claims/presentation/claim_profile_sheet.dart';
 import 'role_profile_model.dart';
 
@@ -220,7 +221,22 @@ class _Header extends StatelessWidget {
               Row(children: [
                 for (var i = 0; i < p.headerStats.length; i++) ...[
                   if (i > 0) const ProfileStatDivider(),
-                  ProfileStat(value: p.headerStats[i].value, label: p.headerStats[i].label),
+                  ProfileStat(
+                    value: p.headerStats[i].value,
+                    label: p.headerStats[i].label,
+                    onTap: () {
+                      final label = p.headerStats[i].label.toLowerCase();
+                      final kind = label.contains('fan')
+                          ? PeopleListKind.fans
+                          : label.contains('following')
+                              ? PeopleListKind.following
+                              : label.contains('follow')
+                                  ? PeopleListKind.followers
+                                  : null;
+                      if (kind == null) return;
+                      showPeopleList(context, userId: p.entityId ?? p.handle, handle: p.handle, kind: kind);
+                    },
+                  ),
                 ],
               ]),
               const SizedBox(height: 14),

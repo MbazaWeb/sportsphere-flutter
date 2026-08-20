@@ -7,6 +7,7 @@ import '../../../../core/theme/colors.dart';
 import '../../../shop/models/shop_models.dart';
 import '../../../shop/presentation/shop_tab.dart';
 import '../../shared/profile_widgets.dart';
+import '../../presentation/people_list_sheet.dart';
 import '../../../../core/data/nbc_club_badges.dart';
 import '../../../claims/presentation/claim_profile_sheet.dart';
 
@@ -658,9 +659,17 @@ class _TeamHeader extends StatelessWidget {
               children: [
                 ProfileStat(value: formatCount(profile.postCount), label: 'Posts'),
                 const ProfileStatDivider(),
-                ProfileStat(value: formatCount(profile.fanCount), label: 'Fans'),
+                ProfileStat(
+                  value: formatCount(profile.fanCount),
+                  label: 'Fans',
+                  onTap: () => showPeopleList(context, userId: profile.handle, handle: profile.handle, kind: PeopleListKind.fans),
+                ),
                 const ProfileStatDivider(),
-                ProfileStat(value: '${profile.followingCount}', label: 'Following'),
+                ProfileStat(
+                  value: '${profile.followingCount}',
+                  label: 'Following',
+                  onTap: () => showPeopleList(context, userId: profile.handle, handle: profile.handle, kind: PeopleListKind.following),
+                ),
               ],
             ),
           ),

@@ -141,7 +141,10 @@ class ProfileStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
       children: [
         Text(value,
             style: const TextStyle(
@@ -157,6 +160,7 @@ class ProfileStat extends StatelessWidget {
               fontWeight: FontWeight.w500,
             )),
       ],
+    ),
     );
   }
 }
