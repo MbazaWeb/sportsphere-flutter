@@ -224,6 +224,48 @@ class SocialRepository {
   // COMMENTS
   // ============================================================
 
+
+
+  /// Unique share: one row per user per post.
+  Future<bool> toggleShare(String postId) async {
+    final uid = _uid;
+    if (uid == null) throw StateError('Please sign in to share');
+    final existing = await _sb
+        .from('PostShare')
+        .select()
+        .eq('postId', postId)
+        .eq('userId', uid)
+        .maybeSingle();
+    if (existing != null) {
+      await _sb
+          .from('PostShare')
+          .delete()
+          .eq('postId', postId)
+          .eq('userId', uid);
+      await _bumpPost(postId, 'shareCount', -1);
+      return false;
+    }
+    await _sb.from('PostShare').upsert({
+      'postId': postId,
+      'userId': uid,
+      'createdAt': DateTime.now().toIso8601String(),
+    });
+    await _bumpPost(postId, 'shareCount', 1);
+    return true;
+  }
+
+  Future<bool> hasShared(String postId) async {
+    final uid = _uid;
+    if (uid == null) return false;
+    final row = await _sb
+        .from('PostShare')
+        .select()
+        .eq('postId', postId)
+        .eq('userId', uid)
+        .maybeSingle();
+    return row != null;
+  }
+
   /// Get comments for a post
   Future<List<Map<String, dynamic>>> listComments(String postId) async {
     try {
@@ -246,6 +288,7 @@ class SocialRepository {
     String content, {
     List<String> mediaUrls = const [],
     String? mediaType,
+    String? parentId,
   }) async {
     final uid = _uid;
     if (uid == null) throw StateError('Please sign in to comment');
@@ -262,6 +305,7 @@ class SocialRepository {
       'id': id,
       'postId': postId,
       'userId': uid,
+      if (parentId != null) 'parentId': parentId,
       'content': content.trim(),
       'mediaUrls': mediaUrls,
       'mediaType': mediaType,

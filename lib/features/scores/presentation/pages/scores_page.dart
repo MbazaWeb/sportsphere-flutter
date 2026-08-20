@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../../../../core/admin/app_admin.dart';
+import '../../../../core/data/commerce_repository.dart';
 import '../../../../core/widgets/glass_container.dart';
 import '../../domain/models/match_model.dart';
 import '../../domain/models/standing_model.dart';
@@ -47,10 +48,34 @@ class _ScoresPageState extends ConsumerState<ScoresPage>
       backgroundColor: SportSphereColors.background,
       floatingActionButton: _isAdmin
           ? FloatingActionButton.extended(
-              onPressed: _adminUpdateScore,
+              onPressed: () async {
+                final choice = await showModalBottomSheet<String>(
+                  context: context,
+                  backgroundColor: const Color(0xFF071422),
+                  builder: (ctx) => SafeArea(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ListTile(
+                          leading: const Icon(Icons.sports_score),
+                          title: const Text('Update match score'),
+                          onTap: () => Navigator.pop(ctx, 'score'),
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.person),
+                          title: const Text('Update player match stats'),
+                          onTap: () => Navigator.pop(ctx, 'player'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+                if (choice == 'score') await _adminUpdateScore();
+                if (choice == 'player') await _adminPlayerStats();
+              },
               backgroundColor: SportSphereColors.electricBlue,
-              icon: const Icon(Icons.edit_note_rounded),
-              label: const Text('Update score'),
+              icon: const Icon(Icons.admin_panel_settings_rounded),
+              label: const Text('Admin update'),
             )
           : null,
       appBar: AppBar(

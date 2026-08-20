@@ -63,12 +63,31 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
     if (_paying) return;
     HapticFeedback.mediumImpact();
     setState(() => _paying = true);
-    await Future<void>.delayed(const Duration(milliseconds: 1100));
-    if (!mounted) return;
-    setState(() {
-      _paying = false;
-      _done = true;
-    });
+    try {
+      final item = widget.line.item;
+      final unit = item.kind == ShopItemKind.donation ? _donateAmount : item.priceTzs;
+      final qty = item.kind == ShopItemKind.membership || item.kind == ShopItemKind.donation
+          ? 1
+          : _qty;
+      await CommerceRepository().placeOrder(
+        itemId: item.id,
+        itemName: item.name,
+        kind: item.kind.name,
+        unitPriceTzs: unit,
+        quantity: qty,
+        sellerHandle: widget.catalog.sellerHandle,
+        sellerName: widget.catalog.sellerName,
+      );
+      if (!mounted) return;
+      setState(() {
+        _paying = false;
+        _done = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _paying = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
   }
 
   @override

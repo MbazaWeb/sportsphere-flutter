@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/data/social_graph.dart';
 import '../../../core/data/social_repository.dart';
+import '../../../core/data/commerce_repository.dart';
 import '../../shell/media/media_tools.dart';
 import '../../shell/media/pdf_viewer_page.dart';
 import 'package:image_picker/image_picker.dart';
@@ -1217,8 +1218,10 @@ class _EngagementRow extends StatefulWidget {
 
 class _EngagementRowState extends State<_EngagementRow> {
   bool _liked = false;
+  bool _shared = false;
   late int _likes;
   late int _comments;
+  late int _shares;
   final _social = SocialRepository();
 
   @override
@@ -1226,6 +1229,43 @@ class _EngagementRowState extends State<_EngagementRow> {
     super.initState();
     _likes = widget.item.likes;
     _comments = widget.item.comments;
+    _shares = widget.item.shares;
+    final id = widget.item.postId;
+    if (id != null) {
+      _social.hasShared(id).then((v) {
+        if (mounted) setState(() => _shared = v);
+      });
+    }
+  }
+
+  Future<void> _onShare() async {
+    final id = widget.item.postId;
+    if (id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Share available on live posts')),
+      );
+      return;
+    }
+    try {
+      final nowShared = await _social.toggleShare(id);
+      if (mounted) {
+        setState(() {
+          _shared = nowShared;
+          _shares += nowShared ? 1 : -1;
+          if (_shares < 0) _shares = 0;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(nowShared ? 'Shared' : 'Share removed'),
+            duration: const Duration(seconds: 1),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
   }
 
   Future<void> _onLike() async {
@@ -1305,7 +1345,28 @@ class _EngagementRowState extends State<_EngagementRow> {
           ),
         ),
         const SizedBox(width: 22),
-        const Icon(Icons.ios_share_rounded, color: Colors.white, size: 22),
+        GestureDetector(
+          onTap: _onShare,
+          child: Row(
+            children: [
+              Icon(
+                Icons.ios_share_rounded,
+                color: _shared ? const Color(0xFF168CFF) : Colors.white,
+                size: 22,
+              ),
+              if (_shares > 0) ...[
+                const SizedBox(width: 6),
+                Text(
+                  '$_shares',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.78),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
         const Spacer(),
         const Icon(Icons.bookmark_border_rounded, color: Colors.white, size: 23),
       ],
@@ -1329,6 +1390,8 @@ class _CommentSheetState extends State<_CommentSheet> {
   bool _sending = false;
   XFile? _attach;
   String? _sticker;
+  String? _replyToId;
+  String? _replyPreview;
   static const _stickers = ['⚽', '🔥', '👏', '😂', '😱', '💪', '🏆', '❤️', '🦁', '⭐'];
 
   @override
@@ -1427,7 +1490,14 @@ class _CommentSheetState extends State<_CommentSheet> {
         body,
         mediaUrls: urls,
         mediaType: mediaType ?? (sticker != null ? 'sticker' : null),
+        parentId: _replyToId,
       );
+      if (mounted) {
+        setState(() {
+          _replyToId = null;
+          _replyPreview = null;
+        });
+      }
       _ctrl.clear();
       setState(() { _attach = null; _sticker = null; });
       await _load();
@@ -1500,17 +1570,64 @@ class _CommentSheetState extends State<_CommentSheet> {
                           itemCount: _rows.length,
                           itemBuilder: (_, i) {
                             final c = _rows[i];
-                            return ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: _commentBody(c),
-                              subtitle: Text(
-                                '${c['userId'] ?? ''}'.toString().padRight(8).substring(0, 8),
-                                style: const TextStyle(color: Colors.white38, fontSize: 11),
+                            final isReply = c['parentId'] != null;
+                            final cid = c['id']?.toString() ?? '';
+                            return Padding(
+                              padding: EdgeInsets.only(left: isReply ? 20.0 : 0),
+                              child: ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: _commentBody(c),
+                                subtitle: Row(
+                                  children: [
+                                    Text(
+                                      '${c['userId'] ?? ''}'.toString().padRight(8).substring(0, 8),
+                                      style: const TextStyle(color: Colors.white38, fontSize: 11),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    GestureDetector(
+                                      onTap: () => setState(() {
+                                        _replyToId = cid;
+                                        _replyPreview = (c['content'] as String?) ?? 'Comment';
+                                      }),
+                                      child: const Text(
+                                        'Reply',
+                                        style: TextStyle(
+                                          color: Color(0xFF168CFF),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             );
                           },
                         ),
             ),
+            if (_replyToId != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Replying to: ${_replyPreview ?? ''}',
+                        style: const TextStyle(color: Colors.white54, fontSize: 12),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 16, color: Colors.white54),
+                      onPressed: () => setState(() {
+                        _replyToId = null;
+                        _replyPreview = null;
+                      }),
+                    ),
+                  ],
+                ),
+              ),
             if (_attach != null || _sticker != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
@@ -1809,6 +1926,7 @@ class _ActionRowState extends State<_ActionRow> {
 
     // ── Community ────────────────────────────────────────────
     if (_communityRoles.contains(type)) {
+      final cid = widget.item.targetUserId ?? widget.item.handle;
       return _joinedCommunity
           ? _OneButton(
               child: _Btn(
@@ -1816,7 +1934,16 @@ class _ActionRowState extends State<_ActionRow> {
                 icon: Icons.check_rounded,
                 color: accent,
                 outlined: true,
-                onTap: () => setState(() => _joinedCommunity = false),
+                onTap: () async {
+                  try {
+                    await CommerceRepository().leaveCommunity(cid);
+                    if (mounted) setState(() => _joinedCommunity = false);
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+                    }
+                  }
+                },
               ),
             )
           : _OneButton(
@@ -1824,7 +1951,16 @@ class _ActionRowState extends State<_ActionRow> {
                 label: 'Join Community',
                 icon: Icons.group_add_outlined,
                 color: accent,
-                onTap: () => setState(() => _joinedCommunity = true),
+                onTap: () async {
+                  try {
+                    await CommerceRepository().joinCommunity(cid);
+                    if (mounted) setState(() => _joinedCommunity = true);
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+                    }
+                  }
+                },
               ),
             );
     }

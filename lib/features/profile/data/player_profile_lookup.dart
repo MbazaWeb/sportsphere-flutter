@@ -127,7 +127,7 @@ Future<PlayerProfileModel> lookupPlayerProfile(String handle) async {
       ? '${(player['metadata'] as Map)['season']}'
       : '2026/2027';
 
-  final seasonStats = <PlayerSeasonStats>[
+  var seasonStats = <PlayerSeasonStats>[
     PlayerSeasonStats(
       season: season,
       competition: league.isNotEmpty ? league : 'League',
@@ -152,6 +152,49 @@ Future<PlayerProfileModel> lookupPlayerProfile(String handle) async {
       appearances: (player?['appearances'] as int?) ?? 0,
       goals: (player?['goals'] as int?) ?? 0,
     ));
+  }
+
+  Map<String, int> agg = {};
+  final pid = player?['id']?.toString();
+  if (pid != null) {
+    try {
+      final rows = await sb.from('PlayerMatchStat').select().eq('playerId', pid);
+      var played = 0, goals = 0, assists = 0, saves = 0, minutes = 0, y = 0, r = 0;
+      for (final raw in rows as List) {
+        final m = Map<String, dynamic>.from(raw as Map);
+        if (m['played'] == true) played++;
+        goals += (m['goals'] as int?) ?? 0;
+        assists += (m['assists'] as int?) ?? 0;
+        saves += (m['saves'] as int?) ?? 0;
+        minutes += (m['minutes'] as int?) ?? 0;
+        y += (m['yellowCards'] as int?) ?? 0;
+        r += (m['redCards'] as int?) ?? 0;
+      }
+      agg = {
+        'played': played,
+        'goals': goals,
+        'assists': assists,
+        'saves': saves,
+        'minutes': minutes,
+        'yellowCards': y,
+        'redCards': r,
+      };
+      if (played > 0) {
+        seasonStats = [
+          PlayerSeasonStats(
+            season: season,
+            competition: league.isNotEmpty ? league : 'League',
+            appearances: played,
+            starts: played,
+            goals: goals,
+            assists: assists,
+            minutes: minutes,
+            yellowCards: y,
+            redCards: r,
+          ),
+        ];
+      }
+    } catch (_) {}
   }
 
   return PlayerProfileModel(
@@ -183,12 +226,12 @@ Future<PlayerProfileModel> lookupPlayerProfile(String handle) async {
     followingCount: (user?['followingCount'] as int?) ?? 0,
     career: career,
     seasonStats: seasonStats,
-    allTimeGoals: (player?['goals'] as int?) ?? 0,
-    allTimeAssists: (player?['assists'] as int?) ?? 0,
-    allTimeAppearances: (player?['appearances'] as int?) ?? 0,
-    allTimeMinutes: (player?['minutes'] as int?) ?? 0,
-    allTimeYellowCards: (player?['yellowCards'] as int?) ?? 0,
-    allTimeRedCards: (player?['redCards'] as int?) ?? 0,
+    allTimeGoals: agg['goals'] ?? (player?['goals'] as int?) ?? 0,
+    allTimeAssists: agg['assists'] ?? (player?['assists'] as int?) ?? 0,
+    allTimeAppearances: agg['played'] ?? (player?['appearances'] as int?) ?? 0,
+    allTimeMinutes: agg['minutes'] ?? (player?['minutes'] as int?) ?? 0,
+    allTimeYellowCards: agg['yellowCards'] ?? (player?['yellowCards'] as int?) ?? 0,
+    allTimeRedCards: agg['redCards'] ?? (player?['redCards'] as int?) ?? 0,
     bio: (user?['bio'] as String?) ?? '',
     location: (user?['country'] as String?) ?? '',
     avatarAsset: (player?['photoUrl'] as String?) ??
