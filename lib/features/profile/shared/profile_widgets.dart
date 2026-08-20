@@ -385,9 +385,17 @@ class _ProfilePostCardState extends State<ProfilePostCard> {
               const SizedBox(height: 12),
               ClipRRect(
                 borderRadius: BorderRadius.circular(14),
-                child: AspectRatio(
-                  aspectRatio: 1.2,
-                  child: Image.network(post.imageUrl!, fit: BoxFit.contain),
+                child: Container(
+                  height: 200,
+                  width: double.infinity,
+                  color: const Color(0xFF071421),
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.all(24),
+                  child: Image.network(
+                    post.imageUrl!,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.high,
+                  ),
                 ),
               ),
             ] else if (post.hasImage) ...[

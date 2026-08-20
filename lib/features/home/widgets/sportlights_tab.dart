@@ -497,22 +497,31 @@ class _ImageContent extends StatelessWidget {
     final asset = item.asset;
     if (asset == null) return _GeneratedContent(item: item);
 
+    final isLogo = asset.startsWith('http');
     return ClipRRect(
       borderRadius: BorderRadius.circular(18),
-      child: AspectRatio(
-        aspectRatio: 1.02,
-        child: asset.startsWith('http')
-            ? Image.network(
+      child: isLogo
+          ? Container(
+              height: 220,
+              width: double.infinity,
+              color: const Color(0xFF071421),
+              alignment: Alignment.center,
+              padding: const EdgeInsets.all(28),
+              child: Image.network(
                 asset,
                 fit: BoxFit.contain,
+                filterQuality: FilterQuality.high,
                 errorBuilder: (_, __, ___) => _GeneratedContent(item: item),
-              )
-            : Image.asset(
+              ),
+            )
+          : AspectRatio(
+              aspectRatio: 1.02,
+              child: Image.asset(
                 asset,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => _GeneratedContent(item: item),
               ),
-      ),
+            ),
     );
   }
 }
