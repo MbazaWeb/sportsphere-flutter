@@ -54,21 +54,26 @@ class _VideoEditPageState extends State<VideoEditPage> {
       return;
     }
     setState(() => _saving = true);
-    await _trimmer.saveTrimmedVideo(
-      startValue: _start,
-      endValue: _end,
-      onSave: (path) {
-        if (!mounted) return;
-        if (path == null) {
-          setState(() => _saving = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not save video')),
-          );
-          return;
-        }
-        Navigator.pop(context, VideoEditResult(path: path, mute: _mute));
-      },
-    );
+    try {
+      final path = await _trimmer.saveTrimmedVideo(
+        startValue: _start,
+        endValue: _end,
+      );
+      if (!mounted) return;
+      if (path.isEmpty) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not save video')),
+        );
+        return;
+      }
+      Navigator.pop(context, VideoEditResult(path: path, mute: _mute));
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
   }
 
   @override
