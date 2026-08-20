@@ -116,16 +116,75 @@ class _SpotlightsContent extends StatelessWidget {
 
 // ── Trending tab ───────────────────────────────────────────
 
-class _TrendingContent extends StatelessWidget {
+class _TrendingContent extends StatefulWidget {
   const _TrendingContent();
+  @override
+  State<_TrendingContent> createState() => _TrendingContentState();
+}
+
+class _TrendingContentState extends State<_TrendingContent> {
+  List<Map<String, dynamic>> _rows = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final rows = await Supabase.instance.client
+          .from('Post')
+          .select()
+          .order('likeCount', ascending: false)
+          .limit(30);
+      if (mounted) {
+        setState(() {
+          _rows = [for (final r in rows as List) Map<String, dynamic>.from(r as Map)];
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return _ComingSoonPlaceholder(
-      icon: Icons.trending_up_rounded,
-      label: 'Trending',
-      subtitle: 'Top stories, viral moments and what the\nsports world is talking about.',
-      accent: const Color(0xFFFF8A00),
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+    }
+    if (_rows.isEmpty) {
+      return const Center(
+        child: Text('No trending posts yet', style: TextStyle(color: Colors.white54)),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+        itemCount: _rows.length,
+        itemBuilder: (_, i) {
+          final post = _rows[i];
+          return Card(
+            color: const Color(0xFF0C1A2A),
+            margin: const EdgeInsets.only(bottom: 10),
+            child: ListTile(
+              title: Text(
+                '${post['content'] ?? ''}',
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(
+                '♥ ${post['likeCount'] ?? 0} · 💬 ${post['commentCount'] ?? 0} · ↗ ${post['shareCount'] ?? 0}',
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }
