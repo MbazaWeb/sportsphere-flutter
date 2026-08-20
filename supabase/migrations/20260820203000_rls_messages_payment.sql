@@ -21,6 +21,7 @@ as $$
   );
 $$;
 
+drop policy if exists "pms_admin_write" on public."PlayerMatchStat";
 create policy "pms_admin_write" on public."PlayerMatchStat"
   for all to authenticated
   using (public.is_app_admin())
@@ -45,6 +46,7 @@ create policy "poll_public_read" on public."Poll" for select using (true);
 create policy "poll_auth_create" on public."Poll" for insert with check (true);
 
 drop policy if exists "poll_vote_auth" on public."PollVote";
+drop policy if exists "poll_vote_public_read" on public."PollVote";
 create policy "poll_vote_public_read" on public."PollVote" for select using (true);
 create policy "poll_vote_auth" on public."PollVote" for insert with check (auth.uid()::text = "userId");
 
