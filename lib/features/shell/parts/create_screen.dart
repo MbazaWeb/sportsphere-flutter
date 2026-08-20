@@ -14,7 +14,7 @@ part of '../app_shell.dart';
 //  • Post button with submit animation (scale → check → done)
 
 // ── Post type enum ─────────────────────────────────────────────────────────────
-enum _PostType { text, media, poll, prediction }
+enum _PostType { text, media, poll, prediction, liveCoverage }
 
 // ── Disappearing duration options ──────────────────────────────────────────────
 const _disappearOptions = [
@@ -98,6 +98,10 @@ class _CreateComposerState extends State<_CreateComposer>
   ];
   Duration _pollDuration = const Duration(days: 1);
 
+  String? _coverageMatchId;
+  String? _coverageMatchLabel;
+
+
   // ── Prediction state ──────────────────────────────────────────
   String _predHomeTeam = 'Simba SC';
   String _predAwayTeam = 'Young Africans';
@@ -161,7 +165,8 @@ class _CreateComposerState extends State<_CreateComposer>
       _textCtrl.text.trim().isNotEmpty ||
       _mediaTiles.isNotEmpty ||
       _type == _PostType.poll ||
-      _type == _PostType.prediction;
+      _type == _PostType.prediction ||
+      (_type == _PostType.liveCoverage && _coverageMatchId != null);
 
   void _toggleToolbar() {
     setState(() => _toolbarExpanded = !_toolbarExpanded);
@@ -210,18 +215,28 @@ class _CreateComposerState extends State<_CreateComposer>
       }
       final text = _textCtrl.text.trim();
       final tags = RegExp(r'#\w+').allMatches(text).map((m) => m.group(0)!).toList();
-      final type = urls.isEmpty
-          ? (_type == _PostType.poll
-              ? 'poll'
-              : _type == _PostType.prediction
-                  ? 'prediction'
-                  : 'text')
-          : 'media';
+      final type = _type == _PostType.liveCoverage
+          ? 'live_coverage'
+          : urls.isEmpty
+              ? (_type == _PostType.poll
+                  ? 'poll'
+                  : _type == _PostType.prediction
+                      ? 'prediction'
+                      : 'text')
+              : 'media';
       await social.createPost(
-        content: text.isEmpty ? ' ' : text,
+        content: text.isEmpty
+            ? (_type == _PostType.liveCoverage
+                ? 'LIVE: ${_coverageMatchLabel ?? 'Match'}'
+                : ' ')
+            : text,
         mediaUrls: urls,
         postType: type,
         hashtags: tags,
+        teamTag: _type == _PostType.liveCoverage && _coverageMatchId != null
+            ? 'match:${_coverageMatchId}'
+            : null,
+        isBreaking: _type == _PostType.liveCoverage,
       );
       await _submitCtrl.forward();
       await Future.delayed(const Duration(milliseconds: 400));
@@ -257,6 +272,8 @@ class _CreateComposerState extends State<_CreateComposer>
         _disappearsIn = null;
         _tags.clear();
         _toolbarExpanded = false;
+        _coverageMatchId = null;
+        _coverageMatchLabel = null;
       });
     }
   }
@@ -331,6 +348,18 @@ class _CreateComposerState extends State<_CreateComposer>
                 ],
 
                 // Prediction panel
+                if (_type == _PostType.liveCoverage) ...[
+                  const SizedBox(height: 14),
+                  _LiveCoveragePanel(
+                    matchId: _coverageMatchId,
+                    label: _coverageMatchLabel,
+                    onPicked: (id, label) => setState(() {
+                      _coverageMatchId = id;
+                      _coverageMatchLabel = label;
+                    }),
+                  ),
+                ],
+
                 if (_type == _PostType.prediction) ...[
                   const SizedBox(height: 14),
                   _PredictionPanel(
@@ -433,6 +462,7 @@ class _CreateComposerState extends State<_CreateComposer>
           onMedia: _addMockMedia,
           onPoll: () => _switchType(_PostType.poll),
           onPrediction: () => _switchType(_PostType.prediction),
+          onLive: () => _switchType(_PostType.liveCoverage),
           onLocation: () => setState(() {
             _showLocation = !_showLocation;
             _showDisappearing = false;
@@ -1679,6 +1709,7 @@ class _AttachmentBar extends StatelessWidget {
   final VoidCallback onMedia;
   final VoidCallback onPoll;
   final VoidCallback onPrediction;
+  final VoidCallback onLive;
   final VoidCallback onLocation;
   final VoidCallback onDisappearing;
   final VoidCallback onTag;
@@ -1701,6 +1732,7 @@ class _AttachmentBar extends StatelessWidget {
     required this.onMedia,
     required this.onPoll,
     required this.onPrediction,
+    required this.onLive,
     required this.onLocation,
     required this.onDisappearing,
     required this.onTag,
@@ -1759,6 +1791,14 @@ class _AttachmentBar extends StatelessWidget {
                       active: activeType == _PostType.prediction,
                       color: SportSphereColors.sportGreen,
                       onTap: onPrediction,
+                    ),
+                    const SizedBox(width: 8),
+                    _AttachChip(
+                      icon: Icons.sensors,
+                      label: 'Live',
+                      active: activeType == _PostType.liveCoverage,
+                      color: const Color(0xFFE31B23),
+                      onTap: onLive,
                     ),
                     const SizedBox(width: 8),
                     _AttachChip(
@@ -2139,6 +2179,93 @@ class _BottomSheet extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           child,
+        ],
+      ),
+    );
+  }
+}
+
+
+class _LiveCoveragePanel extends StatefulWidget {
+  final String? matchId;
+  final String? label;
+  final void Function(String id, String label) onPicked;
+  const _LiveCoveragePanel({required this.matchId, required this.label, required this.onPicked});
+
+  @override
+  State<_LiveCoveragePanel> createState() => _LiveCoveragePanelState();
+}
+
+class _LiveCoveragePanelState extends State<_LiveCoveragePanel> {
+  List<Map<String, dynamic>> _rows = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final rows = await Supabase.instance.client
+          .from('Match')
+          .select('id,homeTeam,awayTeam,status,kickoffAt,league')
+          .order('kickoffAt')
+          .limit(80);
+      if (mounted) setState(() { _rows = List<Map<String, dynamic>>.from(rows as List); _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0B1626),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE31B23).withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.sensors, color: Color(0xFFE31B23), size: 18),
+              SizedBox(width: 8),
+              Text('Live coverage', style: TextStyle(fontWeight: FontWeight.w800)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            widget.label ?? 'Pick a match to cover. Updates go in the live thread.',
+            style: const TextStyle(color: Colors.white54, fontSize: 12),
+          ),
+          const SizedBox(height: 10),
+          if (_loading) const LinearProgressIndicator()
+          else SizedBox(
+            height: 180,
+            child: ListView.builder(
+              itemCount: _rows.length,
+              itemBuilder: (_, i) {
+                final r = _rows[i];
+                final id = r['id']?.toString() ?? '';
+                final label = '${r['homeTeam']} vs ${r['awayTeam']}';
+                final selected = widget.matchId == id;
+                return ListTile(
+                  dense: true,
+                  selected: selected,
+                  title: Text(label, style: const TextStyle(fontSize: 13)),
+                  subtitle: Text('${r['league'] ?? ''} · ${r['status'] ?? ''}', style: const TextStyle(fontSize: 11)),
+                  trailing: selected ? const Icon(Icons.check, color: Color(0xFFE31B23)) : null,
+                  onTap: () => widget.onPicked(id, label),
+                );
+              },
+            ),
+          ),
         ],
       ),
     );

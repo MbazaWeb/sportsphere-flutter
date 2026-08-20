@@ -59,6 +59,8 @@ class SocialRepository {
     List<String> mediaUrls = const [],
     String postType = 'text',
     List<String> hashtags = const [],
+    String? teamTag,
+    bool isBreaking = false,
   }) async {
     final uid = _uid;
     if (uid == null) throw StateError('Sign in to post');
@@ -71,6 +73,8 @@ class SocialRepository {
       'mediaUrls': mediaUrls,
       'hashtags': hashtags,
       'sportTag': 'football',
+      if (teamTag != null) 'teamTag': teamTag,
+      'isBreaking': isBreaking,
       'likeCount': 0,
       'commentCount': 0,
       'shareCount': 0,

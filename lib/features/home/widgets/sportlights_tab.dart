@@ -49,6 +49,7 @@ enum _SpotlightType {
   video,
   poll,
   prediction,
+  liveCoverage,
 }
 
 /// Roles where "Become Fan" appears alongside "Follow".
@@ -286,7 +287,10 @@ class _SportlightsTabState extends State<SportlightsTab> {
         final postType = (r['postType'] as String?) ?? '';
         final teamTag = r['teamTag']?.toString();
         String? targetUserId;
-        if (postType == 'welcome' || (teamTag != null && teamTag.isNotEmpty)) {
+        if (postType == 'live_coverage') {
+          type = _SpotlightType.liveCoverage;
+          roleLabel = 'LIVE';
+        } else if (postType == 'welcome' || (teamTag != null && teamTag.isNotEmpty && !(teamTag ?? '').startsWith('match:'))) {
           type = _SpotlightType.team;
           roleLabel = 'Team';
           handle = _handleFromTeamTag(teamTag);
@@ -1031,6 +1035,8 @@ String _typeLabel(_SpotlightType type) {
       return 'Poll';
     case _SpotlightType.prediction:
       return 'Prediction';
+    case _SpotlightType.liveCoverage:
+      return 'LIVE';
   }
 }
 
@@ -1208,7 +1214,7 @@ class _CommentSheetState extends State<_CommentSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Comments', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            Text(widget.postId.startsWith('x') ? 'Comments' : 'Comments', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
             const SizedBox(height: 12),
             Expanded(
               child: _loading
