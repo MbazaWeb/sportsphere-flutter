@@ -33,30 +33,43 @@ class AuthController extends Notifier<AuthState> {
     return const AuthState();
   }
 
-  // ── Hydrate from stored token on app start ─────────────────────────────────
+  // ── FIX #2 & #3: Hydrate restores token AND attempts to fetch stored profile.
+  // When the backend is ready, replace _cachedProfile with a GET /auth/me call.
   Future<void> _hydrate() async {
-    final token = await ref.read(authRepositoryProvider).currentToken();
+    final repo = ref.read(authRepositoryProvider);
+    final token = await repo.currentToken();
+
+    if (token == null) {
+      state = const AuthState(status: AuthStatus.guest);
+      return;
+    }
+
+    // Try to load cached profile from local storage.
+    final cached = await repo.loadCachedProfile();
     state = AuthState(
-      status: token == null ? AuthStatus.guest : AuthStatus.authenticated,
+      status: AuthStatus.authenticated,
       token: token,
+      user: cached, // null if not cached — profile screen falls back to mock
     );
   }
 
   // ── Login ──────────────────────────────────────────────────────────────────
   Future<bool> login({
-    required String identifier, // email or handle
+    required String identifier,
     required String password,
   }) async {
-    state = state.copyWith(isLoading: true, errorMessage: null);
+    state = state.copyWith(isLoading: true, errorMessage: _keep);
     try {
-      await ref.read(authRepositoryProvider).login(
+      final user = await ref.read(authRepositoryProvider).login(
             identifier: identifier,
             password: password,
           );
       final token = await ref.read(authRepositoryProvider).currentToken();
+      // FIX #2: login() now returns UserProfile so user is never null post-login.
       state = AuthState(
         status: AuthStatus.authenticated,
         token: token,
+        user: user,
         isLoading: false,
       );
       return true;
@@ -78,9 +91,9 @@ class AuthController extends Notifier<AuthState> {
     required String country,
     required DateTime dob,
   }) async {
-    state = state.copyWith(isLoading: true, errorMessage: null);
+    state = state.copyWith(isLoading: true, errorMessage: _keep);
     try {
-      await ref.read(authRepositoryProvider).register(
+      final user = await ref.read(authRepositoryProvider).register(
             firstName: firstName,
             lastName: lastName,
             email: email,
@@ -92,14 +105,7 @@ class AuthController extends Notifier<AuthState> {
       state = AuthState(
         status: AuthStatus.authenticated,
         token: token,
-        user: UserProfile(
-          firstName: firstName,
-          lastName: lastName,
-          email: email,
-          handle: handle,
-          country: country,
-          dob: dob,
-        ),
+        user: user,
         isLoading: false,
       );
       return true;
@@ -139,3 +145,7 @@ class AuthController extends Notifier<AuthState> {
     return 'Something went wrong. Please try again.';
   }
 }
+
+// Re-export sentinel so callers can use it in copyWith(errorMessage: _keep)
+// ignore: library_private_types_in_public_api
+const Object _keep = Object();

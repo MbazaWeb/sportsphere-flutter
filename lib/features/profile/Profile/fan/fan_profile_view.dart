@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/colors.dart';
+import '../../shared/profile_widgets.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MODEL
@@ -24,6 +25,7 @@ class FanProfileModel {
     required this.postCount,
     required this.followerCount,
     required this.followingCount,
+    this.email,
     this.avatarAsset,
     this.coverAsset,
     this.isVerified = false,
@@ -41,12 +43,16 @@ class FanProfileModel {
   final String bio;
   final String sport;
   final String location;
+
+  /// When this user joined SportSphere (not their date of birth).
   final DateTime joinedDate;
 
   final int postCount;
   final int followerCount;
   final int followingCount;
 
+  /// Contact email — shown in About tab for own profile only.
+  final String? email;
   final String? avatarAsset;
   final String? coverAsset;
   final bool isVerified;
@@ -82,9 +88,9 @@ final mockOwnFanProfile = FanProfileModel(
   isOwnProfile: true,
 );
 
-// ── Mock posts ─────────────────────────────────────────────────────────────────
-final _mockPosts = <_ProfilePost>[
-  _ProfilePost(
+// ── Mock posts — now uses shared ProfilePost (fix #6) ─────────────────────────
+final _mockFanPosts = <ProfilePost>[
+  const ProfilePost(
     text: 'Simba iko tayari kwa mchezo mkubwa! 🔥🦁',
     hashtags: ['#NguVuMoja'],
     timeAgo: '2h',
@@ -94,9 +100,8 @@ final _mockPosts = <_ProfilePost>[
     hasImage: true,
     imageCount: 1,
   ),
-  _ProfilePost(
-    text:
-        'Vibe ya Msimbazi juzi ilikuwa ya kipekee! Asante mashabiki wetu wa nguvu! ❤️',
+  const ProfilePost(
+    text: 'Vibe ya Msimbazi juzi ilikuwa ya kipekee! Asante mashabiki wetu wa nguvu! ❤️',
     hashtags: ['#WekunduWaMsimbazi'],
     timeAgo: '1d',
     likes: 96,
@@ -106,16 +111,15 @@ final _mockPosts = <_ProfilePost>[
     imageCount: 2,
     hasVideo: true,
   ),
-  _ProfilePost(
+  const ProfilePost(
     text: 'Next game, next mission. Tunasonga mbele! 💪⚽',
     hashtags: ['#SimbaSC'],
     timeAgo: '3d',
     likes: 58,
     comments: 7,
     shares: 11,
-    hasImage: false,
   ),
-  _ProfilePost(
+  const ProfilePost(
     text: 'Derby ya Kariakoo kesho — moyo wangu uko tayari. Simba daima! 🏆',
     hashtags: ['#KarikarooDerby', '#SimbaSC'],
     timeAgo: '5d',
@@ -126,30 +130,6 @@ final _mockPosts = <_ProfilePost>[
     imageCount: 1,
   ),
 ];
-
-class _ProfilePost {
-  final String text;
-  final List<String> hashtags;
-  final String timeAgo;
-  final int likes;
-  final int comments;
-  final int shares;
-  final bool hasImage;
-  final int imageCount;
-  final bool hasVideo;
-
-  const _ProfilePost({
-    required this.text,
-    required this.hashtags,
-    required this.timeAgo,
-    required this.likes,
-    required this.comments,
-    required this.shares,
-    this.hasImage = false,
-    this.imageCount = 1,
-    this.hasVideo = false,
-  });
-}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SCREEN
@@ -873,6 +853,8 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
 // SPOTLIGHTS FEED TAB
 // ══════════════════════════════════════════════════════════════════════════════
 
+// ── Spotlights feed — uses shared ProfilePostCard (fix #6) ────────────────────
+
 class _SportlightsFeed extends StatelessWidget {
   final FanProfileModel profile;
   const _SportlightsFeed({required this.profile});
@@ -882,400 +864,21 @@ class _SportlightsFeed extends StatelessWidget {
     return ListView.builder(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(0, 8, 0, 120),
-      itemCount: _mockPosts.length,
-      itemBuilder: (_, i) => _ProfilePostCard(
-        post: _mockPosts[i],
-        profile: profile,
+      itemCount: _mockFanPosts.length,
+      itemBuilder: (_, i) => ProfilePostCard(
+        post: _mockFanPosts[i],
+        authorName: profile.displayName,
+        authorHandle: profile.atHandle,
+        authorAvatarAsset: profile.avatarAsset,
+        isVerified: profile.isVerified,
+        accentColor: profile.fanOfAccent,
       ),
     );
   }
 }
 
-// ── Profile post card ─────────────────────────────────────────────────────────
-
-class _ProfilePostCard extends StatefulWidget {
-  final _ProfilePost post;
-  final FanProfileModel profile;
-  const _ProfilePostCard({required this.post, required this.profile});
-
-  @override
-  State<_ProfilePostCard> createState() => _ProfilePostCardState();
-}
-
-class _ProfilePostCardState extends State<_ProfilePostCard> {
-  bool _liked = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final post = widget.post;
-    final p = widget.profile;
-    final likes = post.likes + (_liked ? 1 : 0);
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-      decoration: BoxDecoration(
-        color: const Color(0xD8071422),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x38000000),
-            blurRadius: 20,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Author ──────────────────────────────────────────
-            Row(
-              children: [
-                // Avatar
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: p.fanOfAccent.withValues(alpha: 0.40),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: ClipOval(
-                    child: p.avatarAsset != null
-                        ? Image.asset(
-                            p.avatarAsset!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              color: p.fanOfAccent.withValues(alpha: 0.15),
-                              child: Icon(Icons.person_rounded,
-                                  color: p.fanOfAccent, size: 20),
-                            ),
-                          )
-                        : Container(
-                            color: p.fanOfAccent.withValues(alpha: 0.15),
-                            child: Icon(Icons.person_rounded,
-                                color: p.fanOfAccent, size: 20),
-                          ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            p.displayName,
-                            style: const TextStyle(
-                              color: SportSphereColors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          if (p.isVerified) ...[
-                            const SizedBox(width: 4),
-                            const Icon(
-                              Icons.verified_rounded,
-                              color: Color(0xFFFFD700),
-                              size: 13,
-                            ),
-                          ],
-                        ],
-                      ),
-                      Text(
-                        '${p.atHandle} · ${post.timeAgo}',
-                        style: TextStyle(
-                          color: SportSphereColors.muted.withValues(alpha: 0.75),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Semantics(
-                  label: 'Post options',
-                  button: true,
-                  child: GestureDetector(
-                    onTap: () {},
-                    child: const Icon(
-                      Icons.more_vert_rounded,
-                      color: SportSphereColors.muted,
-                      size: 20,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            // ── Text + hashtags ─────────────────────────────────
-            RichText(
-              text: TextSpan(
-                style: const TextStyle(
-                  color: SportSphereColors.white,
-                  fontSize: 15,
-                  height: 1.45,
-                ),
-                children: [
-                  TextSpan(text: post.text),
-                  if (post.hashtags.isNotEmpty) ...[
-                    const TextSpan(text: '\n'),
-                    ...post.hashtags.map(
-                      (h) => TextSpan(
-                        text: '$h ',
-                        style: TextStyle(
-                          color: p.fanOfAccent,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-
-            // ── Media ───────────────────────────────────────────
-            if (post.hasImage) ...[
-              const SizedBox(height: 12),
-              _PostMedia(
-                imageCount: post.imageCount,
-                hasVideo: post.hasVideo,
-                accent: p.fanOfAccent,
-              ),
-            ],
-
-            const SizedBox(height: 14),
-
-            // ── Engagement row ──────────────────────────────────
-            Row(
-              children: [
-                // Like
-                Semantics(
-                  label: _liked ? 'Unlike post' : 'Like post',
-                  button: true,
-                  child: GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() => _liked = !_liked);
-                    },
-                    child: Row(
-                      children: [
-                        Icon(
-                          _liked
-                              ? Icons.favorite_rounded
-                              : Icons.favorite_border_rounded,
-                          color: _liked
-                              ? SportSphereColors.danger
-                              : SportSphereColors.muted,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          _formatCount(likes),
-                          style: TextStyle(
-                            color: _liked
-                                ? SportSphereColors.danger
-                                : SportSphereColors.muted,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 20),
-
-                // Comment
-                Semantics(
-                  label: 'Comment',
-                  button: true,
-                  child: GestureDetector(
-                    onTap: () {},
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.chat_bubble_outline_rounded,
-                          color: SportSphereColors.muted,
-                          size: 19,
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          _formatCount(post.comments),
-                          style: const TextStyle(
-                            color: SportSphereColors.muted,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 20),
-
-                // Predict
-                Semantics(
-                  label: 'Predict',
-                  button: true,
-                  child: GestureDetector(
-                    onTap: () {},
-                    child: const Row(
-                      children: [
-                        Icon(
-                          Icons.insights_rounded,
-                          color: SportSphereColors.muted,
-                          size: 19,
-                        ),
-                        SizedBox(width: 5),
-                        Text(
-                          'Predict',
-                          style: TextStyle(
-                            color: SportSphereColors.muted,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const Spacer(),
-
-                // Share
-                Semantics(
-                  label: 'Share post',
-                  button: true,
-                  child: GestureDetector(
-                    onTap: () {},
-                    child: const Row(
-                      children: [
-                        Icon(
-                          Icons.ios_share_rounded,
-                          color: SportSphereColors.muted,
-                          size: 19,
-                        ),
-                        SizedBox(width: 5),
-                        Text(
-                          'Share',
-                          style: TextStyle(
-                            color: SportSphereColors.muted,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _formatCount(int n) {
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
-    return '$n';
-  }
-}
-
-// ── Post media ────────────────────────────────────────────────────────────────
-
-class _PostMedia extends StatelessWidget {
-  final int imageCount;
-  final bool hasVideo;
-  final Color accent;
-  const _PostMedia({
-    required this.imageCount,
-    required this.hasVideo,
-    required this.accent,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (imageCount == 1 && !hasVideo) {
-      return _MediaTile(
-        accent: accent,
-        hasVideo: false,
-        aspectRatio: 16 / 9,
-      );
-    }
-
-    // 2-up grid
-    return Row(
-      children: [
-        Expanded(
-          child: _MediaTile(
-            accent: accent,
-            hasVideo: hasVideo,
-            aspectRatio: 1,
-          ),
-        ),
-        const SizedBox(width: 4),
-        Expanded(
-          child: _MediaTile(
-            accent: accent,
-            hasVideo: false,
-            aspectRatio: 1,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _MediaTile extends StatelessWidget {
-  final Color accent;
-  final bool hasVideo;
-  final double aspectRatio;
-  const _MediaTile({
-    required this.accent,
-    required this.hasVideo,
-    required this.aspectRatio,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: AspectRatio(
-        aspectRatio: aspectRatio,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                const Color(0xFF08111E),
-                accent.withValues(alpha: 0.28),
-                const Color(0xFF020810),
-              ],
-            ),
-          ),
-          child: hasVideo
-              ? Center(
-                  child: Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.black.withValues(alpha: 0.55),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.35),
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.play_arrow_rounded,
+// ══════════════════════════════════════════════════════════════════════════════
+// ABOUT TAB
                       color: Colors.white,
                       size: 30,
                     ),
@@ -1340,16 +943,25 @@ class _AboutTab extends StatelessWidget {
                 label: 'Favourite sport',
                 value: profile.sport,
               ),
-              _AboutRow(
-                icon: Icons.place_rounded,
-                iconColor: SportSphereColors.sportOrange,
-                label: 'Location',
-                value: profile.location,
-              ),
+              if (profile.location.isNotEmpty)
+                _AboutRow(
+                  icon: Icons.place_rounded,
+                  iconColor: SportSphereColors.sportOrange,
+                  label: 'Location',
+                  value: profile.location,
+                ),
+              // Fix #15: Show email for own profile only
+              if (profile.isOwnProfile && (profile.email?.isNotEmpty ?? false))
+                _AboutRow(
+                  icon: Icons.email_outlined,
+                  iconColor: SportSphereColors.brightBlue,
+                  label: 'Email',
+                  value: profile.email!,
+                ),
               _AboutRow(
                 icon: Icons.calendar_today_rounded,
                 iconColor: SportSphereColors.sportGreen,
-                label: 'Joined',
+                label: 'Joined SportSphere',
                 value: DateFormat('MMMM yyyy').format(profile.joinedDate),
                 isLast: true,
               ),

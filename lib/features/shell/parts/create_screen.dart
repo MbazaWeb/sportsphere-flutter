@@ -97,9 +97,9 @@ class _CreateComposerState extends State<_CreateComposer>
   ];
   Duration _pollDuration = const Duration(days: 1);
 
-  // ── Prediction state ──────────────────────────────────────────
-  String _predHomeTeam = 'Simba SC';
-  String _predAwayTeam = 'Young Africans';
+  // ── Prediction state (controllers owned here, not created in build) ──────────
+  late final TextEditingController _predHomeCtrl;
+  late final TextEditingController _predAwayCtrl;
   int _predHomeScore = 1;
   int _predAwayScore = 1;
 
@@ -124,6 +124,8 @@ class _CreateComposerState extends State<_CreateComposer>
   @override
   void initState() {
     super.initState();
+    _predHomeCtrl = TextEditingController(text: 'Simba SC');
+    _predAwayCtrl = TextEditingController(text: 'Young Africans');
     _submitCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
@@ -148,6 +150,8 @@ class _CreateComposerState extends State<_CreateComposer>
     _submitCtrl.dispose();
     _toolbarCtrl.dispose();
     _textCtrl.dispose();
+    _predHomeCtrl.dispose();
+    _predAwayCtrl.dispose();
     for (final c in _pollOptions) {
       c.dispose();
     }
@@ -205,9 +209,15 @@ class _CreateComposerState extends State<_CreateComposer>
       // Reset everything
       _textCtrl.clear();
       _mediaTiles.clear();
-      for (final c in _pollOptions) {
-        c.clear();
+      // FIX #16: dispose controllers beyond the initial 2, then reset to 2 clean ones
+      for (var i = 2; i < _pollOptions.length; i++) {
+        _pollOptions[i].dispose();
       }
+      _pollOptions
+        ..removeRange(2, _pollOptions.length)
+        ..forEach((c) => c.clear());
+      _predHomeCtrl.clear();
+      _predAwayCtrl.clear();
       _submitCtrl.reset();
       setState(() {
         _type = _PostType.text;
@@ -293,14 +303,10 @@ class _CreateComposerState extends State<_CreateComposer>
                 if (_type == _PostType.prediction) ...[
                   const SizedBox(height: 14),
                   _PredictionPanel(
-                    homeTeam: _predHomeTeam,
-                    awayTeam: _predAwayTeam,
+                    homeCtrl: _predHomeCtrl,
+                    awayCtrl: _predAwayCtrl,
                     homeScore: _predHomeScore,
                     awayScore: _predAwayScore,
-                    onHomeTeamChanged: (v) =>
-                        setState(() => _predHomeTeam = v),
-                    onAwayTeamChanged: (v) =>
-                        setState(() => _predAwayTeam = v),
                     onHomeScoreChanged: (v) =>
                         setState(() => _predHomeScore = v),
                     onAwayScoreChanged: (v) =>
@@ -1028,22 +1034,18 @@ class _PollPanel extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _PredictionPanel extends StatelessWidget {
-  final String homeTeam;
-  final String awayTeam;
+  final TextEditingController homeCtrl;
+  final TextEditingController awayCtrl;
   final int homeScore;
   final int awayScore;
-  final ValueChanged<String> onHomeTeamChanged;
-  final ValueChanged<String> onAwayTeamChanged;
   final ValueChanged<int> onHomeScoreChanged;
   final ValueChanged<int> onAwayScoreChanged;
 
   const _PredictionPanel({
-    required this.homeTeam,
-    required this.awayTeam,
+    required this.homeCtrl,
+    required this.awayCtrl,
     required this.homeScore,
     required this.awayScore,
-    required this.onHomeTeamChanged,
-    required this.onAwayTeamChanged,
     required this.onHomeScoreChanged,
     required this.onAwayScoreChanged,
   });
@@ -1067,11 +1069,9 @@ class _PredictionPanel extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 _PanelField(
-                  controller:
-                      TextEditingController(text: homeTeam),
+                  controller: homeCtrl,
                   hint: 'Home Team',
                   icon: Icons.edit_rounded,
-                  onChanged: onHomeTeamChanged,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 10),
@@ -1132,11 +1132,9 @@ class _PredictionPanel extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 _PanelField(
-                  controller:
-                      TextEditingController(text: awayTeam),
+                  controller: awayCtrl,
                   hint: 'Away Team',
                   icon: Icons.edit_rounded,
-                  onChanged: onAwayTeamChanged,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 10),

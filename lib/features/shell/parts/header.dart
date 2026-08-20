@@ -1,10 +1,15 @@
 part of '../app_shell.dart';
 
-class _Header extends StatelessWidget {
+// Fix #9: _Header is now a ConsumerWidget so it can read notificationsProvider
+class _Header extends ConsumerWidget {
   const _Header();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Live unread count from provider — no hardcoded values
+    final unread = ref.watch(notificationsProvider).unreadCount;
+    final badgeText = unread > 0 ? (unread > 99 ? '99+' : '$unread') : null;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
       child: Row(
@@ -44,11 +49,11 @@ class _Header extends StatelessWidget {
           const SizedBox(width: 8),
 
           Semantics(
-            label: 'Notifications',
+            label: 'Notifications${unread > 0 ? ', $unread unread' : ''}',
             button: true,
             child: _HeaderButton(
               icon: Icons.notifications_none_rounded,
-              badge: '3',
+              badge: badgeText,         // live from provider
               onTap: () => _showNotifications(context),
             ),
           ),
@@ -60,7 +65,7 @@ class _Header extends StatelessWidget {
             button: true,
             child: _HeaderButton(
               icon: Icons.mail_outline_rounded,
-              badge: '2',
+              badge: null,              // no fake count — hidden until messages provider exists
               onTap: () => _showMessages(context),
             ),
           ),

@@ -1,5 +1,6 @@
 part of '../app_shell.dart';
 
+// Fix #12: Removed dead _ProfileStat and _PageTitle classes (nothing referenced them).
 class _ProfileScreen extends ConsumerWidget {
   const _ProfileScreen();
 
@@ -8,89 +9,29 @@ class _ProfileScreen extends ConsumerWidget {
     final auth = ref.watch(authControllerProvider);
     final user = auth.user;
 
-    // Build a profile model from auth state; fall back to mock for display
+    // Fix #4: joinedDate is now properly distinct from dob.
+    // email field now included so About tab can display it for own profile.
     final profile = user != null
         ? FanProfileModel(
             firstName: user.firstName,
             lastName: user.lastName,
             handle: user.handle,
+            email: user.email,
             fanOf: 'SportSphere',
             fanOfAccent: SportSphereColors.electricBlue,
             bio: '',
             sport: 'Football',
             location: user.country,
-            joinedDate: user.dob,
+            joinedDate: user.joinedDate,
             postCount: 0,
             followerCount: 0,
             followingCount: 0,
-            avatarAsset: 'assets/images/sport_sphere_icon.png',
+            avatarAsset: user.avatarUrl,
             isVerified: false,
             isOwnProfile: true,
           )
         : mockOwnFanProfile;
 
     return FanProfileView(profile: profile);
-  }
-}
-
-// _PageTitle and _ProfileStat kept for other parts that still reference them
-class _ProfileStat extends StatelessWidget {
-  final String value;
-  final String label;
-  const _ProfileStat({required this.value, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            color: SportSphereColors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          label,
-          style: const TextStyle(color: SportSphereColors.muted, fontSize: 11),
-        ),
-      ],
-    );
-  }
-}
-
-class _PageTitle extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  const _PageTitle({required this.title, required this.subtitle});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 20, 18, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: SportSphereColors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              color: SportSphereColors.muted,
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

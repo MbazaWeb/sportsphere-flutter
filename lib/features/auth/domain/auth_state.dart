@@ -8,6 +8,7 @@ class UserProfile {
     required this.handle,
     required this.country,
     required this.dob,
+    required this.joinedDate,
     this.role = 'fan',
     this.avatarUrl,
   });
@@ -18,6 +19,9 @@ class UserProfile {
   final String handle;
   final String country;
   final DateTime dob;
+
+  /// When the user joined SportSphere (distinct from dob).
+  final DateTime joinedDate;
 
   /// 'fan' by default. Future: 'player', 'coach', 'team', etc. via "Become Pro"
   final String role;
@@ -51,21 +55,34 @@ class AuthState {
   bool get isAuthenticated => status == AuthStatus.authenticated;
   bool get isGuest => status == AuthStatus.guest;
 
+  // FIX #1: Use a sentinel to distinguish "not passed" from "pass null".
+  // Callers that want to clear errorMessage must call clearError() explicitly.
   AuthState copyWith({
     AuthStatus? status,
     String? token,
     UserProfile? user,
     bool? isLoading,
-    String? errorMessage,
+    Object? errorMessage = _keep,
   }) {
     return AuthState(
       status: status ?? this.status,
       token: token ?? this.token,
       user: user ?? this.user,
       isLoading: isLoading ?? this.isLoading,
-      errorMessage: errorMessage,
+      errorMessage: identical(errorMessage, _keep)
+          ? this.errorMessage
+          : errorMessage as String?,
     );
   }
 
-  AuthState clearError() => copyWith(errorMessage: null);
+  AuthState clearError() => AuthState(
+        status: status,
+        token: token,
+        user: user,
+        isLoading: isLoading,
+        errorMessage: null,
+      );
 }
+
+// Sentinel value so copyWith can distinguish "not provided" from null.
+const Object _keep = Object();

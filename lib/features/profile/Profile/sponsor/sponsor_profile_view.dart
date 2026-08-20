@@ -1,21 +1,46 @@
 import 'package:flutter/material.dart';
-import '../../presentation/widgets/profile_badge.dart';
+import '../../../shared/org_profile_view.dart';
+import '../../../../../core/theme/colors.dart';
 
 class SponsorProfileView extends StatelessWidget {
   const SponsorProfileView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('Sponsor Profile'),
-            SizedBox(height: 8),
-            ProfileBadge(label: 'Sponsor'),
-          ],
-        ),
+    return OrgProfileView(
+      profile: OrgProfileModel(
+        name: 'Sponsor Name',
+        handle: 'sponsorhandle',
+        roleName: 'Sponsor',
+        roleColor: const Color(0xFFFFD700),
+        accentColor: const Color(0xFFFFD700),
+        postCount: 340,
+        fanCount: 24000,
+        followingCount: 85,
+        bio: 'Official SportSphere Sponsor page.',
+        location: 'Tanzania',
+        joinedDate: DateTime(2024, 1, 1),
+        isVerified: true,
+        aboutFields: const [
+          PersonAboutField(
+            icon: Icons.corporate_fare_rounded,
+            iconColor: SportSphereColors.electricBlue,
+            label: 'Type',
+            value: 'Sponsor',
+          ),
+          PersonAboutField(
+            icon: Icons.sports_soccer_rounded,
+            iconColor: SportSphereColors.sportGreen,
+            label: 'Sport',
+            value: 'Football',
+          ),
+          PersonAboutField(
+            icon: Icons.place_rounded,
+            iconColor: SportSphereColors.sportOrange,
+            label: 'Country',
+            value: 'Tanzania',
+          ),
+        ],
       ),
     );
   }

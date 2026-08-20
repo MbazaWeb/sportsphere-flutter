@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../../shared/profile_widgets.dart';
+import '../../shared/shop_tab.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MODELS
@@ -322,7 +323,7 @@ class _TeamProfileViewState extends State<TeamProfileView>
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 4, vsync: this);
+    _tabCtrl = TabController(length: 5, vsync: this);
     _tabCtrl.addListener(() => setState(() {}));
   }
 
@@ -368,6 +369,11 @@ class _TeamProfileViewState extends State<TeamProfileView>
             _AboutTab(profile: p),
             _SquadTab(profile: p),
             _StatsTab(profile: p),
+            ShopTab(
+              items: buildTeamShop(p.name, p.accentColor),
+              accent: p.accentColor,
+              sellerName: p.name,
+            ),
           ],
         ),
       ),
@@ -798,6 +804,13 @@ class _TeamTabBar extends StatelessWidget {
               Icon(Icons.bar_chart_rounded, size: 14),
               SizedBox(width: 5),
               Text('Stats'),
+            ]),
+          ),
+          Tab(
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.shopping_bag_rounded, size: 14),
+              SizedBox(width: 5),
+              Text('Shop'),
             ]),
           ),
         ],

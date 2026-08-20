@@ -142,7 +142,7 @@ class _MatchList extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             TextButton(
-              onPressed: () => ref.invalidate(liveMatchesProvider),
+              onPressed: () => ref.invalidate(provider),
               child: const Text('Retry'),
             ),
           ],

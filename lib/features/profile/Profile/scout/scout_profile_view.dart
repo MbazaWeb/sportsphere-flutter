@@ -1,21 +1,47 @@
 import 'package:flutter/material.dart';
-import '../../presentation/widgets/profile_badge.dart';
+import '../../../shared/person_profile_view.dart';
+import '../../../../../core/theme/colors.dart';
 
 class ScoutProfileView extends StatelessWidget {
   const ScoutProfileView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('Scout Profile'),
-            SizedBox(height: 8),
-            ProfileBadge(label: 'Scout'),
-          ],
-        ),
+    return PersonProfileView(
+      profile: PersonProfileModel(
+        name: 'Scout Name',
+        handle: 'scouthandle',
+        roleName: 'Scout',
+        roleColor: const Color(0xFF00C896),
+        accentColor: const Color(0xFF00C896),
+        postCount: 124,
+        followerCount: 8400,
+        followingCount: 210,
+        hasFanOption: true,
+        bio: 'Professional Scout on SportSphere.',
+        location: 'Dar es Salaam, Tanzania',
+        joinedDate: DateTime(2024, 6, 1),
+        isVerified: false,
+        aboutFields: const [
+          PersonAboutField(
+            icon: Icons.work_outline_rounded,
+            iconColor: SportSphereColors.electricBlue,
+            label: 'Role',
+            value: 'Scout',
+          ),
+          PersonAboutField(
+            icon: Icons.sports_soccer_rounded,
+            iconColor: SportSphereColors.sportGreen,
+            label: 'Sport',
+            value: 'Football',
+          ),
+          PersonAboutField(
+            icon: Icons.place_rounded,
+            iconColor: SportSphereColors.sportOrange,
+            label: 'Location',
+            value: 'Tanzania',
+          ),
+        ],
       ),
     );
   }

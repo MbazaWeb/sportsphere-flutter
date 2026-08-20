@@ -1,21 +1,47 @@
 import 'package:flutter/material.dart';
-import '../../presentation/widgets/profile_badge.dart';
+import '../../../shared/person_profile_view.dart';
+import '../../../../../core/theme/colors.dart';
 
 class AgentProfileView extends StatelessWidget {
   const AgentProfileView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('Agent Profile'),
-            SizedBox(height: 8),
-            ProfileBadge(label: 'Agent'),
-          ],
-        ),
+    return PersonProfileView(
+      profile: PersonProfileModel(
+        name: 'Agent Name',
+        handle: 'agenthandle',
+        roleName: 'Agent',
+        roleColor: const Color(0xFFFFD700),
+        accentColor: const Color(0xFFFFD700),
+        postCount: 124,
+        followerCount: 8400,
+        followingCount: 210,
+        hasFanOption: true,
+        bio: 'Professional Agent on SportSphere.',
+        location: 'Dar es Salaam, Tanzania',
+        joinedDate: DateTime(2024, 6, 1),
+        isVerified: false,
+        aboutFields: const [
+          PersonAboutField(
+            icon: Icons.work_outline_rounded,
+            iconColor: SportSphereColors.electricBlue,
+            label: 'Role',
+            value: 'Agent',
+          ),
+          PersonAboutField(
+            icon: Icons.sports_soccer_rounded,
+            iconColor: SportSphereColors.sportGreen,
+            label: 'Sport',
+            value: 'Football',
+          ),
+          PersonAboutField(
+            icon: Icons.place_rounded,
+            iconColor: SportSphereColors.sportOrange,
+            label: 'Location',
+            value: 'Tanzania',
+          ),
+        ],
       ),
     );
   }
