@@ -488,7 +488,7 @@ class _Dropdown extends StatelessWidget {
 
 class _DatedMatchList extends ConsumerWidget {
   final FutureProvider<List<MatchModel>> provider;
-  final StateProvider<DateTime> dateProvider;
+  final NotifierProvider<Notifier<DateTime>, DateTime> dateProvider;
   final bool future;
   const _DatedMatchList({required this.provider, required this.dateProvider, required this.future});
 
