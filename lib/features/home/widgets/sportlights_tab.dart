@@ -6,6 +6,7 @@ import '../../shell/media/media_tools.dart';
 import '../../shell/media/pdf_viewer_page.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/data/nbc_club_badges.dart';
+import '../../../core/branding.dart';
 
 // ============================================================
 // ROLE CONFIGURATION
@@ -432,25 +433,16 @@ class _AuthorHeader extends StatelessWidget {
             border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
           ),
           clipBehavior: Clip.antiAlias,
-          child: (item.asset != null && item.asset!.startsWith('http'))
-              ? Image.network(
-                  item.asset!,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => Image.asset(
-                    'assets/images/sport_sphere_icon.png',
-                    fit: BoxFit.cover,
-                  ),
-                )
-              : Image.asset(
-                  'assets/images/sport_sphere_icon.png',
+          child: Image.network(
+                  kOfficialAvatarUrl,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: const Color(0xFF102033),
-                    alignment: Alignment.center,
-                    child: const Icon(
-                      Icons.person_outline_rounded,
-                      color: Colors.white70,
-                      size: 24,
+                  errorBuilder: (_, __, ___) => Image.asset(
+                    kOfficialAvatarAsset,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: const Color(0xFF102033),
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.sports_soccer, color: Colors.white70, size: 24),
                     ),
                   ),
                 ),

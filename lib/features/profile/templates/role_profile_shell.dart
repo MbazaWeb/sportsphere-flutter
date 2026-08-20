@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/colors.dart';
+import '../../../core/branding.dart';
 import '../../shop/presentation/shop_tab.dart';
 import '../shared/profile_widgets.dart';
 import '../../claims/presentation/claim_profile_sheet.dart';
@@ -169,7 +170,13 @@ class _Header extends StatelessWidget {
               Positioned(
                 left: 16,
                 bottom: 0,
-                child: ProfileAvatar(asset: null, radius: 42, accentColor: p.accent),
+                child: ProfileAvatar(
+                  asset: (p.handle.replaceAll('@','') == kOfficialHandle)
+                      ? kOfficialAvatarUrl
+                      : null,
+                  radius: 42,
+                  accentColor: p.accent,
+                ),
               ),
             ],
           ),
