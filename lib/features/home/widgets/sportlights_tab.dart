@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/data/social_repository.dart';
 import '../../../core/data/nbc_club_badges.dart';
 
 // ============================================================
@@ -97,6 +98,7 @@ class _SpotlightItem {
   final String role;
   final String handle;
   final String? targetUserId;
+  final String? postId;
   final String age;
   final String? asset;
   final int likes;
@@ -110,6 +112,7 @@ class _SpotlightItem {
     required this.role,
     this.handle = 'sportsphere',
     this.targetUserId,
+    this.postId,
     required this.age,
     this.asset,
     required this.likes,
@@ -306,6 +309,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
           author: author,
           handle: handle,
           targetUserId: targetUserId,
+          postId: r['id']?.toString(),
           role: roleLabel,
           age: 'Live',
           asset: asset,
@@ -1044,57 +1048,209 @@ class _EngagementRow extends StatefulWidget {
 
 class _EngagementRowState extends State<_EngagementRow> {
   bool _liked = false;
+  late int _likes;
+  late int _comments;
+  final _social = SocialRepository();
+
+  @override
+  void initState() {
+    super.initState();
+    _likes = widget.item.likes;
+    _comments = widget.item.comments;
+  }
+
+  Future<void> _onLike() async {
+    final next = !_liked;
+    setState(() {
+      _liked = next;
+      _likes += next ? 1 : -1;
+    });
+    final id = widget.item.postId;
+    if (id == null) return;
+    try {
+      await _social.toggleLike(id, like: next);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _liked = !next;
+          _likes += next ? -1 : 1;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
+  }
+
+  Future<void> _onComment() async {
+    final id = widget.item.postId;
+    if (id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Comments available on live posts')),
+      );
+      return;
+    }
+    final added = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF071422),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (_) => _CommentSheet(postId: id, social: _social),
+    );
+    if (added == true && mounted) {
+      setState(() => _comments += 1);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final likes = widget.item.likes + (_liked ? 1 : 0);
-
     return Row(
       children: [
         GestureDetector(
-          onTap: () => setState(() => _liked = !_liked),
+          onTap: _onLike,
           child: Row(
             children: [
               Icon(
-                _liked
-                    ? Icons.favorite_rounded
-                    : Icons.favorite_border_rounded,
-                color: _liked
-                    ? const Color(0xFFFF3B61)
-                    : Colors.white,
+                _liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                color: _liked ? const Color(0xFFE31B23) : Colors.white,
                 size: 22,
               ),
-              if (likes > 0) ...[
+              if (_likes > 0) ...[
                 const SizedBox(width: 6),
-                Text(
-                  '$likes',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.78),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                Text('$_likes', style: TextStyle(color: Colors.white.withValues(alpha: 0.78), fontSize: 13)),
               ],
             ],
           ),
         ),
         const SizedBox(width: 22),
-        _EngagementBtn(
-          icon: Icons.chat_bubble_outline_rounded,
-          value: widget.item.comments,
+        GestureDetector(
+          onTap: _onComment,
+          child: Row(
+            children: [
+              const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 22),
+              if (_comments > 0) ...[
+                const SizedBox(width: 6),
+                Text('$_comments', style: TextStyle(color: Colors.white.withValues(alpha: 0.78), fontSize: 13)),
+              ],
+            ],
+          ),
         ),
         const SizedBox(width: 22),
-        _EngagementBtn(
-          icon: Icons.ios_share_rounded,
-          value: widget.item.shares,
-        ),
+        const Icon(Icons.ios_share_rounded, color: Colors.white, size: 22),
         const Spacer(),
-        const Icon(
-          Icons.bookmark_border_rounded,
-          color: Colors.white,
-          size: 23,
-        ),
+        const Icon(Icons.bookmark_border_rounded, color: Colors.white, size: 23),
       ],
+    );
+  }
+}
+
+class _CommentSheet extends StatefulWidget {
+  final String postId;
+  final SocialRepository social;
+  const _CommentSheet({required this.postId, required this.social});
+
+  @override
+  State<_CommentSheet> createState() => _CommentSheetState();
+}
+
+class _CommentSheetState extends State<_CommentSheet> {
+  final _ctrl = TextEditingController();
+  List<Map<String, dynamic>> _rows = [];
+  bool _loading = true;
+  bool _sending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final rows = await widget.social.listComments(widget.postId);
+      if (mounted) setState(() { _rows = rows; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _send() async {
+    final text = _ctrl.text.trim();
+    if (text.isEmpty || _sending) return;
+    setState(() => _sending = true);
+    try {
+      await widget.social.addComment(widget.postId, text);
+      _ctrl.clear();
+      await _load();
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 16, 16, bottom + 16),
+      child: SizedBox(
+        height: MediaQuery.sizeOf(context).height * 0.55,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Comments', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            const SizedBox(height: 12),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _rows.isEmpty
+                      ? const Center(child: Text('No comments yet', style: TextStyle(color: Colors.white54)))
+                      : ListView.builder(
+                          itemCount: _rows.length,
+                          itemBuilder: (_, i) {
+                            final c = _rows[i];
+                            return ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: Text('${c['content'] ?? ''}', style: const TextStyle(fontSize: 14)),
+                              subtitle: Text('${c['userId'] ?? ''}'.toString().substring(0, 8),
+                                  style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                            );
+                          },
+                        ),
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _ctrl,
+                    decoration: InputDecoration(
+                      hintText: 'Write a comment…',
+                      filled: true,
+                      fillColor: const Color(0xFF0B1626),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: _sending ? null : _send,
+                  icon: Icon(_sending ? Icons.hourglass_top : Icons.send_rounded, color: const Color(0xFF168CFF)),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

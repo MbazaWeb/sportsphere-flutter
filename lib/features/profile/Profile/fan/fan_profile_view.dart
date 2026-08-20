@@ -280,13 +280,19 @@ class _ProfileHeader extends StatelessWidget {
               height: coverH,
               width: double.infinity,
               child: profile.coverAsset != null
-                  ? Image.asset(
-                      profile.coverAsset!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _CoverGradient(
-                        accent: profile.fanOfAccent,
-                      ),
-                    )
+                  ? (profile.coverAsset!.startsWith('http')
+                      ? Image.network(
+                          profile.coverAsset!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              _CoverGradient(accent: profile.fanOfAccent),
+                        )
+                      : Image.asset(
+                          profile.coverAsset!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              _CoverGradient(accent: profile.fanOfAccent),
+                        ))
                   : _CoverGradient(accent: profile.fanOfAccent),
             ),
 

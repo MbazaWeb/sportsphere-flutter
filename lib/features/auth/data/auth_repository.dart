@@ -89,6 +89,9 @@ class AuthRepository {
     required String country,
     required DateTime dob,
     String bio = '',
+    String? avatarUrl,
+    String? coverUrl,
+    String? themeColor,
   }) async {
     final user = _sb.auth.currentUser;
     if (user == null) {
@@ -99,7 +102,7 @@ class AuthRepository {
     if (clash != null) {
       throw StateError('That handle is already taken');
     }
-    await _sb.from('profiles').update({
+    final patch = <String, dynamic>{
       'first_name': firstName.trim(),
       'last_name': lastName.trim(),
       'handle': cleanHandle,
@@ -107,7 +110,11 @@ class AuthRepository {
       'dob': dob.toIso8601String().split('T').first,
       'bio': bio.trim(),
       'updated_at': DateTime.now().toIso8601String(),
-    }).eq('id', user.id);
+    };
+    if (avatarUrl != null) patch['avatar_url'] = avatarUrl;
+    if (coverUrl != null) patch['cover_url'] = coverUrl;
+    if (themeColor != null) patch['theme_color'] = themeColor;
+    await _sb.from('profiles').update(patch).eq('id', user.id);
     final profile = await _profileById(user.id);
     if (profile == null) {
       throw StateError('Profile missing after update');
@@ -132,6 +139,21 @@ class AuthRepository {
   Future<UserProfile?> _profileById(String id) async {
     final row = await _sb.from('profiles').select().eq('id', id).maybeSingle();
     if (row == null) return null;
+    final authUser = _sb.auth.currentUser;
+    final emailOk = authUser?.emailConfirmedAt != null;
+    final verified = (row['is_verified'] as bool?) == true || emailOk == true;
+    List<String> badges = const [];
+    try {
+      final fanRows = await _sb.from('fans').select('target_id').eq('fan_id', id);
+      final tids = [for (final r in fanRows as List) (r as Map)['target_id']?.toString()].whereType<String>().toList();
+      if (tids.isNotEmpty) {
+        final teams = await _sb.from('Team').select('name,accountUserId').inFilter('accountUserId', tids);
+        badges = [
+          for (final t in teams as List)
+            '${((t as Map)['name'] as String? ?? 'Team').replaceAll(RegExp(r'\s+(SC|FC)$'), '')} Fan'
+        ];
+      }
+    } catch (_) {}
     return UserProfile(
       firstName: (row['first_name'] as String?) ?? '',
       lastName: (row['last_name'] as String?) ?? '',
@@ -141,6 +163,10 @@ class AuthRepository {
       dob: _parseDob(row['dob']),
       role: (row['role'] as String?) ?? 'fan',
       avatarUrl: row['avatar_url'] as String?,
+      coverUrl: row['cover_url'] as String?,
+      isVerified: verified,
+      themeColor: (row['theme_color'] as String?) ?? '#168CFF',
+      fanBadges: badges,
       bio: (row['bio'] as String?) ?? '',
     );
   }

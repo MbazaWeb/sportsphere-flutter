@@ -118,6 +118,9 @@ class AuthController extends Notifier<AuthState> {
     required String country,
     required DateTime dob,
     String bio = '',
+    String? avatarUrl,
+    String? coverUrl,
+    String? themeColor,
   }) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
@@ -128,6 +131,9 @@ class AuthController extends Notifier<AuthState> {
             country: country,
             dob: dob,
             bio: bio,
+            avatarUrl: avatarUrl,
+            coverUrl: coverUrl,
+            themeColor: themeColor,
           );
       state = state.copyWith(user: user, isLoading: false);
       return true;

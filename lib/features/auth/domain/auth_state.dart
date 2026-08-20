@@ -10,6 +10,10 @@ class UserProfile {
     required this.dob,
     this.role = 'fan',
     this.avatarUrl,
+    this.coverUrl,
+    this.isVerified = false,
+    this.themeColor = '#168CFF',
+    this.fanBadges = const [],
     this.bio = '',
   });
 
@@ -23,6 +27,10 @@ class UserProfile {
   /// 'fan' by default. Future: 'player', 'coach', 'team', etc. via "Become Pro"
   final String role;
   final String? avatarUrl;
+  final String? coverUrl;
+  final bool isVerified;
+  final String themeColor;
+  final List<String> fanBadges;
   final String bio;
 
   String get displayName => '$firstName $lastName';

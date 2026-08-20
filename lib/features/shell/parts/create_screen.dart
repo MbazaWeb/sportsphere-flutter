@@ -88,6 +88,7 @@ class _CreateComposerState extends State<_CreateComposer>
   bool _showTag = false;
 
   // ── Media tiles (mock paths / names) ─────────────────────────
+  final List<XFile> _mediaFiles = [];
   final List<String> _mediaTiles = [];
 
   // ── Poll state ────────────────────────────────────────────────
@@ -178,10 +179,17 @@ class _CreateComposerState extends State<_CreateComposer>
     _toolbarCtrl.reverse();
   }
 
-  void _addMockMedia() {
-    if (_mediaTiles.length >= 4) return;
+  Future<void> _addMockMedia() async {
+    if (_mediaFiles.length >= 4) return;
+    final picker = ImagePicker();
+    final files = await picker.pickMultiImage();
+    if (files.isEmpty) return;
+    final selected = files.take(4 - _mediaFiles.length).toList();
     setState(() {
-      _mediaTiles.add('media_${_mediaTiles.length + 1}');
+      _mediaFiles.addAll(selected);
+      _mediaTiles
+        ..clear()
+        ..addAll(_mediaFiles.map((f) => f.name));
       _type = _PostType.media;
     });
   }
@@ -191,20 +199,55 @@ class _CreateComposerState extends State<_CreateComposer>
     FocusScope.of(context).unfocus();
     setState(() => _posting = true);
 
-    await _submitCtrl.forward();
-    await Future.delayed(const Duration(milliseconds: 400));
-
-    setState(() {
-      _submitted = true;
-      _posting = false;
-    });
-
-    await Future.delayed(const Duration(milliseconds: 900));
+    try {
+      final social = SocialRepository();
+      final urls = <String>[];
+      for (final file in _mediaFiles) {
+        final url = await social.uploadPickedFile(
+          bucket: 'posts',
+          folder: 'posts',
+          file: file,
+        );
+        urls.add(url);
+      }
+      final text = _textCtrl.text.trim();
+      final tags = RegExp(r'#\w+').allMatches(text).map((m) => m.group(0)!).toList();
+      final type = urls.isEmpty
+          ? (_type == _PostType.poll
+              ? 'poll'
+              : _type == _PostType.prediction
+                  ? 'prediction'
+                  : 'text')
+          : 'media';
+      await social.createPost(
+        content: text.isEmpty ? ' ' : text,
+        mediaUrls: urls,
+        postType: type,
+        hashtags: tags,
+      );
+      await _submitCtrl.forward();
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (mounted) {
+        setState(() {
+          _submitted = true;
+          _posting = false;
+        });
+      }
+      await Future.delayed(const Duration(milliseconds: 700));
+    } catch (e) {
+      if (mounted) {
+        setState(() => _posting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not post: $e')),
+        );
+      }
+      return;
+    }
 
     if (mounted) {
-      // Reset everything
       _textCtrl.clear();
       _mediaTiles.clear();
+      _mediaFiles.clear();
       for (final c in _pollOptions) {
         c.clear();
       }
@@ -260,7 +303,7 @@ class _CreateComposerState extends State<_CreateComposer>
                   const SizedBox(height: 14),
                   _MediaStrip(
                     tiles: _mediaTiles,
-                    onRemove: (i) => setState(() => _mediaTiles.removeAt(i)),
+                    onRemove: (i) => setState(() { _mediaTiles.removeAt(i); if (i < _mediaFiles.length) _mediaFiles.removeAt(i); }),
                   ),
                 ],
 

@@ -14,8 +14,8 @@ class _ProfileScreen extends ConsumerWidget {
             firstName: user.firstName,
             lastName: user.lastName,
             handle: user.handle,
-            fanOf: 'SportSphere',
-            fanOfAccent: SportSphereColors.electricBlue,
+            fanOf: user.fanBadges.isNotEmpty ? user.fanBadges.first : 'SportSphere Fan',
+            fanOfAccent: Color(int.parse(user.themeColor.replaceFirst('#', '0xFF'))),
             bio: user.bio.isEmpty ? 'New on SportSphere' : user.bio,
             sport: 'Football',
             location: user.country,
@@ -23,8 +23,9 @@ class _ProfileScreen extends ConsumerWidget {
             postCount: 0,
             followerCount: 0,
             followingCount: 0,
-            avatarAsset: 'assets/images/sport_sphere_icon.png',
-            isVerified: false,
+            avatarAsset: user.avatarUrl ?? 'assets/images/sport_sphere_icon.png',
+            coverAsset: user.coverUrl,
+            isVerified: user.isVerified,
             isOwnProfile: true,
           )
         : mockOwnFanProfile;
