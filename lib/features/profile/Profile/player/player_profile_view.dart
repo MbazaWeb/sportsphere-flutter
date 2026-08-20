@@ -250,48 +250,7 @@ final mockClatousChama = PlayerProfileModel(
 
 // ── Mock posts ─────────────────────────────────────────────────────────────────
 
-final _playerPosts = <ProfilePost>[
-  const ProfilePost(
-    text: 'Great team performance! 💪🔴⚽\nHongera mashabiki wetu! Maneno ni matatu tu... KAZI IENDELEE! 🔥',
-    hashtags: ['#SimbaSC'],
-    timeAgo: '2h',
-    likes: 5200,
-    comments: 368,
-    shares: 284,
-    hasImage: true,
-    imageCount: 2,
-  ),
-  const ProfilePost(
-    text: 'Focused on the next game. One step at a time. 👊',
-    hashtags: ['#NguVuMoja'],
-    timeAgo: '1d',
-    likes: 3100,
-    comments: 220,
-    shares: 145,
-    hasImage: false,
-  ),
-  const ProfilePost(
-    text: 'Training hard every single day. The work never stops. 💥',
-    hashtags: ['#Grind', '#SimbaSC'],
-    timeAgo: '3d',
-    likes: 4800,
-    comments: 312,
-    shares: 201,
-    hasImage: true,
-    imageCount: 1,
-    hasVideo: true,
-  ),
-  const ProfilePost(
-    text: 'What a night at the stadium! Thank you fans — you gave us wings! 🦁🔴',
-    hashtags: ['#WekunduWaMsimbazi'],
-    timeAgo: '5d',
-    likes: 9100,
-    comments: 541,
-    shares: 390,
-    hasImage: true,
-    imageCount: 1,
-  ),
-];
+final _playerPosts = <ProfilePost>[];
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SCREEN

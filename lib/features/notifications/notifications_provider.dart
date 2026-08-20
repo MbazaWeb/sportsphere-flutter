@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-// ── Model ──────────────────────────────────────────────────────────────────────
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 enum NotificationType { like, comment, follow, mention, repost, sports, message }
 
@@ -31,24 +30,57 @@ class NotificationItem {
       );
 }
 
-// ── State ──────────────────────────────────────────────────────────────────────
-
 class NotificationsState {
-  const NotificationsState({required this.items});
+  const NotificationsState({required this.items, this.loading = false});
   final List<NotificationItem> items;
+  final bool loading;
 
   int get unreadCount => items.where((n) => n.unread).length;
 
-  NotificationsState copyWith({List<NotificationItem>? items}) =>
-      NotificationsState(items: items ?? this.items);
+  NotificationsState copyWith({List<NotificationItem>? items, bool? loading}) =>
+      NotificationsState(
+        items: items ?? this.items,
+        loading: loading ?? this.loading,
+      );
 }
-
-// ── Notifier ───────────────────────────────────────────────────────────────────
 
 class NotificationsNotifier extends Notifier<NotificationsState> {
   @override
   NotificationsState build() {
-    return NotificationsState(items: _mockNotifications());
+    Future.microtask(load);
+    return const NotificationsState(items: [], loading: true);
+  }
+
+  Future<void> load() async {
+    final sb = Supabase.instance.client;
+    final uid = sb.auth.currentUser?.id;
+    if (uid == null) {
+      state = const NotificationsState(items: []);
+      return;
+    }
+    try {
+      final rows = await sb
+          .from('Notification')
+          .select()
+          .eq('userId', uid)
+          .order('createdAt', ascending: false)
+          .limit(50);
+      final items = <NotificationItem>[];
+      for (final r in rows as List) {
+        final m = Map<String, dynamic>.from(r as Map);
+        items.add(NotificationItem(
+          id: m['id']?.toString() ?? '',
+          type: _typeOf(m['type']?.toString()),
+          title: (m['title'] as String?) ?? (m['body'] as String?) ?? 'Notification',
+          subtitle: (m['body'] as String?) ?? '',
+          time: _age(m['createdAt']?.toString()),
+          unread: (m['isRead'] as bool?) != true && (m['read'] as bool?) != true,
+        ));
+      }
+      state = NotificationsState(items: items);
+    } catch (_) {
+      state = const NotificationsState(items: []);
+    }
   }
 
   void markRead(String id) {
@@ -57,12 +89,58 @@ class NotificationsNotifier extends Notifier<NotificationsState> {
           .map((n) => n.id == id ? n.copyWith(unread: false) : n)
           .toList(),
     );
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid == null) return;
+    try {
+      Supabase.instance.client
+          .from('Notification')
+          .update({'isRead': true})
+          .eq('id', id);
+    } catch (_) {}
   }
 
   void markAllRead() {
     state = state.copyWith(
       items: state.items.map((n) => n.copyWith(unread: false)).toList(),
     );
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid == null) return;
+    try {
+      Supabase.instance.client
+          .from('Notification')
+          .update({'isRead': true})
+          .eq('userId', uid);
+    } catch (_) {}
+  }
+
+  static NotificationType _typeOf(String? t) {
+    switch ((t ?? '').toLowerCase()) {
+      case 'like':
+        return NotificationType.like;
+      case 'comment':
+        return NotificationType.comment;
+      case 'follow':
+        return NotificationType.follow;
+      case 'mention':
+        return NotificationType.mention;
+      case 'repost':
+      case 'share':
+        return NotificationType.repost;
+      case 'message':
+        return NotificationType.message;
+      default:
+        return NotificationType.sports;
+    }
+  }
+
+  static String _age(String? iso) {
+    if (iso == null) return '';
+    final dt = DateTime.tryParse(iso);
+    if (dt == null) return '';
+    final d = DateTime.now().difference(dt);
+    if (d.inMinutes < 60) return '${d.inMinutes}m';
+    if (d.inHours < 24) return '${d.inHours}h';
+    return '${d.inDays}d';
   }
 }
 
@@ -70,72 +148,3 @@ final notificationsProvider =
     NotifierProvider<NotificationsNotifier, NotificationsState>(
   NotificationsNotifier.new,
 );
-
-// ── Mock data ──────────────────────────────────────────────────────────────────
-
-List<NotificationItem> _mockNotifications() => [
-      NotificationItem(
-        id: 'n1',
-        type: NotificationType.like,
-        title: 'Clatous Chama liked your post',
-        subtitle: 'What. A. Game!',
-        time: '2m',
-        unread: true,
-      ),
-      NotificationItem(
-        id: 'n2',
-        type: NotificationType.comment,
-        title: 'Ali Kingu commented on your post',
-        subtitle: 'Great football analysis.',
-        time: '8m',
-        unread: true,
-      ),
-      NotificationItem(
-        id: 'n3',
-        type: NotificationType.follow,
-        title: 'SportSphere Fan started following you',
-        subtitle: 'Fan',
-        time: '18m',
-        unread: true,
-      ),
-      NotificationItem(
-        id: 'n4',
-        type: NotificationType.mention,
-        title: 'Young Africans mentioned you',
-        subtitle: 'in a community discussion',
-        time: '32m',
-        unread: false,
-      ),
-      NotificationItem(
-        id: 'n5',
-        type: NotificationType.repost,
-        title: 'Man City reposted your post',
-        subtitle: 'Three points away from home.',
-        time: '1h',
-        unread: false,
-      ),
-      NotificationItem(
-        id: 'n6',
-        type: NotificationType.sports,
-        title: 'Match started',
-        subtitle: 'Simba SC vs Young Africans',
-        time: '2h',
-        unread: false,
-      ),
-      NotificationItem(
-        id: 'n7',
-        type: NotificationType.message,
-        title: 'Clatous Chama sent you a message',
-        subtitle: 'Are you watching the match?',
-        time: '3h',
-        unread: true,
-      ),
-      NotificationItem(
-        id: 'n8',
-        type: NotificationType.message,
-        title: 'SportSphere Fan sent you a message',
-        subtitle: 'I agree with your prediction.',
-        time: '4h',
-        unread: false,
-      ),
-    ];

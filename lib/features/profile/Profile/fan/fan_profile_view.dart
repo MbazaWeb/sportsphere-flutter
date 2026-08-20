@@ -83,49 +83,7 @@ final mockOwnFanProfile = FanProfileModel(
 );
 
 // ── Mock posts ─────────────────────────────────────────────────────────────────
-final _mockPosts = <_ProfilePost>[
-  _ProfilePost(
-    text: 'Simba iko tayari kwa mchezo mkubwa! 🔥🦁',
-    hashtags: ['#NguVuMoja'],
-    timeAgo: '2h',
-    likes: 124,
-    comments: 18,
-    shares: 32,
-    hasImage: true,
-    imageCount: 1,
-  ),
-  _ProfilePost(
-    text:
-        'Vibe ya Msimbazi juzi ilikuwa ya kipekee! Asante mashabiki wetu wa nguvu! ❤️',
-    hashtags: ['#WekunduWaMsimbazi'],
-    timeAgo: '1d',
-    likes: 96,
-    comments: 12,
-    shares: 21,
-    hasImage: true,
-    imageCount: 2,
-    hasVideo: true,
-  ),
-  _ProfilePost(
-    text: 'Next game, next mission. Tunasonga mbele! 💪⚽',
-    hashtags: ['#SimbaSC'],
-    timeAgo: '3d',
-    likes: 58,
-    comments: 7,
-    shares: 11,
-    hasImage: false,
-  ),
-  _ProfilePost(
-    text: 'Derby ya Kariakoo kesho — moyo wangu uko tayari. Simba daima! 🏆',
-    hashtags: ['#KarikarooDerby', '#SimbaSC'],
-    timeAgo: '5d',
-    likes: 201,
-    comments: 34,
-    shares: 44,
-    hasImage: true,
-    imageCount: 1,
-  ),
-];
+final _mockPosts = <_ProfilePost>[]; // posts loaded from DB when wired in tab
 
 class _ProfilePost {
   final String text;

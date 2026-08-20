@@ -271,58 +271,7 @@ final mockSimbaSC = TeamProfileModel(
 
 // ── Mock team posts ────────────────────────────────────────────────────────────
 
-final _teamPosts = <ProfilePost>[
-  ProfilePost(
-    text: 'Welcome Simba SC.\n\nThe official Simba SC page is live on SportSphere. Follow the club and become a fan.',
-    hashtags: ['#LigiKuuBara', '#SportSphere', '#SimbaSC'],
-    timeAgo: 'now',
-    likes: 0,
-    comments: 0,
-    shares: 0,
-    hasImage: true,
-    imageUrl: NbcClubBadges.simba,
-  ),
-  ProfilePost(
-    text: 'Big match tonight! Ready for the challenge. 🦁🔴\nSimba family — make some noise!',
-    hashtags: ['#SimbaSC', '#NguVuMoja'],
-    timeAgo: '2h',
-    likes: 5200,
-    comments: 368,
-    shares: 280,
-    hasImage: true,
-    imageCount: 2,
-  ),
-  ProfilePost(
-    text: 'Training complete. The squad is focused and ready for Sunday. 💪',
-    hashtags: ['#Simba', '#TrainingDay'],
-    timeAgo: '1d',
-    likes: 3800,
-    comments: 212,
-    shares: 140,
-    hasImage: true,
-    imageCount: 1,
-  ),
-  ProfilePost(
-    text: 'FULL TIME! Three points secured. Magnificent performance from the whole squad! 🏆',
-    hashtags: ['#SimbaSC', '#WekunduWaMsimbazi'],
-    timeAgo: '3d',
-    likes: 12400,
-    comments: 891,
-    shares: 620,
-    hasImage: true,
-    imageCount: 1,
-    hasVideo: true,
-  ),
-  ProfilePost(
-    text: 'Congratulations to our fans — you are the 12th player. Asante sana! ❤️',
-    hashtags: ['#SimbaNation'],
-    timeAgo: '5d',
-    likes: 8900,
-    comments: 445,
-    shares: 310,
-    hasImage: false,
-  ),
-];
+final _teamPosts = <ProfilePost>[];
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SCREEN

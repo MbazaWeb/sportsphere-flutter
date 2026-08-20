@@ -54,7 +54,21 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
             isVerified: user.isVerified,
             isOwnProfile: true,
           )
-        : mockOwnFanProfile;
+        : FanProfileModel(
+            firstName: 'Guest',
+            lastName: '',
+            handle: 'guest',
+            fanOf: 'SportSphere',
+            fanOfAccent: const Color(0xFF009DFF),
+            bio: 'Sign in to build your profile',
+            sport: 'Football',
+            location: '',
+            joinedDate: DateTime.now(),
+            postCount: 0,
+            followerCount: 0,
+            followingCount: 0,
+            isOwnProfile: true,
+          );
 
     return FanProfileView(
       profile: profile,
