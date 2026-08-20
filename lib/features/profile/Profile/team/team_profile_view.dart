@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -93,6 +94,7 @@ class TeamProfileModel {
     this.isOwnProfile = false,
     this.isClaimable = false,
     this.entityId,
+    this.accountUserId,
     this.joinedDate,
   });
 
@@ -121,6 +123,7 @@ class TeamProfileModel {
   final bool isOwnProfile;
   final bool isClaimable;
   final String? entityId;
+  final String? accountUserId;
   final DateTime? joinedDate;
 
   String get atHandle => '@$handle';
@@ -271,7 +274,6 @@ final mockSimbaSC = TeamProfileModel(
 
 // ── Mock team posts ────────────────────────────────────────────────────────────
 
-final _teamPosts = <ProfilePost>[];
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SCREEN
@@ -893,24 +895,174 @@ class _TeamTabBar extends StatelessWidget {
 // SPORTLIGHTS TAB
 // ══════════════════════════════════════════════════════════════════════════════
 
-class _SportlightsTab extends StatelessWidget {
+class _SportlightsTab extends StatefulWidget {
   final TeamProfileModel profile;
   const _SportlightsTab({required this.profile});
 
   @override
+  State<_SportlightsTab> createState() => _SportlightsTabState();
+}
+
+class _SportlightsTabState extends State<_SportlightsTab> {
+  late Future<List<ProfilePost>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _loadPosts();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SportlightsTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.profile.handle != widget.profile.handle ||
+        oldWidget.profile.entityId != widget.profile.entityId) {
+      _future = _loadPosts();
+    }
+  }
+
+  Future<List<ProfilePost>> _loadPosts() async {
+    final p = widget.profile;
+    final sb = Supabase.instance.client;
+    final rows = <Map<String, dynamic>>[];
+    final seen = <String>{};
+
+    Future<void> addQuery(dynamic q) async {
+      try {
+        final data = await q.order('createdAt', ascending: false).limit(40);
+        for (final r in data as List) {
+          final m = Map<String, dynamic>.from(r as Map);
+          final id = m['id']?.toString() ?? '';
+          if (id.isEmpty || seen.contains(id)) continue;
+          seen.add(id);
+          rows.add(m);
+        }
+      } catch (_) {}
+    }
+
+    // Posts authored by the team account
+    if (p.accountUserId != null && p.accountUserId!.isNotEmpty) {
+      await addQuery(
+        sb.from('Post').select().eq('userId', p.accountUserId!),
+      );
+    }
+    // Welcome / tagged posts about this team
+    if (p.entityId != null && p.entityId!.isNotEmpty) {
+      await addQuery(
+        sb.from('Post').select().eq('teamTag', p.entityId!),
+      );
+    }
+    // Fallback: teamTag from handle forms
+    final tagGuess = 'tm-${p.handle.replaceAll('_', '-')}';
+    if (p.entityId != tagGuess) {
+      await addQuery(sb.from('Post').select().eq('teamTag', tagGuess));
+    }
+
+    rows.sort((a, b) {
+      final da = DateTime.tryParse('${a['createdAt']}') ?? DateTime(2000);
+      final db = DateTime.tryParse('${b['createdAt']}') ?? DateTime(2000);
+      return db.compareTo(da);
+    });
+
+    return [for (final m in rows) _mapPost(m)];
+  }
+
+  ProfilePost _mapPost(Map<String, dynamic> m) {
+    final media = m['mediaUrls'];
+    final hasMedia = media is List && media.isNotEmpty;
+    final tags = m['hashtags'];
+    final hashtags = tags is List
+        ? [for (final x in tags) x.toString()]
+        : <String>[];
+    return ProfilePost(
+      text: (m['content'] as String?) ?? '',
+      hashtags: hashtags,
+      timeAgo: _age(m['createdAt']?.toString()),
+      likes: (m['likeCount'] as int?) ?? 0,
+      comments: (m['commentCount'] as int?) ?? 0,
+      shares: (m['shareCount'] as int?) ?? 0,
+      hasImage: hasMedia,
+      imageCount: hasMedia ? media.length : 1,
+      imageUrl: hasMedia ? media.first.toString() : null,
+    );
+  }
+
+  String _age(String? iso) {
+    if (iso == null || iso.isEmpty) return '';
+    final dt = DateTime.tryParse(iso);
+    if (dt == null) return '';
+    final d = DateTime.now().difference(dt.toLocal());
+    if (d.inMinutes < 60) return '${d.inMinutes}m';
+    if (d.inHours < 24) return '${d.inHours}h';
+    if (d.inDays < 7) return '${d.inDays}d';
+    return '${dt.day}/${dt.month}/${dt.year}';
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(0, 8, 0, 120),
-      itemCount: _teamPosts.length,
-      itemBuilder: (_, i) => ProfilePostCard(
-        post: _teamPosts[i],
-        authorName: profile.name,
-        authorHandle: profile.atHandle,
-        authorAvatarAsset: profile.logoAsset,
-        isVerified: profile.isVerified,
-        accentColor: profile.accentColor,
-      ),
+    final profile = widget.profile;
+    return FutureBuilder<List<ProfilePost>>(
+      future: _future,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+        final posts = snap.data ?? const <ProfilePost>[];
+        if (posts.isEmpty) {
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            padding: const EdgeInsets.fromLTRB(24, 48, 24, 120),
+            children: const [
+              Icon(Icons.bolt_rounded, color: SportSphereColors.muted, size: 40),
+              SizedBox(height: 12),
+              Text(
+                'No posts yet',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: SportSphereColors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'When this club posts or is welcomed on SportSphere, it will show here.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: SportSphereColors.muted, height: 1.4),
+              ),
+            ],
+          );
+        }
+        return RefreshIndicator(
+          color: profile.accentColor,
+          onRefresh: () async {
+            setState(() => _future = _loadPosts());
+            await _future;
+          },
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            padding: const EdgeInsets.fromLTRB(0, 8, 0, 120),
+            itemCount: posts.length,
+            itemBuilder: (_, i) => ProfilePostCard(
+              post: posts[i],
+              authorName: profile.name,
+              authorHandle: profile.atHandle,
+              authorAvatarAsset: profile.logoAsset,
+              isVerified: profile.isVerified,
+              accentColor: profile.accentColor,
+            ),
+          ),
+        );
+      },
     );
   }
 }

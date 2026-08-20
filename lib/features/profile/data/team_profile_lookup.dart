@@ -27,11 +27,31 @@ Future<TeamProfileModel> lookupTeamProfile(String handle) async {
 
   try {
     if (user != null) {
-      team = await sb.from('Team').select().eq('accountUserId', user['id']).maybeSingle();
+      team = await sb
+          .from('Team')
+          .select()
+          .eq('accountUserId', user['id'])
+          .maybeSingle();
     }
-    team ??= await sb.from('Team').select().eq('slug', key.replaceAll('_', '-')).maybeSingle();
-    team ??= await sb.from('Team').select().eq('id', 'tm-${key.replaceAll('_', '-')}').maybeSingle();
+    team ??= await sb
+        .from('Team')
+        .select()
+        .eq('slug', key.replaceAll('_', '-'))
+        .maybeSingle();
+    team ??= await sb
+        .from('Team')
+        .select()
+        .eq('id', 'tm-${key.replaceAll('_', '-')}')
+        .maybeSingle();
     team ??= await sb.from('Team').select().eq('id', 'tm-$key').maybeSingle();
+    // resolve user from team account if needed
+    if (user == null && team?['accountUserId'] != null) {
+      user = await sb
+          .from('User')
+          .select()
+          .eq('id', team!['accountUserId'])
+          .maybeSingle();
+    }
   } catch (_) {}
 
   if (team == null && user == null) {
@@ -52,17 +72,25 @@ Future<TeamProfileModel> lookupTeamProfile(String handle) async {
       followingCount: 0,
       squad: const [],
       seasonStats: const [],
+      logoAsset: NbcClubBadges.defaultTeam,
     );
   }
 
-  final name = (team?['name'] as String?) ?? (user?['name'] as String?) ?? handle;
+  final name =
+      (team?['name'] as String?) ?? (user?['name'] as String?) ?? handle;
   final logo = (team?['logoUrl'] as String?) ??
       (user?['avatarUrl'] as String?) ??
-      NbcClubBadges.forName(name); // never null — defaultTeam
+      NbcClubBadges.forName(name);
+  final accountUserId =
+      team?['accountUserId']?.toString() ?? user?['id']?.toString();
+  final teamId = team?['id']?.toString();
+
   return TeamProfileModel(
     name: name,
     handle: (user?['handle'] as String?) ?? key,
-    sport: 'Football',
+    sport: (team?['sport_slug'] as String?)?.isNotEmpty == true
+        ? (team!['sport_slug'] as String)
+        : 'Football',
     competition: 'Ligi Kuu Bara',
     country: (team?['country'] as String?) ?? 'Tanzania',
     city: (team?['city'] as String?) ?? '',
@@ -76,5 +104,10 @@ Future<TeamProfileModel> lookupTeamProfile(String handle) async {
     followingCount: (user?['followingCount'] as int?) ?? 0,
     squad: const [],
     seasonStats: const [],
+    logoAsset: logo,
+    entityId: teamId,
+    accountUserId: accountUserId,
+    isClaimable: accountUserId == null,
+    isVerified: true,
   );
 }
