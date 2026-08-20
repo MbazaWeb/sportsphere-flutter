@@ -5,6 +5,7 @@ import '../Profile/fan/fan_profile_view.dart';
 import '../Profile/player/player_profile_view.dart';
 import '../Profile/team/team_profile_view.dart';
 import '../data/team_profile_lookup.dart';
+import '../data/player_profile_lookup.dart';
 import '../templates/role_profile_model.dart';
 
 /// Loads profiles from Supabase only (no role_mocks).
@@ -77,60 +78,7 @@ class ProfileLoader {
   }
 
   static Future<PlayerProfileModel> loadPlayerProfile(String handle) async {
-    final key = handle.replaceAll('@', '').trim().toLowerCase();
-    Map<String, dynamic>? user;
-    Map<String, dynamic>? player;
-    try {
-      user = await _sb.from('User').select().eq('handle', key).maybeSingle();
-      user ??=
-          await _sb.from('profiles').select().eq('handle', key).maybeSingle();
-    } catch (_) {}
-    try {
-      if (user != null) {
-        player = await _sb
-            .from('Player')
-            .select()
-            .eq('accountUserId', user['id'])
-            .maybeSingle();
-      }
-    } catch (_) {}
-
-    final name = (user?['name'] as String?) ??
-        '${user?['first_name'] ?? key} ${user?['last_name'] ?? ''}'.trim();
-    final parts = name.split(' ');
-    return PlayerProfileModel(
-      firstName: parts.isNotEmpty ? parts.first : key,
-      lastName: parts.length > 1 ? parts.sublist(1).join(' ') : '',
-      handle: (user?['handle'] as String?) ?? key,
-      fullName: name,
-      position: (player?['position'] as String?) ?? 'Player',
-      nationality: (player?['nationality'] as String?) ??
-          (user?['country'] as String?) ??
-          'Tanzania',
-      dob: DateTime.tryParse((player?['dob'] as String?) ?? '') ??
-          DateTime(1995),
-      heightCm: (player?['heightCm'] as int?) ?? 175,
-      preferredFoot: (player?['preferredFoot'] as String?) ?? 'Right',
-      currentClub: (player?['teamName'] as String?) ?? '',
-      currentLeague: (player?['league'] as String?) ?? '',
-      squadNumber: (player?['squadNumber'] as int?) ?? 0,
-      contractStatus: (player?['contractStatus'] as String?) ?? 'Active',
-      accentColor: const Color(0xFF009DFF),
-      postCount: (user?['postCount'] as int?) ?? 0,
-      fanCount: (user?['fanCount'] as int?) ?? 0,
-      followerCount: (user?['followerCount'] as int?) ?? 0,
-      followingCount: (user?['followingCount'] as int?) ?? 0,
-      career: const [],
-      seasonStats: const [],
-      allTimeGoals: (player?['goals'] as int?) ?? 0,
-      allTimeAssists: (player?['assists'] as int?) ?? 0,
-      allTimeAppearances: (player?['appearances'] as int?) ?? 0,
-      allTimeMinutes: 0,
-      allTimeYellowCards: 0,
-      allTimeRedCards: 0,
-      isClaimable: player?['accountUserId'] == null,
-      entityId: player?['id']?.toString(),
-    );
+    return lookupPlayerProfile(handle);
   }
 
   static Future<TeamProfileModel> loadTeamProfile(String handle) async {

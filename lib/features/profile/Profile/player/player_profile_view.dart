@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
@@ -97,6 +98,7 @@ class PlayerProfileModel {
     this.isOwnProfile = false,
     this.isClaimable = false,
     this.entityId,
+    this.accountUserId,
   });
 
   // Identity
@@ -147,6 +149,7 @@ class PlayerProfileModel {
   final bool isOwnProfile;
   final bool isClaimable;
   final String? entityId;
+  final String? accountUserId;
 
   String get displayName => '$firstName $lastName';
   String get name => fullName;
@@ -250,7 +253,6 @@ final mockClatousChama = PlayerProfileModel(
 
 // ── Mock posts ─────────────────────────────────────────────────────────────────
 
-final _playerPosts = <ProfilePost>[];
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SCREEN
@@ -867,30 +869,169 @@ class _PlayerTabBar extends StatelessWidget {
 // SPORTLIGHTS TAB
 // ══════════════════════════════════════════════════════════════════════════════
 
-class _SportlightsTab extends StatelessWidget {
+class _SportlightsTab extends StatefulWidget {
   final PlayerProfileModel profile;
   const _SportlightsTab({required this.profile});
 
   @override
+  State<_SportlightsTab> createState() => _SportlightsTabState();
+}
+
+class _SportlightsTabState extends State<_SportlightsTab> {
+  late Future<List<ProfilePost>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _loadPosts();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SportlightsTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.profile.handle != widget.profile.handle ||
+        oldWidget.profile.entityId != widget.profile.entityId) {
+      _future = _loadPosts();
+    }
+  }
+
+  Future<List<ProfilePost>> _loadPosts() async {
+    final p = widget.profile;
+    final sb = Supabase.instance.client;
+    final rows = <Map<String, dynamic>>[];
+    final seen = <String>{};
+
+    Future<void> addQuery(dynamic q) async {
+      try {
+        final data = await q.order('createdAt', ascending: false).limit(40);
+        for (final r in data as List) {
+          final m = Map<String, dynamic>.from(r as Map);
+          final id = m['id']?.toString() ?? '';
+          if (id.isEmpty || seen.contains(id)) continue;
+          seen.add(id);
+          rows.add(m);
+        }
+      } catch (_) {}
+    }
+
+    if (p.accountUserId != null && p.accountUserId!.isNotEmpty) {
+      await addQuery(sb.from('Post').select().eq('userId', p.accountUserId!));
+    }
+    if (p.entityId != null && p.entityId!.isNotEmpty) {
+      await addQuery(sb.from('Post').select().eq('playerTag', p.entityId!));
+    }
+
+    rows.sort((a, b) {
+      final da = DateTime.tryParse('${a['createdAt']}') ?? DateTime(2000);
+      final db = DateTime.tryParse('${b['createdAt']}') ?? DateTime(2000);
+      return db.compareTo(da);
+    });
+
+    return [for (final m in rows) _mapPost(m)];
+  }
+
+  ProfilePost _mapPost(Map<String, dynamic> m) {
+    final media = m['mediaUrls'];
+    final hasMedia = media is List && media.isNotEmpty;
+    final tags = m['hashtags'];
+    final hashtags = tags is List
+        ? [for (final x in tags) x.toString()]
+        : <String>[];
+    return ProfilePost(
+      text: (m['content'] as String?) ?? '',
+      hashtags: hashtags,
+      timeAgo: _age(m['createdAt']?.toString()),
+      likes: (m['likeCount'] as int?) ?? 0,
+      comments: (m['commentCount'] as int?) ?? 0,
+      shares: (m['shareCount'] as int?) ?? 0,
+      hasImage: hasMedia,
+      imageCount: hasMedia ? media.length : 1,
+      imageUrl: hasMedia ? media.first.toString() : null,
+    );
+  }
+
+  String _age(String? iso) {
+    if (iso == null || iso.isEmpty) return '';
+    final dt = DateTime.tryParse(iso);
+    if (dt == null) return '';
+    final d = DateTime.now().difference(dt.toLocal());
+    if (d.inMinutes < 60) return '${d.inMinutes}m';
+    if (d.inHours < 24) return '${d.inHours}h';
+    if (d.inDays < 7) return '${d.inDays}d';
+    return '${dt.day}/${dt.month}/${dt.year}';
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(0, 8, 0, 120),
-      itemCount: _playerPosts.length,
-      itemBuilder: (_, i) => ProfilePostCard(
-        post: _playerPosts[i],
-        authorName: profile.displayName,
-        authorHandle: profile.atHandle,
-        authorAvatarAsset: profile.avatarAsset,
-        isVerified: profile.isVerified,
-        accentColor: profile.accentColor,
-      ),
+    final profile = widget.profile;
+    return FutureBuilder<List<ProfilePost>>(
+      future: _future,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+        final posts = snap.data ?? const <ProfilePost>[];
+        if (posts.isEmpty) {
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            padding: const EdgeInsets.fromLTRB(24, 48, 24, 120),
+            children: const [
+              Icon(Icons.bolt_rounded, color: SportSphereColors.muted, size: 40),
+              SizedBox(height: 12),
+              Text(
+                'No posts yet',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: SportSphereColors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'When this player posts on SportSphere, it will show here.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: SportSphereColors.muted, height: 1.4),
+              ),
+            ],
+          );
+        }
+        return RefreshIndicator(
+          color: profile.accentColor,
+          onRefresh: () async {
+            setState(() => _future = _loadPosts());
+            await _future;
+          },
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            padding: const EdgeInsets.fromLTRB(0, 8, 0, 120),
+            itemCount: posts.length,
+            itemBuilder: (_, i) => ProfilePostCard(
+              post: posts[i],
+              authorName: profile.displayName,
+              authorHandle: profile.atHandle,
+              authorAvatarAsset: profile.avatarAsset,
+              isVerified: profile.isVerified,
+              accentColor: profile.accentColor,
+            ),
+          ),
+        );
+      },
     );
   }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// ABOUT TAB
+// ABOUT
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _AboutTab extends StatelessWidget {
@@ -1034,17 +1175,32 @@ class _StatsTabState extends State<_StatsTab> {
   late String _season;
   late String _competition;
 
+  static const _empty = PlayerSeasonStats(
+    season: '2026/2027',
+    competition: 'League',
+    appearances: 0,
+    starts: 0,
+    goals: 0,
+    assists: 0,
+    minutes: 0,
+    yellowCards: 0,
+    redCards: 0,
+  );
+
   @override
   void initState() {
     super.initState();
-    _season = widget.profile.seasonStats.first.season;
+    final list = widget.profile.seasonStats;
+    _season = list.isNotEmpty ? list.first.season : _empty.season;
     _competition = 'All';
   }
 
   PlayerSeasonStats get _currentStats {
-    return widget.profile.seasonStats.firstWhere(
+    final list = widget.profile.seasonStats;
+    if (list.isEmpty) return _empty;
+    return list.firstWhere(
       (s) => s.season == _season,
-      orElse: () => widget.profile.seasonStats.first,
+      orElse: () => list.first,
     );
   }
 
@@ -1052,7 +1208,9 @@ class _StatsTabState extends State<_StatsTab> {
   Widget build(BuildContext context) {
     final p = widget.profile;
     final stats = _currentStats;
-    final seasons = p.seasonStats.map((s) => s.season).toList();
+    final seasons = p.seasonStats.isEmpty
+        ? <String>[_empty.season]
+        : p.seasonStats.map((s) => s.season).toList();
 
     return ListView(
       physics: const BouncingScrollPhysics(),
