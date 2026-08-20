@@ -109,6 +109,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   final _lastNameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _handleCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  final _confirmCtrl = TextEditingController();
 
   String? _country;
   DateTime? _dob;
@@ -141,6 +143,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     _lastNameCtrl.dispose();
     _emailCtrl.dispose();
     _handleCtrl.dispose();
+    _passwordCtrl.dispose();
+    _confirmCtrl.dispose();
     super.dispose();
   }
 
@@ -216,11 +220,44 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
           handle: _handleCtrl.text.trim().replaceAll('@', ''),
           country: _country!,
           dob: _dob!,
+          password: _passwordCtrl.text,
         );
 
     if (!mounted) return;
     if (ok) {
       context.go('/home');
+      return;
+    }
+    final err = ref.read(authControllerProvider).errorMessage ?? '';
+    if (err.startsWith('CONFIRM:')) {
+      final msg = err.replaceFirst('CONFIRM:', '').trim();
+      await showDialog<void>(
+        context: context,
+        builder: (d) => AlertDialog(
+          backgroundColor: const Color(0xFF0C1A2A),
+          title: const Text('Verify your email',
+              style: TextStyle(color: Colors.white)),
+          content: Text(msg, style: const TextStyle(color: Colors.white70)),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                await ref
+                    .read(authControllerProvider.notifier)
+                    .resendConfirmation(_emailCtrl.text.trim());
+                if (d.mounted) Navigator.pop(d);
+              },
+              child: const Text('Resend link'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(d);
+                context.go('/login');
+              },
+              child: const Text('Go to login'),
+            ),
+          ],
+        ),
+      );
     }
   }
 
@@ -450,6 +487,40 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
 
                                     const SizedBox(height: 14),
 
+                                    _Field(
+                                      ctrl: _passwordCtrl,
+                                      label: 'Password',
+                                      hint: 'At least 6 characters',
+                                      icon: Icons.lock_outline_rounded,
+                                      focused: _isFocused('pw'),
+                                      onFocus: (v) => _setFocus('pw', v),
+                                      obscure: true,
+                                      validator: (v) {
+                                        if (v == null || v.length < 6) return 'Min 6 characters';
+                                        return null;
+                                      },
+                                      action: TextInputAction.next,
+                                    ),
+
+                                    const SizedBox(height: 14),
+
+                                    _Field(
+                                      ctrl: _confirmCtrl,
+                                      label: 'Confirm password',
+                                      hint: 'Repeat password',
+                                      icon: Icons.lock_outline_rounded,
+                                      focused: _isFocused('pw2'),
+                                      onFocus: (v) => _setFocus('pw2', v),
+                                      obscure: true,
+                                      validator: (v) {
+                                        if (v != _passwordCtrl.text) return 'Passwords do not match';
+                                        return null;
+                                      },
+                                      action: TextInputAction.done,
+                                    ),
+
+                                    const SizedBox(height: 14),
+
                                     // Country picker
                                     _TapField(
                                       label: 'Country',
@@ -616,6 +687,7 @@ class _Field extends StatelessWidget {
   final String? Function(String?)? validator;
   final TextInputAction? action;
   final TextInputType? keyboard;
+  final bool obscure;
 
   const _Field({
     required this.ctrl,
@@ -627,6 +699,7 @@ class _Field extends StatelessWidget {
     this.validator,
     this.action,
     this.keyboard,
+    this.obscure = false,
   });
 
   @override
@@ -652,6 +725,7 @@ class _Field extends StatelessWidget {
           validator: validator,
           textInputAction: action,
           keyboardType: keyboard,
+          obscureText: obscure,
           style: const TextStyle(
             color: SportSphereColors.white,
             fontSize: 14,
@@ -974,7 +1048,7 @@ class _FanNote extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'You'll start as a Fan — follow teams, vote in polls, predict matches and join communities. Upgrade to a Pro role anytime.',
+              "You will start as a Fan - follow teams, vote in polls, predict matches and join communities. Upgrade to a Pro role anytime.",
               style: TextStyle(
                 color: SportSphereColors.white.withValues(alpha: 0.82),
                 fontSize: 12.5,

@@ -8,12 +8,14 @@ class MatchCard extends StatelessWidget {
   final MatchModel match;
   final VoidCallback? onTeamTap;
   final VoidCallback? onCardTap;
+  final VoidCallback? onLongPress;
 
   const MatchCard({
     super.key,
     required this.match,
     this.onTeamTap,
     this.onCardTap,
+    this.onLongPress,
   });
 
   @override
@@ -24,6 +26,7 @@ class MatchCard extends StatelessWidget {
       button: true,
       child: GestureDetector(
         onTap: onCardTap,
+        onLongPress: onLongPress,
         child: GlassContainer(
           radius: 22,
           padding: const EdgeInsets.all(16),
@@ -302,6 +305,7 @@ class _TeamAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasUrl = logo.startsWith('http');
     return Container(
       width: 50,
       height: 50,
@@ -310,7 +314,18 @@ class _TeamAvatar extends StatelessWidget {
         color: SportSphereColors.surface2,
         border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
-      child: const Icon(Icons.shield, color: SportSphereColors.muted, size: 30),
+      clipBehavior: Clip.antiAlias,
+      child: hasUrl
+          ? Image.network(
+              logo,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const Icon(
+                Icons.shield,
+                color: SportSphereColors.muted,
+                size: 30,
+              ),
+            )
+          : const Icon(Icons.shield, color: SportSphereColors.muted, size: 30),
     );
   }
 }

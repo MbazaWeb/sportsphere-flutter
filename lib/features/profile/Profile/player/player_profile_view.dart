@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../../shared/profile_widgets.dart';
+import '../../../claims/presentation/claim_profile_sheet.dart';
+import '../../../../core/data/social_graph.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MODELS
@@ -93,6 +96,9 @@ class PlayerProfileModel {
     this.coverAsset,
     this.isVerified = true,
     this.isOwnProfile = false,
+    this.isClaimable = false,
+    this.entityId,
+    this.accountUserId,
   });
 
   // Identity
@@ -141,8 +147,12 @@ class PlayerProfileModel {
   final Color accentColor;
   final bool isVerified;
   final bool isOwnProfile;
+  final bool isClaimable;
+  final String? entityId;
+  final String? accountUserId;
 
   String get displayName => '$firstName $lastName';
+  String get name => fullName;
   String get atHandle => '@$handle';
   int get age {
     final now = DateTime.now();
@@ -156,6 +166,8 @@ class PlayerProfileModel {
 // ── Mock: Clatous Chama ────────────────────────────────────────────────────────
 
 final mockClatousChama = PlayerProfileModel(
+  entityId: 'pl-clatous',
+  isClaimable: true,
   firstName: 'Clatous',
   lastName: 'Chama',
   handle: 'clatouschama',
@@ -241,48 +253,6 @@ final mockClatousChama = PlayerProfileModel(
 
 // ── Mock posts ─────────────────────────────────────────────────────────────────
 
-final _playerPosts = <ProfilePost>[
-  const ProfilePost(
-    text: 'Great team performance! 💪🔴⚽\nHongera mashabiki wetu! Maneno ni matatu tu... KAZI IENDELEE! 🔥',
-    hashtags: ['#SimbaSC'],
-    timeAgo: '2h',
-    likes: 5200,
-    comments: 368,
-    shares: 284,
-    hasImage: true,
-    imageCount: 2,
-  ),
-  const ProfilePost(
-    text: 'Focused on the next game. One step at a time. 👊',
-    hashtags: ['#NguVuMoja'],
-    timeAgo: '1d',
-    likes: 3100,
-    comments: 220,
-    shares: 145,
-    hasImage: false,
-  ),
-  const ProfilePost(
-    text: 'Training hard every single day. The work never stops. 💥',
-    hashtags: ['#Grind', '#SimbaSC'],
-    timeAgo: '3d',
-    likes: 4800,
-    comments: 312,
-    shares: 201,
-    hasImage: true,
-    imageCount: 1,
-    hasVideo: true,
-  ),
-  const ProfilePost(
-    text: 'What a night at the stadium! Thank you fans — you gave us wings! 🦁🔴',
-    hashtags: ['#WekunduWaMsimbazi'],
-    timeAgo: '5d',
-    likes: 9100,
-    comments: 541,
-    shares: 390,
-    hasImage: true,
-    imageCount: 1,
-  ),
-];
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SCREEN
@@ -305,12 +275,25 @@ class _PlayerProfileViewState extends State<PlayerProfileView>
   late TabController _tabCtrl;
   bool _following = false;
   bool _isFan = false;
+  final _graph = SocialGraph();
 
   @override
   void initState() {
     super.initState();
     _tabCtrl = TabController(length: 3, vsync: this);
     _tabCtrl.addListener(() => setState(() {}));
+    _loadSocial();
+  }
+
+  Future<void> _loadSocial() async {
+    final me = _graph.currentUid;
+    if (me == null) return;
+    try {
+      final id = await _graph.resolveId(widget.profile.handle);
+      final f = await _graph.isFollowing(me, id);
+      final n = await _graph.isFan(me, id);
+      if (mounted) setState(() { _following = f; _isFan = n; });
+    } catch (_) {}
   }
 
   @override
@@ -332,13 +315,36 @@ class _PlayerProfileViewState extends State<PlayerProfileView>
               profile: p,
               following: _following,
               isFan: _isFan,
-              onFollow: () {
+              onFollow: () async {
                 HapticFeedback.lightImpact();
-                setState(() => _following = !_following);
+                final next = !_following;
+                setState(() => _following = next);
+                try {
+                  final id = await _graph.resolveId(widget.profile.handle);
+                  await _graph.follow(id, on: next);
+                } catch (_) {
+                  if (mounted) setState(() => _following = !next);
+                }
               },
-              onBecomeFan: () {
+              onBecomeFan: () async {
                 HapticFeedback.mediumImpact();
-                setState(() => _isFan = !_isFan);
+                final next = !_isFan;
+                setState(() => _isFan = next);
+                try {
+                  final id = await _graph.resolveId(widget.profile.handle);
+                  await _graph.fan(id, on: next);
+                  final me = _graph.currentUid;
+                  if (me != null) await _graph.refreshCounts(me);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(next
+                          ? 'You are now a ${widget.profile.name} fan'
+                          : 'Removed fan status'),
+                    ));
+                  }
+                } catch (_) {
+                  if (mounted) setState(() => _isFan = !next);
+                }
               },
               onBack: () => Navigator.of(context).maybePop(),
               onShare: () {},
@@ -380,6 +386,21 @@ class _PlayerProfileViewState extends State<PlayerProfileView>
             : [
                 ProfileMoreOption(icon: Icons.share_outlined, label: 'Share Profile', onTap: () => Navigator.pop(context)),
                 ProfileMoreOption(icon: Icons.block_rounded, label: 'Block', onTap: () => Navigator.pop(context)),
+                if (p.isClaimable)
+                  ProfileMoreOption(
+                    icon: Icons.verified_user_outlined,
+                    label: 'Claim this player',
+                    onTap: () {
+                      Navigator.pop(context);
+                      showClaimProfileSheet(
+                        context,
+                        profileType: 'player',
+                        profileId: p.entityId ?? p.handle,
+                        profileName: p.displayName,
+                        playerId: p.entityId,
+                      );
+                    },
+                  ),
                 ProfileMoreOption(icon: Icons.flag_outlined, label: 'Report', onTap: () => Navigator.pop(context), destructive: true),
               ],
       ),
@@ -623,8 +644,9 @@ class _PlayerHeader extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
             child: Row(
               children: [
-                // Become Fan
+                // Become Fan (big)
                 Expanded(
+                  flex: 3,
                   child: Semantics(
                     label: isFan ? 'You are a fan' : 'Become a fan',
                     button: true,
@@ -635,14 +657,8 @@ class _PlayerHeader extends StatelessWidget {
                         height: 40,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(20),
-                          color: isFan
-                              ? accent.withValues(alpha: 0.15)
-                              : Colors.white.withValues(alpha: 0.06),
-                          border: Border.all(
-                            color: isFan
-                                ? accent.withValues(alpha: 0.5)
-                                : Colors.white.withValues(alpha: 0.14),
-                          ),
+                          color: isFan ? accent.withValues(alpha: 0.18) : accent,
+                          border: isFan ? Border.all(color: accent.withValues(alpha: 0.7)) : null,
                         ),
                         child: Center(
                           child: Row(
@@ -650,16 +666,16 @@ class _PlayerHeader extends StatelessWidget {
                             children: [
                               Icon(
                                 isFan ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                                color: isFan ? accent : SportSphereColors.muted,
-                                size: 15,
+                                color: isFan ? accent : Colors.white,
+                                size: 16,
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                isFan ? 'Fan ✓' : 'Become Fan',
+                                isFan ? 'You are a fan' : 'Become a fan',
                                 style: TextStyle(
-                                  color: isFan ? accent : SportSphereColors.muted,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
+                                  color: isFan ? accent : Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
                                 ),
                               ),
                             ],
@@ -671,8 +687,9 @@ class _PlayerHeader extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
 
-                // Follow
+                // Follow (small)
                 Expanded(
+                  flex: 2,
                   child: Semantics(
                     label: following ? 'Following' : 'Follow',
                     button: true,
@@ -852,30 +869,169 @@ class _PlayerTabBar extends StatelessWidget {
 // SPORTLIGHTS TAB
 // ══════════════════════════════════════════════════════════════════════════════
 
-class _SportlightsTab extends StatelessWidget {
+class _SportlightsTab extends StatefulWidget {
   final PlayerProfileModel profile;
   const _SportlightsTab({required this.profile});
 
   @override
+  State<_SportlightsTab> createState() => _SportlightsTabState();
+}
+
+class _SportlightsTabState extends State<_SportlightsTab> {
+  late Future<List<ProfilePost>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _loadPosts();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SportlightsTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.profile.handle != widget.profile.handle ||
+        oldWidget.profile.entityId != widget.profile.entityId) {
+      _future = _loadPosts();
+    }
+  }
+
+  Future<List<ProfilePost>> _loadPosts() async {
+    final p = widget.profile;
+    final sb = Supabase.instance.client;
+    final rows = <Map<String, dynamic>>[];
+    final seen = <String>{};
+
+    Future<void> addQuery(dynamic q) async {
+      try {
+        final data = await q.order('createdAt', ascending: false).limit(40);
+        for (final r in data as List) {
+          final m = Map<String, dynamic>.from(r as Map);
+          final id = m['id']?.toString() ?? '';
+          if (id.isEmpty || seen.contains(id)) continue;
+          seen.add(id);
+          rows.add(m);
+        }
+      } catch (_) {}
+    }
+
+    if (p.accountUserId != null && p.accountUserId!.isNotEmpty) {
+      await addQuery(sb.from('Post').select().eq('userId', p.accountUserId!));
+    }
+    if (p.entityId != null && p.entityId!.isNotEmpty) {
+      await addQuery(sb.from('Post').select().eq('playerTag', p.entityId!));
+    }
+
+    rows.sort((a, b) {
+      final da = DateTime.tryParse('${a['createdAt']}') ?? DateTime(2000);
+      final db = DateTime.tryParse('${b['createdAt']}') ?? DateTime(2000);
+      return db.compareTo(da);
+    });
+
+    return [for (final m in rows) _mapPost(m)];
+  }
+
+  ProfilePost _mapPost(Map<String, dynamic> m) {
+    final media = m['mediaUrls'];
+    final hasMedia = media is List && media.isNotEmpty;
+    final tags = m['hashtags'];
+    final hashtags = tags is List
+        ? [for (final x in tags) x.toString()]
+        : <String>[];
+    return ProfilePost(
+      text: (m['content'] as String?) ?? '',
+      hashtags: hashtags,
+      timeAgo: _age(m['createdAt']?.toString()),
+      likes: (m['likeCount'] as int?) ?? 0,
+      comments: (m['commentCount'] as int?) ?? 0,
+      shares: (m['shareCount'] as int?) ?? 0,
+      hasImage: hasMedia,
+      imageCount: hasMedia ? media.length : 1,
+      imageUrl: hasMedia ? media.first.toString() : null,
+    );
+  }
+
+  String _age(String? iso) {
+    if (iso == null || iso.isEmpty) return '';
+    final dt = DateTime.tryParse(iso);
+    if (dt == null) return '';
+    final d = DateTime.now().difference(dt.toLocal());
+    if (d.inMinutes < 60) return '${d.inMinutes}m';
+    if (d.inHours < 24) return '${d.inHours}h';
+    if (d.inDays < 7) return '${d.inDays}d';
+    return '${dt.day}/${dt.month}/${dt.year}';
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(0, 8, 0, 120),
-      itemCount: _playerPosts.length,
-      itemBuilder: (_, i) => ProfilePostCard(
-        post: _playerPosts[i],
-        authorName: profile.displayName,
-        authorHandle: profile.atHandle,
-        authorAvatarAsset: profile.avatarAsset,
-        isVerified: profile.isVerified,
-        accentColor: profile.accentColor,
-      ),
+    final profile = widget.profile;
+    return FutureBuilder<List<ProfilePost>>(
+      future: _future,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+        final posts = snap.data ?? const <ProfilePost>[];
+        if (posts.isEmpty) {
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            padding: const EdgeInsets.fromLTRB(24, 48, 24, 120),
+            children: const [
+              Icon(Icons.bolt_rounded, color: SportSphereColors.muted, size: 40),
+              SizedBox(height: 12),
+              Text(
+                'No posts yet',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: SportSphereColors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'When this player posts on SportSphere, it will show here.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: SportSphereColors.muted, height: 1.4),
+              ),
+            ],
+          );
+        }
+        return RefreshIndicator(
+          color: profile.accentColor,
+          onRefresh: () async {
+            setState(() => _future = _loadPosts());
+            await _future;
+          },
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            padding: const EdgeInsets.fromLTRB(0, 8, 0, 120),
+            itemCount: posts.length,
+            itemBuilder: (_, i) => ProfilePostCard(
+              post: posts[i],
+              authorName: profile.displayName,
+              authorHandle: profile.atHandle,
+              authorAvatarAsset: profile.avatarAsset,
+              isVerified: profile.isVerified,
+              accentColor: profile.accentColor,
+            ),
+          ),
+        );
+      },
     );
   }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// ABOUT TAB
+// ABOUT
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _AboutTab extends StatelessWidget {
@@ -1019,17 +1175,32 @@ class _StatsTabState extends State<_StatsTab> {
   late String _season;
   late String _competition;
 
+  static const _empty = PlayerSeasonStats(
+    season: '2026/2027',
+    competition: 'League',
+    appearances: 0,
+    starts: 0,
+    goals: 0,
+    assists: 0,
+    minutes: 0,
+    yellowCards: 0,
+    redCards: 0,
+  );
+
   @override
   void initState() {
     super.initState();
-    _season = widget.profile.seasonStats.first.season;
+    final list = widget.profile.seasonStats;
+    _season = list.isNotEmpty ? list.first.season : _empty.season;
     _competition = 'All';
   }
 
   PlayerSeasonStats get _currentStats {
-    return widget.profile.seasonStats.firstWhere(
+    final list = widget.profile.seasonStats;
+    if (list.isEmpty) return _empty;
+    return list.firstWhere(
       (s) => s.season == _season,
-      orElse: () => widget.profile.seasonStats.first,
+      orElse: () => list.first,
     );
   }
 
@@ -1037,7 +1208,9 @@ class _StatsTabState extends State<_StatsTab> {
   Widget build(BuildContext context) {
     final p = widget.profile;
     final stats = _currentStats;
-    final seasons = p.seasonStats.map((s) => s.season).toList();
+    final seasons = p.seasonStats.isEmpty
+        ? <String>[_empty.season]
+        : p.seasonStats.map((s) => s.season).toList();
 
     return ListView(
       physics: const BouncingScrollPhysics(),

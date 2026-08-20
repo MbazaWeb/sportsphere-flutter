@@ -11,7 +11,7 @@ class _HomeScreenState extends State<_HomeScreen>
     with SingleTickerProviderStateMixin {
   int _tab = 0;
 
-  static const _tabs = ['Spotlights', 'Trending', 'Community', 'E-Shop'];
+  static const _tabs = ['Spotlights', 'News', 'Trending', 'Community', 'E-Shop'];
 
   @override
   Widget build(BuildContext context) {
@@ -31,6 +31,7 @@ class _HomeScreenState extends State<_HomeScreen>
             index: _tab,
             children: const [
               _SpotlightsContent(),
+              NewsTab(),
               _TrendingContent(),
               _CommunityContent(),
               _EShopContent(),
@@ -88,7 +89,7 @@ class _HomeTabBar extends StatelessWidget {
                             : SportSphereColors.muted,
                         fontWeight:
                             active ? FontWeight.w700 : FontWeight.w500,
-                        fontSize: 13,
+                        fontSize: 11,
                       ),
                     ),
                   ),
@@ -115,48 +116,224 @@ class _SpotlightsContent extends StatelessWidget {
 
 // ── Trending tab ───────────────────────────────────────────
 
-class _TrendingContent extends StatelessWidget {
+class _TrendingContent extends StatefulWidget {
   const _TrendingContent();
+  @override
+  State<_TrendingContent> createState() => _TrendingContentState();
+}
+
+class _TrendingContentState extends State<_TrendingContent> {
+  List<Map<String, dynamic>> _rows = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final rows = await Supabase.instance.client
+          .from('Post')
+          .select()
+          .order('likeCount', ascending: false)
+          .limit(30);
+      if (mounted) {
+        setState(() {
+          _rows = [for (final r in rows as List) Map<String, dynamic>.from(r as Map)];
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return _ComingSoonPlaceholder(
-      icon: Icons.trending_up_rounded,
-      label: 'Trending',
-      subtitle: 'Top stories, viral moments and what the\nsports world is talking about.',
-      accent: const Color(0xFFFF8A00),
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+    }
+    if (_rows.isEmpty) {
+      return const Center(
+        child: Text('No trending posts yet', style: TextStyle(color: Colors.white54)),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+        itemCount: _rows.length,
+        itemBuilder: (_, i) {
+          final post = _rows[i];
+          return Card(
+            color: const Color(0xFF0C1A2A),
+            margin: const EdgeInsets.only(bottom: 10),
+            child: ListTile(
+              title: Text(
+                '${post['content'] ?? ''}',
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(
+                '♥ ${post['likeCount'] ?? 0} · 💬 ${post['commentCount'] ?? 0} · ↗ ${post['shareCount'] ?? 0}',
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }
 
 // ── Community tab ──────────────────────────────────────────
 
-class _CommunityContent extends StatelessWidget {
+class _CommunityContent extends StatefulWidget {
   const _CommunityContent();
-
   @override
-  Widget build(BuildContext context) {
-    return _ComingSoonPlaceholder(
-      icon: Icons.groups_rounded,
-      label: 'Community',
-      subtitle: 'Polls, discussions and fan communities\nfrom around the sport world.',
-      accent: const Color(0xFF76D42B),
-    );
-  }
+  State<_CommunityContent> createState() => _CommunityContentState();
 }
 
-// ── E-Shop tab ─────────────────────────────────────────────
+class _CommunityContentState extends State<_CommunityContent> {
+  final _search = TextEditingController();
+  String _query = '';
+  List<Map<String, dynamic>> _groups = [];
+  final _joined = <String>{};
+  bool _loading = true;
 
-class _EShopContent extends StatelessWidget {
-  const _EShopContent();
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final rows = await Supabase.instance.client
+          .from('Community')
+          .select()
+          .order('memberCount', ascending: false)
+          .limit(40);
+      final list = [for (final r in rows as List) Map<String, dynamic>.from(r as Map)];
+      final uid = Supabase.instance.client.auth.currentUser?.id;
+      final joined = <String>{};
+      if (uid != null) {
+        final mem = await Supabase.instance.client
+            .from('CommunityMember')
+            .select('communityId')
+            .eq('userId', uid);
+        for (final r in mem as List) {
+          final id = (r as Map)['communityId']?.toString();
+          if (id != null) joined.add(id);
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _groups = list;
+          _joined
+            ..clear()
+            ..addAll(joined);
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  Future<void> _toggle(String id) async {
+    final commerce = CommerceRepository();
+    try {
+      if (_joined.contains(id)) {
+        await commerce.leaveCommunity(id);
+        setState(() => _joined.remove(id));
+      } else {
+        await commerce.joinCommunity(id);
+        setState(() => _joined.add(id));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return _ComingSoonPlaceholder(
-      icon: Icons.shopping_bag_outlined,
-      label: 'E-Shop',
-      subtitle: 'Kits, tickets, merchandise and\nsponsored deals — all in one place.',
-      accent: const Color(0xFF009DFF),
+    final q = _query.toLowerCase();
+    final groups = _groups.where((g) {
+      final name = '${g['name'] ?? ''}'.toLowerCase();
+      return q.isEmpty || name.contains(q);
+    }).toList();
+
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+    }
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
+        children: [
+          TextField(
+            controller: _search,
+            onChanged: (v) => setState(() => _query = v),
+            decoration: InputDecoration(
+              hintText: 'Search communities',
+              prefixIcon: const Icon(Icons.search),
+              filled: true,
+              fillColor: Colors.white.withValues(alpha: 0.06),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (groups.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(24),
+              child: Text(
+                'No communities yet. Join one when it\'s created.',
+                style: TextStyle(color: Colors.white54),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          for (final g in groups)
+            Card(
+              color: const Color(0xFF0C1A2A),
+              margin: const EdgeInsets.only(bottom: 10),
+              child: ListTile(
+                title: Text(
+                  '${g['name'] ?? 'Community'}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                subtitle: Text(
+                  '${g['memberCount'] ?? 0} members · ${g['topic'] ?? g['description'] ?? ''}',
+                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  maxLines: 2,
+                ),
+                trailing: TextButton(
+                  onPressed: () => _toggle('${g['id']}'),
+                  child: Text(_joined.contains('${g['id']}') ? 'Joined' : 'Join'),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -232,6 +409,29 @@ class _ComingSoonPlaceholder extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+
+class _SimpleCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  const _SimpleCard({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassContainer(
+      radius: 16,
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text(subtitle, style: const TextStyle(color: SportSphereColors.muted, fontSize: 12)),
+        ],
       ),
     );
   }

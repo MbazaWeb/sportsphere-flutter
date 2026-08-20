@@ -1,0 +1,1596 @@
+{
+  "league": "Ligi Kuu Bara",
+  "season": "2026/2027",
+  "rounds": [
+    {
+      "round": 1,
+      "matches": [
+        {
+          "date": "2026-08-14",
+          "time": "11:00",
+          "home_team": "Pamba Jiji FC",
+          "away_team": "Dodoma Jiji"
+        },
+        {
+          "date": "2026-08-14",
+          "time": "13:15",
+          "home_team": "Mbeya City",
+          "away_team": "Geita Gold"
+        },
+        {
+          "date": "2026-08-14",
+          "time": "16:00",
+          "home_team": "Singida Black Stars",
+          "away_team": "Fountain Gate"
+        },
+        {
+          "date": "2026-08-15",
+          "time": "13:00",
+          "home_team": "Polisi Tanzania",
+          "away_team": "Azam FC"
+        },
+        {
+          "date": "2026-08-15",
+          "time": "15:30",
+          "home_team": "Coastal Union",
+          "away_team": "Mashujaa FC"
+        },
+        {
+          "date": "2026-08-15",
+          "time": "18:00",
+          "home_team": "Namungo FC",
+          "away_team": "Young Africans SC"
+        },
+        {
+          "date": "2026-08-16",
+          "time": "15:00",
+          "home_team": "Kagera Sugar",
+          "away_team": "Simba SC"
+        },
+        {
+          "date": "2026-08-16",
+          "time": "17:30",
+          "home_team": "JKT Tanzania",
+          "away_team": "TRA United"
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "matches": [
+        {
+          "date": "2026-08-18",
+          "time": "13:00",
+          "home_team": "Fountain Gate",
+          "away_team": "Mashujaa FC"
+        },
+        {
+          "date": "2026-08-18",
+          "time": "16:00",
+          "home_team": "Namungo FC",
+          "away_team": "Geita Gold"
+        },
+        {
+          "date": "2026-08-19",
+          "time": "11:00",
+          "home_team": "Mbeya City",
+          "away_team": "Dodoma Jiji"
+        },
+        {
+          "date": "2026-08-19",
+          "time": "13:15",
+          "home_team": "Pamba Jiji FC",
+          "away_team": "Simba SC"
+        },
+        {
+          "date": "2026-08-19",
+          "time": "16:00",
+          "home_team": "Kagera Sugar",
+          "away_team": "Singida Black Stars"
+        },
+        {
+          "date": "2026-08-20",
+          "time": "13:00",
+          "home_team": "Polisi Tanzania",
+          "away_team": "JKT Tanzania"
+        },
+        {
+          "date": "2026-08-20",
+          "time": "15:30",
+          "home_team": "Young Africans SC",
+          "away_team": "Coastal Union"
+        },
+        {
+          "date": "2026-08-20",
+          "time": "18:00",
+          "home_team": "Azam FC",
+          "away_team": "TRA United"
+        }
+      ]
+    },
+    {
+      "round": 3,
+      "matches": [
+        {
+          "date": "2026-08-22",
+          "time": "15:00",
+          "home_team": "Singida Black Stars",
+          "away_team": "Simba SC"
+        },
+        {
+          "date": "2026-08-22",
+          "time": "17:30",
+          "home_team": "Geita Gold",
+          "away_team": "Kagera Sugar"
+        },
+        {
+          "date": "2026-08-23",
+          "time": "13:00",
+          "home_team": "Mbeya City",
+          "away_team": "Mashujaa FC"
+        },
+        {
+          "date": "2026-08-23",
+          "time": "16:00",
+          "home_team": "Azam FC",
+          "away_team": "Pamba Jiji FC"
+        },
+        {
+          "date": "2026-08-24",
+          "time": "15:00",
+          "home_team": "Young Africans SC",
+          "away_team": "JKT Tanzania"
+        },
+        {
+          "date": "2026-08-24",
+          "time": "17:30",
+          "home_team": "Coastal Union",
+          "away_team": "TRA United"
+        },
+        {
+          "date": "2026-08-25",
+          "time": "15:00",
+          "home_team": "Namungo FC",
+          "away_team": "Fountain Gate"
+        },
+        {
+          "date": "2026-08-25",
+          "time": "17:30",
+          "home_team": "Dodoma Jiji",
+          "away_team": "Polisi Tanzania"
+        }
+      ]
+    },
+    {
+      "round": 4,
+      "matches": [
+        {
+          "date": "2026-08-27",
+          "time": "13:00",
+          "home_team": "Mashujaa FC",
+          "away_team": "Kagera Sugar"
+        },
+        {
+          "date": "2026-08-27",
+          "time": "16:00",
+          "home_team": "Simba SC",
+          "away_team": "Coastal Union"
+        },
+        {
+          "date": "2026-08-28",
+          "time": "13:00",
+          "home_team": "Fountain Gate",
+          "away_team": "Mbeya City"
+        },
+        {
+          "date": "2026-08-28",
+          "time": "15:30",
+          "home_team": "Geita Gold",
+          "away_team": "Azam FC"
+        },
+        {
+          "date": "2026-08-28",
+          "time": "18:00",
+          "home_team": "Young Africans SC",
+          "away_team": "Pamba Jiji FC"
+        },
+        {
+          "date": "2026-08-29",
+          "time": "13:00",
+          "home_team": "TRA United",
+          "away_team": "Dodoma Jiji"
+        },
+        {
+          "date": "2026-08-29",
+          "time": "15:30",
+          "home_team": "Singida Black Stars",
+          "away_team": "Polisi Tanzania"
+        },
+        {
+          "date": "2026-08-29",
+          "time": "18:00",
+          "home_team": "JKT Tanzania",
+          "away_team": "Namungo FC"
+        }
+      ]
+    },
+    {
+      "round": 5,
+      "matches": [
+        {
+          "date": "2026-08-31",
+          "time": "15:00",
+          "home_team": "Simba SC",
+          "away_team": "Geita Gold"
+        },
+        {
+          "date": "2026-08-31",
+          "time": "17:30",
+          "home_team": "Kagera Sugar",
+          "away_team": "Azam FC"
+        },
+        {
+          "date": "2026-09-01",
+          "time": "13:00",
+          "home_team": "Fountain Gate",
+          "away_team": "Young Africans SC"
+        },
+        {
+          "date": "2026-09-01",
+          "time": "16:00",
+          "home_team": "Singida Black Stars",
+          "away_team": "Namungo FC"
+        },
+        {
+          "date": "2026-09-04",
+          "time": "13:00",
+          "home_team": "TRA United",
+          "away_team": "Mbeya City"
+        },
+        {
+          "date": "2026-09-04",
+          "time": "16:00",
+          "home_team": "Dodoma Jiji",
+          "away_team": "Mashujaa FC"
+        },
+        {
+          "date": "2026-09-05",
+          "time": "16:00",
+          "home_team": "JKT Tanzania",
+          "away_team": "Pamba Jiji FC"
+        },
+        {
+          "date": "2026-09-06",
+          "time": "13:00",
+          "home_team": "Polisi Tanzania",
+          "away_team": "Coastal Union"
+        }
+      ]
+    },
+    {
+      "round": 6,
+      "matches": [
+        {
+          "date": "2026-09-08",
+          "time": "13:00",
+          "home_team": "Mashujaa FC",
+          "away_team": "Singida Black Stars"
+        },
+        {
+          "date": "2026-09-08",
+          "time": "16:00",
+          "home_team": "Young Africans SC",
+          "away_team": "Geita Gold"
+        },
+        {
+          "date": "2026-09-09",
+          "time": "16:00",
+          "home_team": "Azam FC",
+          "away_team": "Simba SC"
+        },
+        {
+          "date": "2026-09-11",
+          "time": "16:00",
+          "home_team": "Dodoma Jiji",
+          "away_team": "Namungo FC"
+        },
+        {
+          "date": "2026-09-12",
+          "time": "13:00",
+          "home_team": "Polisi Tanzania",
+          "away_team": "Mbeya City"
+        },
+        {
+          "date": "2026-09-12",
+          "time": "16:00",
+          "home_team": "Coastal Union",
+          "away_team": "JKT Tanzania"
+        },
+        {
+          "date": "2026-09-13",
+          "time": "13:00",
+          "home_team": "Pamba Jiji FC",
+          "away_team": "TRA United"
+        },
+        {
+          "date": "2026-09-13",
+          "time": "16:00",
+          "home_team": "Kagera Sugar",
+          "away_team": "Fountain Gate"
+        }
+      ]
+    },
+    {
+      "round": 7,
+      "matches": [
+        {
+          "date": "2026-10-08",
+          "time": "11:00",
+          "home_team": "Mashujaa FC",
+          "away_team": "Polisi Tanzania"
+        },
+        {
+          "date": "2026-10-08",
+          "time": "13:15",
+          "home_team": "Pamba Jiji FC",
+          "away_team": "Geita Gold"
+        },
+        {
+          "date": "2026-10-08",
+          "time": "15:30",
+          "home_team": "Namungo FC",
+          "away_team": "TRA United"
+        },
+        {
+          "date": "2026-10-08",
+          "time": "18:00",
+          "home_team": "Coastal Union",
+          "away_team": "Azam FC"
+        },
+        {
+          "date": "2026-10-09",
+          "time": "11:00",
+          "home_team": "Fountain Gate",
+          "away_team": "JKT Tanzania"
+        },
+        {
+          "date": "2026-10-09",
+          "time": "13:15",
+          "home_team": "Mbeya City",
+          "away_team": "Kagera Sugar"
+        },
+        {
+          "date": "2026-10-09",
+          "time": "16:00",
+          "home_team": "Dodoma Jiji",
+          "away_team": "Singida Black Stars"
+        },
+        {
+          "date": "2026-10-10",
+          "time": "16:00",
+          "home_team": "Simba SC",
+          "away_team": "Young Africans SC"
+        }
+      ]
+    },
+    {
+      "round": 8,
+      "matches": [
+        {
+          "date": "2026-10-12",
+          "time": "15:00",
+          "home_team": "Coastal Union",
+          "away_team": "Singida Black Stars"
+        },
+        {
+          "date": "2026-10-12",
+          "time": "17:30",
+          "home_team": "Azam FC",
+          "away_team": "Namungo FC"
+        },
+        {
+          "date": "2026-10-13",
+          "time": "13:00",
+          "home_team": "TRA United",
+          "away_team": "Young Africans SC"
+        },
+        {
+          "date": "2026-10-13",
+          "time": "16:00",
+          "home_team": "Simba SC",
+          "away_team": "Mashujaa FC"
+        },
+        {
+          "date": "2026-10-16",
+          "time": "13:00",
+          "home_team": "Fountain Gate",
+          "away_team": "Pamba Jiji FC"
+        },
+        {
+          "date": "2026-10-16",
+          "time": "16:00",
+          "home_team": "Geita Gold",
+          "away_team": "Dodoma Jiji"
+        },
+        {
+          "date": "2026-10-17",
+          "time": "16:00",
+          "home_team": "Kagera Sugar",
+          "away_team": "Polisi Tanzania"
+        },
+        {
+          "date": "2026-10-18",
+          "time": "16:00",
+          "home_team": "JKT Tanzania",
+          "away_team": "Mbeya City"
+        }
+      ]
+    },
+    {
+      "round": 9,
+      "matches": [
+        {
+          "date": "2026-10-23",
+          "time": "13:00",
+          "home_team": "Polisi Tanzania",
+          "away_team": "Pamba Jiji FC"
+        },
+        {
+          "date": "2026-10-24",
+          "time": "13:00",
+          "home_team": "Azam FC",
+          "away_team": "Mashujaa FC"
+        },
+        {
+          "date": "2026-10-24",
+          "time": "13:00",
+          "home_team": "Dodoma Jiji",
+          "away_team": "Young Africans SC"
+        },
+        {
+          "date": "2026-10-24",
+          "time": "13:00",
+          "home_team": "Simba SC",
+          "away_team": "Mbeya City"
+        },
+        {
+          "date": "2026-10-24",
+          "time": "13:00",
+          "home_team": "Singida Black Stars",
+          "away_team": "TRA United"
+        },
+        {
+          "date": "2026-10-24",
+          "time": "15:00",
+          "home_team": "JKT Tanzania",
+          "away_team": "Kagera Sugar"
+        },
+        {
+          "date": "2026-10-24",
+          "time": "17:30",
+          "home_team": "Namungo FC",
+          "away_team": "Coastal Union"
+        },
+        {
+          "date": "2026-10-25",
+          "time": "16:00",
+          "home_team": "Geita Gold",
+          "away_team": "Fountain Gate"
+        }
+      ]
+    },
+    {
+      "round": 10,
+      "matches": [
+        {
+          "date": "2026-10-27",
+          "time": "13:00",
+          "home_team": "Pamba Jiji FC",
+          "away_team": "Singida Black Stars"
+        },
+        {
+          "date": "2026-10-27",
+          "time": "15:30",
+          "home_team": "Young Africans SC",
+          "away_team": "Mashujaa FC"
+        },
+        {
+          "date": "2026-10-27",
+          "time": "18:00",
+          "home_team": "Dodoma Jiji",
+          "away_team": "JKT Tanzania"
+        },
+        {
+          "date": "2026-10-28",
+          "time": "13:00",
+          "home_team": "Fountain Gate",
+          "away_team": "Simba SC"
+        },
+        {
+          "date": "2026-10-28",
+          "time": "15:30",
+          "home_team": "Azam FC",
+          "away_team": "Mbeya City"
+        },
+        {
+          "date": "2026-10-28",
+          "time": "18:00",
+          "home_team": "Coastal Union",
+          "away_team": "Kagera Sugar"
+        },
+        {
+          "date": "2026-10-29",
+          "time": "13:00",
+          "home_team": "TRA United",
+          "away_team": "Geita Gold"
+        },
+        {
+          "date": "2026-10-29",
+          "time": "16:00",
+          "home_team": "Namungo FC",
+          "away_team": "Polisi Tanzania"
+        }
+      ]
+    },
+    {
+      "round": 11,
+      "matches": [
+        {
+          "date": "2026-10-31",
+          "time": "13:00",
+          "home_team": "Mbeya City",
+          "away_team": "Singida Black Stars"
+        },
+        {
+          "date": "2026-10-31",
+          "time": "15:30",
+          "home_team": "JKT Tanzania",
+          "away_team": "Azam FC"
+        },
+        {
+          "date": "2026-10-31",
+          "time": "18:00",
+          "home_team": "Coastal Union",
+          "away_team": "Dodoma Jiji"
+        },
+        {
+          "date": "2026-11-01",
+          "time": "13:00",
+          "home_team": "Polisi Tanzania",
+          "away_team": "Geita Gold"
+        },
+        {
+          "date": "2026-11-01",
+          "time": "16:00",
+          "home_team": "Young Africans SC",
+          "away_team": "Kagera Sugar"
+        },
+        {
+          "date": "2026-11-02",
+          "time": "11:00",
+          "home_team": "TRA United",
+          "away_team": "Fountain Gate"
+        },
+        {
+          "date": "2026-11-02",
+          "time": "13:15",
+          "home_team": "Mashujaa FC",
+          "away_team": "Pamba Jiji FC"
+        },
+        {
+          "date": "2026-11-02",
+          "time": "16:00",
+          "home_team": "Simba SC",
+          "away_team": "Namungo FC"
+        }
+      ]
+    },
+    {
+      "round": 12,
+      "matches": [
+        {
+          "date": "2026-11-20",
+          "time": "13:00",
+          "home_team": "Polisi Tanzania",
+          "away_team": "Young Africans SC"
+        },
+        {
+          "date": "2026-11-20",
+          "time": "15:30",
+          "home_team": "Namungo FC",
+          "away_team": "Mbeya City"
+        },
+        {
+          "date": "2026-11-20",
+          "time": "18:00",
+          "home_team": "Azam FC",
+          "away_team": "Singida Black Stars"
+        },
+        {
+          "date": "2026-11-21",
+          "time": "13:00",
+          "home_team": "Pamba Jiji FC",
+          "away_team": "Coastal Union"
+        },
+        {
+          "date": "2026-11-21",
+          "time": "15:30",
+          "home_team": "JKT Tanzania",
+          "away_team": "Simba SC"
+        },
+        {
+          "date": "2026-11-21",
+          "time": "18:00",
+          "home_team": "Dodoma Jiji",
+          "away_team": "Fountain Gate"
+        },
+        {
+          "date": "2026-11-22",
+          "time": "15:00",
+          "home_team": "Kagera Sugar",
+          "away_team": "TRA United"
+        },
+        {
+          "date": "2026-11-22",
+          "time": "17:30",
+          "home_team": "Geita Gold",
+          "away_team": "Mashujaa FC"
+        }
+      ]
+    },
+    {
+      "round": 13,
+      "matches": [
+        {
+          "date": "2026-11-27",
+          "time": "13:00",
+          "home_team": "Pamba Jiji FC",
+          "away_team": "Namungo FC"
+        },
+        {
+          "date": "2026-11-27",
+          "time": "16:00",
+          "home_team": "Kagera Sugar",
+          "away_team": "Dodoma Jiji"
+        },
+        {
+          "date": "2026-11-28",
+          "time": "13:00",
+          "home_team": "Fountain Gate",
+          "away_team": "Azam FC"
+        },
+        {
+          "date": "2026-11-28",
+          "time": "13:00",
+          "home_team": "Mashujaa FC",
+          "away_team": "TRA United"
+        },
+        {
+          "date": "2026-11-28",
+          "time": "13:00",
+          "home_team": "Mbeya City",
+          "away_team": "Young Africans SC"
+        },
+        {
+          "date": "2026-11-28",
+          "time": "13:00",
+          "home_team": "Simba SC",
+          "away_team": "Polisi Tanzania"
+        },
+        {
+          "date": "2026-11-28",
+          "time": "13:00",
+          "home_team": "Singida Black Stars",
+          "away_team": "JKT Tanzania"
+        },
+        {
+          "date": "2026-11-29",
+          "time": "16:00",
+          "home_team": "Geita Gold",
+          "away_team": "Coastal Union"
+        }
+      ]
+    },
+    {
+      "round": 14,
+      "matches": [
+        {
+          "date": "2026-12-04",
+          "time": "11:00",
+          "home_team": "TRA United",
+          "away_team": "Polisi Tanzania"
+        },
+        {
+          "date": "2026-12-04",
+          "time": "13:15",
+          "home_team": "Mbeya City",
+          "away_team": "Pamba Jiji FC"
+        },
+        {
+          "date": "2026-12-05",
+          "time": "13:00",
+          "home_team": "Simba SC",
+          "away_team": "Dodoma Jiji"
+        },
+        {
+          "date": "2026-12-05",
+          "time": "13:00",
+          "home_team": "Singida Black Stars",
+          "away_team": "Geita Gold"
+        },
+        {
+          "date": "2026-12-05",
+          "time": "13:00",
+          "home_team": "Young Africans SC",
+          "away_team": "Azam FC"
+        },
+        {
+          "date": "2026-12-05",
+          "time": "16:00",
+          "home_team": "Coastal Union",
+          "away_team": "Fountain Gate"
+        },
+        {
+          "date": "2026-12-06",
+          "time": "13:00",
+          "home_team": "Mashujaa FC",
+          "away_team": "JKT Tanzania"
+        },
+        {
+          "date": "2026-12-06",
+          "time": "16:00",
+          "home_team": "Kagera Sugar",
+          "away_team": "Namungo FC"
+        }
+      ]
+    },
+    {
+      "round": 15,
+      "matches": [
+        {
+          "date": "2026-12-11",
+          "time": "11:00",
+          "home_team": "Pamba Jiji FC",
+          "away_team": "Kagera Sugar"
+        },
+        {
+          "date": "2026-12-11",
+          "time": "13:15",
+          "home_team": "Mbeya City",
+          "away_team": "Coastal Union"
+        },
+        {
+          "date": "2026-12-11",
+          "time": "13:15",
+          "home_team": "TRA United",
+          "away_team": "Simba SC"
+        },
+        {
+          "date": "2026-12-12",
+          "time": "13:00",
+          "home_team": "Fountain Gate",
+          "away_team": "Polisi Tanzania"
+        },
+        {
+          "date": "2026-12-12",
+          "time": "15:30",
+          "home_team": "Singida Black Stars",
+          "away_team": "Young Africans SC"
+        },
+        {
+          "date": "2026-12-12",
+          "time": "18:00",
+          "home_team": "Azam FC",
+          "away_team": "Dodoma Jiji"
+        },
+        {
+          "date": "2026-12-13",
+          "time": "13:00",
+          "home_team": "Mashujaa FC",
+          "away_team": "Namungo FC"
+        },
+        {
+          "date": "2026-12-13",
+          "time": "16:00",
+          "home_team": "Geita Gold",
+          "away_team": "JKT Tanzania"
+        }
+      ]
+    },
+    {
+      "round": 16,
+      "matches": [
+        {
+          "date": "2026-12-29",
+          "time": "13:00",
+          "home_team": "Namungo FC",
+          "away_team": "Singida Black Stars"
+        },
+        {
+          "date": "2026-12-29",
+          "time": "15:30",
+          "home_team": "Kagera Sugar",
+          "away_team": "Pamba Jiji FC"
+        },
+        {
+          "date": "2026-12-29",
+          "time": "18:00",
+          "home_team": "Dodoma Jiji",
+          "away_team": "TRA United"
+        },
+        {
+          "date": "2026-12-30",
+          "time": "13:00",
+          "home_team": "Fountain Gate",
+          "away_team": "Geita Gold"
+        },
+        {
+          "date": "2026-12-30",
+          "time": "16:00",
+          "home_team": "Azam FC",
+          "away_team": "Young Africans SC"
+        },
+        {
+          "date": "2026-12-31",
+          "time": "13:00",
+          "home_team": "Polisi Tanzania",
+          "away_team": "Simba SC"
+        },
+        {
+          "date": "2026-12-31",
+          "time": "15:30",
+          "home_team": "JKT Tanzania",
+          "away_team": "Mashujaa FC"
+        },
+        {
+          "date": "2026-12-31",
+          "time": "18:00",
+          "home_team": "Coastal Union",
+          "away_team": "Mbeya City"
+        }
+      ]
+    },
+    {
+      "round": 17,
+      "matches": [
+        {
+          "date": "2027-01-15",
+          "time": "13:00",
+          "home_team": "JKT Tanzania",
+          "away_team": "Dodoma Jiji"
+        },
+        {
+          "date": "2027-01-16",
+          "time": "13:00",
+          "home_team": "Namungo FC",
+          "away_team": "Azam FC"
+        },
+        {
+          "date": "2027-01-16",
+          "time": "13:00",
+          "home_team": "Polisi Tanzania",
+          "away_team": "Singida Black Stars"
+        },
+        {
+          "date": "2027-01-16",
+          "time": "13:00",
+          "home_team": "Simba SC",
+          "away_team": "Kagera Sugar"
+        },
+        {
+          "date": "2027-01-16",
+          "time": "13:00",
+          "home_team": "TRA United",
+          "away_team": "Coastal Union"
+        },
+        {
+          "date": "2027-01-16",
+          "time": "13:00",
+          "home_team": "Young Africans SC",
+          "away_team": "Fountain Gate"
+        },
+        {
+          "date": "2027-01-16",
+          "time": "13:00",
+          "home_team": "Geita Gold",
+          "away_team": "Pamba Jiji FC"
+        },
+        {
+          "date": "2027-01-17",
+          "time": "13:00",
+          "home_team": "Mashujaa FC",
+          "away_team": "Mbeya City"
+        }
+      ]
+    },
+    {
+      "round": 18,
+      "matches": [
+        {
+          "date": "2027-01-22",
+          "time": "13:00",
+          "home_team": "Dodoma Jiji",
+          "away_team": "Mbeya City"
+        },
+        {
+          "date": "2027-01-23",
+          "time": "13:00",
+          "home_team": "Azam FC",
+          "away_team": "Polisi Tanzania"
+        },
+        {
+          "date": "2027-01-23",
+          "time": "13:00",
+          "home_team": "Coastal Union",
+          "away_team": "Young Africans SC"
+        },
+        {
+          "date": "2027-01-23",
+          "time": "13:00",
+          "home_team": "Geita Gold",
+          "away_team": "Singida Black Stars"
+        },
+        {
+          "date": "2027-01-23",
+          "time": "13:00",
+          "home_team": "Simba SC",
+          "away_team": "Fountain Gate"
+        },
+        {
+          "date": "2027-01-23",
+          "time": "13:00",
+          "home_team": "Namungo FC",
+          "away_team": "Kagera Sugar"
+        },
+        {
+          "date": "2027-01-24",
+          "time": "13:00",
+          "home_team": "Pamba Jiji FC",
+          "away_team": "Mashujaa FC"
+        },
+        {
+          "date": "2027-01-24",
+          "time": "13:00",
+          "home_team": "TRA United",
+          "away_team": "JKT Tanzania"
+        }
+      ]
+    },
+    {
+      "round": 19,
+      "matches": [
+        {
+          "date": "2027-02-02",
+          "time": "13:00",
+          "home_team": "Mashujaa FC",
+          "away_team": "Geita Gold"
+        },
+        {
+          "date": "2027-02-02",
+          "time": "13:00",
+          "home_team": "TRA United",
+          "away_team": "Pamba Jiji FC"
+        },
+        {
+          "date": "2027-02-02",
+          "time": "13:00",
+          "home_team": "Coastal Union",
+          "away_team": "Simba SC"
+        },
+        {
+          "date": "2027-02-03",
+          "time": "13:00",
+          "home_team": "Mbeya City",
+          "away_team": "Namungo FC"
+        },
+        {
+          "date": "2027-02-03",
+          "time": "13:00",
+          "home_team": "Singida Black Stars",
+          "away_team": "Kagera Sugar"
+        },
+        {
+          "date": "2027-02-03",
+          "time": "13:00",
+          "home_team": "Young Africans SC",
+          "away_team": "Polisi Tanzania"
+        },
+        {
+          "date": "2027-02-04",
+          "time": "13:00",
+          "home_team": "JKT Tanzania",
+          "away_team": "Fountain Gate"
+        },
+        {
+          "date": "2027-02-04",
+          "time": "13:00",
+          "home_team": "Dodoma Jiji",
+          "away_team": "Azam FC"
+        }
+      ]
+    },
+    {
+      "round": 20,
+      "matches": [
+        {
+          "date": "2027-02-06",
+          "time": "13:00",
+          "home_team": "Young Africans SC",
+          "away_team": "Simba SC"
+        },
+        {
+          "date": "2027-02-07",
+          "time": "13:00",
+          "home_team": "Polisi Tanzania",
+          "away_team": "TRA United"
+        },
+        {
+          "date": "2027-02-07",
+          "time": "13:00",
+          "home_team": "Kagera Sugar",
+          "away_team": "Mbeya City"
+        },
+        {
+          "date": "2027-02-07",
+          "time": "13:00",
+          "home_team": "Dodoma Jiji",
+          "away_team": "Pamba Jiji FC"
+        },
+        {
+          "date": "2027-02-08",
+          "time": "13:00",
+          "home_team": "Fountain Gate",
+          "away_team": "Coastal Union"
+        },
+        {
+          "date": "2027-02-08",
+          "time": "13:00",
+          "home_team": "Geita Gold",
+          "away_team": "Namungo FC"
+        },
+        {
+          "date": "2027-02-08",
+          "time": "13:00",
+          "home_team": "Singida Black Stars",
+          "away_team": "Mashujaa FC"
+        },
+        {
+          "date": "2027-02-08",
+          "time": "13:00",
+          "home_team": "Azam FC",
+          "away_team": "JKT Tanzania"
+        }
+      ]
+    },
+    {
+      "round": 21,
+      "matches": [
+        {
+          "date": "2027-02-11",
+          "time": "13:00",
+          "home_team": "TRA United",
+          "away_team": "Singida Black Stars"
+        },
+        {
+          "date": "2027-02-11",
+          "time": "13:00",
+          "home_team": "Mashujaa FC",
+          "away_team": "Young Africans SC"
+        },
+        {
+          "date": "2027-02-11",
+          "time": "13:00",
+          "home_team": "Azam FC",
+          "away_team": "Coastal Union"
+        },
+        {
+          "date": "2027-02-12",
+          "time": "13:00",
+          "home_team": "Fountain Gate",
+          "away_team": "Namungo FC"
+        },
+        {
+          "date": "2027-02-12",
+          "time": "13:00",
+          "home_team": "Pamba Jiji FC",
+          "away_team": "Mbeya City"
+        },
+        {
+          "date": "2027-02-12",
+          "time": "13:00",
+          "home_team": "Kagera Sugar",
+          "away_team": "Geita Gold"
+        },
+        {
+          "date": "2027-02-13",
+          "time": "13:00",
+          "home_team": "Polisi Tanzania",
+          "away_team": "Dodoma Jiji"
+        },
+        {
+          "date": "2027-02-13",
+          "time": "13:00",
+          "home_team": "Simba SC",
+          "away_team": "JKT Tanzania"
+        }
+      ]
+    },
+    {
+      "round": 22,
+      "matches": [
+        {
+          "date": "2027-02-15",
+          "time": "13:00",
+          "home_team": "TRA United",
+          "away_team": "Azam FC"
+        },
+        {
+          "date": "2027-02-15",
+          "time": "13:00",
+          "home_team": "Geita Gold",
+          "away_team": "Mbeya City"
+        },
+        {
+          "date": "2027-02-15",
+          "time": "13:00",
+          "home_team": "Singida Black Stars",
+          "away_team": "Coastal Union"
+        },
+        {
+          "date": "2027-02-16",
+          "time": "13:00",
+          "home_team": "Mashujaa FC",
+          "away_team": "Fountain Gate"
+        },
+        {
+          "date": "2027-02-16",
+          "time": "13:00",
+          "home_team": "Namungo FC",
+          "away_team": "JKT Tanzania"
+        },
+        {
+          "date": "2027-02-16",
+          "time": "13:00",
+          "home_team": "Dodoma Jiji",
+          "away_team": "Simba SC"
+        },
+        {
+          "date": "2027-02-17",
+          "time": "13:00",
+          "home_team": "Pamba Jiji FC",
+          "away_team": "Polisi Tanzania"
+        },
+        {
+          "date": "2027-02-17",
+          "time": "13:00",
+          "home_team": "Kagera Sugar",
+          "away_team": "Young Africans SC"
+        }
+      ]
+    },
+    {
+      "round": 23,
+      "matches": [
+        {
+          "date": "2027-02-23",
+          "time": "13:00",
+          "home_team": "JKT Tanzania",
+          "away_team": "Singida Black Stars"
+        },
+        {
+          "date": "2027-02-23",
+          "time": "13:00",
+          "home_team": "Simba SC",
+          "away_team": "Pamba Jiji FC"
+        },
+        {
+          "date": "2027-02-24",
+          "time": "13:00",
+          "home_team": "Young Africans SC",
+          "away_team": "Dodoma Jiji"
+        },
+        {
+          "date": "2027-02-24",
+          "time": "13:00",
+          "home_team": "Azam FC",
+          "away_team": "Geita Gold"
+        },
+        {
+          "date": "2027-02-26",
+          "time": "13:00",
+          "home_team": "Mbeya City",
+          "away_team": "Fountain Gate"
+        },
+        {
+          "date": "2027-02-26",
+          "time": "13:00",
+          "home_team": "TRA United",
+          "away_team": "Mashujaa FC"
+        },
+        {
+          "date": "2027-02-27",
+          "time": "13:00",
+          "home_team": "Polisi Tanzania",
+          "away_team": "Kagera Sugar"
+        },
+        {
+          "date": "2027-02-28",
+          "time": "13:00",
+          "home_team": "Coastal Union",
+          "away_team": "Namungo FC"
+        }
+      ]
+    },
+    {
+      "round": 24,
+      "matches": [
+        {
+          "date": "2027-03-05",
+          "time": "13:00",
+          "home_team": "Polisi Tanzania",
+          "away_team": "Mashujaa FC"
+        },
+        {
+          "date": "2027-03-05",
+          "time": "13:00",
+          "home_team": "Namungo FC",
+          "away_team": "Pamba Jiji FC"
+        },
+        {
+          "date": "2027-03-06",
+          "time": "13:00",
+          "home_team": "Mbeya City",
+          "away_team": "JKT Tanzania"
+        },
+        {
+          "date": "2027-03-07",
+          "time": "13:00",
+          "home_team": "Coastal Union",
+          "away_team": "Geita Gold"
+        },
+        {
+          "date": "2027-03-07",
+          "time": "13:00",
+          "home_team": "Dodoma Jiji",
+          "away_team": "Kagera Sugar"
+        },
+        {
+          "date": "2027-03-13",
+          "time": "13:00",
+          "home_team": "Fountain Gate",
+          "away_team": "Singida Black Stars"
+        },
+        {
+          "date": "2027-03-13",
+          "time": "13:00",
+          "home_team": "Simba SC",
+          "away_team": "Azam FC"
+        }
+      ]
+    },
+    {
+      "round": 25,
+      "matches": [
+        {
+          "date": "2027-03-12",
+          "time": "13:00",
+          "home_team": "Polisi Tanzania",
+          "away_team": "Fountain Gate"
+        },
+        {
+          "date": "2027-03-12",
+          "time": "13:00",
+          "home_team": "Young Africans SC",
+          "away_team": "Mbeya City"
+        },
+        {
+          "date": "2027-03-13",
+          "time": "13:00",
+          "home_team": "Namungo FC",
+          "away_team": "Mashujaa FC"
+        },
+        {
+          "date": "2027-03-13",
+          "time": "13:00",
+          "home_team": "Young Africans SC",
+          "away_team": "TRA United"
+        },
+        {
+          "date": "2027-03-13",
+          "time": "13:00",
+          "home_team": "Simba SC",
+          "away_team": "TRA United"
+        },
+        {
+          "date": "2027-03-13",
+          "time": "13:00",
+          "home_team": "Azam FC",
+          "away_team": "Kagera Sugar"
+        },
+        {
+          "date": "2027-03-14",
+          "time": "13:00",
+          "home_team": "Singida Black Stars",
+          "away_team": "Dodoma Jiji"
+        },
+        {
+          "date": "2027-03-14",
+          "time": "13:00",
+          "home_team": "JKT Tanzania",
+          "away_team": "Geita Gold"
+        },
+        {
+          "date": "2027-03-14",
+          "time": "13:00",
+          "home_team": "Coastal Union",
+          "away_team": "Pamba Jiji FC"
+        }
+      ]
+    },
+    {
+      "round": 26,
+      "matches": [
+        {
+          "date": "2027-04-06",
+          "time": "13:00",
+          "home_team": "Pamba Jiji FC",
+          "away_team": "Young Africans SC"
+        },
+        {
+          "date": "2027-04-07",
+          "time": "13:00",
+          "home_team": "Mbeya City",
+          "away_team": "Simba SC"
+        },
+        {
+          "date": "2027-04-07",
+          "time": "13:00",
+          "home_team": "Singida Black Stars",
+          "away_team": "Azam FC"
+        },
+        {
+          "date": "2027-04-09",
+          "time": "13:00",
+          "home_team": "Mashujaa FC",
+          "away_team": "Coastal Union"
+        },
+        {
+          "date": "2027-04-09",
+          "time": "13:00",
+          "home_team": "Kagera Sugar",
+          "away_team": "JKT Tanzania"
+        },
+        {
+          "date": "2027-04-10",
+          "time": "13:00",
+          "home_team": "TRA United",
+          "away_team": "Namungo FC"
+        },
+        {
+          "date": "2027-04-10",
+          "time": "13:00",
+          "home_team": "Geita Gold",
+          "away_team": "Polisi Tanzania"
+        },
+        {
+          "date": "2027-04-11",
+          "time": "13:00",
+          "home_team": "Fountain Gate",
+          "away_team": "Dodoma Jiji"
+        }
+      ]
+    },
+    {
+      "round": 27,
+      "matches": [
+        {
+          "date": "2027-04-16",
+          "time": "13:00",
+          "home_team": "Pamba Jiji FC",
+          "away_team": "JKT Tanzania"
+        },
+        {
+          "date": "2027-04-16",
+          "time": "13:00",
+          "home_team": "Mashujaa FC",
+          "away_team": "Dodoma Jiji"
+        },
+        {
+          "date": "2027-04-17",
+          "time": "13:00",
+          "home_team": "Fountain Gate",
+          "away_team": "TRA United"
+        },
+        {
+          "date": "2027-04-17",
+          "time": "13:00",
+          "home_team": "Geita Gold",
+          "away_team": "Young Africans SC"
+        },
+        {
+          "date": "2027-04-17",
+          "time": "13:00",
+          "home_team": "Mbeya City",
+          "away_team": "Azam FC"
+        },
+        {
+          "date": "2027-04-17",
+          "time": "13:00",
+          "home_team": "Simba SC",
+          "away_team": "Singida Black Stars"
+        },
+        {
+          "date": "2027-04-18",
+          "time": "13:00",
+          "home_team": "Polisi Tanzania",
+          "away_team": "Namungo FC"
+        },
+        {
+          "date": "2027-04-18",
+          "time": "13:00",
+          "home_team": "Kagera Sugar",
+          "away_team": "Coastal Union"
+        }
+      ]
+    },
+    {
+      "round": 28,
+      "matches": [
+        {
+          "date": "2027-05-03",
+          "time": "13:00",
+          "home_team": "Azam FC",
+          "away_team": "Fountain Gate"
+        },
+        {
+          "date": "2027-05-03",
+          "time": "13:00",
+          "home_team": "Coastal Union",
+          "away_team": "Polisi Tanzania"
+        },
+        {
+          "date": "2027-05-03",
+          "time": "13:00",
+          "home_team": "Dodoma Jiji",
+          "away_team": "Geita Gold"
+        },
+        {
+          "date": "2027-05-03",
+          "time": "13:00",
+          "home_team": "JKT Tanzania",
+          "away_team": "Young Africans SC"
+        },
+        {
+          "date": "2027-05-03",
+          "time": "13:00",
+          "home_team": "Kagera Sugar",
+          "away_team": "Mashujaa FC"
+        },
+        {
+          "date": "2027-05-03",
+          "time": "13:00",
+          "home_team": "Mbeya City",
+          "away_team": "TRA United"
+        },
+        {
+          "date": "2027-05-03",
+          "time": "13:00",
+          "home_team": "Namungo FC",
+          "away_team": "Simba SC"
+        },
+        {
+          "date": "2027-05-03",
+          "time": "13:00",
+          "home_team": "Singida Black Stars",
+          "away_team": "Pamba Jiji FC"
+        }
+      ]
+    },
+    {
+      "round": 29,
+      "matches": [
+        {
+          "date": "2027-05-12",
+          "time": "13:00",
+          "home_team": "Dodoma Jiji",
+          "away_team": "Coastal Union"
+        },
+        {
+          "date": "2027-05-12",
+          "time": "13:00",
+          "home_team": "Geita Gold",
+          "away_team": "Simba SC"
+        },
+        {
+          "date": "2027-05-12",
+          "time": "13:00",
+          "home_team": "JKT Tanzania",
+          "away_team": "Polisi Tanzania"
+        },
+        {
+          "date": "2027-05-12",
+          "time": "13:00",
+          "home_team": "Mashujaa FC",
+          "away_team": "Azam FC"
+        },
+        {
+          "date": "2027-05-12",
+          "time": "13:00",
+          "home_team": "Pamba Jiji FC",
+          "away_team": "Fountain Gate"
+        },
+        {
+          "date": "2027-05-12",
+          "time": "13:00",
+          "home_team": "Singida Black Stars",
+          "away_team": "Mbeya City"
+        },
+        {
+          "date": "2027-05-12",
+          "time": "13:00",
+          "home_team": "TRA United",
+          "away_team": "Kagera Sugar"
+        },
+        {
+          "date": "2027-05-12",
+          "time": "13:00",
+          "home_team": "Young Africans SC",
+          "away_team": "Namungo FC"
+        }
+      ]
+    },
+    {
+      "round": 30,
+      "matches": [
+        {
+          "date": "2027-05-16",
+          "time": "13:00",
+          "home_team": "Fountain Gate",
+          "away_team": "Kagera Sugar"
+        },
+        {
+          "date": "2027-05-16",
+          "time": "13:00",
+          "home_team": "Geita Gold",
+          "away_team": "TRA United"
+        },
+        {
+          "date": "2027-05-16",
+          "time": "13:00",
+          "home_team": "JKT Tanzania",
+          "away_team": "Coastal Union"
+        },
+        {
+          "date": "2027-05-16",
+          "time": "13:00",
+          "home_team": "Mashujaa FC",
+          "away_team": "Simba SC"
+        },
+        {
+          "date": "2027-05-16",
+          "time": "13:00",
+          "home_team": "Mbeya City",
+          "away_team": "Polisi Tanzania"
+        },
+        {
+          "date": "2027-05-16",
+          "time": "13:00",
+          "home_team": "Namungo FC",
+          "away_team": "Dodoma Jiji"
+        },
+        {
+          "date": "2027-05-16",
+          "time": "13:00",
+          "home_team": "Pamba Jiji FC",
+          "away_team": "Azam FC"
+        },
+        {
+          "date": "2027-05-16",
+          "time": "13:00",
+          "home_team": "Young Africans SC",
+          "away_team": "Singida Black Stars"
+        }
+      ]
+    }
+  ]
+}

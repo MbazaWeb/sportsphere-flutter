@@ -67,5 +67,34 @@ void main() {
     test('role defaults to fan', () {
       expect(profile.role, 'fan');
     });
+
+    test('count fields default to zero', () {
+      expect(profile.postCount, 0);
+      expect(profile.followerCount, 0);
+      expect(profile.followingCount, 0);
+    });
+
+    test('createdAt defaults to null', () {
+      expect(profile.createdAt, null);
+    });
+
+    test('count fields accept non-zero values', () {
+      final p = UserProfile(
+        firstName: 'Jane',
+        lastName: 'Smith',
+        email: 'jane@example.com',
+        handle: 'janesmith',
+        country: 'Kenya',
+        dob: DateTime(1990, 1, 1),
+        postCount: 42,
+        followerCount: 150,
+        followingCount: 80,
+        createdAt: DateTime(2024, 3, 15, 10, 30),
+      );
+      expect(p.postCount, 42);
+      expect(p.followerCount, 150);
+      expect(p.followingCount, 80);
+      expect(p.createdAt, DateTime(2024, 3, 15, 10, 30));
+    });
   });
 }

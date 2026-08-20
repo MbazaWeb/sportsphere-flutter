@@ -20,6 +20,7 @@ class ProfilePost {
   final bool hasImage;
   final int imageCount;
   final bool hasVideo;
+  final String? imageUrl;
 
   const ProfilePost({
     required this.text,
@@ -31,6 +32,7 @@ class ProfilePost {
     this.hasImage = false,
     this.imageCount = 1,
     this.hasVideo = false,
+    this.imageUrl,
   });
 }
 
@@ -105,10 +107,13 @@ class ProfileAvatar extends StatelessWidget {
         ],
       ),
       child: ClipOval(
-        child: asset != null
-            ? Image.asset(asset!, fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _AvatarFallback(accent: accentColor))
-            : _AvatarFallback(accent: accentColor),
+        child: asset == null
+            ? _AvatarFallback(accent: accentColor)
+            : asset!.startsWith('http')
+                ? Image.network(asset!, fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _AvatarFallback(accent: accentColor))
+                : Image.asset(asset!, fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _AvatarFallback(accent: accentColor)),
       ),
     );
   }
@@ -132,26 +137,40 @@ class _AvatarFallback extends StatelessWidget {
 class ProfileStat extends StatelessWidget {
   final String value;
   final String label;
-  const ProfileStat({super.key, required this.value, required this.label});
+  final VoidCallback? onTap;
+  const ProfileStat({
+    super.key,
+    required this.value,
+    required this.label,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(value,
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        children: [
+          Text(
+            value,
             style: const TextStyle(
               color: SportSphereColors.white,
               fontSize: 17,
               fontWeight: FontWeight.w900,
-            )),
-        const SizedBox(height: 1),
-        Text(label,
+            ),
+          ),
+          const SizedBox(height: 1),
+          Text(
+            label,
             style: const TextStyle(
               color: SportSphereColors.muted,
               fontSize: 11,
               fontWeight: FontWeight.w500,
-            )),
-      ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -376,7 +395,24 @@ class _ProfilePostCardState extends State<ProfilePostCard> {
             ),
 
             // Media
-            if (post.hasImage) ...[
+            if (post.imageUrl != null && post.imageUrl!.startsWith('http')) ...[
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  height: 200,
+                  width: double.infinity,
+                  color: const Color(0xFF071421),
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.all(24),
+                  child: Image.network(
+                    post.imageUrl!,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.high,
+                  ),
+                ),
+              ),
+            ] else if (post.hasImage) ...[
               const SizedBox(height: 12),
               PostMedia(
                 imageCount: post.imageCount,

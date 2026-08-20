@@ -98,10 +98,8 @@ class _SplashScreenState extends State<SplashScreen>
       CurvedAnimation(parent: _screenFadeCtrl, curve: Curves.easeIn),
     );
 
-    // Sequence
-    _entranceCtrl.forward().then((_) {
-      _progressCtrl.forward().then((_) => _triggerExit());
-    });
+    _entranceCtrl.forward();
+    _progressCtrl.forward().then((_) => _triggerExit());
   }
 
   void _triggerExit() {
@@ -109,10 +107,8 @@ class _SplashScreenState extends State<SplashScreen>
     setState(() => _exiting = true);
     _spinCtrl.stop();
     _exitCtrl.forward().then((_) {
-      _screenFadeCtrl.forward().then((_) {
-        if (!mounted) return;
-        context.go('/home');
-      });
+      if (!mounted) return;
+      context.go('/home');
     });
   }
 
@@ -186,14 +182,30 @@ class _SplashScreenState extends State<SplashScreen>
 
                 const SizedBox(height: 52),
 
-                // Progress ring + live %
+                // Progress ring + synced journey words
                 AnimatedBuilder(
                   animation: _progress,
                   builder: (context, _) {
                     final pct = (_progress.value * 100).round();
-                    return _ProgressRing(
-                      progress: _progress.value,
-                      label: '$pct%',
+                    return Column(
+                      children: [
+                        _ProgressRing(
+                          progress: _progress.value,
+                          label: '$pct%',
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          pct >= 100 ? 'Ready' : 'Loading',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.55),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _JourneyTicker(progress: _progress.value),
+                      ],
                     );
                   },
                 ),
@@ -355,6 +367,60 @@ class _SplashTitle extends StatelessWidget {
             blurRadius: 18,
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─── Journey ticker (one word fully readable at a time, 100% synced to progress) ─
+
+class _JourneyTicker extends StatelessWidget {
+  static const words = [
+    'Player',
+    'Sport',
+    'Game',
+    'Team',
+    'Community',
+    'Competition',
+    'Content',
+    'Reputation',
+    'Opportunities',
+  ];
+  final double progress;
+  const _JourneyTicker({required this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    final n = words.length;
+    // Hold each word for equal share of the progress timeline so every word is fully seen.
+    final raw = (progress * n).clamp(0.0, n - 0.0001);
+    final index = raw.floor();
+    final local = raw - index; // 0→1 within this word
+    // Fade in first 15%, hold middle, fade out last 15% — word is fully readable in the hold.
+    double opacity;
+    if (local < 0.12) {
+      opacity = local / 0.12;
+    } else if (local > 0.88) {
+      opacity = (1.0 - local) / 0.12;
+    } else {
+      opacity = 1.0;
+    }
+    if (progress >= 0.995) {
+      opacity = 1.0;
+    }
+    final word = words[index.clamp(0, n - 1)];
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 80),
+      opacity: opacity.clamp(0.0, 1.0),
+      child: Text(
+        word,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: Color(0xFFF7FAFF),
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.6,
+        ),
       ),
     );
   }
