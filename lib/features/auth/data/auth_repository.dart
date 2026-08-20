@@ -15,6 +15,14 @@ class AuthRepository {
     await _sb.auth.signOut();
   }
 
+  Future<void> clearLocalSession() async {
+    try {
+      await _sb.auth.signOut(scope: SignOutScope.local);
+    } catch (_) {
+      // Local cleanup must still complete if the remote sign-out is unavailable.
+    }
+  }
+
   Future<UserProfile?> currentProfile() async {
     final user = _sb.auth.currentUser;
     if (user == null) return null;

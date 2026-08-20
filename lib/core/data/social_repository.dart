@@ -1,13 +1,25 @@
 import 'dart:typed_data';
 
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../app/config/env.dart';
+
+/// Social repository for posts, comments, and user interactions
 class SocialRepository {
+  const SocialRepository();
+
   SupabaseClient get _sb => Supabase.instance.client;
 
   String? get _uid => _sb.auth.currentUser?.id;
 
+  // ============================================================
+  // STORAGE
+  // ============================================================
+
+  /// Upload bytes to storage
   Future<String> uploadBytes({
     required String bucket,
     required String path,
@@ -22,19 +34,26 @@ class SocialRepository {
     return _sb.storage.from(bucket).getPublicUrl(path);
   }
 
+  /// Upload a picked file to storage
   Future<String> uploadPickedFile({
     required String bucket,
     required String folder,
     required XFile file,
   }) async {
     final uid = _uid;
-    if (uid == null) throw StateError('Sign in to upload');
+    if (uid == null) throw StateError('Please sign in to upload');
+
     final bytes = await file.readAsBytes();
     final ext = file.name.split('.').last.toLowerCase();
     final name = '${DateTime.now().millisecondsSinceEpoch}.$ext';
     final path = '$folder/$uid/$name';
     final mime = _mimeFor(ext);
-    return uploadBytes(bucket: bucket, path: path, bytes: bytes, contentType: mime);
+    return uploadBytes(
+      bucket: bucket,
+      path: path,
+      bytes: bytes,
+      contentType: mime,
+    );
   }
 
   String _mimeFor(String ext) {
@@ -49,8 +68,6 @@ class SocialRepository {
         return 'video/mp4';
       case 'mov':
         return 'video/quicktime';
-      case 'gif':
-        return 'image/gif';
       case 'pdf':
         return 'application/pdf';
       default:
@@ -58,6 +75,11 @@ class SocialRepository {
     }
   }
 
+  // ============================================================
+  // POSTS
+  // ============================================================
+
+  /// Create a new post
   Future<String> createPost({
     required String content,
     List<String> mediaUrls = const [],
@@ -68,12 +90,22 @@ class SocialRepository {
     bool isBreaking = false,
   }) async {
     final uid = _uid;
-    if (uid == null) throw StateError('Sign in to post');
-    final id = 'post-${DateTime.now().millisecondsSinceEpoch}';
+    if (uid == null) throw StateError('Please sign in to post');
+
+    // Validate input
+    if (content.trim().isEmpty && mediaUrls.isEmpty) {
+      throw StateError('Post must have content or media');
+    }
+
+    // Generate unique ID
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final random = DateTime.now().microsecondsSinceEpoch % 10000;
+    final id = 'post-$timestamp-$random';
+
     await _sb.from('Post').insert({
       'id': id,
       'userId': uid,
-      'content': content,
+      'content': content.trim(),
       'postType': postType,
       'mediaUrls': mediaUrls,
       'hashtags': hashtags,
@@ -86,6 +118,8 @@ class SocialRepository {
       'createdAt': DateTime.now().toIso8601String(),
       'updatedAt': DateTime.now().toIso8601String(),
     });
+
+    // Notify followers (non-blocking)
     try {
       await _sb.rpc('notify_followers', params: {
         'p_author_id': uid,
@@ -93,63 +127,87 @@ class SocialRepository {
         'p_body': content.length > 80 ? '${content.substring(0, 80)}…' : content,
         'p_reference_id': id,
       });
-    } catch (_) {
-      // optional fan-out
+    } catch (e) {
+      debugPrint('Failed to notify followers: $e');
     }
+
     return id;
   }
 
+  /// Toggle like on a post
   Future<void> toggleLike(String postId, {required bool like}) async {
     final uid = _uid;
-    if (uid == null) throw StateError('Sign in to like');
-    if (like) {
-      await _sb.from('PostLike').upsert({
-        'postId': postId,
-        'userId': uid,
-        'createdAt': DateTime.now().toIso8601String(),
-      });
-      try {
-        await _sb.rpc('increment_post_counter', params: {
-          'p_post_id': postId,
-          'p_column': 'likeCount',
-          'p_delta': 1,
+    if (uid == null) throw StateError('Please sign in to like');
+
+    try {
+      if (like) {
+        await _sb.from('PostLike').upsert({
+          'postId': postId,
+          'userId': uid,
+          'createdAt': DateTime.now().toIso8601String(),
         });
-      } catch (_) {
         await _bumpPost(postId, 'likeCount', 1);
-      }
-    } else {
-      await _sb.from('PostLike').delete().eq('postId', postId).eq('userId', uid);
-      try {
-        await _sb.rpc('increment_post_counter', params: {
-          'p_post_id': postId,
-          'p_column': 'likeCount',
-          'p_delta': -1,
-        });
-      } catch (_) {
+      } else {
+        await _sb
+            .from('PostLike')
+            .delete()
+            .eq('postId', postId)
+            .eq('userId', uid);
         await _bumpPost(postId, 'likeCount', -1);
       }
+    } catch (e) {
+      debugPrint('Failed to toggle like: $e');
+      rethrow;
     }
   }
 
+  /// Increment/decrement a post counter
   Future<void> _bumpPost(String postId, String col, int delta) async {
     try {
-      final row = await _sb.from('Post').select(col).eq('id', postId).maybeSingle();
-      final current = (row?[col] as int?) ?? 0;
-      final next = (current + delta).clamp(0, 1 << 30);
-      await _sb.from('Post').update({col: next}).eq('id', postId);
-    } catch (_) {}
+      // Use RPC first, fallback to direct update
+      try {
+        await _sb.rpc('increment_post_counter', params: {
+          'p_post_id': postId,
+          'p_column': col,
+          'p_delta': delta,
+        });
+      } catch (_) {
+        // Fallback: read and update
+        final row = await _sb
+            .from('Post')
+            .select(col)
+            .eq('id', postId)
+            .maybeSingle();
+        final current = (row?[col] as int?) ?? 0;
+        final next = (current + delta).clamp(0, 1 << 30);
+        await _sb.from('Post').update({col: next}).eq('id', postId);
+      }
+    } catch (e) {
+      debugPrint('Failed to update post count: $e');
+    }
   }
 
+  // ============================================================
+  // COMMENTS
+  // ============================================================
+
+  /// Get comments for a post
   Future<List<Map<String, dynamic>>> listComments(String postId) async {
-    final rows = await _sb
-        .from('Comment')
-        .select()
-        .eq('postId', postId)
-        .order('createdAt', ascending: true)
-        .limit(100);
-    return List<Map<String, dynamic>>.from(rows as List);
+    try {
+      final rows = await _sb
+          .from('Comment')
+          .select()
+          .eq('postId', postId)
+          .order('createdAt', ascending: true)
+          .limit(100);
+      return List<Map<String, dynamic>>.from(rows as List);
+    } catch (e) {
+      debugPrint('Failed to list comments: $e');
+      return [];
+    }
   }
 
+  /// Add a comment to a post
   Future<void> addComment(
     String postId,
     String content, {
@@ -157,11 +215,16 @@ class SocialRepository {
     String? mediaType,
   }) async {
     final uid = _uid;
-    if (uid == null) throw StateError('Sign in to comment');
+    if (uid == null) throw StateError('Please sign in to comment');
+
     if (content.trim().isEmpty && mediaUrls.isEmpty) {
-      throw StateError('Write something or attach a file');
+      throw StateError('Comment must have content or media');
     }
-    final id = 'cmt-${DateTime.now().millisecondsSinceEpoch}';
+
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final random = DateTime.now().microsecondsSinceEpoch % 10000;
+    final id = 'cmt-$timestamp-$random';
+
     await _sb.from('Comment').insert({
       'id': id,
       'postId': postId,
@@ -172,85 +235,197 @@ class SocialRepository {
       'likeCount': 0,
       'createdAt': DateTime.now().toIso8601String(),
     });
+
     await _bumpPost(postId, 'commentCount', 1);
   }
 
+  // ============================================================
+  // FANS & TEAMS
+  // ============================================================
+
+  /// Get fan team names for a user
   Future<List<String>> fanTeamNames(String userId) async {
-    final fanRows = await _sb.from('fans').select('target_id').eq('fan_id', userId);
-    final ids = [
-      for (final r in fanRows as List) (r as Map)['target_id']?.toString()
-    ].whereType<String>().toList();
-    if (ids.isEmpty) return [];
-    final teams = await _sb
-        .from('Team')
-        .select('name,accountUserId')
-        .inFilter('accountUserId', ids);
-    return [
-      for (final t in teams as List)
-        '${(t as Map)['name']}'.replaceAll(RegExp(r'\s+SC$|\s+FC$'), '').trim() + ' Fan'
-    ];
+    try {
+      final fanRows = await _sb
+          .from('fans')
+          .select('target_id')
+          .eq('fan_id', userId);
+      final ids = [
+        for (final r in fanRows as List)
+          (r as Map)['target_id']?.toString()
+      ].whereType<String>().toList();
+
+      if (ids.isEmpty) return [];
+
+      final teams = await _sb
+          .from('Team')
+          .select('name,accountUserId')
+          .inFilter('accountUserId', ids);
+
+      return [
+        for (final t in teams as List)
+          '${(t as Map)['name']}'
+              .replaceAll(RegExp(r'\s+SC$|\s+FC$'), '')
+              .trim()
+      ];
+    } catch (e) {
+      debugPrint('Failed to get fan team names: $e');
+      return [];
+    }
   }
 
+  // ============================================================
+  // SPORTS
+  // ============================================================
+
+  /// List all active sports
   Future<List<Map<String, dynamic>>> listSports() async {
-    final rows = await _sb.from('Sport').select('id,name,slug').eq('isActive', true).order('name');
-    return List<Map<String, dynamic>>.from(rows as List);
+    try {
+      final rows = await _sb
+          .from('Sport')
+          .select('id,name,slug')
+          .eq('isActive', true)
+          .order('name');
+      return List<Map<String, dynamic>>.from(rows as List);
+    } catch (e) {
+      debugPrint('Failed to list sports: $e');
+      return [];
+    }
   }
 
+  /// Get the current user's sport slugs
   Future<List<String>> mySportSlugs() async {
-    final uid = _uid;
-    if (uid == null) return [];
-    final rows = await _sb.from('UserSport').select('sportId').eq('userId', uid);
-    final ids = [for (final r in rows as List) (r as Map)['sportId']?.toString()].whereType<String>().toList();
-    if (ids.isEmpty) return [];
-    final sports = await _sb.from('Sport').select('slug').inFilter('id', ids);
-    return [for (final s in sports as List) (s as Map)['slug'] as String];
+    try {
+      final uid = _uid;
+      if (uid == null) return [];
+
+      final rows = await _sb
+          .from('UserSport')
+          .select('sportId')
+          .eq('userId', uid);
+      final ids = [
+        for (final r in rows as List)
+          (r as Map)['sportId']?.toString()
+      ].whereType<String>().toList();
+
+      if (ids.isEmpty) return [];
+
+      final sports = await _sb
+          .from('Sport')
+          .select('slug')
+          .inFilter('id', ids);
+      return [
+        for (final s in sports as List)
+          (s as Map)['slug'] as String
+      ];
+    } catch (e) {
+      debugPrint('Failed to get sport slugs: $e');
+      return [];
+    }
   }
 
+  /// Set the current user's sports
   Future<void> setMySports(List<String> slugs, {String? primary}) async {
     final uid = _uid;
-    if (uid == null) throw StateError('Sign in');
-    final sports = await _sb.from('Sport').select('id,slug').inFilter('slug', slugs);
-    await _sb.from('UserSport').delete().eq('userId', uid);
-    for (final s in sports as List) {
-      final slug = (s as Map)['slug'] as String;
-      await _sb.from('UserSport').insert({
-        'id': 'us-$uid-$slug',
-        'userId': uid,
-        'sportId': s['id'],
-        'is_primary': slug == (primary ?? slugs.first),
-        'weight': slug == (primary ?? slugs.first) ? 3 : 1,
-      });
+    if (uid == null) throw StateError('Please sign in');
+
+    if (slugs.isEmpty) {
+      throw StateError('At least one sport is required');
+    }
+
+    try {
+      final sports = await _sb
+          .from('Sport')
+          .select('id,slug')
+          .inFilter('slug', slugs);
+
+      // Delete existing
+      await _sb.from('UserSport').delete().eq('userId', uid);
+
+      // Insert new
+      for (final s in sports as List) {
+        final slug = (s as Map)['slug'] as String;
+        final isPrimary = slug == (primary ?? slugs.first);
+        await _sb.from('UserSport').insert({
+          'id': 'us-$uid-${DateTime.now().millisecondsSinceEpoch}',
+          'userId': uid,
+          'sportId': s['id'],
+          'is_primary': isPrimary,
+          'weight': isPrimary ? 3 : 1,
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to set sports: $e');
+      rethrow;
     }
   }
 
+  // ============================================================
+  // FEED
+  // ============================================================
+
+  /// Get the user's feed
   Future<List<Map<String, dynamic>>> feedForUser() async {
     final uid = _uid;
-    if (uid == null) {
-      final rows = await _sb.from('Post').select().order('createdAt', ascending: false).limit(40);
-      return List<Map<String, dynamic>>.from(rows as List);
-    }
+
     try {
-      final rows = await _sb.rpc('feed_for_user', params: {'p_user_id': uid, 'p_limit': 40});
-      return List<Map<String, dynamic>>.from(rows as List);
-    } catch (_) {
-      final rows = await _sb.from('Post').select().order('createdAt', ascending: false).limit(40);
-      return List<Map<String, dynamic>>.from(rows as List);
+      if (uid == null) {
+        // Public feed for unauthenticated users
+        final rows = await _sb
+            .from('Post')
+            .select()
+            .order('createdAt', ascending: false)
+            .limit(40);
+        return List<Map<String, dynamic>>.from(rows as List);
+      }
+
+      // Personalized feed using RPC
+      try {
+        final rows = await _sb.rpc(
+          'feed_for_user',
+          params: {'p_user_id': uid, 'p_limit': 40},
+        );
+        return List<Map<String, dynamic>>.from(rows as List);
+      } catch (_) {
+        // Fallback to public feed
+        final rows = await _sb
+            .from('Post')
+            .select()
+            .order('createdAt', ascending: false)
+            .limit(40);
+        return List<Map<String, dynamic>>.from(rows as List);
+      }
+    } catch (e) {
+      debugPrint('Failed to get feed: $e');
+      return [];
     }
   }
 
+  // ============================================================
+  // PROFILE
+  // ============================================================
+
+  /// Update user media URLs
   Future<void> updateMediaUrls({
     String? avatarUrl,
     String? coverUrl,
     String? themeColor,
   }) async {
     final uid = _uid;
-    if (uid == null) throw StateError('Sign in');
+    if (uid == null) throw StateError('Please sign in');
+
     final patch = <String, dynamic>{
       'updated_at': DateTime.now().toIso8601String(),
     };
     if (avatarUrl != null) patch['avatar_url'] = avatarUrl;
     if (coverUrl != null) patch['cover_url'] = coverUrl;
     if (themeColor != null) patch['theme_color'] = themeColor;
-    await _sb.from('profiles').update(patch).eq('id', uid);
+
+    try {
+      await _sb.from('profiles').update(patch).eq('id', uid);
+    } catch (e) {
+      debugPrint('Failed to update media URLs: $e');
+      rethrow;
+    }
   }
 }

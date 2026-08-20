@@ -24,8 +24,18 @@ class AuthController extends Notifier<AuthState> {
   // ── Hydrate from stored token on app start ─────────────────────────────────
   Future<void> _hydrate() async {
     final repo = ref.read(authRepositoryProvider);
-    final token = await repo.currentToken();
-    final user = token == null ? null : await repo.currentProfile();
+    String? token;
+    UserProfile? user;
+    try {
+      token = await repo.currentToken();
+      user = token == null ? null : await repo.currentProfile();
+    } catch (_) {
+      // A stale browser session can leave an expired bearer token behind.
+      // Clear it locally so startup does not keep retrying unauthorized calls.
+      await repo.clearLocalSession();
+      token = null;
+      user = null;
+    }
     state = AuthState(
       status: token == null ? AuthStatus.guest : AuthStatus.authenticated,
       token: token,

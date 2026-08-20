@@ -272,7 +272,7 @@ final mockSimbaSC = TeamProfileModel(
 // ── Mock team posts ────────────────────────────────────────────────────────────
 
 final _teamPosts = <ProfilePost>[
-  const ProfilePost(
+  ProfilePost(
     text: 'Welcome Simba SC.\n\nThe official Simba SC page is live on SportSphere. Follow the club and become a fan.',
     hashtags: ['#LigiKuuBara', '#SportSphere', '#SimbaSC'],
     timeAgo: 'now',
@@ -282,7 +282,7 @@ final _teamPosts = <ProfilePost>[
     hasImage: true,
     imageUrl: NbcClubBadges.simba,
   ),
-  const ProfilePost(
+  ProfilePost(
     text: 'Big match tonight! Ready for the challenge. 🦁🔴\nSimba family — make some noise!',
     hashtags: ['#SimbaSC', '#NguVuMoja'],
     timeAgo: '2h',
@@ -292,7 +292,7 @@ final _teamPosts = <ProfilePost>[
     hasImage: true,
     imageCount: 2,
   ),
-  const ProfilePost(
+  ProfilePost(
     text: 'Training complete. The squad is focused and ready for Sunday. 💪',
     hashtags: ['#Simba', '#TrainingDay'],
     timeAgo: '1d',
@@ -302,7 +302,7 @@ final _teamPosts = <ProfilePost>[
     hasImage: true,
     imageCount: 1,
   ),
-  const ProfilePost(
+  ProfilePost(
     text: 'FULL TIME! Three points secured. Magnificent performance from the whole squad! 🏆',
     hashtags: ['#SimbaSC', '#WekunduWaMsimbazi'],
     timeAgo: '3d',
@@ -313,7 +313,7 @@ final _teamPosts = <ProfilePost>[
     imageCount: 1,
     hasVideo: true,
   ),
-  const ProfilePost(
+  ProfilePost(
     text: 'Congratulations to our fans — you are the 12th player. Asante sana! ❤️',
     hashtags: ['#SimbaNation'],
     timeAgo: '5d',

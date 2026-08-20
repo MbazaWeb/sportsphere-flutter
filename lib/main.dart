@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'app/app.dart';
+import 'app/app.dart' show SportSphereApp;
 import 'app/config/env.dart';
 
 Future<void> main() async {

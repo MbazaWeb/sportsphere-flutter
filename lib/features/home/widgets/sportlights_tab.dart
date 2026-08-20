@@ -175,7 +175,7 @@ class _SpotlightItem {
 // ============================================================
 
 
-const _welcomeFeed = <_SpotlightItem>[
+final _welcomeFeed = <_SpotlightItem>[
   _SpotlightItem(type: _SpotlightType.team, author: 'Simba SC', handle: 'simba_sc', role: 'Team', age: 'Just now', asset: NbcClubBadges.simba, likes: 0, comments: 0, shares: 0, accent: Color(0xFFE31B23)),
   _SpotlightItem(type: _SpotlightType.team, author: 'Young Africans', handle: 'yanga_sc', role: 'Team', age: 'Just now', asset: NbcClubBadges.yanga, likes: 0, comments: 0, shares: 0, accent: Color(0xFFFFC400)),
   _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.azam, likes: 0, comments: 0, shares: 0, accent: Color(0xFF00A8FF)),

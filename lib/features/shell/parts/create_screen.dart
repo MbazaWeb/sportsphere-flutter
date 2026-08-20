@@ -130,7 +130,7 @@ class _CreateComposerState extends State<_CreateComposer>
   @override
   void initState() {
     super.initState();
-    _loadRoleGates();
+    // _loadRoleGates(); // Removed - not needed
     _submitCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),

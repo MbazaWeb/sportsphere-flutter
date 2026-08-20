@@ -149,6 +149,7 @@ class PlayerProfileModel {
   final String? entityId;
 
   String get displayName => '$firstName $lastName';
+  String get name => fullName;
   String get atHandle => '@$handle';
   int get age {
     final now = DateTime.now();
@@ -714,7 +715,6 @@ class _PlayerHeader extends StatelessWidget {
                                   color: isFan ? accent : Colors.white,
                                   fontSize: 14,
                                   fontWeight: FontWeight.w800,
-                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ],
