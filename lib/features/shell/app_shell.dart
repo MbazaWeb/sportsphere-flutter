@@ -19,6 +19,7 @@ import '../home/widgets/sportlights_tab.dart';
 import '../scores/presentation/pages/scores_page.dart';
 import '../shop/models/shop_models.dart';
 import '../shop/presentation/shop_tab.dart';
+import 'media/media_tools.dart';
 
 part 'parts/home_screen.dart';
 part 'parts/search_fullscreen.dart';

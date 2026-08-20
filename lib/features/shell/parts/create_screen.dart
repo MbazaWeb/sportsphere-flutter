@@ -181,12 +181,10 @@ class _CreateComposerState extends State<_CreateComposer>
 
   Future<void> _addMockMedia() async {
     if (_mediaFiles.length >= 4) return;
-    final picker = ImagePicker();
-    final files = await picker.pickMultiImage();
+    final files = await pickAndEditMedia(context, remaining: 4 - _mediaFiles.length);
     if (files.isEmpty) return;
-    final selected = files.take(4 - _mediaFiles.length).toList();
     setState(() {
-      _mediaFiles.addAll(selected);
+      _mediaFiles.addAll(files);
       _mediaTiles
         ..clear()
         ..addAll(_mediaFiles.map((f) => f.name));
