@@ -5,9 +5,11 @@ class SportSphereColors {
   static const surface = Color(0xFF061525);
   static const surface2 = Color(0xFF091C30);
 
-  static const electricBlue = Color(0xFF009DFF);
-  static const brightBlue = Color(0xFF22B8FF);
-  static const lineBlue = Color(0xFF0A5F9E);
+  /// Brand gold — aligned with SportSphere web.
+  static const gold = Color(0xFFF5C518);
+  static const electricBlue = gold; // alias kept so existing call-sites stay valid
+  static const brightBlue = Color(0xFFFFD54F);
+  static const lineBlue = Color(0xFF8A7420);
 
   static const sportOrange = Color(0xFFFF8A00);
   static const sportGreen = Color(0xFF76D42B);

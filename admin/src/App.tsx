@@ -11,6 +11,7 @@ import { EntitiesPage } from './pages/EntitiesPage'
 import { SyncPage } from './pages/SyncPage'
 import { ModerationPage } from './pages/ModerationPage'
 import { MatchesPage } from './pages/MatchesPage'
+import AiAssistantPage from './pages/AiAssistantPage'
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="/users" element={<UsersPage />} />
         <Route path="/sportsphere" element={<SportSpherePage />} />
         <Route path="/entities" element={<EntitiesPage />} />
+        <Route path="/ai" element={<AiAssistantPage />} />
         <Route path="/sync" element={<SyncPage />} />
         <Route path="/moderation" element={<ModerationPage />} />
         <Route path="/matches" element={<MatchesPage />} />

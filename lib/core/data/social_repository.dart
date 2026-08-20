@@ -87,14 +87,6 @@ class SocialRepository {
       'updatedAt': DateTime.now().toIso8601String(),
     });
     try {
-      await _sb.from('posts').insert({
-        'author_id': uid,
-        'body': content,
-        'kind': postType,
-        'media_url': mediaUrls.isEmpty ? null : mediaUrls.first,
-      });
-    } catch (_) {}
-    try {
       await _sb.rpc('notify_followers', params: {
         'p_author_id': uid,
         'p_title': 'New post',
@@ -116,11 +108,26 @@ class SocialRepository {
         'userId': uid,
         'createdAt': DateTime.now().toIso8601String(),
       });
-      await _sb.rpc('noop').catchError((_) => null);
-      await _bumpPost(postId, 'likeCount', 1);
+      try {
+        await _sb.rpc('increment_post_counter', params: {
+          'p_post_id': postId,
+          'p_column': 'likeCount',
+          'p_delta': 1,
+        });
+      } catch (_) {
+        await _bumpPost(postId, 'likeCount', 1);
+      }
     } else {
       await _sb.from('PostLike').delete().eq('postId', postId).eq('userId', uid);
-      await _bumpPost(postId, 'likeCount', -1);
+      try {
+        await _sb.rpc('increment_post_counter', params: {
+          'p_post_id': postId,
+          'p_column': 'likeCount',
+          'p_delta': -1,
+        });
+      } catch (_) {
+        await _bumpPost(postId, 'likeCount', -1);
+      }
     }
   }
 

@@ -8,6 +8,7 @@ const links = [
   { to: '/sportsphere', label: 'SportSphere' },
   { to: '/entities', label: 'League · Team · Player' },
   { to: '/matches', label: 'Match Updates' },
+  { to: '/ai', label: 'AI Assistant' },
   { to: '/moderation', label: 'Posts & News' },
   { to: '/sync', label: 'Data Sync & APIs' },
 ]
