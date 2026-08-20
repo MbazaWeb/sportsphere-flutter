@@ -173,29 +173,6 @@ class _SpotlightItem {
 }
 
 // ============================================================
-// MOCK FEED DATA
-// ============================================================
-
-
-final _welcomeFeed = <_SpotlightItem>[
-  _SpotlightItem(type: _SpotlightType.team, author: 'Simba SC', handle: 'simba_sc', role: 'Team', age: 'Just now', asset: NbcClubBadges.simba, likes: 0, comments: 0, shares: 0, accent: Color(0xFFE31B23)),
-  _SpotlightItem(type: _SpotlightType.team, author: 'Young Africans', handle: 'yanga_sc', role: 'Team', age: 'Just now', asset: NbcClubBadges.yanga, likes: 0, comments: 0, shares: 0, accent: Color(0xFFFFC400)),
-  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.azam, likes: 0, comments: 0, shares: 0, accent: Color(0xFF00A8FF)),
-  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.singidaBlackStars, likes: 0, comments: 0, shares: 0, accent: Color(0xFF168CFF)),
-  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.mbeyaCity, likes: 0, comments: 0, shares: 0, accent: Color(0xFF4D8F24)),
-  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.geitaGold, likes: 0, comments: 0, shares: 0, accent: Color(0xFFFFB900)),
-  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.mashujaa, likes: 0, comments: 0, shares: 0, accent: Color(0xFFE31B23)),
-  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.namungo, likes: 0, comments: 0, shares: 0, accent: Color(0xFF168CFF)),
-  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.fountainGate, likes: 0, comments: 0, shares: 0, accent: Color(0xFF00A8FF)),
-  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.polisi, likes: 0, comments: 0, shares: 0, accent: Color(0xFF4D8F24)),
-  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.jkt, likes: 0, comments: 0, shares: 0, accent: Color(0xFFE31B23)),
-  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.traUnited, likes: 0, comments: 0, shares: 0, accent: Color(0xFF168CFF)),
-  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.pamba, likes: 0, comments: 0, shares: 0, accent: Color(0xFF00A8FF)),
-  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.kageraSugar, likes: 0, comments: 0, shares: 0, accent: Color(0xFF4D8F24)),
-  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.dodomaJiji, likes: 0, comments: 0, shares: 0, accent: Color(0xFFFFB900)),
-  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.coastalUnion, likes: 0, comments: 0, shares: 0, accent: Color(0xFFE31B23)),
-];
-
 final _feedItems = <_SpotlightItem>[];
 
 // ============================================================

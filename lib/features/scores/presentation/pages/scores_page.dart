@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -25,10 +26,26 @@ class _ScoresPageState extends ConsumerState<ScoresPage>
   late TabController _mainTabController;
   late TabController _matchesTabController;
   bool _isAdmin = false;
+  RealtimeChannel? _matchChannel;
 
   @override
   void initState() {
     super.initState();
+    _matchChannel = Supabase.instance.client
+        .channel('scores-match-live')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'Match',
+          callback: (_) {
+            if (!mounted) return;
+            ref.invalidate(liveMatchesProvider);
+            ref.invalidate(todayMatchesProvider);
+            ref.invalidate(upcomingMatchesProvider);
+            ref.invalidate(resultsProvider);
+          },
+        )
+        .subscribe();
     _mainTabController = TabController(length: 2, vsync: this);
     _matchesTabController = TabController(length: 4, vsync: this);
     AppAdmin.resolveIsAdmin().then((v) {
@@ -38,6 +55,7 @@ class _ScoresPageState extends ConsumerState<ScoresPage>
 
   @override
   void dispose() {
+    _matchChannel?.unsubscribe();
     _mainTabController.dispose();
     _matchesTabController.dispose();
     super.dispose();

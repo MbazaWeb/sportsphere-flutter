@@ -271,7 +271,7 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
         ),
         const SizedBox(height: 8),
         const Center(
-          child: Text('Mock checkout — no real charge',
+          child: Text('Demo payment recorded (no M-Pesa charge yet)',
               style: TextStyle(color: SportSphereColors.muted, fontSize: 11)),
         ),
       ],

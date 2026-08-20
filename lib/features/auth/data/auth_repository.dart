@@ -38,6 +38,34 @@ class AuthRepository {
     }
   }
 
+  /// Ensures public."User" exists for social graphs (idempotent).
+  Future<void> ensureUserRow() async {
+    final u = _sb.auth.currentUser;
+    if (u == null) return;
+    final existing = await _sb.from('User').select('id').eq('id', u.id).maybeSingle();
+    if (existing != null) return;
+    final p = await _profileById(u.id);
+    final handle = (p?.handle.isNotEmpty == true)
+        ? p!.handle
+        : (u.userMetadata?['handle'] as String?) ?? u.id.substring(0, 8);
+    final name = p != null
+        ? '${p.firstName} ${p.lastName}'.trim()
+        : (u.userMetadata?['first_name'] as String?) ?? handle;
+    try {
+      await _sb.from('User').upsert({
+        'id': u.id,
+        'name': name.isEmpty ? handle : name,
+        'email': (u.email ?? p?.email ?? '${u.id}@users.local').toLowerCase(),
+        'handle': handle.replaceAll('@', '').toLowerCase(),
+        'role': p?.role ?? 'fan',
+        'bio': p?.bio ?? '',
+        'avatarUrl': p?.avatarUrl,
+        'coverUrl': p?.coverUrl,
+        'updatedAt': DateTime.now().toIso8601String(),
+      });
+    } catch (_) {}
+  }
+
   Future<void> login({
     required String identifier,
     required String password,
@@ -47,6 +75,7 @@ class AuthRepository {
       email: email,
       password: password,
     );
+    await ensureUserRow();
     if (res.session == null) {
       throw StateError('Login failed');
     }
@@ -94,6 +123,30 @@ class AuthRepository {
       'dob': dobIso,
       'bio': '',
     });
+    // Dual-write public."User" so social FKs (Follow/Post/fans) work for new accounts.
+    final display = (firstName.trim() + ' ' + lastName.trim()).trim();
+    final initials = (
+      (firstName.isNotEmpty ? firstName[0] : '') +
+      (lastName.isNotEmpty ? lastName[0] : '')
+    ).toUpperCase();
+    try {
+      await _sb.from('User').upsert({
+        'id': user.id,
+        'name': display.isEmpty ? cleanHandle : display,
+        'email': email.trim().toLowerCase(),
+        'handle': cleanHandle,
+        'role': 'fan',
+        'bio': '',
+        'currentCountry': country,
+        'countryOfOrigin': country,
+        'dateOfBirth': dobIso,
+        'avatarInitials': initials.isEmpty ? 'SS' : initials,
+        'createdAt': DateTime.now().toIso8601String(),
+        'updatedAt': DateTime.now().toIso8601String(),
+      });
+    } catch (_) {
+      // Session may be null before email confirm — retry on first login.
+    }
     if (res.session == null) {
       throw StateError('Confirm your email, then log in.');
     }
@@ -132,6 +185,21 @@ class AuthRepository {
     if (coverUrl != null) patch['cover_url'] = coverUrl;
     if (themeColor != null) patch['theme_color'] = themeColor;
     await _sb.from('profiles').update(patch).eq('id', user.id);
+    try {
+      final displayName = ('${firstName.trim()} ${lastName.trim()}').trim();
+      await _sb.from('User').update({
+        'name': displayName.isEmpty ? cleanHandle : displayName,
+        'handle': cleanHandle,
+        'bio': bio.trim(),
+        if (avatarUrl != null) 'avatarUrl': avatarUrl,
+        if (coverUrl != null) 'coverUrl': coverUrl,
+        'currentCountry': country,
+        'dateOfBirth': dob.toIso8601String().split('T').first,
+        'updatedAt': DateTime.now().toIso8601String(),
+      }).eq('id', user.id);
+    } catch (_) {
+      await ensureUserRow();
+    }
     final profile = await _profileById(user.id);
     if (profile == null) {
       throw StateError('Profile missing after update');
