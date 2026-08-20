@@ -96,6 +96,7 @@ class _SpotlightItem {
   final String author;
   final String role;
   final String handle;
+  final String? targetUserId;
   final String age;
   final String? asset;
   final int likes;
@@ -108,6 +109,7 @@ class _SpotlightItem {
     required this.author,
     required this.role,
     this.handle = 'sportsphere',
+    this.targetUserId,
     required this.age,
     this.asset,
     required this.likes,
@@ -256,15 +258,30 @@ class _SportlightsTabState extends State<SportlightsTab> {
         }
         final postType = (r['postType'] as String?) ?? '';
         final teamTag = r['teamTag']?.toString();
+        String? targetUserId;
         if (postType == 'welcome' || (teamTag != null && teamTag.isNotEmpty)) {
           type = _SpotlightType.team;
           roleLabel = 'Team';
           handle = _handleFromTeamTag(teamTag);
+          try {
+            final team = await Supabase.instance.client
+                .from('Team')
+                .select('id,name,logoUrl,accountUserId')
+                .eq('id', teamTag ?? '')
+                .maybeSingle();
+            if (team != null) {
+              author = (team['name'] as String?) ?? author;
+              handle = _handleFromTeamTag(team['id'] as String?);
+              asset = (team['logoUrl'] as String?) ?? asset;
+              targetUserId = team['accountUserId']?.toString();
+            }
+          } catch (_) {}
         }
         items.add(_SpotlightItem(
           type: type,
           author: author,
           handle: handle,
+          targetUserId: targetUserId,
           role: roleLabel,
           age: 'Live',
           asset: asset,
@@ -384,19 +401,28 @@ class _AuthorHeader extends StatelessWidget {
             border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
           ),
           clipBehavior: Clip.antiAlias,
-          child: Image.asset(
-            'assets/images/sport_sphere_icon.png',
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
-              color: const Color(0xFF102033),
-              alignment: Alignment.center,
-              child: const Icon(
-                Icons.person_outline_rounded,
-                color: Colors.white70,
-                size: 24,
-              ),
-            ),
-          ),
+          child: (item.asset != null && item.asset!.startsWith('http'))
+              ? Image.network(
+                  item.asset!,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Image.asset(
+                    'assets/images/sport_sphere_icon.png',
+                    fit: BoxFit.cover,
+                  ),
+                )
+              : Image.asset(
+                  'assets/images/sport_sphere_icon.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: const Color(0xFF102033),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.person_outline_rounded,
+                      color: Colors.white70,
+                      size: 24,
+                    ),
+                  ),
+                ),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -430,7 +456,9 @@ class _AuthorHeader extends StatelessWidget {
               ),
               const SizedBox(height: 3),
               Text(
-                '·  ${item.age}',
+                item.type == _SpotlightType.team
+                    ? '@${item.handle} · Become a fan of this team'
+                    : '·  ${item.age}',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.48),
                   fontSize: 12,
@@ -1086,6 +1114,47 @@ class _ActionRow extends StatefulWidget {
 }
 
 class _ActionRowState extends State<_ActionRow> {
+  Future<void> _toggleFollow(bool next) async {
+    setState(() => _following = next);
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    final target = widget.item.targetUserId;
+    if (uid == null || target == null) return;
+    try {
+      if (next) {
+        await Supabase.instance.client.from('Follow').upsert({
+          'followerId': uid,
+          'followingId': target,
+        });
+      } else {
+        await Supabase.instance.client
+            .from('Follow')
+            .delete()
+            .eq('followerId', uid)
+            .eq('followingId', target);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _toggleFan(bool next) async {
+    setState(() => _isFan = next);
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    final target = widget.item.targetUserId;
+    if (uid == null || target == null) return;
+    try {
+      if (next) {
+        await Supabase.instance.client.from('fans').upsert({
+          'fan_id': uid,
+          'target_id': target,
+        });
+      } else {
+        await Supabase.instance.client
+            .from('fans')
+            .delete()
+            .eq('fan_id', uid)
+            .eq('target_id', target);
+      }
+    } catch (_) {}
+  }
   bool _following = false;
   bool _isFan = false;
   bool _joinedCommunity = false;
@@ -1147,14 +1216,14 @@ class _ActionRowState extends State<_ActionRow> {
                 icon: Icons.check_rounded,
                 color: accent,
                 outlined: true,
-                onTap: () => setState(() => _following = false),
+                onTap: () => _toggleFollow(false),
               )
             : _Btn(
                 label: 'Follow',
                 icon: Icons.person_add_alt_1_rounded,
                 color: accent,
                 outlined: true,
-                onTap: () => setState(() => _following = true),
+                onTap: () => _toggleFollow(true),
               ),
       );
     }
@@ -1227,13 +1296,13 @@ class _ActionRowState extends State<_ActionRow> {
                 label: 'Fan ✓',
                 icon: Icons.favorite_rounded,
                 color: accent,
-                onTap: () => setState(() => _isFan = false),
+                onTap: () => _toggleFan(false),
               )
             : _Btn(
                 label: 'Become Fan',
                 icon: Icons.favorite_border_rounded,
                 color: accent,
-                onTap: () => setState(() => _isFan = true),
+                onTap: () => _toggleFan(true),
               ),
         secondary: _following
             ? _Btn(
@@ -1241,14 +1310,14 @@ class _ActionRowState extends State<_ActionRow> {
                 icon: Icons.check_rounded,
                 color: accent,
                 outlined: true,
-                onTap: () => setState(() => _following = false),
+                onTap: () => _toggleFollow(false),
               )
             : _Btn(
                 label: 'Follow',
                 icon: Icons.person_add_alt_1_rounded,
                 color: accent,
                 outlined: true,
-                onTap: () => setState(() => _following = true),
+                onTap: () => _toggleFollow(true),
               ),
       );
     }
@@ -1262,13 +1331,13 @@ class _ActionRowState extends State<_ActionRow> {
                 icon: Icons.check_rounded,
                 color: accent,
                 outlined: true,
-                onTap: () => setState(() => _following = false),
+                onTap: () => _toggleFollow(false),
               )
             : _Btn(
                 label: 'Follow',
                 icon: Icons.person_add_alt_1_rounded,
                 color: accent,
-                onTap: () => setState(() => _following = true),
+                onTap: () => _toggleFollow(true),
               ),
       );
     }
