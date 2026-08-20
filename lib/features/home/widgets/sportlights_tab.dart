@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/data/nbc_club_badges.dart';
 
@@ -94,6 +95,7 @@ class _SpotlightItem {
   final _SpotlightType type;
   final String author;
   final String role;
+  final String handle;
   final String age;
   final String? asset;
   final int likes;
@@ -105,6 +107,7 @@ class _SpotlightItem {
     required this.type,
     required this.author,
     required this.role,
+    this.handle = 'sportsphere',
     required this.age,
     this.asset,
     required this.likes,
@@ -112,6 +115,48 @@ class _SpotlightItem {
     required this.shares,
     required this.accent,
   });
+
+  String get profilePath {
+    final h = handle.replaceAll('@', '');
+    switch (type) {
+      case _SpotlightType.team:
+        return '/team/$h';
+      case _SpotlightType.player:
+        return '/player/$h';
+      case _SpotlightType.coach:
+        return '/coach/$h';
+      case _SpotlightType.scout:
+        return '/scout/$h';
+      case _SpotlightType.agent:
+        return '/agent/$h';
+      case _SpotlightType.journalist:
+        return '/journalist/$h';
+      case _SpotlightType.analyst:
+        return '/analyst/$h';
+      case _SpotlightType.commentator:
+        return '/commentator/$h';
+      case _SpotlightType.creator:
+        return '/creator/$h';
+      case _SpotlightType.moderator:
+        return '/moderator/$h';
+      case _SpotlightType.official:
+        return '/official/$h';
+      case _SpotlightType.organization:
+        return '/organization/$h';
+      case _SpotlightType.league:
+        return '/league/$h';
+      case _SpotlightType.community:
+        return '/community/$h';
+      case _SpotlightType.business:
+        return '/business/$h';
+      case _SpotlightType.sponsor:
+        return '/sponsor/$h';
+      case _SpotlightType.fan:
+        return '/profile/$h';
+      default:
+        return '/role/${role.toLowerCase()}/$h';
+    }
+  }
 }
 
 // ============================================================
@@ -138,129 +183,7 @@ const _welcomeFeed = <_SpotlightItem>[
   _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.coastalUnion, likes: 0, comments: 0, shares: 0, accent: Color(0xFFE31B23)),
 ];
 
-final _feedItems = <_SpotlightItem>[
-  ..._welcomeFeed,
-  _SpotlightItem(
-    type: _SpotlightType.team,
-    author: 'Young Africans SC',
-    role: 'Team',
-    age: '4d ago',
-    likes: 0,
-    comments: 56,
-    shares: 78,
-    accent: Color(0xFFFFC400),
-  ),
-  _SpotlightItem(
-    type: _SpotlightType.match,
-    author: 'Tanzania Football Federation',
-    role: 'Official',
-    age: '4d ago',
-    likes: 34,
-    comments: 12,
-    shares: 8,
-    accent: Color(0xFFFFC400),
-  ),
-  _SpotlightItem(
-    type: _SpotlightType.business,
-    author: 'AzamSport',
-    role: 'Business',
-    age: '4d ago',
-    likes: 128,
-    comments: 32,
-    shares: 16,
-    accent: Color(0xFFFFB900),
-  ),
-  _SpotlightItem(
-    type: _SpotlightType.player,
-    author: 'Clatous Chama',
-    role: 'Player',
-    age: '4d ago',
-    likes: 0,
-    comments: 72,
-    shares: 93,
-    accent: Color(0xFFE31B23),
-  ),
-  _SpotlightItem(
-    type: _SpotlightType.analyst,
-    author: 'Ali Kingu',
-    role: 'Football Analyst',
-    age: '4d ago',
-    likes: 232,
-    comments: 45,
-    shares: 67,
-    accent: Color(0xFF4D8F24),
-  ),
-  _SpotlightItem(
-    type: _SpotlightType.community,
-    author: 'Kariakoo Derby Community',
-    role: 'Community',
-    age: 'Today',
-    likes: 182,
-    comments: 64,
-    shares: 22,
-    accent: Color(0xFF00A8FF),
-  ),
-  _SpotlightItem(
-    type: _SpotlightType.video,
-    author: 'SportSphere Creator',
-    role: 'Creator',
-    age: 'Today',
-    likes: 421,
-    comments: 84,
-    shares: 51,
-    accent: Color(0xFF168CFF),
-  ),
-  _SpotlightItem(
-    type: _SpotlightType.poll,
-    author: 'SportSphere Community',
-    role: 'Community',
-    age: 'Today',
-    likes: 182,
-    comments: 64,
-    shares: 22,
-    accent: Color(0xFF00A8FF),
-  ),
-  _SpotlightItem(
-    type: _SpotlightType.prediction,
-    author: 'SportSphere Predictions',
-    role: 'Prediction',
-    age: 'Today',
-    likes: 205,
-    comments: 37,
-    shares: 29,
-    accent: Color(0xFF7FD820),
-  ),
-  _SpotlightItem(
-    type: _SpotlightType.journalist,
-    author: 'Didas Msemwa',
-    role: 'Journalist',
-    age: '1d ago',
-    likes: 318,
-    comments: 91,
-    shares: 44,
-    accent: Color(0xFFFF8A00),
-  ),
-  _SpotlightItem(
-    type: _SpotlightType.coach,
-    author: 'Mohammed Lazaro',
-    role: 'Coach',
-    age: '2d ago',
-    likes: 154,
-    comments: 29,
-    shares: 18,
-    accent: Color(0xFF00C896),
-  ),
-  _SpotlightItem(
-    type: _SpotlightType.sponsor,
-    author: 'Azam FC Sponsor',
-    role: 'Sponsor',
-    age: '3d ago',
-    likes: 88,
-    comments: 14,
-    shares: 9,
-    accent: Color(0xFFFFD700),
-  ),
-];
+final _feedItems = _welcomeFeed;
 
 // ============================================================
 // MAIN WIDGET
@@ -308,10 +231,34 @@ class _SportlightsTabState extends State<SportlightsTab> {
         if (media is List && media.isNotEmpty) {
           asset = media.first.toString();
         }
+        final uid = r['userId']?.toString();
+        String author = 'SportSphere Official';
+        String handle = 'sportsphere';
+        String roleLabel = (r['postType'] as String?) ?? 'Official';
+        var type = _SpotlightType.official;
+        if (uid != null) {
+          try {
+            final p = await Supabase.instance.client
+                .from('profiles')
+                .select('handle, first_name, last_name, role')
+                .eq('id', uid)
+                .maybeSingle();
+            if (p != null) {
+              handle = (p['handle'] as String?) ?? handle;
+              final fn = p['first_name'] as String? ?? '';
+              final ln = p['last_name'] as String? ?? '';
+              final name = '$fn $ln'.trim();
+              if (name.isNotEmpty) author = name;
+              roleLabel = (p['role'] as String?) ?? roleLabel;
+              type = _typeForRole(roleLabel);
+            }
+          } catch (_) {}
+        }
         items.add(_SpotlightItem(
-          type: _SpotlightType.official,
-          author: 'SportSphere Official',
-          role: (r['postType'] as String?) ?? 'Official',
+          type: type,
+          author: author,
+          handle: handle,
+          role: roleLabel,
           age: 'Live',
           asset: asset,
           likes: (r['likeCount'] as int?) ?? 0,
@@ -417,7 +364,10 @@ class _AuthorHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return GestureDetector(
+      onTap: () => context.push(item.profilePath),
+      behavior: HitTestBehavior.opaque,
+      child: Row(
       children: [
         Container(
           width: 46,
@@ -491,6 +441,7 @@ class _AuthorHeader extends StatelessWidget {
           ),
         ),
       ],
+    ),
     );
   }
 }
