@@ -799,6 +799,7 @@ on conflict (id) do update set public = excluded.public;
 drop policy if exists "public_read_all" on storage.objects;
 drop policy if exists "service_role_all" on storage.objects;
 drop policy if exists "auth_upload_own" on storage.objects;
+drop policy if exists "auth_update_own" on storage.objects;
 
 create policy "public_read_all" on storage.objects
   for select using (bucket_id in ('avatars','covers','posts','media'));
