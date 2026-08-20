@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app/app.dart' show SportSphereApp;
 import 'app/config/env.dart';
 import 'core/notifications/local_notification_service.dart';
+import 'core/notifications/fcm_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,6 +32,7 @@ Future<void> main() async {
   // Drop stale / cross-project JWTs that cause REST 401 on profiles.
   await _ensureValidSession();
   await LocalNotificationService.instance.init();
+  await FcmService.instance.initAndRegister();
 
   runApp(const ProviderScope(child: SportSphereApp()));
 }

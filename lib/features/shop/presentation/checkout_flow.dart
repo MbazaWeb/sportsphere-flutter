@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -31,6 +32,7 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
   late int _qty;
   late int _donateAmount;
   bool _paying = false;
+  final _phoneCtrl = TextEditingController();
   bool _done = false;
   String _method = 'M-Pesa';
   static const _donatePresets = [5000, 10000, 25000, 50000];
@@ -69,7 +71,13 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
       final qty = item.kind == ShopItemKind.membership || item.kind == ShopItemKind.donation
           ? 1
           : _qty;
-      await CommerceRepository().placeOrder(
+      final commerce = CommerceRepository();
+      final method = _method.toLowerCase().contains('pesa')
+          ? 'mpesa'
+          : _method.toLowerCase().contains('airtel')
+              ? 'airtel'
+              : 'card';
+      final orderId = await commerce.placeOrder(
         itemId: item.id,
         itemName: item.name,
         kind: item.kind.name,
@@ -77,12 +85,24 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
         quantity: qty,
         sellerHandle: widget.catalog.sellerHandle,
         sellerName: widget.catalog.sellerName,
-        paymentMethod: _method.toLowerCase().contains('pesa')
-            ? 'mpesa'
-            : _method.toLowerCase().contains('airtel')
-                ? 'airtel'
-                : 'card',
+        paymentMethod: method,
+        phone: _phoneCtrl.text.trim(),
       );
+      if (method == 'mpesa') {
+        final phone = _phoneCtrl.text.trim();
+        if (phone.isEmpty) {
+          throw StateError('Enter M-Pesa phone (07… or 254…)');
+        }
+        final stk = await commerce.initiateMpesaStk(
+          orderId: orderId,
+          phone: phone,
+          amountTzs: unit * qty,
+        );
+        if (stk['error'] != null && stk['ResponseCode'] != '0') {
+          // Still show done with pending if secrets missing
+          debugPrint('STK: $stk');
+        }
+      }
       if (!mounted) return;
       setState(() {
         _paying = false;

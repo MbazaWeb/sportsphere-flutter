@@ -113,6 +113,11 @@ class _SpotlightItem {
   final int comments;
   final int shares;
   final Color accent;
+  final String? content;
+  final String? pollId;
+  final List<String> pollOptions;
+  final int? pollTotalVotes;
+  final int? myPollVote;
 
   const _SpotlightItem({
     required this.type,
@@ -127,6 +132,11 @@ class _SpotlightItem {
     required this.comments,
     required this.shares,
     required this.accent,
+    this.content,
+    this.pollId,
+    this.pollOptions = const [],
+    this.pollTotalVotes,
+    this.myPollVote,
   });
 
   String get profilePath {
@@ -309,6 +319,39 @@ class _SportlightsTabState extends State<SportlightsTab> {
             }
           } catch (_) {}
         }
+        String? pollId;
+        var pollOptions = <String>[];
+        int? pollVotes;
+        int? myVote;
+        final contentText = (r['content'] as String?) ?? '';
+        if (postType == 'poll' || type == _SpotlightType.poll) {
+          type = _SpotlightType.poll;
+          try {
+            final poll = await Supabase.instance.client
+                .from('Poll')
+                .select()
+                .eq('postId', r['id'])
+                .maybeSingle();
+            if (poll != null) {
+              pollId = poll['id']?.toString();
+              final opts = poll['options'];
+              if (opts is List) {
+                pollOptions = [for (final o in opts) '$o'];
+              }
+              pollVotes = poll['totalVotes'] as int?;
+              final uid = Supabase.instance.client.auth.currentUser?.id;
+              if (uid != null && pollId != null) {
+                final v = await Supabase.instance.client
+                    .from('PollVote')
+                    .select()
+                    .eq('pollId', pollId)
+                    .eq('userId', uid)
+                    .maybeSingle();
+                myVote = v?['optionIdx'] as int?;
+              }
+            }
+          } catch (_) {}
+        }
         items.add(_SpotlightItem(
           type: type,
           author: author,
@@ -322,6 +365,11 @@ class _SportlightsTabState extends State<SportlightsTab> {
           comments: (r['commentCount'] as int?) ?? 0,
           shares: (r['shareCount'] as int?) ?? 0,
           accent: const Color(0xFF168CFF),
+          content: contentText,
+          pollId: pollId,
+          pollOptions: pollOptions,
+          pollTotalVotes: pollVotes,
+          myPollVote: myVote,
         ));
       }
       if (mounted) setState(() => _live = items);
@@ -664,7 +712,7 @@ class _MediaArea extends StatelessWidget {
   Widget build(BuildContext context) {
     switch (item.type) {
       case _SpotlightType.poll:
-        return const _PollContent();
+        return _PollContent(item: item);
       case _SpotlightType.prediction:
         return const _PredictionContent();
       case _SpotlightType.video:
@@ -783,20 +831,64 @@ class _VideoContent extends StatelessWidget {
 }
 
 class _PollContent extends StatefulWidget {
-  const _PollContent();
+  final _SpotlightItem item;
+  const _PollContent({required this.item});
 
   @override
   State<_PollContent> createState() => _PollContentState();
 }
 
 class _PollContentState extends State<_PollContent> {
-  int? _voted; // index of voted option, null if not voted
+  int? _voted;
+  late int _total;
+  bool _busy = false;
+  final _social = SocialRepository();
 
-  final _options = const ['Simba SC', 'Young Africans', 'Draw'];
-  final _percentages = [46, 42, 12];
+  @override
+  void initState() {
+    super.initState();
+    _voted = widget.item.myPollVote;
+    _total = widget.item.pollTotalVotes ?? 0;
+  }
+
+  Future<void> _onVote(int i) async {
+    final pollId = widget.item.pollId;
+    if (pollId == null) {
+      setState(() => _voted = i);
+      return;
+    }
+    if (_voted != null || _busy) return;
+    setState(() => _busy = true);
+    try {
+      await _social.votePoll(pollId, i);
+      if (mounted) {
+        setState(() {
+          _voted = i;
+          _total += 1;
+          _busy = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _busy = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final options = widget.item.pollOptions.isNotEmpty
+        ? widget.item.pollOptions
+        : const <String>['Option A', 'Option B'];
+    final question = (widget.item.content ?? '').trim().isEmpty
+        ? 'Poll'
+        : widget.item.content!;
+    final n = options.length.clamp(1, 20);
+    final pct = List<int>.generate(options.length, (i) {
+      if (_voted == null) return 0;
+      return _voted == i ? 100 : 0;
+    });
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -810,39 +902,36 @@ class _PollContentState extends State<_PollContent> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _ContentLabel(text: 'POLL'),
-          const SizedBox(height: 16),
-          const Text(
-            'Who will win the next Kariakoo Derby?',
-            style: TextStyle(
+          const SizedBox(height: 12),
+          Text(
+            question,
+            style: const TextStyle(
               color: Colors.white,
-              fontSize: 20,
+              fontSize: 18,
               fontWeight: FontWeight.w800,
             ),
           ),
           const SizedBox(height: 18),
-          for (var i = 0; i < _options.length; i++) ...[
+          for (var i = 0; i < options.length; i++) ...[
             _PollOption(
-              label: _options[i],
-              percentage: _percentages[i],
+              label: options[i],
+              percentage: pct[i],
               voted: _voted == i,
               revealed: _voted != null,
-              onTap: _voted == null
-                  ? () => setState(() => _voted = i)
-                  : null,
+              onTap: _voted == null && !_busy ? () => _onVote(i) : null,
             ),
-            if (i < _options.length - 1) const SizedBox(height: 10),
+            if (i < options.length - 1) const SizedBox(height: 10),
           ],
-          if (_voted != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 14),
-              child: Text(
-                '${_percentages.fold(0, (a, b) => a + b) * 42} votes · 18 hours left',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.45),
-                  fontSize: 11,
-                ),
+          Padding(
+            padding: const EdgeInsets.only(top: 14),
+            child: Text(
+              '$_total votes',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.45),
+                fontSize: 11,
               ),
             ),
+          ),
         ],
       ),
     );
@@ -1062,6 +1151,122 @@ class _GeneratedContent extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+
+
+class _PollVoteCard extends StatefulWidget {
+  final _SpotlightItem item;
+  const _PollVoteCard({required this.item});
+
+  @override
+  State<_PollVoteCard> createState() => _PollVoteCardState();
+}
+
+class _PollVoteCardState extends State<_PollVoteCard> {
+  late int? _myVote;
+  late int _total;
+  bool _busy = false;
+  final _social = SocialRepository();
+
+  @override
+  void initState() {
+    super.initState();
+    _myVote = widget.item.myPollVote;
+    _total = widget.item.pollTotalVotes ?? 0;
+  }
+
+  Future<void> _vote(int idx) async {
+    final pollId = widget.item.pollId;
+    if (pollId == null || _busy) return;
+    if (_myVote != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You already voted')),
+      );
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      await _social.votePoll(pollId, idx);
+      if (mounted) {
+        setState(() {
+          _myVote = idx;
+          _total += 1;
+          _busy = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _busy = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final opts = widget.item.pollOptions;
+    final q = widget.item.content ?? 'Poll';
+    if (opts.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(12),
+        child: Text(q, style: const TextStyle(color: Colors.white70)),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            q,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 10),
+          for (var i = 0; i < opts.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Material(
+                color: _myVote == i
+                    ? const Color(0xFF168CFF).withValues(alpha: 0.35)
+                    : Colors.white.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                child: InkWell(
+                  onTap: _busy ? null : () => _vote(i),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            opts[i],
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        if (_myVote == i)
+                          const Icon(Icons.check_circle, color: Color(0xFF22C55E), size: 18),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          Text(
+            '$_total votes',
+            style: const TextStyle(color: Colors.white38, fontSize: 12),
+          ),
+        ],
       ),
     );
   }

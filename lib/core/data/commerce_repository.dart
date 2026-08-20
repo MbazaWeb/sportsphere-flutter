@@ -52,7 +52,27 @@ class CommerceRepository {
   Future<void> confirmOrderPaid(String orderId, {String? providerRef}) async {
     await _sb.from('ShopOrder').update({
       'status': 'paid',
+      if (providerRef != null) 'paymentRef': providerRef,
     }).eq('id', orderId);
+  }
+
+  /// Calls Edge Function mpesa-stk-push (Daraja STK).
+  Future<Map<String, dynamic>> initiateMpesaStk({
+    required String orderId,
+    required String phone,
+    required int amountTzs,
+  }) async {
+    final res = await _sb.functions.invoke(
+      'mpesa-stk-push',
+      body: {
+        'order_id': orderId,
+        'phone': phone,
+        'amount': amountTzs,
+      },
+    );
+    final data = res.data;
+    if (data is Map) return Map<String, dynamic>.from(data);
+    return {'raw': data};
   }
 
   Future<Map<String, int>> sellerTicketStats(String sellerHandle) async {
