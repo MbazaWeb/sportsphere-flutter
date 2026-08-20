@@ -396,7 +396,13 @@ class _TeamProfileViewState extends State<TeamProfileView>
             _AboutTab(profile: p),
             _SquadTab(profile: p),
             _StatsTab(profile: p),
-            ShopTab(catalog: simbaShopCatalog()),
+            ShopTab(
+              catalog: teamShopCatalog(
+                name: p.name,
+                handle: p.handle,
+                accent: p.accentColor,
+              ),
+            ),
           ],
         ),
       ),
@@ -1176,6 +1182,35 @@ class _SquadTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final empty = profile.players.isEmpty &&
+        profile.coaches.isEmpty &&
+        profile.staff.isEmpty;
+    if (empty) {
+      return ListView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(24, 48, 24, 120),
+        children: const [
+          Icon(Icons.people_outline_rounded,
+              color: SportSphereColors.muted, size: 40),
+          SizedBox(height: 12),
+          Text(
+            'Squad not listed yet',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: SportSphereColors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Players and coaches appear here when added or claimed on SportSphere.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: SportSphereColors.muted, height: 1.4),
+          ),
+        ],
+      );
+    }
     return ListView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
@@ -1425,16 +1460,32 @@ class _StatsTab extends StatefulWidget {
 class _StatsTabState extends State<_StatsTab> {
   late String _season;
 
+  static const _emptyStats = TeamSeasonStats(
+    season: '2026/2027',
+    competition: 'Ligi Kuu Bara',
+    matches: 0,
+    wins: 0,
+    draws: 0,
+    losses: 0,
+    goalsFor: 0,
+    goalsAgainst: 0,
+    cleanSheets: 0,
+    leaguePosition: 0,
+  );
+
   @override
   void initState() {
     super.initState();
-    _season = widget.profile.seasonStats.first.season;
+    final list = widget.profile.seasonStats;
+    _season = list.isNotEmpty ? list.first.season : _emptyStats.season;
   }
 
   TeamSeasonStats get _stats {
-    return widget.profile.seasonStats.firstWhere(
+    final list = widget.profile.seasonStats;
+    if (list.isEmpty) return _emptyStats;
+    return list.firstWhere(
       (s) => s.season == _season,
-      orElse: () => widget.profile.seasonStats.first,
+      orElse: () => list.first,
     );
   }
 
@@ -1442,7 +1493,9 @@ class _StatsTabState extends State<_StatsTab> {
   Widget build(BuildContext context) {
     final stats  = _stats;
     final accent = widget.profile.accentColor;
-    final seasons = widget.profile.seasonStats.map((s) => s.season).toList();
+    final seasons = widget.profile.seasonStats.isEmpty
+        ? <String>[_emptyStats.season]
+        : widget.profile.seasonStats.map((s) => s.season).toList();
 
     return ListView(
       physics: const BouncingScrollPhysics(),

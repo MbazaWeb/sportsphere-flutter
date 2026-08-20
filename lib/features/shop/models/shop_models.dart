@@ -142,3 +142,76 @@ ShopCatalog marketplaceCatalog() => const ShopCatalog(
         ShopItem(id: 'donate-any', name: 'Club Donation', subtitle: 'Choose any amount', priceTzs: 0, kind: ShopItemKind.donation, icon: Icons.volunteer_activism_rounded),
       ],
     );
+
+
+/// Per-club shop: membership, tickets, donate (no hardcoded Simba kits).
+ShopCatalog teamShopCatalog({
+  required String name,
+  required String handle,
+  required Color accent,
+}) {
+  final short = name.replaceAll(RegExp(r'\s+(SC|FC)$'), '');
+  return ShopCatalog(
+    sellerName: name,
+    sellerHandle: handle,
+    accent: accent,
+    merch: [
+      ShopItem(
+        id: 'merch-scarf-$handle',
+        name: '$short Scarf',
+        subtitle: 'Official supporter scarf',
+        priceTzs: 18000,
+        kind: ShopItemKind.merch,
+        icon: Icons.volunteer_activism_outlined,
+      ),
+      ShopItem(
+        id: 'merch-tee-$handle',
+        name: '$short Fan Tee',
+        subtitle: 'Cotton · club crest',
+        priceTzs: 25000,
+        kind: ShopItemKind.merch,
+        icon: Icons.checkroom_rounded,
+        badge: 'Fan',
+      ),
+    ],
+    tickets: [
+      ShopItem(
+        id: 'tix-home-$handle',
+        name: 'Home Match Ticket',
+        subtitle: 'Next home fixture · general stand',
+        priceTzs: 5000,
+        kind: ShopItemKind.ticket,
+        icon: Icons.confirmation_number_rounded,
+      ),
+      ShopItem(
+        id: 'tix-vip-$handle',
+        name: 'VIP Match Ticket',
+        subtitle: 'Covered stand · hospitality add-on',
+        priceTzs: 25000,
+        kind: ShopItemKind.ticket,
+        icon: Icons.workspace_premium_rounded,
+        badge: 'VIP',
+      ),
+    ],
+    memberships: [
+      ShopItem(
+        id: 'mem-season-$handle',
+        name: '$short Membership',
+        subtitle: 'Season pass · member benefits',
+        priceTzs: 80000,
+        kind: ShopItemKind.membership,
+        icon: Icons.card_membership_rounded,
+      ),
+    ],
+    donations: [
+      ShopItem(
+        id: 'donate-academy-$handle',
+        name: 'Support $short Academy',
+        subtitle: 'Youth development fund',
+        priceTzs: 10000,
+        kind: ShopItemKind.donation,
+        icon: Icons.favorite_rounded,
+      ),
+    ],
+  );
+}
