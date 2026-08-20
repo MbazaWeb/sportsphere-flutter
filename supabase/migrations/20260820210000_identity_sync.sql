@@ -4,7 +4,7 @@
 -- Ensure profiles can be read for handle resolution
 -- Backfill User from profiles
 insert into public."User" (
-  "id","name","email","handle","role","bio","isVerified","createdAt","updatedAt"
+  "id","name","email","handle","role","bio","isVerified"
 )
 select
   p.id::text,
@@ -13,17 +13,14 @@ select
   coalesce(nullif(p.handle, ''), left(replace(p.id::text, '-', ''), 10)),
   coalesce(p.role, 'fan'),
   coalesce(p.bio, ''),
-  false,
-  now(),
-  now()
+  false
 from public.profiles p
 where not exists (select 1 from public."User" u where u.id = p.id::text)
 on conflict ("id") do update set
   "handle" = excluded."handle",
   "email" = excluded."email",
   "name" = excluded."name",
-  "role" = excluded."role",
-  "updatedAt" = now();
+  "role" = excluded."role";
 
 -- Backfill profiles from User where missing
 insert into public.profiles (id, handle, role, first_name, last_name, email, bio)

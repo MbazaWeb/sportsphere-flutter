@@ -27,14 +27,15 @@ create policy "pms_auth_write" on public."PlayerMatchStat"
 -- Note: full admin-only requires is_admin claim; kept open for Official live control until claims land.
 
 -- Backfill User from profiles where missing
-insert into public."User" ("id","name","email","handle","role","bio","createdAt","updatedAt")
-select p.id,
-       coalesce(nullif(trim(coalesce(p.first_name,'') || ' ' || coalesce(p.last_name,'')), ''), p.handle, p.id),
-       coalesce(p.email, p.id || '@users.local'),
-       coalesce(p.handle, left(p.id::text, 8)),
+-- Note: "User" uses registeredAt/updatedAt (not createdAt)
+insert into public."User" ("id","name","email","handle","role","bio")
+select
+       p.id::text,
+       coalesce(nullif(trim(coalesce(p.first_name,'') || ' ' || coalesce(p.last_name,'')), ''), p.handle, p.id::text),
+       coalesce(nullif(p.email, ''), p.id::text || '@users.local'),
+       coalesce(nullif(p.handle, ''), left(replace(p.id::text, '-', ''), 10)),
        coalesce(p.role, 'fan'),
-       coalesce(p.bio, ''),
-       now(), now()
+       coalesce(p.bio, '')
 from public.profiles p
 where not exists (select 1 from public."User" u where u.id = p.id::text)
 on conflict ("id") do nothing;
