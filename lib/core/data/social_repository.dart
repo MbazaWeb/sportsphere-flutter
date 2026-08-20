@@ -60,6 +60,7 @@ class SocialRepository {
     String postType = 'text',
     List<String> hashtags = const [],
     String? teamTag,
+    String sportTag = 'football',
     bool isBreaking = false,
   }) async {
     final uid = _uid;
@@ -72,7 +73,7 @@ class SocialRepository {
       'postType': postType,
       'mediaUrls': mediaUrls,
       'hashtags': hashtags,
-      'sportTag': 'football',
+      'sportTag': sportTag,
       if (teamTag != null) 'teamTag': teamTag,
       'isBreaking': isBreaking,
       'likeCount': 0,
@@ -167,6 +168,53 @@ class SocialRepository {
       for (final t in teams as List)
         '${(t as Map)['name']}'.replaceAll(RegExp(r'\s+SC$|\s+FC$'), '').trim() + ' Fan'
     ];
+  }
+
+  Future<List<Map<String, dynamic>>> listSports() async {
+    final rows = await _sb.from('Sport').select('id,name,slug').eq('isActive', true).order('name');
+    return List<Map<String, dynamic>>.from(rows as List);
+  }
+
+  Future<List<String>> mySportSlugs() async {
+    final uid = _uid;
+    if (uid == null) return [];
+    final rows = await _sb.from('UserSport').select('sportId').eq('userId', uid);
+    final ids = [for (final r in rows as List) (r as Map)['sportId']?.toString()].whereType<String>().toList();
+    if (ids.isEmpty) return [];
+    final sports = await _sb.from('Sport').select('slug').inFilter('id', ids);
+    return [for (final s in sports as List) (s as Map)['slug'] as String];
+  }
+
+  Future<void> setMySports(List<String> slugs, {String? primary}) async {
+    final uid = _uid;
+    if (uid == null) throw StateError('Sign in');
+    final sports = await _sb.from('Sport').select('id,slug').inFilter('slug', slugs);
+    await _sb.from('UserSport').delete().eq('userId', uid);
+    for (final s in sports as List) {
+      final slug = (s as Map)['slug'] as String;
+      await _sb.from('UserSport').insert({
+        'id': 'us-$uid-$slug',
+        'userId': uid,
+        'sportId': s['id'],
+        'is_primary': slug == (primary ?? slugs.first),
+        'weight': slug == (primary ?? slugs.first) ? 3 : 1,
+      });
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> feedForUser() async {
+    final uid = _uid;
+    if (uid == null) {
+      final rows = await _sb.from('Post').select().order('createdAt', ascending: false).limit(40);
+      return List<Map<String, dynamic>>.from(rows as List);
+    }
+    try {
+      final rows = await _sb.rpc('feed_for_user', params: {'p_user_id': uid, 'p_limit': 40});
+      return List<Map<String, dynamic>>.from(rows as List);
+    } catch (_) {
+      final rows = await _sb.from('Post').select().order('createdAt', ascending: false).limit(40);
+      return List<Map<String, dynamic>>.from(rows as List);
+    }
   }
 
   Future<void> updateMediaUrls({

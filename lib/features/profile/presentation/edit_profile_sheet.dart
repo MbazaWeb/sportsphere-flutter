@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/data/social_repository.dart';
+import '../../../core/taxonomy/sport_catalog.dart';
 import '../../../core/theme/colors.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../auth/presentation/auth_controller.dart';
@@ -38,6 +39,7 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
   String? _avatarUrl;
   String? _coverUrl;
   bool _saving = false;
+  final Set<String> _sports = {};
   final _social = SocialRepository();
   final _picker = ImagePicker();
 
@@ -63,6 +65,9 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
     _theme = u.themeColor;
     _avatarUrl = u.avatarUrl;
     _coverUrl = u.coverUrl;
+    _social.mySportSlugs().then((s) {
+      if (mounted) setState(() => _sports.addAll(s));
+    });
   }
 
   @override
@@ -116,6 +121,11 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
         );
     if (!mounted) return;
     setState(() => _saving = false);
+    try {
+      if (_sports.isNotEmpty) {
+        await _social.setMySports(_sports.toList(), primary: _sports.first);
+      }
+    } catch (_) {}
     if (ok) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -179,6 +189,27 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
               ],
             ),
             const SizedBox(height: 12),
+            const Text('My sports', style: TextStyle(color: Colors.white54, fontSize: 12)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final s in kAllSports)
+                  FilterChip(
+                    label: Text(sportLabel(s)),
+                    selected: _sports.contains(s),
+                    onSelected: (v) => setState(() {
+                      if (v) {
+                        _sports.add(s);
+                      } else {
+                        _sports.remove(s);
+                      }
+                    }),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 14),
             const Text('Theme color', style: TextStyle(color: Colors.white54, fontSize: 12)),
             const SizedBox(height: 8),
             Wrap(

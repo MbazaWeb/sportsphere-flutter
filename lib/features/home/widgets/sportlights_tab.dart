@@ -248,14 +248,10 @@ class _SportlightsTabState extends State<SportlightsTab> {
 
   Future<void> _loadPosts() async {
     try {
-      final rows = await Supabase.instance.client
-          .from('Post')
-          .select()
-          .order('createdAt', ascending: false)
-          .limit(40);
+      final rows = await SocialRepository().feedForUser();
       final items = <_SpotlightItem>[];
-      for (final raw in rows as List) {
-        final r = Map<String, dynamic>.from(raw as Map);
+      for (final raw in rows) {
+        final r = Map<String, dynamic>.from(raw);
         final media = r['mediaUrls'];
         String? asset;
         if (media is List && media.isNotEmpty) {
