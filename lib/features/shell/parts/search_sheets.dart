@@ -343,34 +343,265 @@ class _SearchEmptyState extends StatelessWidget {
   }
 }
 
-class _MessageSheet extends StatelessWidget {
+class _MessageSheet extends StatefulWidget {
   const _MessageSheet();
+  @override
+  State<_MessageSheet> createState() => _MessageSheetState();
+}
+
+class _MessageSheetState extends State<_MessageSheet> {
+  final _repo = MessagingRepository();
+  final _search = TextEditingController();
+  final _compose = TextEditingController();
+  List<Map<String, dynamic>> _inbox = [];
+  List<Map<String, dynamic>> _thread = [];
+  List<Map<String, dynamic>> _found = [];
+  String? _peerId;
+  String? _peerLabel;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInbox();
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    _compose.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadInbox() async {
+    setState(() => _loading = true);
+    final rows = await _repo.listConversations();
+    if (mounted) setState(() { _inbox = rows; _loading = false; });
+  }
+
+  Future<void> _openPeer(String peerId, String label) async {
+    setState(() {
+      _peerId = peerId;
+      _peerLabel = label;
+      _loading = true;
+    });
+    final rows = await _repo.threadWith(peerId);
+    if (mounted) setState(() { _thread = rows; _loading = false; });
+  }
+
+  Future<void> _send() async {
+    final peer = _peerId;
+    final text = _compose.text.trim();
+    if (peer == null || text.isEmpty) return;
+    try {
+      await _repo.send(peer, text);
+      _compose.clear();
+      await _openPeer(peer, _peerLabel ?? peer);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return const _ActivitySheet(
-      title: 'Messages',
-      icon: Icons.mail_outline_rounded,
-      items: [
-        _ActivityItem(
-          icon: Icons.person_rounded,
-          title: 'Fan',
-          subtitle: 'You have a new message from a fan.',
-          time: '3m',
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        child: Container(
+          constraints: const BoxConstraints(maxHeight: 620),
+          decoration: BoxDecoration(
+            color: SportSphereColors.background.withValues(alpha: 0.97),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                child: Row(
+                  children: [
+                    if (_peerId != null)
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white70),
+                        onPressed: () {
+                          setState(() {
+                            _peerId = null;
+                            _thread = [];
+                          });
+                          _loadInbox();
+                        },
+                      ),
+                    Expanded(
+                      child: Text(
+                        _peerId == null ? 'Messages' : (_peerLabel ?? 'Chat'),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (_peerId == null) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: TextField(
+                    controller: _search,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'Search people to message',
+                      hintStyle: const TextStyle(color: Colors.white38),
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.search),
+                        onPressed: () async {
+                          final rows = await _repo.searchUsers(_search.text);
+                          setState(() => _found = rows);
+                        },
+                      ),
+                    ),
+                    onSubmitted: (_) async {
+                      final rows = await _repo.searchUsers(_search.text);
+                      setState(() => _found = rows);
+                    },
+                  ),
+                ),
+                if (_found.isNotEmpty)
+                  SizedBox(
+                    height: 100,
+                    child: ListView(
+                      children: [
+                        for (final u in _found)
+                          ListTile(
+                            dense: true,
+                            title: Text(
+                              '${u['name'] ?? u['handle']}',
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                            subtitle: Text(
+                              '@${u['handle']}',
+                              style: const TextStyle(color: Colors.white54),
+                            ),
+                            onTap: () => _openPeer(
+                              '${u['id']}',
+                              '${u['name'] ?? u['handle']}',
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                Expanded(
+                  child: _loading
+                      ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                      : _inbox.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'No conversations yet.
+Search a user to start a DM.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.white54),
+                              ),
+                            )
+                          : ListView.builder(
+                              itemCount: _inbox.length,
+                              itemBuilder: (_, i) {
+                                final m = _inbox[i];
+                                final peer = '${m['peerId']}';
+                                return ListTile(
+                                  title: Text(
+                                    peer,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    '${m['content'] ?? ''}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(color: Colors.white54),
+                                  ),
+                                  onTap: () => _openPeer(peer, peer),
+                                );
+                              },
+                            ),
+                ),
+              ] else ...[
+                Expanded(
+                  child: _loading
+                      ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(12),
+                          itemCount: _thread.length,
+                          itemBuilder: (_, i) {
+                            final m = _thread[i];
+                            final mine = m['senderId'] ==
+                                Supabase.instance.client.auth.currentUser?.id;
+                            return Align(
+                              alignment: mine
+                                  ? Alignment.centerRight
+                                  : Alignment.centerLeft,
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: mine
+                                      ? SportSphereColors.electricBlue
+                                          .withValues(alpha: 0.35)
+                                      : Colors.white.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Text(
+                                  '${m['content']}',
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _compose,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: const InputDecoration(
+                            hintText: 'Message…',
+                            hintStyle: TextStyle(color: Colors.white38),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: _send,
+                        icon: const Icon(Icons.send_rounded,
+                            color: SportSphereColors.electricBlue),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
-        _ActivityItem(
-          icon: Icons.sports_soccer_rounded,
-          title: 'Player',
-          subtitle: 'You have a new message from a player.',
-          time: '21m',
-        ),
-        _ActivityItem(
-          icon: Icons.groups_rounded,
-          title: 'Team',
-          subtitle: 'A team sent you a new message.',
-          time: '1h',
-        ),
-      ],
+      ),
     );
   }
 }

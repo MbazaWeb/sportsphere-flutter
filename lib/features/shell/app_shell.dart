@@ -11,6 +11,7 @@ import '../../core/theme/colors.dart';
 import '../../core/admin/app_admin.dart';
 import '../../core/data/social_repository.dart';
 import '../../core/data/commerce_repository.dart';
+import '../../core/data/messaging_repository.dart';
 import '../../core/widgets/glass_container.dart';
 import '../../features/auth/domain/auth_state.dart';
 import '../../features/auth/presentation/auth_controller.dart';

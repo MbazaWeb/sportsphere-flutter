@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../domain/auth_state.dart';
@@ -63,7 +64,15 @@ class AuthRepository {
         'coverUrl': p?.coverUrl,
         'updatedAt': DateTime.now().toIso8601String(),
       });
-    } catch (_) {}
+    } catch (e) { debugPrint("auth: $e"); }
+  }
+
+  Future<void> sendPasswordReset(String emailOrHandle) async {
+    final email = await _resolveEmail(emailOrHandle);
+    await _sb.auth.resetPasswordForEmail(
+      email,
+      redirectTo: null,
+    );
   }
 
   Future<void> login({
@@ -252,7 +261,7 @@ class AuthRepository {
             '${((t as Map)['name'] as String? ?? 'Team').replaceAll(RegExp(r'\s+(SC|FC)$'), '')} Fan'
         ];
       }
-    } catch (_) {}
+    } catch (e) { debugPrint("auth: $e"); }
     return UserProfile(
       firstName: (row['first_name'] as String?) ?? '',
       lastName: (row['last_name'] as String?) ?? '',

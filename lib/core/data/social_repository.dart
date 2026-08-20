@@ -79,6 +79,83 @@ class SocialRepository {
   // POSTS
   // ============================================================
 
+
+
+  /// Durable poll: Post (type=poll) + Poll row.
+  Future<String> createPollWithPost({
+    required String question,
+    required List<String> options,
+    DateTime? endsAt,
+  }) async {
+    final opts = options.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    if (question.trim().isEmpty) throw StateError('Poll needs a question');
+    if (opts.length < 2) throw StateError('Poll needs at least 2 options');
+    final postId = await createPost(
+      content: question.trim(),
+      postType: 'poll',
+    );
+    final pollId = 'poll-${DateTime.now().millisecondsSinceEpoch}';
+    await _sb.from('Poll').insert({
+      'id': pollId,
+      'postId': postId,
+      'question': question.trim(),
+      'options': opts,
+      'totalVotes': 0,
+      if (endsAt != null) 'endsAt': endsAt.toIso8601String(),
+      'createdAt': DateTime.now().toIso8601String(),
+    });
+    return postId;
+  }
+
+  Future<void> votePoll(String pollId, int optionIdx) async {
+    final uid = _uid;
+    if (uid == null) throw StateError('Sign in to vote');
+    await _sb.from('PollVote').upsert({
+      'id': 'pv-$pollId-$uid',
+      'pollId': pollId,
+      'userId': uid,
+      'optionIdx': optionIdx,
+      'createdAt': DateTime.now().toIso8601String(),
+    });
+    try {
+      final row = await _sb.from('Poll').select('totalVotes').eq('id', pollId).maybeSingle();
+      final n = ((row?['totalVotes'] as int?) ?? 0) + 1;
+      await _sb.from('Poll').update({'totalVotes': n}).eq('id', pollId);
+    } catch (e) {
+      debugPrint('poll vote count: $e');
+    }
+  }
+
+  /// Durable prediction linked to optional match + post.
+  Future<String> createPrediction({
+    required String homeTeam,
+    required String awayTeam,
+    required int predictedHome,
+    required int predictedAway,
+    String? matchId,
+    String? note,
+    String confidence = 'medium',
+  }) async {
+    final content = note?.trim().isNotEmpty == true
+        ? note!.trim()
+        : 'Prediction: $homeTeam $predictedHome-$predictedAway $awayTeam';
+    final postId = await createPost(content: content, postType: 'prediction');
+    final id = 'pred-${DateTime.now().millisecondsSinceEpoch}';
+    await _sb.from('Prediction').insert({
+      'id': id,
+      'userId': _uid,
+      'matchId': matchId,
+      'postId': postId,
+      'homeTeam': homeTeam,
+      'awayTeam': awayTeam,
+      'predictedHome': predictedHome,
+      'predictedAway': predictedAway,
+      'confidence': confidence,
+      'createdAt': DateTime.now().toIso8601String(),
+    });
+    return postId;
+  }
+
   /// Create a new post
   Future<String> createPost({
     required String content,

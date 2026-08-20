@@ -77,6 +77,11 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
         quantity: qty,
         sellerHandle: widget.catalog.sellerHandle,
         sellerName: widget.catalog.sellerName,
+        paymentMethod: _method.toLowerCase().contains('pesa')
+            ? 'mpesa'
+            : _method.toLowerCase().contains('airtel')
+                ? 'airtel'
+                : 'card',
       );
       if (!mounted) return;
       setState(() {
@@ -284,7 +289,7 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
       children: [
         Icon(Icons.check_circle_rounded, color: accent, size: 64),
         const SizedBox(height: 12),
-        const Text('Payment successful',
+        const Text('Order recorded',
             style: TextStyle(
                 color: SportSphereColors.white, fontSize: 20, fontWeight: FontWeight.w900)),
         const SizedBox(height: 6),

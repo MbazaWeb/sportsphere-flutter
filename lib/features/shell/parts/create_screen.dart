@@ -229,20 +229,45 @@ class _CreateComposerState extends State<_CreateComposer>
                       ? 'prediction'
                       : 'text')
               : 'media';
-      await social.createPost(
-        content: text.isEmpty
-            ? (_type == _PostType.liveCoverage
-                ? 'LIVE: ${_coverageMatchLabel ?? 'Match'}'
-                : ' ')
-            : text,
-        mediaUrls: urls,
-        postType: type,
-        hashtags: tags,
-        teamTag: _type == _PostType.liveCoverage && _coverageMatchId != null
-            ? 'match:${_coverageMatchId}'
-            : null,
-        isBreaking: _type == _PostType.liveCoverage || _asOfficialBreaking,
-      );
+      if (_type == _PostType.poll) {
+        final opts = _pollOptions.map((c) => c.text.trim()).where((e) => e.isNotEmpty).toList();
+        await social.createPollWithPost(
+          question: text.isEmpty ? 'Poll' : text,
+          options: opts,
+        );
+      } else if (_type == _PostType.prediction) {
+        // Expect content like "Home 2-1 Away" or use match label fields if present
+        final home = _coverageMatchLabel?.split(' vs ').first ?? 'Home';
+        final away = _coverageMatchLabel?.split(' vs ').length == 2
+            ? _coverageMatchLabel!.split(' vs ').last
+            : 'Away';
+        final scores = RegExp(r'(\d+)\s*[-:]\s*(\d+)').firstMatch(text);
+        final ph = int.tryParse(scores?.group(1) ?? '1') ?? 1;
+        final pa = int.tryParse(scores?.group(2) ?? '0') ?? 0;
+        await social.createPrediction(
+          homeTeam: home,
+          awayTeam: away,
+          predictedHome: ph,
+          predictedAway: pa,
+          matchId: _coverageMatchId,
+          note: text.isEmpty ? null : text,
+        );
+      } else {
+        await social.createPost(
+          content: text.isEmpty
+              ? (_type == _PostType.liveCoverage
+                  ? 'LIVE: ${_coverageMatchLabel ?? 'Match'}'
+                  : ' ')
+              : text,
+          mediaUrls: urls,
+          postType: type,
+          hashtags: tags,
+          teamTag: _type == _PostType.liveCoverage && _coverageMatchId != null
+              ? 'match:${_coverageMatchId}'
+              : null,
+          isBreaking: _type == _PostType.liveCoverage || _asOfficialBreaking,
+        );
+      }
       await _submitCtrl.forward();
       await Future.delayed(const Duration(milliseconds: 400));
       if (mounted) {

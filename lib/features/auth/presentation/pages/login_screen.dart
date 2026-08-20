@@ -191,7 +191,52 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                               Align(
                                 alignment: Alignment.centerRight,
                                 child: GestureDetector(
-                                  onTap: () {},
+                                  onTap: () async {
+                                    final ctrl = TextEditingController(
+                                      text: _identifierCtrl.text,
+                                    );
+                                    final ok = await showDialog<bool>(
+                                      context: context,
+                                      builder: (d) => AlertDialog(
+                                        backgroundColor: const Color(0xFF0C1A2A),
+                                        title: const Text(
+                                          'Reset password',
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                        content: TextField(
+                                          controller: ctrl,
+                                          style: const TextStyle(color: Colors.white),
+                                          decoration: const InputDecoration(
+                                            labelText: 'Email or handle',
+                                            labelStyle: TextStyle(color: Colors.white54),
+                                          ),
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(d, false),
+                                            child: const Text('Cancel'),
+                                          ),
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(d, true),
+                                            child: const Text('Send link'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                    if (ok != true || !context.mounted) return;
+                                    final err = await ref
+                                        .read(authControllerProvider.notifier)
+                                        .sendPasswordReset(ctrl.text.trim());
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          err ??
+                                              'Password reset email sent. Check your inbox.',
+                                        ),
+                                      ),
+                                    );
+                                  },
                                   child: Text(
                                     'Forgot password?',
                                     style: TextStyle(

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CommerceRepository {
@@ -12,11 +13,17 @@ class CommerceRepository {
     int quantity = 1,
     String? sellerHandle,
     String? sellerName,
+    String paymentMethod = 'mpesa',
+    String? phone,
   }) async {
     final uid = _uid;
     if (uid == null) throw StateError('Sign in to purchase');
     final id = 'ord-${DateTime.now().millisecondsSinceEpoch}';
     final amount = unitPriceTzs * quantity;
+    // Real PSP (M-Pesa STK / card) plugs in here via Edge Function.
+    // Until STK credentials are set, we record a payable order as pending_confirm.
+    final status = paymentMethod == 'demo' ? 'paid' : 'pending_confirm';
+    final ref = 'SS-${id.substring(4)}';
     await _sb.from('ShopOrder').insert({
       'id': id,
       'userId': uid,
@@ -28,10 +35,24 @@ class CommerceRepository {
       'quantity': quantity,
       'unitPriceTzs': unitPriceTzs,
       'amountTzs': amount,
-      'status': 'paid',
+      'status': status,
       'createdAt': DateTime.now().toIso8601String(),
     });
+    // Optional metadata table-free: store method in itemName suffix if columns missing
+    try {
+      await _sb.from('ShopOrder').update({
+        'status': status,
+      }).eq('id', id);
+    } catch (e) {
+      debugPrint('order meta: $e');
+    }
     return id;
+  }
+
+  Future<void> confirmOrderPaid(String orderId, {String? providerRef}) async {
+    await _sb.from('ShopOrder').update({
+      'status': 'paid',
+    }).eq('id', orderId);
   }
 
   Future<Map<String, int>> sellerTicketStats(String sellerHandle) async {

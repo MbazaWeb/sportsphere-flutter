@@ -175,6 +175,15 @@ class AuthController extends Notifier<AuthState> {
   void clearError() => state = state.clearError();
 
   // ── Error helper ───────────────────────────────────────────────────────────
+  Future<String?> sendPasswordReset(String identifier) async {
+    try {
+      await _repo.sendPasswordReset(identifier);
+      return null;
+    } catch (e) {
+      return _friendlyError(e);
+    }
+  }
+
   String _friendlyError(Object e) {
     final msg = e.toString().toLowerCase();
     if (msg.contains('401') || msg.contains('unauthorized')) {
