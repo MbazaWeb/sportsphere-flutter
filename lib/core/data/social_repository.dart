@@ -86,9 +86,14 @@ class SocialRepository {
       });
     } catch (_) {}
     try {
-      await _sb.rpc('increment_profile_posts', params: {'uid': uid});
+      await _sb.rpc('notify_followers', params: {
+        'p_author_id': uid,
+        'p_title': 'New post',
+        'p_body': content.length > 80 ? '${content.substring(0, 80)}…' : content,
+        'p_reference_id': id,
+      });
     } catch (_) {
-      // optional counter
+      // optional fan-out
     }
     return id;
   }
