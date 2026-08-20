@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/data/nbc_club_badges.dart';
 
 // ============================================================
@@ -274,21 +275,76 @@ class SportlightsTab extends StatefulWidget {
 
 class _SportlightsTabState extends State<SportlightsTab> {
   final ScrollController _scrollController = ScrollController();
+  List<_SpotlightItem> _live = const [];
+  RealtimeChannel? _channel;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPosts();
+    _channel = Supabase.instance.client
+        .channel('public-post')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'Post',
+          callback: (_) => _loadPosts(),
+        )
+        .subscribe();
+  }
+
+  Future<void> _loadPosts() async {
+    try {
+      final rows = await Supabase.instance.client
+          .from('Post')
+          .select()
+          .order('createdAt', ascending: false)
+          .limit(40);
+      final items = <_SpotlightItem>[];
+      for (final raw in rows as List) {
+        final r = Map<String, dynamic>.from(raw as Map);
+        final media = r['mediaUrls'];
+        String? asset;
+        if (media is List && media.isNotEmpty) {
+          asset = media.first.toString();
+        }
+        items.add(_SpotlightItem(
+          type: _SpotlightType.official,
+          author: 'SportSphere Official',
+          role: (r['postType'] as String?) ?? 'Official',
+          age: 'Live',
+          asset: asset,
+          likes: (r['likeCount'] as int?) ?? 0,
+          comments: (r['commentCount'] as int?) ?? 0,
+          shares: (r['shareCount'] as int?) ?? 0,
+          accent: const Color(0xFF168CFF),
+        ));
+      }
+      if (mounted) setState(() => _live = items);
+    } catch (_) {
+      // keep bundled welcome cards
+    }
+  }
 
   @override
   void dispose() {
+    if (_channel != null) {
+      Supabase.instance.client.removeChannel(_channel!);
+    }
     _scrollController.dispose();
     super.dispose();
   }
 
+  List<_SpotlightItem> get _items =>
+      _live.isEmpty ? _feedItems : [..._live, ..._feedItems];
+
   @override
   Widget build(BuildContext context) {
+    final items = _items;
     return RefreshIndicator(
       color: const Color(0xFF168CFF),
       backgroundColor: const Color(0xFF091522),
-      onRefresh: () async {
-        await Future<void>.delayed(const Duration(milliseconds: 500));
-      },
+      onRefresh: _loadPosts,
       child: ScrollConfiguration(
         behavior: const ScrollBehavior().copyWith(scrollbars: false),
         child: ListView.builder(
@@ -297,10 +353,9 @@ class _SportlightsTabState extends State<SportlightsTab> {
             parent: AlwaysScrollableScrollPhysics(),
           ),
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 110),
-          itemCount: null, // endless
+          itemCount: items.length,
           itemBuilder: (context, index) {
-            final item = _feedItems[index % _feedItems.length];
-            return _SpotlightCard(item: item);
+            return _SpotlightCard(item: items[index]);
           },
         ),
       ),

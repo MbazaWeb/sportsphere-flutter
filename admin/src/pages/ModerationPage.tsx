@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useTableRealtime } from '../lib/realtime'
 import { listPosts, deletePost } from '../lib/api'
 import type { PostRow } from '../lib/supabase'
 
@@ -7,16 +8,17 @@ export function ModerationPage() {
   const [err, setErr] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
 
-  async function load() {
+  const load = useCallback(async () => {
     try {
       setPosts(await listPosts(150))
       setErr(null)
     } catch (e: any) {
       setErr(e.message)
     }
-  }
+  }, [])
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [load])
+  useTableRealtime('Post', load)
 
   return (
     <div>

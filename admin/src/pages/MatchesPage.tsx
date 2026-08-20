@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useTableRealtime } from '../lib/realtime'
 import { listMatches, updateMatchResult, postponeMatch, createMatch } from '../lib/api'
 import type { MatchRow } from '../lib/supabase'
 
@@ -11,16 +12,17 @@ export function MatchesPage() {
   const [away, setAway] = useState('')
   const [kickoff, setKickoff] = useState('')
 
-  async function load() {
+  const load = useCallback(async () => {
     try {
       setMatches(await listMatches(300))
       setErr(null)
     } catch (e: any) {
       setErr(e.message)
     }
-  }
+  }, [])
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [load])
+  useTableRealtime('Match', load)
 
   const filtered = matches.filter((m) => {
     const s = `${m.homeTeam} ${m.awayTeam} ${m.status} ${m.league}`.toLowerCase()

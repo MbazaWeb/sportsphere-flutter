@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useTableRealtime } from '../lib/realtime'
 import { fetchDashboardStats, healthCheck } from '../lib/api'
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts'
 
@@ -6,10 +7,15 @@ export function DashboardPage() {
   const [stats, setStats] = useState({ users: 0, teams: 0, matches: 0, posts: 0, pendingClaims: 0, errors: [] as string[] })
   const [health, setHealth] = useState<{ ok: boolean; latencyMs: number; error: string | null } | null>(null)
 
-  useEffect(() => {
+  const refresh = useCallback(() => {
     fetchDashboardStats().then(setStats).catch((e) => setStats((s) => ({ ...s, errors: [String(e)] })))
     healthCheck().then(setHealth)
   }, [])
+
+  useEffect(() => { refresh() }, [refresh])
+  useTableRealtime('Match', refresh)
+  useTableRealtime('Post', refresh)
+  useTableRealtime('profiles', refresh)
 
   const chart = [
     { name: 'Users', value: stats.users },
