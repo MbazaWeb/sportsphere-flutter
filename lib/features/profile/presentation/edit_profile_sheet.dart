@@ -257,13 +257,23 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
-              child: FilledButton(
-                onPressed: _saving ? null : _save,
-                style: FilledButton.styleFrom(
-                  backgroundColor: SportSphereColors.electricBlue,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                child: Text(_saving ? 'Saving…' : 'Save'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextButton(
+                    onPressed: () => showChangePasswordDialog(context, ref),
+                    child: const Text('Change password'),
+                  ),
+                  const SizedBox(height: 8),
+                  FilledButton(
+                    onPressed: _saving ? null : _save,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: SportSphereColors.electricBlue,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: Text(_saving ? 'Saving…' : 'Save'),
+                  ),
+                ],
               ),
             ),
           ],
@@ -287,6 +297,61 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
+    );
+  }
+}
+
+// Change-password dialog used from profile settings.
+Future<void> showChangePasswordDialog(BuildContext context, WidgetRef ref) async {
+  final a = TextEditingController();
+  final b = TextEditingController();
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (d) => AlertDialog(
+      backgroundColor: const Color(0xFF0C1A2A),
+      title: const Text('Change password', style: TextStyle(color: Colors.white)),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: a,
+            obscureText: true,
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              labelText: 'New password',
+              labelStyle: TextStyle(color: Colors.white54),
+            ),
+          ),
+          TextField(
+            controller: b,
+            obscureText: true,
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              labelText: 'Confirm password',
+              labelStyle: TextStyle(color: Colors.white54),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Update')),
+      ],
+    ),
+  );
+  if (ok != true) return;
+  if (a.text != b.text) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Passwords do not match')),
+      );
+    }
+    return;
+  }
+  final err = await ref.read(authControllerProvider.notifier).changePassword(a.text);
+  if (context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(err ?? 'Password updated')),
     );
   }
 }

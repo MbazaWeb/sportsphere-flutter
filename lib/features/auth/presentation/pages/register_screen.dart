@@ -226,6 +226,38 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     if (!mounted) return;
     if (ok) {
       context.go('/home');
+      return;
+    }
+    final err = ref.read(authControllerProvider).errorMessage ?? '';
+    if (err.startsWith('CONFIRM:')) {
+      final msg = err.replaceFirst('CONFIRM:', '').trim();
+      await showDialog<void>(
+        context: context,
+        builder: (d) => AlertDialog(
+          backgroundColor: const Color(0xFF0C1A2A),
+          title: const Text('Verify your email',
+              style: TextStyle(color: Colors.white)),
+          content: Text(msg, style: const TextStyle(color: Colors.white70)),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                await ref
+                    .read(authControllerProvider.notifier)
+                    .resendConfirmation(_emailCtrl.text.trim());
+                if (d.mounted) Navigator.pop(d);
+              },
+              child: const Text('Resend link'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(d);
+                context.go('/login');
+              },
+              child: const Text('Go to login'),
+            ),
+          ],
+        ),
+      );
     }
   }
 
