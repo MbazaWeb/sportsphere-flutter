@@ -28,6 +28,7 @@ dependencies:
   logger: ^2.7.0
   supabase_flutter: ^2.9.0
   equatable: ^2.1.0
+  flutter_local_notifications: ^18.0.1
 
 dev_dependencies:
   flutter_test:

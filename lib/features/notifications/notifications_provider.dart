@@ -1,5 +1,10 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../core/notifications/local_notification_service.dart';
 
 enum NotificationType { like, comment, follow, mention, repost, sports, message }
 
@@ -45,10 +50,81 @@ class NotificationsState {
 }
 
 class NotificationsNotifier extends Notifier<NotificationsState> {
+  RealtimeChannel? _channel;
+  StreamSubscription<AuthState>? _authSub;
+
   @override
   NotificationsState build() {
-    Future.microtask(load);
+    ref.onDispose(() {
+      _channel?.unsubscribe();
+      _authSub?.cancel();
+    });
+    Future.microtask(() async {
+      await LocalNotificationService.instance.init();
+      await load();
+      _bindAuth();
+      await _subscribeRealtime();
+    });
     return const NotificationsState(items: [], loading: true);
+  }
+
+  void _bindAuth() {
+    _authSub?.cancel();
+    _authSub = Supabase.instance.client.auth.onAuthStateChange.listen((event) {
+      load();
+      _subscribeRealtime();
+    });
+  }
+
+  Future<void> _subscribeRealtime() async {
+    final sb = Supabase.instance.client;
+    final uid = sb.auth.currentUser?.id;
+    await _channel?.unsubscribe();
+    _channel = null;
+    if (uid == null) return;
+
+    _channel = sb
+        .channel('notifications-$uid')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'Notification',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'userId',
+            value: uid,
+          ),
+          callback: (payload) {
+            final m = payload.newRecord;
+            final item = NotificationItem(
+              id: m['id']?.toString() ?? '',
+              type: _typeOf(m['type']?.toString()),
+              title: (m['title'] as String?) ??
+                  (m['body'] as String?) ??
+                  'Notification',
+              subtitle: (m['body'] as String?) ?? '',
+              time: 'now',
+              unread: true,
+            );
+            final next = [item, ...state.items];
+            // de-dupe by id
+            final seen = <String>{};
+            final unique = <NotificationItem>[];
+            for (final n in next) {
+              if (n.id.isEmpty || seen.add(n.id)) unique.add(n);
+            }
+            state = state.copyWith(items: unique.take(50).toList());
+            unawaited(LocalNotificationService.instance.show(
+              title: item.title,
+              body: item.subtitle.isEmpty ? 'Open SportSphere' : item.subtitle,
+              payload: item.id,
+            ));
+            if (kDebugMode) {
+              debugPrint('Realtime notification: ${item.title}');
+            }
+          },
+        )
+        .subscribe();
   }
 
   Future<void> load() async {
@@ -71,10 +147,12 @@ class NotificationsNotifier extends Notifier<NotificationsState> {
         items.add(NotificationItem(
           id: m['id']?.toString() ?? '',
           type: _typeOf(m['type']?.toString()),
-          title: (m['title'] as String?) ?? (m['body'] as String?) ?? 'Notification',
+          title:
+              (m['title'] as String?) ?? (m['body'] as String?) ?? 'Notification',
           subtitle: (m['body'] as String?) ?? '',
           time: _age(m['createdAt']?.toString()),
-          unread: (m['isRead'] as bool?) != true && (m['read'] as bool?) != true,
+          unread:
+              (m['isRead'] as bool?) != true && (m['read'] as bool?) != true,
         ));
       }
       state = NotificationsState(items: items);
@@ -120,6 +198,7 @@ class NotificationsNotifier extends Notifier<NotificationsState> {
       case 'comment':
         return NotificationType.comment;
       case 'follow':
+      case 'follow_activity':
         return NotificationType.follow;
       case 'mention':
         return NotificationType.mention;
