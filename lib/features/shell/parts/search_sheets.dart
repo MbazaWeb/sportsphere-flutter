@@ -353,12 +353,15 @@ class _MessageSheetState extends State<_MessageSheet> {
   final _repo = MessagingRepository();
   final _search = TextEditingController();
   final _compose = TextEditingController();
+  final _threadScroll = ScrollController();
   List<Map<String, dynamic>> _inbox = [];
   List<Map<String, dynamic>> _thread = [];
   List<Map<String, dynamic>> _found = [];
   String? _peerId;
   String? _peerLabel;
+  String? _peerHandle;
   bool _loading = true;
+  RealtimeChannel? _channel;
 
   @override
   void initState() {
@@ -368,9 +371,21 @@ class _MessageSheetState extends State<_MessageSheet> {
 
   @override
   void dispose() {
+    _unsubscribe();
     _search.dispose();
     _compose.dispose();
+    _threadScroll.dispose();
     super.dispose();
+  }
+
+  void _unsubscribe() {
+    final ch = _channel;
+    _channel = null;
+    if (ch != null) {
+      try {
+        Supabase.instance.client.removeChannel(ch);
+      } catch (_) {}
+    }
   }
 
   Future<void> _loadInbox() async {
@@ -379,14 +394,40 @@ class _MessageSheetState extends State<_MessageSheet> {
     if (mounted) setState(() { _inbox = rows; _loading = false; });
   }
 
-  Future<void> _openPeer(String peerId, String label) async {
+  Future<void> _openPeer(String peerId, String label, {String? handle}) async {
+    _unsubscribe();
     setState(() {
       _peerId = peerId;
       _peerLabel = label;
+      _peerHandle = handle;
       _loading = true;
+      _found = [];
     });
     final rows = await _repo.threadWith(peerId);
-    if (mounted) setState(() { _thread = rows; _loading = false; });
+    if (!mounted) return;
+    setState(() {
+      _thread = rows;
+      _loading = false;
+    });
+    _channel = _repo.subscribeThread(
+      peerId: peerId,
+      onInsert: (row) {
+        if (!mounted) return;
+        final id = '${row['id']}';
+        if (_thread.any((m) => '${m['id']}' == id)) return;
+        setState(() => _thread = [..._thread, row]);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_threadScroll.hasClients) {
+            _threadScroll.jumpTo(_threadScroll.position.maxScrollExtent);
+          }
+        });
+      },
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_threadScroll.hasClients) {
+        _threadScroll.jumpTo(_threadScroll.position.maxScrollExtent);
+      }
+    });
   }
 
   Future<void> _send() async {
@@ -396,7 +437,7 @@ class _MessageSheetState extends State<_MessageSheet> {
     try {
       await _repo.send(peer, text);
       _compose.clear();
-      await _openPeer(peer, _peerLabel ?? peer);
+      // Realtime will append; optimistically if needed after short delay reload
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
@@ -435,8 +476,11 @@ class _MessageSheetState extends State<_MessageSheet> {
                       IconButton(
                         icon: const Icon(Icons.arrow_back, color: Colors.white70),
                         onPressed: () {
+                          _unsubscribe();
                           setState(() {
                             _peerId = null;
+                            _peerLabel = null;
+                            _peerHandle = null;
                             _thread = [];
                           });
                           _loadInbox();
@@ -444,7 +488,11 @@ class _MessageSheetState extends State<_MessageSheet> {
                       ),
                     Expanded(
                       child: Text(
-                        _peerId == null ? 'Messages' : (_peerLabel ?? 'Chat'),
+                        _peerId == null
+                            ? 'Messages'
+                            : (_peerHandle != null && _peerHandle!.isNotEmpty
+                                ? '${_peerLabel ?? 'Chat'}  ·  @$_peerHandle'
+                                : (_peerLabel ?? 'Chat')),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 18,
@@ -497,6 +545,7 @@ class _MessageSheetState extends State<_MessageSheet> {
                             onTap: () => _openPeer(
                               '${u['id']}',
                               '${u['name'] ?? u['handle']}',
+                              handle: '${u['handle'] ?? ''}',
                             ),
                           ),
                       ],
@@ -519,21 +568,42 @@ Search a user to start a DM.',
                               itemBuilder: (_, i) {
                                 final m = _inbox[i];
                                 final peer = '${m['peerId']}';
+                                final name = '${m['peerName'] ?? peer}';
+                                final handle = '${m['peerHandle'] ?? ''}';
+                                final av = m['peerAvatar'] as String?;
                                 return ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: const Color(0xFF168CFF),
+                                    backgroundImage: av != null && av.isNotEmpty
+                                        ? NetworkImage(av)
+                                        : null,
+                                    child: av == null || av.isEmpty
+                                        ? Text(
+                                            name.isNotEmpty ? name[0].toUpperCase() : '?',
+                                            style: const TextStyle(color: Colors.white),
+                                          )
+                                        : null,
+                                  ),
                                   title: Text(
-                                    peer,
+                                    name,
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                   subtitle: Text(
-                                    '${m['content'] ?? ''}',
+                                    handle.isNotEmpty
+                                        ? '@$handle · ${m['content'] ?? ''}'
+                                        : '${m['content'] ?? ''}',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(color: Colors.white54),
                                   ),
-                                  onTap: () => _openPeer(peer, peer),
+                                  onTap: () => _openPeer(
+                                    peer,
+                                    name,
+                                    handle: handle.isEmpty ? null : handle,
+                                  ),
                                 );
                               },
                             ),
@@ -543,6 +613,7 @@ Search a user to start a DM.',
                   child: _loading
                       ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
                       : ListView.builder(
+                          controller: _threadScroll,
                           padding: const EdgeInsets.all(12),
                           itemCount: _thread.length,
                           itemBuilder: (_, i) {
