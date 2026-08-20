@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/colors.dart';
 import '../../shared/profile_widgets.dart';
 import '../../../claims/presentation/claim_profile_sheet.dart';
+import '../../../../core/data/social_graph.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MODELS
@@ -312,12 +313,25 @@ class _PlayerProfileViewState extends State<PlayerProfileView>
   late TabController _tabCtrl;
   bool _following = false;
   bool _isFan = false;
+  final _graph = SocialGraph();
 
   @override
   void initState() {
     super.initState();
     _tabCtrl = TabController(length: 3, vsync: this);
     _tabCtrl.addListener(() => setState(() {}));
+    _loadSocial();
+  }
+
+  Future<void> _loadSocial() async {
+    final me = _graph.currentUid;
+    if (me == null) return;
+    try {
+      final id = await _graph.resolveId(widget.profile.handle);
+      final f = await _graph.isFollowing(me, id);
+      final n = await _graph.isFan(me, id);
+      if (mounted) setState(() { _following = f; _isFan = n; });
+    } catch (_) {}
   }
 
   @override
@@ -339,13 +353,36 @@ class _PlayerProfileViewState extends State<PlayerProfileView>
               profile: p,
               following: _following,
               isFan: _isFan,
-              onFollow: () {
+              onFollow: () async {
                 HapticFeedback.lightImpact();
-                setState(() => _following = !_following);
+                final next = !_following;
+                setState(() => _following = next);
+                try {
+                  final id = await _graph.resolveId(widget.profile.handle);
+                  await _graph.follow(id, on: next);
+                } catch (_) {
+                  if (mounted) setState(() => _following = !next);
+                }
               },
-              onBecomeFan: () {
+              onBecomeFan: () async {
                 HapticFeedback.mediumImpact();
-                setState(() => _isFan = !_isFan);
+                final next = !_isFan;
+                setState(() => _isFan = next);
+                try {
+                  final id = await _graph.resolveId(widget.profile.handle);
+                  await _graph.fan(id, on: next);
+                  final me = _graph.currentUid;
+                  if (me != null) await _graph.refreshCounts(me);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(next
+                          ? 'You are now a ${widget.profile.name} fan'
+                          : 'Removed fan status'),
+                    ));
+                  }
+                } catch (_) {
+                  if (mounted) setState(() => _isFan = !next);
+                }
               },
               onBack: () => Navigator.of(context).maybePop(),
               onShare: () {},
@@ -645,8 +682,9 @@ class _PlayerHeader extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
             child: Row(
               children: [
-                // Become Fan
+                // Become Fan (big)
                 Expanded(
+                  flex: 3,
                   child: Semantics(
                     label: isFan ? 'You are a fan' : 'Become a fan',
                     button: true,
@@ -657,14 +695,8 @@ class _PlayerHeader extends StatelessWidget {
                         height: 40,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(20),
-                          color: isFan
-                              ? accent.withValues(alpha: 0.15)
-                              : Colors.white.withValues(alpha: 0.06),
-                          border: Border.all(
-                            color: isFan
-                                ? accent.withValues(alpha: 0.5)
-                                : Colors.white.withValues(alpha: 0.14),
-                          ),
+                          color: isFan ? accent.withValues(alpha: 0.18) : accent,
+                          border: isFan ? Border.all(color: accent.withValues(alpha: 0.7)) : null,
                         ),
                         child: Center(
                           child: Row(
@@ -672,15 +704,16 @@ class _PlayerHeader extends StatelessWidget {
                             children: [
                               Icon(
                                 isFan ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                                color: isFan ? accent : SportSphereColors.muted,
-                                size: 15,
+                                color: isFan ? accent : Colors.white,
+                                size: 16,
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                isFan ? 'Fan ✓' : 'Become Fan',
+                                isFan ? 'You are a fan' : 'Become a fan',
                                 style: TextStyle(
-                                  color: isFan ? accent : SportSphereColors.muted,
-                                  fontSize: 13,
+                                  color: isFan ? accent : Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -693,8 +726,9 @@ class _PlayerHeader extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
 
-                // Follow
+                // Follow (small)
                 Expanded(
+                  flex: 2,
                   child: Semantics(
                     label: following ? 'Following' : 'Follow',
                     button: true,

@@ -22,6 +22,30 @@ class GraphPerson {
 class SocialGraph {
   SupabaseClient get _sb => Supabase.instance.client;
   String? get _uid => _sb.auth.currentUser?.id;
+  String? get currentUid => _uid;
+
+  Future<String> resolveId(String idOrHandle) => _resolve(idOrHandle);
+
+  Future<bool> isFollowing(String me, String targetId) async {
+    final rows = await _sb
+        .from('Follow')
+        .select('followerId')
+        .eq('followerId', me)
+        .eq('followingId', targetId)
+        .limit(1);
+    return (rows as List).isNotEmpty;
+  }
+
+  Future<bool> isFan(String me, String targetId) async {
+    final rows = await _sb
+        .from('fans')
+        .select('fan_id')
+        .eq('fan_id', me)
+        .eq('target_id', targetId)
+        .limit(1);
+    return (rows as List).isNotEmpty;
+  }
+
 
   Future<void> refreshCounts(String id) async {
     try {
@@ -30,9 +54,21 @@ class SocialGraph {
   }
 
   Future<String> _resolve(String idOrHandle) async {
-    if (idOrHandle.contains('-') && idOrHandle.length > 20) return idOrHandle;
-    final u = await _sb.from('User').select('id').eq('handle', idOrHandle).maybeSingle();
-    return u?['id']?.toString() ?? idOrHandle;
+    final raw = idOrHandle.replaceAll('@', '').trim();
+    if (raw.contains('-') && raw.length > 20) return raw;
+    final u = await _sb.from('User').select('id').eq('handle', raw).maybeSingle();
+    if (u?['id'] != null) return u!['id'].toString();
+    // Team accounts: handle or team id → accountUserId
+    final team = await _sb
+        .from('Team')
+        .select('accountUserId,id')
+        .or('id.eq.$raw,id.eq.tm-$raw')
+        .maybeSingle();
+    final aid = team?['accountUserId']?.toString();
+    if (aid != null && aid.isNotEmpty) return aid;
+    // Try common handle forms e.g. simba_sc
+    final u2 = await _sb.from('User').select('id').ilike('handle', raw).maybeSingle();
+    return u2?['id']?.toString() ?? raw;
   }
 
   Future<List<GraphPerson>> followers(String userId) async {

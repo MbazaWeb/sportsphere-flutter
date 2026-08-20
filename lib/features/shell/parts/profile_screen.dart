@@ -1,20 +1,46 @@
 part of '../app_shell.dart';
 
-class _ProfileScreen extends ConsumerWidget {
+class _ProfileScreen extends ConsumerStatefulWidget {
   const _ProfileScreen();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
+  List<String> _fanBadges = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBadges();
+  }
+
+  Future<void> _loadBadges() async {
+    final user = ref.read(authControllerProvider).user;
+    if (user == null) return;
+    try {
+      final uid = Supabase.instance.client.auth.currentUser?.id;
+      if (uid == null) return;
+      final badges = await SocialRepository().fanTeamNames(uid);
+      if (mounted) setState(() => _fanBadges = badges);
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
     final user = auth.user;
+    final badges = _fanBadges.isNotEmpty
+        ? _fanBadges
+        : (user?.fanBadges ?? const <String>[]);
 
-    // Build a profile model from auth state; fall back to mock for display
     final profile = user != null
         ? FanProfileModel(
             firstName: user.firstName,
             lastName: user.lastName,
             handle: user.handle,
-            fanOf: user.fanBadges.isNotEmpty ? user.fanBadges.first : 'SportSphere Fan',
+            fanOf: badges.isNotEmpty ? badges.first : 'SportSphere Fan',
             fanOfAccent: Color(int.parse(user.themeColor.replaceFirst('#', '0xFF'))),
             bio: user.bio.isEmpty ? 'New on SportSphere' : user.bio,
             sport: 'Football',
@@ -36,6 +62,8 @@ class _ProfileScreen extends ConsumerWidget {
     );
   }
 }
+
+// _PageTitle and _ProfileStat kept for other parts that still reference them
 
 // _PageTitle and _ProfileStat kept for other parts that still reference them
 class _ProfileStat extends StatelessWidget {

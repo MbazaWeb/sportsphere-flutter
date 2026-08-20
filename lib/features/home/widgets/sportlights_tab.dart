@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/data/social_graph.dart';
 import '../../../core/data/social_repository.dart';
 import '../../shell/media/media_tools.dart';
 import '../../shell/media/pdf_viewer_page.dart';
@@ -1463,46 +1464,106 @@ class _ActionRow extends StatefulWidget {
 }
 
 class _ActionRowState extends State<_ActionRow> {
+  Future<String?> _resolveTargetId() async {
+    final item = widget.item;
+    if (item.targetUserId != null && item.targetUserId!.isNotEmpty) {
+      return item.targetUserId;
+    }
+    final handle = item.handle.replaceAll('@', '').trim();
+    if (handle.isEmpty) return null;
+    final sb = Supabase.instance.client;
+    // Prefer team account user id for team posts
+    if (item.type == _SpotlightType.team) {
+      final team = await sb
+          .from('Team')
+          .select('accountUserId,id')
+          .or('id.eq.$handle,id.eq.tm-$handle')
+          .maybeSingle();
+      final aid = team?['accountUserId']?.toString();
+      if (aid != null && aid.isNotEmpty) return aid;
+      // also try by profile handle
+    }
+    final u = await sb.from('User').select('id').eq('handle', handle).maybeSingle();
+    return u?['id']?.toString();
+  }
+
   Future<void> _toggleFollow(bool next) async {
-    setState(() => _following = next);
     final uid = Supabase.instance.client.auth.currentUser?.id;
-    final target = widget.item.targetUserId;
-    if (uid == null || target == null) return;
-    try {
-      if (next) {
-        await Supabase.instance.client.from('Follow').upsert({
-          'followerId': uid,
-          'followingId': target,
-        });
-      } else {
-        await Supabase.instance.client
-            .from('Follow')
-            .delete()
-            .eq('followerId', uid)
-            .eq('followingId', target);
+    if (uid == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sign in to follow')),
+        );
       }
-    } catch (_) {}
+      return;
+    }
+    final target = await _resolveTargetId();
+    if (target == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not find this profile')),
+        );
+      }
+      return;
+    }
+    setState(() => _following = next);
+    try {
+      final graph = SocialGraph();
+      await graph.follow(target, on: next);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next
+                ? 'You follow ${widget.item.author}'
+                : 'Unfollowed ${widget.item.author}'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) setState(() => _following = !next);
+    }
   }
 
   Future<void> _toggleFan(bool next) async {
-    setState(() => _isFan = next);
     final uid = Supabase.instance.client.auth.currentUser?.id;
-    final target = widget.item.targetUserId;
-    if (uid == null || target == null) return;
-    try {
-      if (next) {
-        await Supabase.instance.client.from('fans').upsert({
-          'fan_id': uid,
-          'target_id': target,
-        });
-      } else {
-        await Supabase.instance.client
-            .from('fans')
-            .delete()
-            .eq('fan_id', uid)
-            .eq('target_id', target);
+    if (uid == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sign in to become a fan')),
+        );
       }
-    } catch (_) {}
+      return;
+    }
+    final target = await _resolveTargetId();
+    if (target == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not find this team/profile')),
+        );
+      }
+      return;
+    }
+    setState(() => _isFan = next);
+    try {
+      final graph = SocialGraph();
+      await graph.fan(target, on: next);
+      // Also refresh the fan's own counts / badges source
+      await graph.refreshCounts(uid);
+      if (mounted) {
+        final name = widget.item.author;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next
+                ? 'You are now a $name fan — badge updated on your profile'
+                : 'Removed $name fan status'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isFan = !next);
+    }
   }
   bool _following = false;
   bool _isFan = false;
@@ -1648,7 +1709,7 @@ class _ActionRowState extends State<_ActionRow> {
                 onTap: () => _toggleFan(false),
               )
             : _Btn(
-                label: 'Become Fan',
+                label: 'Become a fan',
                 icon: Icons.favorite_border_rounded,
                 color: accent,
                 onTap: () => _toggleFan(true),
@@ -1717,9 +1778,11 @@ class _TwoButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
         children: [
-          Expanded(child: secondary),
+          // Small secondary (Follow)
+          Expanded(flex: 2, child: secondary),
           const SizedBox(width: 9),
-          Expanded(child: primary),
+          // Big primary (Become a fan)
+          Expanded(flex: 3, child: primary),
         ],
       );
 }

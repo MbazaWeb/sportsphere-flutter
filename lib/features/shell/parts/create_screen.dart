@@ -80,6 +80,7 @@ class _CreateComposerState extends State<_CreateComposer>
   _PostType _type = _PostType.text;
 
   // ── Attachment toolbar ────────────────────────────────────────
+  bool _canPredict = true;
   bool _toolbarExpanded = false;
 
   // ── Active overlay panels ─────────────────────────────────────
@@ -129,6 +130,7 @@ class _CreateComposerState extends State<_CreateComposer>
   @override
   void initState() {
     super.initState();
+    _loadRoleGates();
     _submitCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
@@ -461,6 +463,7 @@ class _CreateComposerState extends State<_CreateComposer>
           onToggle: _toggleToolbar,
           onMedia: _addMockMedia,
           onPoll: () => _switchType(_PostType.poll),
+          allowPrediction: _canPredict,
           onPrediction: () => _switchType(_PostType.prediction),
           onLive: () => _switchType(_PostType.liveCoverage),
           onLocation: () => setState(() {
@@ -1708,6 +1711,7 @@ class _AttachmentBar extends StatelessWidget {
   final VoidCallback onToggle;
   final VoidCallback onMedia;
   final VoidCallback onPoll;
+  final bool allowPrediction;
   final VoidCallback onPrediction;
   final VoidCallback onLive;
   final VoidCallback onLocation;
@@ -1731,6 +1735,7 @@ class _AttachmentBar extends StatelessWidget {
     required this.onToggle,
     required this.onMedia,
     required this.onPoll,
+    this.allowPrediction = true,
     required this.onPrediction,
     required this.onLive,
     required this.onLocation,
@@ -1785,14 +1790,16 @@ class _AttachmentBar extends StatelessWidget {
                       onTap: onPoll,
                     ),
                     const SizedBox(width: 8),
-                    _AttachChip(
-                      icon: Icons.insights_rounded,
-                      label: 'Predict',
-                      active: activeType == _PostType.prediction,
-                      color: SportSphereColors.sportGreen,
-                      onTap: onPrediction,
-                    ),
-                    const SizedBox(width: 8),
+                    if (allowPrediction) ...[
+                      _AttachChip(
+                        icon: Icons.insights_rounded,
+                        label: 'Predict',
+                        active: activeType == _PostType.prediction,
+                        color: SportSphereColors.sportGreen,
+                        onTap: onPrediction,
+                      ),
+                      const SizedBox(width: 8),
+                    ],
                     _AttachChip(
                       icon: Icons.sensors,
                       label: 'Live',

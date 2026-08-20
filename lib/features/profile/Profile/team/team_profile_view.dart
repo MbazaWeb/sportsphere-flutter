@@ -10,6 +10,7 @@ import '../../shared/profile_widgets.dart';
 import '../../presentation/people_list_sheet.dart';
 import '../../../../core/data/nbc_club_badges.dart';
 import '../../../claims/presentation/claim_profile_sheet.dart';
+import '../../../../core/data/social_graph.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MODELS
@@ -339,12 +340,66 @@ class _TeamProfileViewState extends State<TeamProfileView>
     with SingleTickerProviderStateMixin {
   late TabController _tabCtrl;
   bool _following = false;
+  bool _isFan = false;
+  int _fanCount = 0;
+  final _graph = SocialGraph();
 
   @override
   void initState() {
     super.initState();
     _tabCtrl = TabController(length: 5, vsync: this);
     _tabCtrl.addListener(() => setState(() {}));
+    _fanCount = widget.profile.fanCount;
+    _loadSocial();
+  }
+
+  Future<void> _loadSocial() async {
+    final id = await _graph.resolveId(widget.profile.handle);
+    final me = _graph.currentUid;
+    if (me == null) return;
+    try {
+      final fanRows = await _graph.isFan(me, id);
+      final followRows = await _graph.isFollowing(me, id);
+      if (!mounted) return;
+      setState(() {
+        _isFan = fanRows;
+        _following = followRows;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _onBecomeFan() async {
+    HapticFeedback.lightImpact();
+    final next = !_isFan;
+    setState(() {
+      _isFan = next;
+      _fanCount = (_fanCount + (next ? 1 : -1)).clamp(0, 1 << 30);
+    });
+    try {
+      final id = await _graph.resolveId(widget.profile.handle);
+      await _graph.fan(id, on: next);
+      final me = _graph.currentUid;
+      if (me != null) await _graph.refreshCounts(me);
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isFan = !next;
+          _fanCount = (_fanCount + (next ? -1 : 1)).clamp(0, 1 << 30);
+        });
+      }
+    }
+  }
+
+  Future<void> _onFollow() async {
+    HapticFeedback.lightImpact();
+    final next = !_following;
+    setState(() => _following = next);
+    try {
+      final id = await _graph.resolveId(widget.profile.handle);
+      await _graph.follow(id, on: next);
+    } catch (_) {
+      if (mounted) setState(() => _following = !next);
+    }
   }
 
   @override
@@ -365,10 +420,10 @@ class _TeamProfileViewState extends State<TeamProfileView>
             child: _TeamHeader(
               profile: p,
               following: _following,
-              onFollow: () {
-                HapticFeedback.lightImpact();
-                setState(() => _following = !_following);
-              },
+              isFan: _isFan,
+              fanCount: _fanCount,
+              onFollow: _onFollow,
+              onBecomeFan: _onBecomeFan,
               onBack: () => Navigator.of(context).maybePop(),
               onShare: () {},
               onMore: () => _showMore(context),
@@ -440,7 +495,10 @@ class _TeamProfileViewState extends State<TeamProfileView>
 class _TeamHeader extends StatelessWidget {
   final TeamProfileModel profile;
   final bool following;
+  final bool isFan;
+  final int fanCount;
   final VoidCallback onFollow;
+  final VoidCallback onBecomeFan;
   final VoidCallback onBack;
   final VoidCallback onShare;
   final VoidCallback onMore;
@@ -450,7 +508,10 @@ class _TeamHeader extends StatelessWidget {
   const _TeamHeader({
     required this.profile,
     required this.following,
+    required this.isFan,
+    required this.fanCount,
     required this.onFollow,
+    required this.onBecomeFan,
     required this.onBack,
     required this.onShare,
     required this.onMore,
@@ -660,7 +721,7 @@ class _TeamHeader extends StatelessWidget {
                 ProfileStat(value: formatCount(profile.postCount), label: 'Posts'),
                 const ProfileStatDivider(),
                 ProfileStat(
-                  value: formatCount(profile.fanCount),
+                  value: formatCount(fanCount),
                   label: 'Fans',
                   onTap: () => showPeopleList(context, userId: profile.handle, handle: profile.handle, kind: PeopleListKind.fans),
                 ),
@@ -683,8 +744,10 @@ class _TeamHeader extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
             child: _FollowRow(
               following: following,
+              isFan: isFan,
               accent: accent,
               onFollow: onFollow,
+              onBecomeFan: onBecomeFan,
               onShop: onShop,
             ),
           ),
@@ -713,14 +776,18 @@ class _TeamHeader extends StatelessWidget {
 
 class _FollowRow extends StatelessWidget {
   final bool following;
+  final bool isFan;
   final Color accent;
   final VoidCallback onFollow;
+  final VoidCallback onBecomeFan;
   final VoidCallback onShop;
 
   const _FollowRow({
     required this.following,
+    required this.isFan,
     required this.accent,
     required this.onFollow,
+    required this.onBecomeFan,
     required this.onShop,
   });
 
@@ -728,107 +795,74 @@ class _FollowRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        // Follow / Following
+        // Big: Become a fan
         Expanded(
-          child: Semantics(
-            label: following ? 'Following this team' : 'Follow this team',
-            button: true,
-            child: GestureDetector(
-              onTap: onFollow,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                height: 42,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(21),
-                  gradient: following
-                      ? null
-                      : const LinearGradient(
-                          colors: [
-                            SportSphereColors.electricBlue,
-                            Color(0xFF0066DD),
-                          ],
-                        ),
-                  color: following
-                      ? Colors.white.withValues(alpha: 0.06)
-                      : null,
-                  border: following
-                      ? Border.all(
-                          color: Colors.white.withValues(alpha: 0.18))
-                      : null,
-                  boxShadow: following
-                      ? null
-                      : [
-                          BoxShadow(
-                            color: SportSphereColors.electricBlue
-                                .withValues(alpha: 0.30),
-                            blurRadius: 14,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                ),
-                child: Center(
-                  child: Text(
-                    following ? 'Following' : 'Follow',
-                    style: TextStyle(
-                      color: following
-                          ? SportSphereColors.muted
-                          : Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
+          flex: 3,
+          child: GestureDetector(
+            onTap: onBecomeFan,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              height: 46,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                color: isFan ? accent.withValues(alpha: 0.18) : accent,
+                border: isFan ? Border.all(color: accent.withValues(alpha: 0.7)) : null,
+              ),
+              child: Center(
+                child: Text(
+                  isFan ? 'You are a fan' : 'Become a fan',
+                  style: TextStyle(
+                    color: isFan ? accent : Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
             ),
           ),
         ),
-        const SizedBox(width: 10),
-        Semantics(
-          label: 'Open club shop',
-          button: true,
+        const SizedBox(width: 8),
+        // Small: Follow
+        Expanded(
+          flex: 2,
           child: GestureDetector(
-            onTap: onShop,
-            child: Container(
-              height: 42,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
+            onTap: onFollow,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              height: 46,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(21),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: following
+                      ? Colors.white.withValues(alpha: 0.18)
+                      : SportSphereColors.electricBlue.withValues(alpha: 0.75),
+                ),
+                color: following ? Colors.white.withValues(alpha: 0.06) : Colors.transparent,
               ),
-              child: const Row(
-                children: [
-                  Icon(Icons.storefront_rounded, size: 16, color: SportSphereColors.white),
-                  SizedBox(width: 6),
-                  Text('Shop',
-                      style: TextStyle(
-                        color: SportSphereColors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                      )),
-                ],
+              child: Center(
+                child: Text(
+                  following ? 'Following' : 'Follow',
+                  style: TextStyle(
+                    color: following ? SportSphereColors.muted : SportSphereColors.electricBlue,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ),
           ),
         ),
-        const SizedBox(width: 10),
-
-        // Notification bell
-        Semantics(
-          label: 'Set team notifications',
-          button: true,
-          child: GestureDetector(
-            onTap: () {},
-            child: Container(
-              height: 42, width: 42,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.06),
-                border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.14)),
-              ),
-              child: const Icon(Icons.notifications_none_rounded,
-                  color: SportSphereColors.muted, size: 20),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: onShop,
+          child: Container(
+            height: 46,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
             ),
+            child: const Icon(Icons.storefront_rounded, size: 18, color: SportSphereColors.white),
           ),
         ),
       ],

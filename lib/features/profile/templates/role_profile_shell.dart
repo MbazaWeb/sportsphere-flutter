@@ -9,6 +9,7 @@ import '../shared/profile_widgets.dart';
 import '../presentation/people_list_sheet.dart';
 import '../../claims/presentation/claim_profile_sheet.dart';
 import 'role_profile_model.dart';
+import '../../../core/data/social_graph.dart';
 
 class RoleProfileShell extends StatefulWidget {
   final RoleProfileModel profile;
@@ -22,7 +23,20 @@ class _RoleProfileShellState extends State<RoleProfileShell>
     with SingleTickerProviderStateMixin {
   late TabController _tabCtrl;
   bool _following = false;
+  bool _isFan = false;
+  final _graph = SocialGraph();
   RoleProfileModel get p => widget.profile;
+
+  bool get _allowsFan {
+    final r = p.roleLabel.toLowerCase();
+    return r.contains('coach') ||
+        r.contains('player') ||
+        r.contains('scout') ||
+        r.contains('agent') ||
+        r.contains('academy') ||
+        r.contains('team') ||
+        p.shape == RoleShape.person;
+  }
 
   List<_TabSpec> get _tabs {
     final tabs = <_TabSpec>[
@@ -46,6 +60,18 @@ class _RoleProfileShellState extends State<RoleProfileShell>
     super.initState();
     _tabCtrl = TabController(length: _tabs.length, vsync: this);
     _tabCtrl.addListener(() => setState(() {}));
+    _loadSocial();
+  }
+
+  Future<void> _loadSocial() async {
+    final me = _graph.currentUid;
+    if (me == null) return;
+    try {
+      final id = await _graph.resolveId(p.handle);
+      final f = await _graph.isFollowing(me, id);
+      final n = _allowsFan ? await _graph.isFan(me, id) : false;
+      if (mounted) setState(() { _following = f; _isFan = n; });
+    } catch (_) {}
   }
 
   @override
@@ -65,9 +91,31 @@ class _RoleProfileShellState extends State<RoleProfileShell>
             child: _Header(
               p: p,
               following: _following,
-              onFollow: () {
+              isFan: _isFan,
+              showFan: _allowsFan,
+              onFollow: () async {
                 HapticFeedback.lightImpact();
-                setState(() => _following = !_following);
+                final next = !_following;
+                setState(() => _following = next);
+                try {
+                  final id = await _graph.resolveId(p.handle);
+                  await _graph.follow(id, on: next);
+                } catch (_) {
+                  if (mounted) setState(() => _following = !next);
+                }
+              },
+              onBecomeFan: () async {
+                HapticFeedback.mediumImpact();
+                final next = !_isFan;
+                setState(() => _isFan = next);
+                try {
+                  final id = await _graph.resolveId(p.handle);
+                  await _graph.fan(id, on: next);
+                  final me = _graph.currentUid;
+                  if (me != null) await _graph.refreshCounts(me);
+                } catch (_) {
+                  if (mounted) setState(() => _isFan = !next);
+                }
               },
               onBack: () => Navigator.of(context).maybePop(),
               onShop: p.shop == null ? null : () => _tabCtrl.animateTo(tabs.length - 1),
@@ -136,14 +184,20 @@ class _TabSpec {
 class _Header extends StatelessWidget {
   final RoleProfileModel p;
   final bool following;
+  final bool isFan;
+  final bool showFan;
   final VoidCallback onFollow;
+  final VoidCallback onBecomeFan;
   final VoidCallback? onClaim;
   final VoidCallback onBack;
   final VoidCallback? onShop;
   const _Header({
     required this.p,
     required this.following,
+    required this.isFan,
+    required this.showFan,
     required this.onFollow,
+    required this.onBecomeFan,
     this.onClaim,
     required this.onBack,
     this.onShop,
@@ -241,6 +295,63 @@ class _Header extends StatelessWidget {
               ]),
               const SizedBox(height: 14),
               Row(children: [
+                if (showFan) ...[
+                  Expanded(
+                    flex: 3,
+                    child: GestureDetector(
+                      onTap: onBecomeFan,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        height: 46,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          color: isFan ? p.accent.withValues(alpha: 0.18) : p.accent,
+                          border: isFan ? Border.all(color: p.accent.withValues(alpha: 0.7)) : null,
+                        ),
+                        child: Center(
+                          child: Text(
+                            isFan ? 'You are a fan' : 'Become a fan',
+                            style: TextStyle(
+                              color: isFan ? p.accent : Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 2,
+                    child: GestureDetector(
+                      onTap: onFollow,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        height: 46,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          color: following ? Colors.white.withValues(alpha: 0.06) : Colors.transparent,
+                          border: Border.all(
+                            color: following
+                                ? Colors.white.withValues(alpha: 0.18)
+                                : SportSphereColors.electricBlue.withValues(alpha: 0.75),
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            following ? 'Following' : 'Follow',
+                            style: TextStyle(
+                              color: following ? SportSphereColors.muted : SportSphereColors.electricBlue,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ] else
                 Expanded(
                   child: GestureDetector(
                     onTap: onFollow,
