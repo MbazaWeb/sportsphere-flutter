@@ -49,6 +49,10 @@ class SocialRepository {
         return 'video/mp4';
       case 'mov':
         return 'video/quicktime';
+      case 'gif':
+        return 'image/gif';
+      case 'pdf':
+        return 'application/pdf';
       default:
         return 'image/jpeg';
     }
@@ -139,15 +143,25 @@ class SocialRepository {
     return List<Map<String, dynamic>>.from(rows as List);
   }
 
-  Future<void> addComment(String postId, String content) async {
+  Future<void> addComment(
+    String postId,
+    String content, {
+    List<String> mediaUrls = const [],
+    String? mediaType,
+  }) async {
     final uid = _uid;
     if (uid == null) throw StateError('Sign in to comment');
+    if (content.trim().isEmpty && mediaUrls.isEmpty) {
+      throw StateError('Write something or attach a file');
+    }
     final id = 'cmt-${DateTime.now().millisecondsSinceEpoch}';
     await _sb.from('Comment').insert({
       'id': id,
       'postId': postId,
       'userId': uid,
       'content': content.trim(),
+      'mediaUrls': mediaUrls,
+      'mediaType': mediaType,
       'likeCount': 0,
       'createdAt': DateTime.now().toIso8601String(),
     });

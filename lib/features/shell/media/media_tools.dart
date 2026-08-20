@@ -1,8 +1,10 @@
+import 'dart:typed_data';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_cropper/image_cropper.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_compress/video_compress.dart';
 
@@ -105,6 +107,17 @@ Future<List<XFile>> pickAndEditMedia(BuildContext context, {int remaining = 4}) 
             title: const Text('Record video (max 30s)'),
             onTap: () => Navigator.pop(ctx, 'record'),
           ),
+          ListTile(
+            leading: const Icon(Icons.picture_as_pdf_outlined),
+            title: const Text('PDF document'),
+            subtitle: const Text('Reports, fixtures, press kits'),
+            onTap: () => Navigator.pop(ctx, 'pdf'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.gif_box_outlined),
+            title: const Text('GIF'),
+            onTap: () => Navigator.pop(ctx, 'gif'),
+          ),
           const SizedBox(height: 8),
         ],
       ),
@@ -139,18 +152,65 @@ Future<List<XFile>> pickAndEditMedia(BuildContext context, {int remaining = 4}) 
       final edited = await editVideoFile(context, f);
       if (edited != null) out.add(edited);
     }
+  } else if (choice == 'pdf') {
+    final res = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['pdf'],
+      withData: true,
+    );
+    if (res != null && res.files.isNotEmpty) {
+      final f = res.files.first;
+      if (f.path != null) {
+        out.add(XFile(f.path!, name: f.name, mimeType: 'application/pdf'));
+      } else if (f.bytes != null) {
+        out.add(XFile.fromData(f.bytes!, name: f.name, mimeType: 'application/pdf'));
+      }
+    }
+  } else if (choice == 'gif') {
+    final res = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['gif'],
+      withData: true,
+    );
+    if (res != null && res.files.isNotEmpty) {
+      final f = res.files.first;
+      if (f.path != null) {
+        out.add(XFile(f.path!, name: f.name, mimeType: 'image/gif'));
+      } else if (f.bytes != null) {
+        out.add(XFile.fromData(f.bytes!, name: f.name, mimeType: 'image/gif'));
+      }
+    }
   }
 
   return out;
 }
 
-bool fileLooksLikeVideo(XFile f) => _isVideo(f);
 
-bool fileExists(XFile f) {
-  if (kIsWeb) return true;
-  try {
-    return File(f.path).existsSync();
-  } catch (_) {
-    return true;
+Future<XFile?> pickCommentAttachmentDirect(String type) async {
+  if (type == 'image') {
+    return ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 88);
   }
+  if (type == 'gif') {
+    final res = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['gif'],
+      withData: true,
+    );
+    if (res == null || res.files.isEmpty) return null;
+    final f = res.files.first;
+    if (f.path != null) return XFile(f.path!, name: f.name, mimeType: 'image/gif');
+    if (f.bytes != null) return XFile.fromData(f.bytes!, name: f.name, mimeType: 'image/gif');
+  }
+  if (type == 'pdf') {
+    final res = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['pdf'],
+      withData: true,
+    );
+    if (res == null || res.files.isEmpty) return null;
+    final f = res.files.first;
+    if (f.path != null) return XFile(f.path!, name: f.name, mimeType: 'application/pdf');
+    if (f.bytes != null) return XFile.fromData(f.bytes!, name: f.name, mimeType: 'application/pdf');
+  }
+  return null;
 }

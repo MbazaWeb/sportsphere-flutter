@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/data/social_repository.dart';
+import '../../shell/media/media_tools.dart';
+import '../../shell/media/pdf_viewer_page.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/data/nbc_club_badges.dart';
 
 // ============================================================
@@ -565,6 +568,31 @@ class _ImageContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final asset = item.asset;
     if (asset == null) return _GeneratedContent(item: item);
+
+    final lower = asset.toLowerCase();
+    final isPdf = lower.endsWith('.pdf') || lower.contains('application/pdf');
+    if (isPdf) {
+      return GestureDetector(
+        onTap: () => openMediaUrl(context, asset, title: 'Post PDF'),
+        child: Container(
+          height: 120,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: const Color(0xFF0B1626),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Colors.white12),
+          ),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.picture_as_pdf, color: Color(0xFFE31B23), size: 36),
+              SizedBox(width: 12),
+              Text('Open PDF', style: TextStyle(fontWeight: FontWeight.w700)),
+            ],
+          ),
+        ),
+      );
+    }
 
     final isLogo = asset.startsWith('http');
     return ClipRRect(
@@ -1160,6 +1188,9 @@ class _CommentSheetState extends State<_CommentSheet> {
   List<Map<String, dynamic>> _rows = [];
   bool _loading = true;
   bool _sending = false;
+  XFile? _attach;
+  String? _sticker;
+  static const _stickers = ['⚽', '🔥', '👏', '😂', '😱', '💪', '🏆', '❤️', '🦁', '⭐'];
 
   @override
   void initState() {
@@ -1176,15 +1207,91 @@ class _CommentSheetState extends State<_CommentSheet> {
     }
   }
 
+  Future<void> _attachFile() async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: const Color(0xFF071422),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(leading: const Icon(Icons.image_outlined), title: const Text('Image'), onTap: () => Navigator.pop(ctx, 'image')),
+            ListTile(leading: const Icon(Icons.gif_box_outlined), title: const Text('GIF'), onTap: () => Navigator.pop(ctx, 'gif')),
+            ListTile(leading: const Icon(Icons.picture_as_pdf_outlined), title: const Text('PDF'), onTap: () => Navigator.pop(ctx, 'pdf')),
+            ListTile(leading: const Icon(Icons.emoji_emotions_outlined), title: const Text('Sticker'), onTap: () => Navigator.pop(ctx, 'sticker')),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || choice == null) return;
+    if (choice == 'sticker') {
+      final s = await showModalBottomSheet<String>(
+        context: context,
+        backgroundColor: const Color(0xFF071422),
+        builder: (ctx) => Padding(
+          padding: const EdgeInsets.all(16),
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              for (final e in _stickers)
+                InkWell(onTap: () => Navigator.pop(ctx, e), child: Text(e, style: const TextStyle(fontSize: 32))),
+            ],
+          ),
+        ),
+      );
+      if (s != null && mounted) setState(() { _sticker = s; _attach = null; });
+      return;
+    }
+    if (choice == 'image') {
+      final f = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 88);
+      if (f != null && mounted) setState(() { _attach = f; _sticker = null; });
+      return;
+    }
+    final picked = await pickCommentAttachmentDirect(choice);
+    if (picked != null && mounted) setState(() { _attach = picked; _sticker = null; });
+  }
+
   Future<void> _send() async {
     final text = _ctrl.text.trim();
-    if (text.isEmpty || _sending) return;
+    final sticker = _sticker;
+    if (text.isEmpty && _attach == null && sticker == null) return;
+    if (_sending) return;
     setState(() => _sending = true);
     try {
-      await widget.social.addComment(widget.postId, text);
+      final urls = <String>[];
+      String? mediaType;
+      if (sticker != null) {
+        mediaType = 'sticker';
+        // sticker text embedded
+      }
+      if (_attach != null) {
+        final name = _attach!.name.toLowerCase();
+        mediaType = name.endsWith('.pdf')
+            ? 'pdf'
+            : name.endsWith('.gif')
+                ? 'gif'
+                : 'image';
+        final url = await widget.social.uploadPickedFile(
+          bucket: 'posts',
+          folder: 'comments',
+          file: _attach!,
+        );
+        urls.add(url);
+      }
+      final body = sticker != null ? (text.isEmpty ? sticker : '$text $sticker') : text;
+      await widget.social.addComment(
+        widget.postId,
+        body,
+        mediaUrls: urls,
+        mediaType: mediaType ?? (sticker != null ? 'sticker' : null),
+      );
       _ctrl.clear();
+      setState(() { _attach = null; _sticker = null; });
       await _load();
-      if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
@@ -1200,17 +1307,50 @@ class _CommentSheetState extends State<_CommentSheet> {
     super.dispose();
   }
 
+  Widget _commentBody(Map<String, dynamic> c) {
+    final content = '${c['content'] ?? ''}';
+    final media = c['mediaUrls'];
+    final urls = media is List ? media.map((e) => e.toString()).toList() : <String>[];
+    final type = c['mediaType']?.toString();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (content.isNotEmpty)
+          Text(content, style: const TextStyle(fontSize: 14)),
+        for (final u in urls) ...[
+          const SizedBox(height: 6),
+          if ((type == 'pdf') || u.toLowerCase().endsWith('.pdf'))
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.picture_as_pdf, color: Color(0xFFE31B23)),
+              title: const Text('Open PDF', style: TextStyle(fontSize: 13)),
+              onTap: () => openMediaUrl(context, u, title: 'Comment PDF'),
+            )
+          else
+            GestureDetector(
+              onTap: () => openMediaUrl(context, u),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.network(u, height: 140, fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const Icon(Icons.broken_image)),
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.viewInsetsOf(context).bottom;
     return Padding(
       padding: EdgeInsets.fromLTRB(16, 16, 16, bottom + 16),
       child: SizedBox(
-        height: MediaQuery.sizeOf(context).height * 0.55,
+        height: MediaQuery.sizeOf(context).height * 0.62,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.postId.startsWith('x') ? 'Comments' : 'Comments', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            const Text('Live thread / comments', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
             const SizedBox(height: 12),
             Expanded(
               child: _loading
@@ -1223,15 +1363,29 @@ class _CommentSheetState extends State<_CommentSheet> {
                             final c = _rows[i];
                             return ListTile(
                               contentPadding: EdgeInsets.zero,
-                              title: Text('${c['content'] ?? ''}', style: const TextStyle(fontSize: 14)),
-                              subtitle: Text('${c['userId'] ?? ''}'.toString().substring(0, 8),
-                                  style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                              title: _commentBody(c),
+                              subtitle: Text(
+                                '${c['userId'] ?? ''}'.toString().padRight(8).substring(0, 8),
+                                style: const TextStyle(color: Colors.white38, fontSize: 11),
+                              ),
                             );
                           },
                         ),
             ),
+            if (_attach != null || _sticker != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Chip(
+                  label: Text(_sticker ?? _attach!.name),
+                  onDeleted: () => setState(() { _attach = null; _sticker = null; }),
+                ),
+              ),
             Row(
               children: [
+                IconButton(
+                  onPressed: _sending ? null : _attachFile,
+                  icon: const Icon(Icons.attach_file, color: Color(0xFF168CFF)),
+                ),
                 Expanded(
                   child: TextField(
                     controller: _ctrl,
