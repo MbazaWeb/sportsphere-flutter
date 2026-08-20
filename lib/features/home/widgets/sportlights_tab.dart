@@ -191,6 +191,30 @@ final _feedItems = _welcomeFeed;
 // MAIN WIDGET
 // ============================================================
 
+String _handleFromTeamTag(String? tag) {
+  if (tag == null || tag.isEmpty) return 'simba';
+  return tag.replaceFirst('tm-', '').replaceAll('_', '-');
+}
+
+_SpotlightType _typeForRole(String role) {
+  switch (role.toLowerCase()) {
+    case 'team':
+      return _SpotlightType.team;
+    case 'player':
+      return _SpotlightType.player;
+    case 'coach':
+      return _SpotlightType.coach;
+    case 'official':
+      return _SpotlightType.official;
+    case 'organization':
+      return _SpotlightType.organization;
+    case 'fan':
+      return _SpotlightType.fan;
+    default:
+      return _SpotlightType.official;
+  }
+}
+
 class SportlightsTab extends StatefulWidget {
   const SportlightsTab({super.key});
 
