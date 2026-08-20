@@ -16,6 +16,7 @@ import '../../features/notifications/notifications_provider.dart';
 import '../../features/profile/Profile/fan/fan_profile_view.dart';
 import '../../features/profile/presentation/edit_profile_sheet.dart';
 import '../home/widgets/sportlights_tab.dart';
+import '../home/news/news_tab.dart';
 import '../scores/presentation/pages/scores_page.dart';
 import '../shop/models/shop_models.dart';
 import '../shop/presentation/shop_tab.dart';

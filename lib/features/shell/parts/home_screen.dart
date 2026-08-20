@@ -11,7 +11,7 @@ class _HomeScreenState extends State<_HomeScreen>
     with SingleTickerProviderStateMixin {
   int _tab = 0;
 
-  static const _tabs = ['Spotlights', 'Trending', 'Community', 'E-Shop'];
+  static const _tabs = ['Spotlights', 'News', 'Trending', 'Community', 'E-Shop'];
 
   @override
   Widget build(BuildContext context) {
@@ -31,6 +31,7 @@ class _HomeScreenState extends State<_HomeScreen>
             index: _tab,
             children: const [
               _SpotlightsContent(),
+              NewsTab(),
               _TrendingContent(),
               _CommunityContent(),
               _EShopContent(),
@@ -88,7 +89,7 @@ class _HomeTabBar extends StatelessWidget {
                             : SportSphereColors.muted,
                         fontWeight:
                             active ? FontWeight.w700 : FontWeight.w500,
-                        fontSize: 13,
+                        fontSize: 11,
                       ),
                     ),
                   ),
