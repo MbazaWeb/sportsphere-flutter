@@ -264,6 +264,20 @@ class ScoresRepository {
       isLive: isLive,
     );
   }
+
+  /// Admin: set final score and mark finished.
+  Future<void> updateMatchResult({
+    required String matchId,
+    required int homeScore,
+    required int awayScore,
+  }) async {
+    await _sb.from('Match').update({
+      'homeScore': homeScore,
+      'awayScore': awayScore,
+      'status': 'finished',
+      'updatedAt': DateTime.now().toIso8601String(),
+    }).eq('id', matchId);
+  }
 }
 
 class _Acc {

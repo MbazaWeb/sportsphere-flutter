@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/theme/colors.dart';
+import '../../core/admin/app_admin.dart';
 import '../../core/data/social_repository.dart';
 import '../../core/widgets/glass_container.dart';
 import '../../features/auth/domain/auth_state.dart';

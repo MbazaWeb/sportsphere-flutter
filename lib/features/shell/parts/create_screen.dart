@@ -116,6 +116,8 @@ class _CreateComposerState extends State<_CreateComposer>
 
   // ── Audience ─────────────────────────────────────────────────
   String _audience = 'Everyone';
+  bool _asOfficialBreaking = false;
+  bool _isAppAdmin = false;
 
   // ── Submit animation ─────────────────────────────────────────
   late final AnimationController _submitCtrl;
@@ -130,6 +132,7 @@ class _CreateComposerState extends State<_CreateComposer>
   @override
   void initState() {
     super.initState();
+    AppAdmin.resolveIsAdmin().then((v) { if (mounted) setState(() => _isAppAdmin = v); });
     // _loadRoleGates(); // Removed - not needed
     _submitCtrl = AnimationController(
       vsync: this,
@@ -238,7 +241,7 @@ class _CreateComposerState extends State<_CreateComposer>
         teamTag: _type == _PostType.liveCoverage && _coverageMatchId != null
             ? 'match:${_coverageMatchId}'
             : null,
-        isBreaking: _type == _PostType.liveCoverage,
+        isBreaking: _type == _PostType.liveCoverage || _asOfficialBreaking,
       );
       await _submitCtrl.forward();
       await Future.delayed(const Duration(milliseconds: 400));
@@ -290,6 +293,42 @@ class _CreateComposerState extends State<_CreateComposer>
           audience: _audience,
           onAudienceChanged: (v) => setState(() => _audience = v),
         ),
+        if (_isAppAdmin)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0A2A4A),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: SportSphereColors.electricBlue.withValues(alpha: 0.4)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.admin_panel_settings_rounded,
+                      color: SportSphereColors.electricBlue, size: 18),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'SportSphere Official · Admin post',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  const Text('Breaking',
+                      style: TextStyle(color: Colors.white54, fontSize: 11)),
+                  Switch(
+                    value: _asOfficialBreaking,
+                    onChanged: (v) => setState(() => _asOfficialBreaking = v),
+                    activeColor: SportSphereColors.electricBlue,
+                  ),
+                ],
+              ),
+            ),
+          ),
 
         // ── Scrollable body ───────────────────────────────────────
         Expanded(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/admin/app_admin.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/data/social_graph.dart';
@@ -238,6 +239,7 @@ class SportlightsTab extends StatefulWidget {
 }
 
 class _SportlightsTabState extends State<SportlightsTab> {
+  bool _isAdmin = false;
   final ScrollController _scrollController = ScrollController();
   List<_SpotlightItem> _live = const [];
   RealtimeChannel? _channel;
@@ -245,6 +247,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
   @override
   void initState() {
     super.initState();
+    AppAdmin.resolveIsAdmin().then((v) { if (mounted) setState(() => _isAdmin = v); });
     _loadPosts();
     _channel = Supabase.instance.client
         .channel('public-post')
@@ -378,7 +381,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 110),
           itemCount: items.length,
           itemBuilder: (context, index) {
-            return _SpotlightCard(item: items[index]);
+            return _SpotlightCard(item: items[index], isAdmin: _isAdmin, onDeleted: () => _loadPosts());
           },
         ),
       ),
@@ -392,7 +395,9 @@ class _SportlightsTabState extends State<SportlightsTab> {
 
 class _SpotlightCard extends StatelessWidget {
   final _SpotlightItem item;
-  const _SpotlightCard({required this.item});
+  final bool isAdmin;
+  final VoidCallback? onDeleted;
+  const _SpotlightCard({required this.item, this.isAdmin = false, this.onDeleted});
 
   @override
   Widget build(BuildContext context) {
@@ -416,13 +421,13 @@ class _SpotlightCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _AuthorHeader(item: item),
+            _AuthorHeader(item: item, isAdmin: isAdmin, onDeleted: onDeleted),
             const SizedBox(height: 12),
             _MediaArea(item: item),
             const SizedBox(height: 10),
             _EngagementRow(item: item),
             const SizedBox(height: 11),
-            _ActionRow(item: item),
+            _ActionRow(item: item, isAdmin: isAdmin, onDeleted: onDeleted),
           ],
         ),
       ),
@@ -436,7 +441,117 @@ class _SpotlightCard extends StatelessWidget {
 
 class _AuthorHeader extends StatelessWidget {
   final _SpotlightItem item;
-  const _AuthorHeader({required this.item});
+  final bool isAdmin;
+  final VoidCallback? onDeleted;
+  const _AuthorHeader({
+    required this.item,
+    this.isAdmin = false,
+    this.onDeleted,
+  });
+
+  Future<void> _adminMenu(BuildContext context) async {
+    final id = item.postId;
+    if (id == null || id.isEmpty) return;
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: const Color(0xFF071422),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ListTile(
+              title: Text('Admin · Manage post',
+                  style: TextStyle(fontWeight: FontWeight.w800)),
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Edit post'),
+              onTap: () => Navigator.pop(ctx, 'edit'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.flash_on_rounded, color: Colors.orange),
+              title: const Text('Toggle breaking'),
+              onTap: () => Navigator.pop(ctx, 'breaking'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
+              title: const Text('Delete post'),
+              onTap: () => Navigator.pop(ctx, 'delete'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!context.mounted || action == null) return;
+    final social = SocialRepository();
+    try {
+      if (action == 'delete') {
+        final ok = await showDialog<bool>(
+          context: context,
+          builder: (d) => AlertDialog(
+            title: const Text('Delete post?'),
+            content: const Text('This cannot be undone.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
+              TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Delete')),
+            ],
+          ),
+        );
+        if (ok == true) {
+          await social.deletePost(id);
+          onDeleted?.call();
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Post deleted')),
+            );
+          }
+        }
+      } else if (action == 'breaking') {
+        await social.updatePost(id, isBreaking: true);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Marked as breaking')),
+          );
+        }
+      } else if (action == 'edit') {
+        final ctrl = TextEditingController();
+        final text = await showDialog<String>(
+          context: context,
+          builder: (d) => AlertDialog(
+            title: const Text('Edit post'),
+            content: TextField(
+              controller: ctrl,
+              maxLines: 5,
+              decoration: const InputDecoration(hintText: 'New content'),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(d), child: const Text('Cancel')),
+              TextButton(
+                onPressed: () => Navigator.pop(d, ctrl.text),
+                child: const Text('Save'),
+              ),
+            ],
+          ),
+        );
+        if (text != null && text.trim().isNotEmpty) {
+          await social.updatePost(id, content: text);
+          onDeleted?.call();
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Post updated')),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -510,14 +625,24 @@ class _AuthorHeader extends StatelessWidget {
             ],
           ),
         ),
-        IconButton(
-          onPressed: () {},
-          splashRadius: 22,
-          icon: Icon(
-            Icons.bookmark_border_rounded,
-            color: Colors.white.withValues(alpha: 0.88),
+        if (isAdmin && (item.postId?.isNotEmpty ?? false))
+          IconButton(
+            onPressed: () => _adminMenu(context),
+            splashRadius: 22,
+            icon: Icon(
+              Icons.more_vert_rounded,
+              color: Colors.white.withValues(alpha: 0.88),
+            ),
+          )
+        else
+          IconButton(
+            onPressed: () {},
+            splashRadius: 22,
+            icon: Icon(
+              Icons.bookmark_border_rounded,
+              color: Colors.white.withValues(alpha: 0.88),
+            ),
           ),
-        ),
       ],
     ),
     );
@@ -1457,7 +1582,13 @@ class _EngagementBtn extends StatelessWidget {
 
 class _ActionRow extends StatefulWidget {
   final _SpotlightItem item;
-  const _ActionRow({required this.item});
+  final bool isAdmin;
+  final VoidCallback? onDeleted;
+  const _ActionRow({
+    required this.item,
+    this.isAdmin = false,
+    this.onDeleted,
+  });
 
   @override
   State<_ActionRow> createState() => _ActionRowState();

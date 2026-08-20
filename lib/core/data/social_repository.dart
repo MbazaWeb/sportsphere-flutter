@@ -134,6 +134,39 @@ class SocialRepository {
     return id;
   }
 
+
+
+  /// Admin / author: update post text and flags.
+  Future<void> updatePost(
+    String postId, {
+    String? content,
+    bool? isBreaking,
+    String? postType,
+  }) async {
+    final uid = _uid;
+    if (uid == null) throw StateError('Please sign in');
+    final patch = <String, dynamic>{
+      'updatedAt': DateTime.now().toIso8601String(),
+    };
+    if (content != null) patch['content'] = content.trim();
+    if (isBreaking != null) patch['isBreaking'] = isBreaking;
+    if (postType != null) patch['postType'] = postType;
+    await _sb.from('Post').update(patch).eq('id', postId);
+  }
+
+  /// Admin / author: delete post and related likes/comments best-effort.
+  Future<void> deletePost(String postId) async {
+    final uid = _uid;
+    if (uid == null) throw StateError('Please sign in');
+    try {
+      await _sb.from('PostLike').delete().eq('postId', postId);
+    } catch (_) {}
+    try {
+      await _sb.from('Comment').delete().eq('postId', postId);
+    } catch (_) {}
+    await _sb.from('Post').delete().eq('id', postId);
+  }
+
   /// Toggle like on a post
   Future<void> toggleLike(String postId, {required bool like}) async {
     final uid = _uid;

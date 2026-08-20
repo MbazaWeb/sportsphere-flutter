@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/colors.dart';
+import '../../../../core/admin/app_admin.dart';
 import '../../../../core/widgets/glass_container.dart';
 import '../../domain/models/match_model.dart';
 import '../../domain/models/standing_model.dart';
@@ -21,12 +22,16 @@ class _ScoresPageState extends ConsumerState<ScoresPage>
     with TickerProviderStateMixin {
   late TabController _mainTabController;
   late TabController _matchesTabController;
+  bool _isAdmin = false;
 
   @override
   void initState() {
     super.initState();
     _mainTabController = TabController(length: 2, vsync: this);
     _matchesTabController = TabController(length: 4, vsync: this);
+    AppAdmin.resolveIsAdmin().then((v) {
+      if (mounted) setState(() => _isAdmin = v);
+    });
   }
 
   @override
@@ -40,6 +45,14 @@ class _ScoresPageState extends ConsumerState<ScoresPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SportSphereColors.background,
+      floatingActionButton: _isAdmin
+          ? FloatingActionButton.extended(
+              onPressed: _adminUpdateScore,
+              backgroundColor: SportSphereColors.electricBlue,
+              icon: const Icon(Icons.edit_note_rounded),
+              label: const Text('Update score'),
+            )
+          : null,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
