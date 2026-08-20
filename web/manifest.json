@@ -1,11 +1,11 @@
 {
-    "name": "sportsphere_app",
-    "short_name": "sportsphere_app",
+    "name": "SportSphere",
+    "short_name": "SportSphere",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0A0E1C",
+    "theme_color": "#0A0E1C",
+    "description": "SportSphere — sports network for fans, players, teams and the business of sport.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

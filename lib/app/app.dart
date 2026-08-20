@@ -20,6 +20,7 @@ class SportSphereApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
+      title: 'SportSphere',
       debugShowCheckedModeBanner: false,
       routerConfig: ref.watch(routerProvider),
     );
