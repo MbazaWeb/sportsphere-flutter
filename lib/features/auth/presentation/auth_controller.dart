@@ -153,6 +153,19 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
+  Future<void> refreshProfile() async {
+    try {
+      final repo = ref.read(authRepositoryProvider);
+      final token = await repo.currentToken();
+      final user = token == null ? null : await repo.currentProfile();
+      state = AuthState(
+        status: token == null ? AuthStatus.guest : AuthStatus.authenticated,
+        token: token,
+        user: user,
+      );
+    } catch (_) {}
+  }
+
   Future<void> signOut() async {
     await ref.read(authRepositoryProvider).signOut();
     state = const AuthState(status: AuthStatus.guest);

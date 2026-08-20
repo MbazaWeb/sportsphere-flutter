@@ -53,6 +53,7 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
             coverAsset: user.coverUrl,
             isVerified: user.isVerified,
             isOwnProfile: true,
+            userId: Supabase.instance.client.auth.currentUser?.id,
           )
         : FanProfileModel(
             firstName: 'Guest',

@@ -73,7 +73,9 @@ class ProfileLoader {
           (row?['cover_url'] as String?) ?? (row?['coverUrl'] as String?),
       isVerified: (row?['is_verified'] as bool?) == true ||
           (row?['isVerified'] as bool?) == true,
-      isOwnProfile: false,
+      isOwnProfile: _sb.auth.currentUser?.id != null &&
+          row?['id']?.toString() == _sb.auth.currentUser?.id,
+      userId: row?['id']?.toString(),
     );
   }
 

@@ -1,10 +1,12 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/colors.dart';
+import '../../presentation/become_pro_sheet.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MODEL
@@ -28,6 +30,7 @@ class FanProfileModel {
     this.coverAsset,
     this.isVerified = false,
     this.isOwnProfile = false,
+    this.userId,
   });
 
   final String firstName;
@@ -51,6 +54,7 @@ class FanProfileModel {
   final String? coverAsset;
   final bool isVerified;
   final bool isOwnProfile;
+  final String? userId;
 
   String get displayName => '$firstName $lastName';
   String get atHandle => '@$handle';
@@ -83,7 +87,6 @@ final mockOwnFanProfile = FanProfileModel(
 );
 
 // ── Mock posts ─────────────────────────────────────────────────────────────────
-final _mockPosts = <_ProfilePost>[]; // posts loaded from DB when wired in tab
 
 class _ProfilePost {
   final String text;
@@ -444,7 +447,30 @@ class _ProfileHeader extends StatelessWidget {
         if (profile.isOwnProfile)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-            child: _EditProfileButton(onEdit: onEdit),
+            child: Column(
+              children: [
+                _EditProfileButton(onEdit: onEdit),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => showBecomeProSheet(context),
+                    icon: const Icon(Icons.workspace_premium_rounded, size: 18),
+                    label: const Text(
+                      'Become Pro',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: SportSphereColors.electricBlue,
+                      side: BorderSide(
+                        color: SportSphereColors.electricBlue.withValues(alpha: 0.6),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
 
         const SizedBox(height: 4),
@@ -844,20 +870,160 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
 // SPOTLIGHTS FEED TAB
 // ══════════════════════════════════════════════════════════════════════════════
 
-class _SportlightsFeed extends StatelessWidget {
+class _SportlightsFeed extends StatefulWidget {
   final FanProfileModel profile;
   const _SportlightsFeed({required this.profile});
 
   @override
+  State<_SportlightsFeed> createState() => _SportlightsFeedState();
+}
+
+class _SportlightsFeedState extends State<_SportlightsFeed> {
+  late Future<List<_ProfilePost>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SportlightsFeed oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.profile.handle != widget.profile.handle ||
+        oldWidget.profile.userId != widget.profile.userId) {
+      _future = _load();
+    }
+  }
+
+  Future<List<_ProfilePost>> _load() async {
+    final p = widget.profile;
+    final sb = Supabase.instance.client;
+    String? uid = p.userId;
+    if (uid == null || uid.isEmpty) {
+      try {
+        final row = await sb
+            .from('User')
+            .select('id')
+            .eq('handle', p.handle.replaceAll('@', ''))
+            .maybeSingle();
+        uid = row?['id']?.toString();
+      } catch (_) {}
+      try {
+        uid ??= (await sb
+                .from('profiles')
+                .select('id')
+                .eq('handle', p.handle.replaceAll('@', ''))
+                .maybeSingle())?['id']
+            ?.toString();
+      } catch (_) {}
+    }
+    if (uid == null || uid.isEmpty) return [];
+
+    try {
+      final rows = await sb
+          .from('Post')
+          .select()
+          .eq('userId', uid)
+          .order('createdAt', ascending: false)
+          .limit(40);
+      final out = <_ProfilePost>[];
+      for (final r in rows as List) {
+        final m = Map<String, dynamic>.from(r as Map);
+        final media = m['mediaUrls'];
+        final hasMedia = media is List && media.isNotEmpty;
+        out.add(_ProfilePost(
+          text: (m['content'] as String?) ?? '',
+          hashtags: [
+            for (final h in (m['hashtags'] is List ? m['hashtags'] as List : []))
+              h.toString()
+          ],
+          timeAgo: _age(m['createdAt']?.toString()),
+          likes: (m['likeCount'] as int?) ?? 0,
+          comments: (m['commentCount'] as int?) ?? 0,
+          shares: (m['shareCount'] as int?) ?? 0,
+          hasImage: hasMedia,
+          imageCount: hasMedia ? media.length : 1,
+        ));
+      }
+      return out;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  String _age(String? iso) {
+    if (iso == null || iso.isEmpty) return '';
+    final dt = DateTime.tryParse(iso);
+    if (dt == null) return '';
+    final d = DateTime.now().difference(dt.toLocal());
+    if (d.inMinutes < 60) return '${d.inMinutes}m';
+    if (d.inHours < 24) return '${d.inHours}h';
+    if (d.inDays < 7) return '${d.inDays}d';
+    return '${dt.day}/${dt.month}/${dt.year}';
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(0, 8, 0, 120),
-      itemCount: _mockPosts.length,
-      itemBuilder: (_, i) => _ProfilePostCard(
-        post: _mockPosts[i],
-        profile: profile,
-      ),
+    final profile = widget.profile;
+    return FutureBuilder<List<_ProfilePost>>(
+      future: _future,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+        final posts = snap.data ?? const <_ProfilePost>[];
+        if (posts.isEmpty) {
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            padding: const EdgeInsets.fromLTRB(24, 48, 24, 120),
+            children: const [
+              Icon(Icons.bolt_rounded, color: SportSphereColors.muted, size: 40),
+              SizedBox(height: 12),
+              Text(
+                'No posts yet',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: SportSphereColors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Posts from this fan will show here.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: SportSphereColors.muted, height: 1.4),
+              ),
+            ],
+          );
+        }
+        return RefreshIndicator(
+          color: profile.fanOfAccent,
+          onRefresh: () async {
+            setState(() => _future = _load());
+            await _future;
+          },
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            padding: const EdgeInsets.fromLTRB(0, 8, 0, 120),
+            itemCount: posts.length,
+            itemBuilder: (_, i) => _ProfilePostCard(
+              post: posts[i],
+              profile: profile,
+            ),
+          ),
+        );
+      },
     );
   }
 }
