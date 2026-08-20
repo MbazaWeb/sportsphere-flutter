@@ -514,7 +514,6 @@ class _EngagementBtn extends StatelessWidget {
 class PostMedia extends StatelessWidget {
   final int imageCount;
   final bool hasVideo;
-  final String? imageUrl;
   final Color accent;
   const PostMedia({
     super.key,
@@ -541,7 +540,6 @@ class PostMedia extends StatelessWidget {
 class PostMediaTile extends StatelessWidget {
   final Color accent;
   final bool hasVideo;
-  final String? imageUrl;
   final double aspectRatio;
   const PostMediaTile({
     super.key,
