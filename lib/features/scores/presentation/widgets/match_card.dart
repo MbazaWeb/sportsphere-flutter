@@ -302,6 +302,7 @@ class _TeamAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasUrl = logo.startsWith('http');
     return Container(
       width: 50,
       height: 50,
@@ -310,7 +311,18 @@ class _TeamAvatar extends StatelessWidget {
         color: SportSphereColors.surface2,
         border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
-      child: const Icon(Icons.shield, color: SportSphereColors.muted, size: 30),
+      clipBehavior: Clip.antiAlias,
+      child: hasUrl
+          ? Image.network(
+              logo,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const Icon(
+                Icons.shield,
+                color: SportSphereColors.muted,
+                size: 30,
+              ),
+            )
+          : const Icon(Icons.shield, color: SportSphereColors.muted, size: 30),
     );
   }
 }

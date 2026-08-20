@@ -7,6 +7,7 @@ import '../../../../core/theme/colors.dart';
 import '../../../shop/models/shop_models.dart';
 import '../../../shop/presentation/shop_tab.dart';
 import '../../shared/profile_widgets.dart';
+import '../../../../core/data/nbc_club_badges.dart';
 import '../../../claims/presentation/claim_profile_sheet.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -150,7 +151,7 @@ final mockSimbaSC = TeamProfileModel(
   postCount: 1240,
   fanCount: 890000,
   followingCount: 48,
-  logoAsset: 'assets/images/sport_sphere_icon.png',
+  logoAsset: NbcClubBadges.simba,
   isVerified: true,
   joinedDate: DateTime(2023, 6, 1),
   squad: const [

@@ -105,10 +105,13 @@ class ProfileAvatar extends StatelessWidget {
         ],
       ),
       child: ClipOval(
-        child: asset != null
-            ? Image.asset(asset!, fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _AvatarFallback(accent: accentColor))
-            : _AvatarFallback(accent: accentColor),
+        child: asset == null
+            ? _AvatarFallback(accent: accentColor)
+            : asset!.startsWith('http')
+                ? Image.network(asset!, fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _AvatarFallback(accent: accentColor))
+                : Image.asset(asset!, fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _AvatarFallback(accent: accentColor)),
       ),
     );
   }

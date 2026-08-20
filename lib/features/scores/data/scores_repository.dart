@@ -1,3 +1,4 @@
+import '../../../core/data/nbc_club_badges.dart';
 import '../domain/models/match_model.dart';
 
 // ── Scores repository ──────────────────────────────────────────────────────────
@@ -10,26 +11,26 @@ class ScoresRepository {
 
   Future<List<MatchModel>> getLive() async {
     await Future.delayed(const Duration(milliseconds: 300)); // simulate network
-    return _live;
+    return _withBadges(_live);
   }
 
   Future<List<MatchModel>> getToday() async {
     await Future.delayed(const Duration(milliseconds: 300));
-    return _today;
+    return _withBadges(_today);
   }
 
   Future<List<MatchModel>> getUpcoming({DateTime? day}) async {
     await Future.delayed(const Duration(milliseconds: 250));
-    if (day == null) return _upcoming;
-    return _upcoming.where((m) =>
-        m.startTime.year == day.year && m.startTime.month == day.month && m.startTime.day == day.day).toList();
+    if (day == null) return _withBadges(_upcoming);
+    return _withBadges(_upcoming.where((m) =>
+        m.startTime.year == day.year && m.startTime.month == day.month && m.startTime.day == day.day).toList());
   }
 
   Future<List<MatchModel>> getResults({DateTime? day}) async {
     await Future.delayed(const Duration(milliseconds: 250));
-    if (day == null) return _results;
-    return _results.where((m) =>
-        m.startTime.year == day.year && m.startTime.month == day.month && m.startTime.day == day.day).toList();
+    if (day == null) return _withBadges(_results);
+    return _withBadges(_results.where((m) =>
+        m.startTime.year == day.year && m.startTime.month == day.month && m.startTime.day == day.day).toList());
   }
 }
 
