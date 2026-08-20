@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  analyze-and-test:
+    name: Analyze & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed lib/ test/
+
+      - name: Analyze (lint + type check)
+        run: flutter analyze --fatal-infos
+
+      - name: Run tests
+        # Provide placeholder defines so AppEnv.isConfigured doesn't short-circuit
+        run: |
+          flutter test \
+            --dart-define=SUPABASE_URL=https://placeholder.supabase.co \
+            --dart-define=SUPABASE_ANON_KEY=placeholder_key \
+            --reporter=expanded
+
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    needs: analyze-and-test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build debug APK
+        # Uses placeholder defines — real secrets go in repo secrets for release builds
+        run: |
+          flutter build apk --debug \
+            --dart-define=SUPABASE_URL=https://placeholder.supabase.co \
+            --dart-define=SUPABASE_ANON_KEY=placeholder_key
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 7

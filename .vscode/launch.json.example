@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "SportSphere (local)",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "--dart-define=SUPABASE_URL=https://your-project.supabase.co",
+        "--dart-define=SUPABASE_ANON_KEY=your-anon-key-here"
+      ]
+    }
+  ]
+}

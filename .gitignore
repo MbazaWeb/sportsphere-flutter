@@ -62,3 +62,4 @@ PUBSPEC_ASSETS.txt
 .env
 .env.*
 !.env.example
+.vscode/launch.json

@@ -2,7 +2,7 @@ name: sportsphere_app
 description: "SportSphere — A sports network for fans, players, teams and the business of sport."
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.8.1
@@ -24,7 +24,7 @@ dependencies:
   file_picker: ^11.0.3
   logger: ^2.7.0
   supabase_flutter: ^2.9.0
-  flutter_dotenv: ^5.2.1
+  equatable: ^2.1.0
 
 dev_dependencies:
   flutter_test:
@@ -36,5 +36,6 @@ flutter:
 
   assets:
     - assets/images/
-    - .env
-    - .env.example
+    # NOTE: .env is intentionally NOT listed here.
+    # Use --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=... at build time.
+    # See README.md#environment-variables
