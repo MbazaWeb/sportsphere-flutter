@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/colors.dart';
 import '../../shop/presentation/shop_tab.dart';
 import '../shared/profile_widgets.dart';
+import '../../claims/presentation/claim_profile_sheet.dart';
 import 'role_profile_model.dart';
 
 class RoleProfileShell extends StatefulWidget {
@@ -68,6 +69,17 @@ class _RoleProfileShellState extends State<RoleProfileShell>
               },
               onBack: () => Navigator.of(context).maybePop(),
               onShop: p.shop == null ? null : () => _tabCtrl.animateTo(tabs.length - 1),
+              onClaim: (!p.isOwnProfile && p.isClaimable)
+                  ? () => showClaimProfileSheet(
+                        context,
+                        profileType: p.profileType ?? p.roleLabel.toLowerCase(),
+                        profileId: p.entityId ?? p.handle,
+                        profileName: p.displayName,
+                        teamId: p.profileType == 'team' ? p.entityId : null,
+                        playerId: p.profileType == 'player' ? p.entityId : null,
+                        coachId: p.profileType == 'coach' ? p.entityId : null,
+                      )
+                  : null,
             ),
           ),
           SliverPersistentHeader(
@@ -123,12 +135,14 @@ class _Header extends StatelessWidget {
   final RoleProfileModel p;
   final bool following;
   final VoidCallback onFollow;
+  final VoidCallback? onClaim;
   final VoidCallback onBack;
   final VoidCallback? onShop;
   const _Header({
     required this.p,
     required this.following,
     required this.onFollow,
+    this.onClaim,
     required this.onBack,
     this.onShop,
   });
@@ -225,7 +239,12 @@ class _Header extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (onShop != null) ...[
+                if (onClaim != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: ClaimProfileButton(onTap: onClaim!),
+                      ),
+                    if (onShop != null) ...[
                   const SizedBox(width: 10),
                   GestureDetector(
                     onTap: onShop,

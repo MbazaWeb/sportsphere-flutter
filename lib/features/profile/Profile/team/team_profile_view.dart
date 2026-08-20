@@ -7,6 +7,7 @@ import '../../../../core/theme/colors.dart';
 import '../../../shop/models/shop_models.dart';
 import '../../../shop/presentation/shop_tab.dart';
 import '../../shared/profile_widgets.dart';
+import '../../../claims/presentation/claim_profile_sheet.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MODELS
@@ -87,6 +88,8 @@ class TeamProfileModel {
     this.coverAsset,
     this.isVerified = true,
     this.isOwnProfile = false,
+    this.isClaimable = false,
+    this.entityId,
     this.joinedDate,
   });
 
@@ -113,6 +116,8 @@ class TeamProfileModel {
   final String? coverAsset;
   final bool isVerified;
   final bool isOwnProfile;
+  final bool isClaimable;
+  final String? entityId;
   final DateTime? joinedDate;
 
   String get atHandle => '@$handle';
@@ -128,6 +133,8 @@ class TeamProfileModel {
 // ── Mock: Simba SC ─────────────────────────────────────────────────────────────
 
 final mockSimbaSC = TeamProfileModel(
+  entityId: 'tm-simba',
+  isClaimable: true,
   name: 'Simba SC',
   handle: 'simbasc',
   sport: 'Football',
@@ -391,6 +398,21 @@ class _TeamProfileViewState extends State<TeamProfileView>
                 ProfileMoreOption(icon: Icons.qr_code_rounded, label: 'QR Code', onTap: () => Navigator.pop(context)),
               ]
             : [
+                if (p.isClaimable)
+                  ProfileMoreOption(
+                    icon: Icons.verified_user_outlined,
+                    label: 'Claim this team',
+                    onTap: () {
+                      Navigator.pop(context);
+                      showClaimProfileSheet(
+                        context,
+                        profileType: 'team',
+                        profileId: p.entityId ?? p.handle,
+                        profileName: p.name,
+                        teamId: p.entityId,
+                      );
+                    },
+                  ),
                 ProfileMoreOption(icon: Icons.share_outlined, label: 'Share Profile', onTap: () => Navigator.pop(context)),
                 ProfileMoreOption(icon: Icons.flag_outlined, label: 'Report', onTap: () => Navigator.pop(context), destructive: true),
               ],
@@ -644,6 +666,20 @@ class _TeamHeader extends StatelessWidget {
               accent: accent,
               onFollow: onFollow,
               onShop: onShop,
+            ),
+          ),
+
+        if (!profile.isOwnProfile && profile.isClaimable)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: ClaimProfileButton(
+              onTap: () => showClaimProfileSheet(
+                context,
+                profileType: 'team',
+                profileId: profile.entityId ?? profile.handle,
+                profileName: profile.name,
+                teamId: profile.entityId,
+              ),
             ),
           ),
 

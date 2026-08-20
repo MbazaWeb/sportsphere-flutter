@@ -44,6 +44,9 @@ class RoleProfileModel {
     this.sport = 'Football',
     this.isVerified = true,
     this.isOwnProfile = false,
+    this.isClaimable = false,
+    this.entityId,
+    this.profileType,
     this.coverIcon = Icons.person_rounded,
     this.members = const [],
     this.membersTitle = 'Members',
@@ -63,6 +66,9 @@ class RoleProfileModel {
   final String sport;
   final bool isVerified;
   final bool isOwnProfile;
+  final bool isClaimable;
+  final String? entityId;
+  final String? profileType;
   final IconData coverIcon;
   final List<RoleStat> headerStats;
   final List<AboutField> aboutFields;

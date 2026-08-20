@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../../shared/profile_widgets.dart';
+import '../../../claims/presentation/claim_profile_sheet.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MODELS
@@ -93,6 +94,8 @@ class PlayerProfileModel {
     this.coverAsset,
     this.isVerified = true,
     this.isOwnProfile = false,
+    this.isClaimable = false,
+    this.entityId,
   });
 
   // Identity
@@ -141,6 +144,8 @@ class PlayerProfileModel {
   final Color accentColor;
   final bool isVerified;
   final bool isOwnProfile;
+  final bool isClaimable;
+  final String? entityId;
 
   String get displayName => '$firstName $lastName';
   String get atHandle => '@$handle';
@@ -156,6 +161,8 @@ class PlayerProfileModel {
 // ── Mock: Clatous Chama ────────────────────────────────────────────────────────
 
 final mockClatousChama = PlayerProfileModel(
+  entityId: 'pl-clatous',
+  isClaimable: true,
   firstName: 'Clatous',
   lastName: 'Chama',
   handle: 'clatouschama',
@@ -380,6 +387,21 @@ class _PlayerProfileViewState extends State<PlayerProfileView>
             : [
                 ProfileMoreOption(icon: Icons.share_outlined, label: 'Share Profile', onTap: () => Navigator.pop(context)),
                 ProfileMoreOption(icon: Icons.block_rounded, label: 'Block', onTap: () => Navigator.pop(context)),
+                if (p.isClaimable)
+                  ProfileMoreOption(
+                    icon: Icons.verified_user_outlined,
+                    label: 'Claim this player',
+                    onTap: () {
+                      Navigator.pop(context);
+                      showClaimProfileSheet(
+                        context,
+                        profileType: 'player',
+                        profileId: p.entityId ?? p.handle,
+                        profileName: p.displayName,
+                        playerId: p.entityId,
+                      );
+                    },
+                  ),
                 ProfileMoreOption(icon: Icons.flag_outlined, label: 'Report', onTap: () => Navigator.pop(context), destructive: true),
               ],
       ),

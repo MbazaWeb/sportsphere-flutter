@@ -13,7 +13,7 @@ RoleProfileModel roleProfileFor(String role, String handle) {
 typedef _Factory = RoleProfileModel Function(String handle);
 
 final Map<String, _Factory> _factories = {
-  'coach': (h) => _person(handle: h, role: 'Coach', name: h == 'traguil' ? 'Sergio Traguil' : _title(h), subtitle: 'Head Coach · Simba SC', accent: const Color(0xFFFF8A00), icon: Icons.sports, bio: 'High-press tactician focused on youth pathways and set-piece structure.', about: const [AboutField('Club', 'Simba SC'), AboutField('Licence', 'CAF A'), AboutField('Appointed', '2024')], stats: const [AboutField('Win %', '61'), AboutField('Trophies', '2')], posts: const [ProfilePost(text: 'Proud of the dressing room after a hard-fought derby.', hashtags: ['#SimbaSC', '#Coaching'], timeAgo: '4h', likes: 2100, comments: 84, shares: 41)]),
+  'coach': (h) => _person(handle: h, role: 'Coach', isClaimable: true, entityId: 'ch-simba', profileType: 'coach', name: h == 'traguil' ? 'Sergio Traguil' : _title(h), subtitle: 'Head Coach · Simba SC', accent: const Color(0xFFFF8A00), icon: Icons.sports, bio: 'High-press tactician focused on youth pathways and set-piece structure.', about: const [AboutField('Club', 'Simba SC'), AboutField('Licence', 'CAF A'), AboutField('Appointed', '2024')], stats: const [AboutField('Win %', '61'), AboutField('Trophies', '2')], posts: const [ProfilePost(text: 'Proud of the dressing room after a hard-fought derby.', hashtags: ['#SimbaSC', '#Coaching'], timeAgo: '4h', likes: 2100, comments: 84, shares: 41)]),
   'scout': (h) => _person(handle: h, role: 'Scout', name: _title(h), subtitle: 'Regional scout · East Africa', accent: const Color(0xFF76D42B), icon: Icons.travel_explore_rounded, bio: 'Watching the next wave of talent across the Tanzanian leagues.', about: const [AboutField('Coverage', 'Tanzania · Kenya · Zambia')], stats: const [AboutField('Players tracked', '86')]),
   'agent': (h) => _person(handle: h, role: 'Agent', name: _title(h), subtitle: 'FIFA-licensed player agent', accent: const Color(0xFF22B8FF), icon: Icons.handshake_rounded, bio: 'Representing players across the CAF and European markets.', about: const [AboutField('Licence', 'FIFA Agent')], stats: const [AboutField('Transfers', '11')]),
   'support_staff': (h) => _person(handle: h, role: 'Support Staff', name: _title(h), subtitle: 'Physiotherapist · First team', accent: const Color(0xFF8FA3B8), icon: Icons.health_and_safety_rounded, bio: 'Load management, rehab, and matchday medical cover.', about: const [AboutField('Department', 'Medical')], stats: const [AboutField('Availability', '94%')]),
@@ -51,9 +51,13 @@ RoleProfileModel _person({
   List<AboutField> about = const [],
   List<AboutField> stats = const [],
   List<ProfilePost> posts = const [],
+  bool isClaimable = false,
+  String? entityId,
+  String? profileType,
 }) {
   return RoleProfileModel(
     displayName: name, handle: handle, roleLabel: role, accent: accent, subtitle: subtitle, bio: bio,
+    isClaimable: isClaimable, entityId: entityId, profileType: profileType,
     location: 'Dar es Salaam, Tanzania', coverIcon: icon,
     headerStats: const [RoleStat('128', 'Posts'), RoleStat('12.4K', 'Followers'), RoleStat('310', 'Following')],
     aboutFields: about, statsRows: stats, posts: posts, shape: RoleShape.person,
