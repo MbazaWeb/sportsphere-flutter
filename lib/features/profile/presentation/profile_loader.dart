@@ -172,7 +172,7 @@ class ProfileLoader {
         final rows = await _sb
             .from('Post')
             .select('id,content,likeCount,commentCount,shareCount,createdAt,mediaUrls')
-            .eq('authorId', uid)
+            .eq('userId', uid)
             .order('createdAt', ascending: false)
             .limit(20);
         for (final r in rows as List) {
