@@ -137,7 +137,13 @@ class _AvatarFallback extends StatelessWidget {
 class ProfileStat extends StatelessWidget {
   final String value;
   final String label;
-  const ProfileStat({super.key, required this.value, required this.label});
+  final VoidCallback? onTap;
+  const ProfileStat({
+    super.key,
+    required this.value,
+    required this.label,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -145,22 +151,26 @@ class ProfileStat extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Column(
-      children: [
-        Text(value,
+        children: [
+          Text(
+            value,
             style: const TextStyle(
               color: SportSphereColors.white,
               fontSize: 17,
               fontWeight: FontWeight.w900,
-            )),
-        const SizedBox(height: 1),
-        Text(label,
+            ),
+          ),
+          const SizedBox(height: 1),
+          Text(
+            label,
             style: const TextStyle(
               color: SportSphereColors.muted,
               fontSize: 11,
               fontWeight: FontWeight.w500,
-            )),
-      ],
-    ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

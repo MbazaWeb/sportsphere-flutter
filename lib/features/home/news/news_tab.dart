@@ -325,30 +325,6 @@ class _NewsCardState extends State<_NewsCard> {
       },
     );
   }
-}
-
-class _Act extends StatelessWidget {
-  final IconData icon;
-  final int count;
-  final VoidCallback onTap;
-  final Color color;
-  const _Act({required this.icon, required this.count, required this.onTap, this.color = Colors.white70});
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: color),
-          if (count > 0) ...[
-            const SizedBox(width: 6),
-            Text('$count', style: TextStyle(color: color, fontSize: 12)),
-          ],
-        ],
-      ),
-    );
-  }
-}
 
   void _open(BuildContext context) {
     showModalBottomSheet(
@@ -383,6 +359,30 @@ class _Act extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+
+class _Act extends StatelessWidget {
+  final IconData icon;
+  final int count;
+  final VoidCallback onTap;
+  final Color color;
+  const _Act({required this.icon, required this.count, required this.onTap, this.color = Colors.white70});
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: color),
+          if (count > 0) ...[
+            const SizedBox(width: 6),
+            Text('$count', style: TextStyle(color: color, fontSize: 12)),
+          ],
+        ],
+      ),
     );
   }
 }

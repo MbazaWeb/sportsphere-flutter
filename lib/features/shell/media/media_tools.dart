@@ -1,10 +1,33 @@
 
-import 'package:file_picker/file_picker.dart';
+import 'package:file_picker/file_picker.dart' as fp;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 const kMaxVideoSeconds = 30;
+
+Future<fp.FilePickerResult?> _pickFiles({
+  required fp.FileType type,
+  List<String>? allowedExtensions,
+  bool withData = true,
+}) async {
+  try {
+    return await fp.FilePicker.platform.pickFiles(
+      type: type,
+      allowedExtensions: allowedExtensions,
+      withData: withData,
+      allowMultiple: false,
+    );
+  } catch (_) {
+    // Web / desktop fallback if platform channel is unavailable.
+    return await fp.FilePicker.platform.pickFiles(
+      type: fp.FileType.any,
+      withData: withData,
+      allowMultiple: false,
+    );
+  }
+}
+
 
 Future<XFile?> cropImageFile(XFile file) async => file;
 
@@ -84,9 +107,9 @@ Future<XFile?> pickCommentAttachmentDirect(String type) async {
     return ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 88);
   }
   if (type == 'gif' || type == 'pdf') {
-    final res = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: type == 'pdf' ? const ['pdf'] : const ['gif'],
+    final res = await _pickFiles(
+      type: fp.FileType.custom,
+      allowedExtensions: type == 'pdf' ? <String>['pdf'] : <String>['gif'],
       withData: true,
     );
     if (res == null || res.files.isEmpty) return null;
