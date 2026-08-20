@@ -125,9 +125,27 @@ class _NewsListState extends State<_NewsList> {
   }
 }
 
-class _NewsCard extends StatelessWidget {
+class _NewsCard extends StatefulWidget {
   final NewsArticle article;
   const _NewsCard({required this.article});
+
+  @override
+  State<_NewsCard> createState() => _NewsCardState();
+}
+
+class _NewsCardState extends State<_NewsCard> {
+  late NewsArticle article;
+  final _repo = NewsRepository();
+  bool _liked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    article = widget.article;
+    _repo.isLiked(article.id).then((v) {
+      if (mounted) setState(() => _liked = v);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -191,12 +209,146 @@ class _NewsCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.35),
               ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  _Act(
+                    icon: _liked ? Icons.favorite : Icons.favorite_border,
+                    color: _liked ? const Color(0xFFE31B23) : Colors.white70,
+                    count: article.likeCount + (_liked && widget.article.likeCount == article.likeCount ? 0 : 0),
+                    onTap: _toggleLike,
+                  ),
+                  const SizedBox(width: 16),
+                  _Act(icon: Icons.chat_bubble_outline, count: article.commentCount, onTap: _comment),
+                  const SizedBox(width: 16),
+                  _Act(icon: Icons.ios_share_rounded, count: article.shareCount, onTap: _share),
+                ],
+              ),
             ],
           ),
         ),
       ),
     );
   }
+
+  Future<void> _toggleLike() async {
+    try {
+      await _repo.toggleLike(article.id, like: !_liked);
+      setState(() {
+        _liked = !_liked;
+        article = NewsArticle(
+          id: article.id,
+          title: article.title,
+          summary: article.summary,
+          body: article.body,
+          category: article.category,
+          source: article.source,
+          sourceUrl: article.sourceUrl,
+          imageUrl: article.imageUrl,
+          isBreaking: article.isBreaking,
+          publishedAt: article.publishedAt,
+          likeCount: (article.likeCount + (_liked ? 1 : -1)).clamp(0, 1 << 30),
+          commentCount: article.commentCount,
+          shareCount: article.shareCount,
+        );
+      });
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+
+  Future<void> _share() async {
+    await _repo.share(article.id);
+    setState(() {
+      article = NewsArticle(
+        id: article.id, title: article.title, summary: article.summary, body: article.body,
+        category: article.category, source: article.source, sourceUrl: article.sourceUrl,
+        imageUrl: article.imageUrl, isBreaking: article.isBreaking, publishedAt: article.publishedAt,
+        likeCount: article.likeCount, commentCount: article.commentCount, shareCount: article.shareCount + 1,
+      );
+    });
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Story shared')));
+  }
+
+  Future<void> _comment() async {
+    final ctrl = TextEditingController();
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF071422),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.viewInsetsOf(ctx).bottom + 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Comments', style: TextStyle(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 10),
+              FutureBuilder(
+                future: _repo.comments(article.id),
+                builder: (_, snap) {
+                  final rows = snap.data ?? [];
+                  if (rows.isEmpty) return const Text('No comments yet', style: TextStyle(color: Colors.white54));
+                  return SizedBox(
+                    height: 180,
+                    child: ListView(
+                      children: [for (final r in rows) ListTile(title: Text('${r['content']}', style: const TextStyle(fontSize: 13)))],
+                    ),
+                  );
+                },
+              ),
+              Row(
+                children: [
+                  Expanded(child: TextField(controller: ctrl, decoration: const InputDecoration(hintText: 'Write a comment'))),
+                  IconButton(
+                    onPressed: () async {
+                      if (ctrl.text.trim().isEmpty) return;
+                      await _repo.addComment(article.id, ctrl.text);
+                      if (ctx.mounted) Navigator.pop(ctx);
+                      if (mounted) setState(() {
+                        article = NewsArticle(
+                          id: article.id, title: article.title, summary: article.summary, body: article.body,
+                          category: article.category, source: article.source, sourceUrl: article.sourceUrl,
+                          imageUrl: article.imageUrl, isBreaking: article.isBreaking, publishedAt: article.publishedAt,
+                          likeCount: article.likeCount, commentCount: article.commentCount + 1, shareCount: article.shareCount,
+                        );
+                      });
+                    },
+                    icon: const Icon(Icons.send_rounded, color: Color(0xFF168CFF)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _Act extends StatelessWidget {
+  final IconData icon;
+  final int count;
+  final VoidCallback onTap;
+  final Color color;
+  const _Act({required this.icon, required this.count, required this.onTap, this.color = Colors.white70});
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: color),
+          if (count > 0) ...[
+            const SizedBox(width: 6),
+            Text('$count', style: TextStyle(color: color, fontSize: 12)),
+          ],
+        ],
+      ),
+    );
+  }
+}
 
   void _open(BuildContext context) {
     showModalBottomSheet(
