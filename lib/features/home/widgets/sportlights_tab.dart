@@ -1004,6 +1004,8 @@ IconData _typeIcon(_SpotlightType type) {
       return Icons.poll_rounded;
     case _SpotlightType.prediction:
       return Icons.insights_rounded;
+    case _SpotlightType.liveCoverage:
+      return Icons.sensors;
   }
 }
 
