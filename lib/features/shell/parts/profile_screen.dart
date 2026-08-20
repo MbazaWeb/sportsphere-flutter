@@ -9,15 +9,11 @@ class _ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
   List<String> _fanBadges = const [];
-  int _postCount = 0;
-  int _followerCount = 0;
-  int _followingCount = 0;
 
   @override
   void initState() {
     super.initState();
     _loadBadges();
-    _loadCounts();
   }
 
   Future<void> _loadBadges() async {
@@ -28,25 +24,6 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
       if (uid == null) return;
       final badges = await SocialRepository().fanTeamNames(uid);
       if (mounted) setState(() => _fanBadges = badges);
-    } catch (_) {}
-  }
-
-  Future<void> _loadCounts() async {
-    try {
-      final uid = Supabase.instance.client.auth.currentUser?.id;
-      if (uid == null) return;
-      final row = await Supabase.instance.client
-          .from('User')
-          .select('postCount, followerCount, followingCount')
-          .eq('id', uid)
-          .maybeSingle();
-      if (row != null && mounted) {
-        setState(() {
-          _postCount = (row['postCount'] as int?) ?? 0;
-          _followerCount = (row['followerCount'] as int?) ?? 0;
-          _followingCount = (row['followingCount'] as int?) ?? 0;
-        });
-      }
     } catch (_) {}
   }
 
@@ -68,10 +45,10 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
             bio: user.bio.isEmpty ? 'New on SportSphere' : user.bio,
             sport: 'Football',
             location: user.country,
-            joinedDate: DateTime.now(),
-            postCount: _postCount,
-            followerCount: _followerCount,
-            followingCount: _followingCount,
+            joinedDate: user.createdAt ?? DateTime.now(),
+            postCount: user.postCount,
+            followerCount: user.followerCount,
+            followingCount: user.followingCount,
             avatarAsset: user.avatarUrl ?? 'assets/images/sport_sphere_icon.png',
             coverAsset: user.coverUrl,
             isVerified: user.isVerified,

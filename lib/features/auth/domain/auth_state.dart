@@ -15,6 +15,10 @@ class UserProfile {
     this.themeColor = '#168CFF',
     this.fanBadges = const [],
     this.bio = '',
+    this.createdAt,
+    this.postCount = 0,
+    this.followerCount = 0,
+    this.followingCount = 0,
   });
 
   final String firstName;
@@ -32,6 +36,18 @@ class UserProfile {
   final String themeColor;
   final List<String> fanBadges;
   final String bio;
+
+  /// When the user account was created.
+  final DateTime? createdAt;
+
+  /// Number of posts authored by this user.
+  final int postCount;
+
+  /// Number of users following this user.
+  final int followerCount;
+
+  /// Number of users this user is following.
+  final int followingCount;
 
   String get displayName => '$firstName $lastName';
   String get atHandle => '@$handle';

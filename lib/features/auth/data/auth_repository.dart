@@ -417,6 +417,7 @@ class AuthRepository {
             DateTime(2000, 1, 1),
         role: meta['role'] as String? ?? 'fan',
         isVerified: au.emailConfirmedAt != null,
+        createdAt: au.createdAt,
       );
     }
 
@@ -443,6 +444,23 @@ class AuthRepository {
         (urow?['isVerified'] as bool?) == true ||
         (row?['is_verified'] as bool?) == true;
 
+    // Count fields: prefer User table (denormalised), fall back to profiles.
+    final postCount = (urow?['postCount'] as int?) ??
+        (row?['post_count'] as int?) ??
+        0;
+    final followerCount = (urow?['followerCount'] as int?) ??
+        (row?['follower_count'] as int?) ??
+        0;
+    final followingCount = (urow?['followingCount'] as int?) ??
+        (row?['following_count'] as int?) ??
+        0;
+
+    // Created-at: prefer User table, fall back to profiles.
+    final createdAtRaw = urow?['createdAt'] ?? row?['created_at'];
+    final createdAt = createdAtRaw != null
+        ? DateTime.tryParse('$createdAtRaw')
+        : null;
+
     return UserProfile(
       firstName: first,
       lastName: last,
@@ -456,6 +474,10 @@ class AuthRepository {
       isVerified: isVerified,
       themeColor: (row?['theme_color'] as String?) ?? '#168CFF',
       bio: (row?['bio'] as String?) ?? (urow?['bio'] as String?) ?? '',
+      createdAt: createdAt,
+      postCount: postCount,
+      followerCount: followerCount,
+      followingCount: followingCount,
     );
   }
 
