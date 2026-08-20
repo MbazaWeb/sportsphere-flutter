@@ -271,12 +271,52 @@ class ScoresRepository {
     required int homeScore,
     required int awayScore,
   }) async {
-    await _sb.from('Match').update({
-      'homeScore': homeScore,
-      'awayScore': awayScore,
-      'status': 'finished',
+    await updateMatchLive(
+      matchId: matchId,
+      homeScore: homeScore,
+      awayScore: awayScore,
+      status: 'finished',
+    );
+  }
+
+  /// Admin live control: status + scores + minute.
+  Future<void> updateMatchLive({
+    required String matchId,
+    int? homeScore,
+    int? awayScore,
+    String? status,
+    int? minute,
+  }) async {
+    final patch = <String, dynamic>{
       'updatedAt': DateTime.now().toIso8601String(),
-    }).eq('id', matchId);
+    };
+    if (homeScore != null) patch['homeScore'] = homeScore;
+    if (awayScore != null) patch['awayScore'] = awayScore;
+    if (status != null) patch['status'] = status;
+    if (minute != null) {
+      try {
+        patch['minute'] = minute;
+      } catch (_) {}
+    }
+    await _sb.from('Match').update(patch).eq('id', matchId);
+  }
+
+  Future<List<Map<String, dynamic>>> listMatchesForAdmin({int limit = 40}) async {
+    final rows = await _sb
+        .from('Match')
+        .select('id,homeTeam,awayTeam,homeScore,awayScore,status,kickoffAt,minute')
+        .order('kickoffAt', ascending: false)
+        .limit(limit);
+    return [for (final r in rows as List) Map<String, dynamic>.from(r as Map)];
+  }
+
+  Future<List<Map<String, dynamic>>> searchPlayers(String q, {int limit = 20}) async {
+    final rows = await _sb
+        .from('Player')
+        .select('id,name,slug,teamId,position')
+        .ilike('name', '%$q%')
+        .limit(limit);
+    return [for (final r in rows as List) Map<String, dynamic>.from(r as Map)];
   }
 }
 

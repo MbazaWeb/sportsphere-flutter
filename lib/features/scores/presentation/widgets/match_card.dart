@@ -8,12 +8,14 @@ class MatchCard extends StatelessWidget {
   final MatchModel match;
   final VoidCallback? onTeamTap;
   final VoidCallback? onCardTap;
+  final VoidCallback? onLongPress;
 
   const MatchCard({
     super.key,
     required this.match,
     this.onTeamTap,
     this.onCardTap,
+    this.onLongPress,
   });
 
   @override
@@ -24,6 +26,7 @@ class MatchCard extends StatelessWidget {
       button: true,
       child: GestureDetector(
         onTap: onCardTap,
+        onLongPress: onLongPress,
         child: GlassContainer(
           radius: 22,
           padding: const EdgeInsets.all(16),

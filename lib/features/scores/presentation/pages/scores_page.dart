@@ -9,6 +9,7 @@ import '../../../../core/widgets/glass_container.dart';
 import '../../domain/models/match_model.dart';
 import '../../domain/models/standing_model.dart';
 import '../providers/scores_provider.dart';
+import 'admin_live_control.dart';
 import '../../data/scores_repository.dart';
 import '../widgets/match_card.dart';
 
@@ -48,34 +49,10 @@ class _ScoresPageState extends ConsumerState<ScoresPage>
       backgroundColor: SportSphereColors.background,
       floatingActionButton: _isAdmin
           ? FloatingActionButton.extended(
-              onPressed: () async {
-                final choice = await showModalBottomSheet<String>(
-                  context: context,
-                  backgroundColor: const Color(0xFF071422),
-                  builder: (ctx) => SafeArea(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ListTile(
-                          leading: const Icon(Icons.sports_score),
-                          title: const Text('Update match score'),
-                          onTap: () => Navigator.pop(ctx, 'score'),
-                        ),
-                        ListTile(
-                          leading: const Icon(Icons.person),
-                          title: const Text('Update player match stats'),
-                          onTap: () => Navigator.pop(ctx, 'player'),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-                if (choice == 'score') await _adminUpdateScore();
-                if (choice == 'player') await _adminPlayerStats();
-              },
-              backgroundColor: SportSphereColors.electricBlue,
-              icon: const Icon(Icons.admin_panel_settings_rounded),
-              label: const Text('Admin update'),
+              onPressed: () => openAdminLiveControl(context, ref),
+              backgroundColor: const Color(0xFFE31B23),
+              icon: const Icon(Icons.sensors),
+              label: const Text('Live control'),
             )
           : null,
       appBar: AppBar(
