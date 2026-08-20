@@ -1,315 +1,176 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../../core/data/nbc_club_badges.dart';
 import '../domain/models/match_model.dart';
 
-/// Ligi Kuu Bara 2026/27 fixtures. Results stay empty until admin updates.
+/// Live scores/fixtures from Supabase `Match` + `League` (not hardcoded seed).
 class ScoresRepository {
   const ScoresRepository();
 
+  SupabaseClient get _sb => Supabase.instance.client;
+
   Future<List<MatchModel>> getLive() async {
-    final now = DateTime.now();
-    return _all.where((m) {
+    final rows = await _sb
+        .from('Match')
+        .select()
+        .or('status.eq.live,status.eq.in_play,status.eq.ht')
+        .order('kickoffAt');
+    final list = _mapRows(rows as List);
+    if (list.isNotEmpty) return list;
+    // Soft live window when admin has not flipped status yet
+    final now = DateTime.now().toUtc();
+    final all = await _fetchAll();
+    return all.where((m) {
       final end = m.startTime.add(const Duration(minutes: 110));
       return !now.isBefore(m.startTime) && now.isBefore(end);
     }).toList();
   }
 
   Future<List<MatchModel>> getToday() async {
-    final n = DateTime.now();
-    final day = DateTime(n.year, n.month, n.day);
-    return _all.where((m) =>
-        m.startTime.year == day.year &&
-        m.startTime.month == day.month &&
-        m.startTime.day == day.day).toList();
+    final now = DateTime.now().toUtc();
+    final start = DateTime.utc(now.year, now.month, now.day);
+    final end = start.add(const Duration(days: 1));
+    final rows = await _sb
+        .from('Match')
+        .select()
+        .gte('kickoffAt', start.toIso8601String())
+        .lt('kickoffAt', end.toIso8601String())
+        .order('kickoffAt');
+    return _mapRows(rows as List);
   }
 
   Future<List<MatchModel>> getUpcoming({DateTime? day}) async {
-    final now = DateTime.now();
-    final list = _all.where((m) => m.startTime.isAfter(now)).toList();
-    if (day == null) return list;
-    return list.where((m) =>
-        m.startTime.year == day.year &&
-        m.startTime.month == day.month &&
-        m.startTime.day == day.day).toList();
+    final now = DateTime.now().toUtc();
+    var q = _sb
+        .from('Match')
+        .select()
+        .gte('kickoffAt', now.toIso8601String())
+        .order('kickoffAt');
+    final rows = await q;
+    var list = _mapRows(rows as List);
+    if (day != null) {
+      list = list
+          .where((m) =>
+              m.startTime.year == day.year &&
+              m.startTime.month == day.month &&
+              m.startTime.day == day.day)
+          .toList();
+    }
+    return list;
   }
 
   Future<List<MatchModel>> getResults({DateTime? day}) async {
-    final now = DateTime.now();
-    final list = _all
-        .where((m) => m.startTime.add(const Duration(minutes: 110)).isBefore(now))
-        .toList();
-    if (day == null) return list;
-    return list.where((m) =>
-        m.startTime.year == day.year &&
-        m.startTime.month == day.month &&
-        m.startTime.day == day.day).toList();
+    final rows = await _sb
+        .from('Match')
+        .select()
+        .or('status.eq.finished,status.eq.ft,status.eq.completed')
+        .order('kickoffAt', ascending: false);
+    var list = _mapRows(rows as List);
+    if (list.isEmpty) {
+      // Past kickoffs without score still show as result slots for admin
+      final now = DateTime.now().toUtc();
+      final all = await _fetchAll();
+      list = all
+          .where((m) => m.startTime.add(const Duration(minutes: 110)).isBefore(now))
+          .toList()
+        ..sort((a, b) => b.startTime.compareTo(a.startTime));
+    }
+    if (day != null) {
+      list = list
+          .where((m) =>
+              m.startTime.year == day.year &&
+              m.startTime.month == day.month &&
+              m.startTime.day == day.day)
+          .toList();
+    }
+    return list;
+  }
+
+  Future<List<String>> listLeagues({String? sportSlug}) async {
+    var q = _sb.from('League').select('name,sport_slug,isActive').eq('isActive', true).order('name');
+    final rows = await q;
+    final names = <String>[];
+    for (final r in rows as List) {
+      final m = Map<String, dynamic>.from(r as Map);
+      if (sportSlug != null && sportSlug.isNotEmpty) {
+        final slug = (m['sport_slug'] as String?) ?? 'football';
+        if (slug != sportSlug) continue;
+      }
+      final name = m['name'] as String?;
+      if (name != null && name.isNotEmpty) names.add(name);
+    }
+    if (names.isEmpty) return const ['NBC Premier League', 'Ligi Kuu Bara'];
+    return names;
+  }
+
+  Future<List<Map<String, dynamic>>> listTeams({String? leagueHint}) async {
+    final rows = await _sb
+        .from('Team')
+        .select('id,name,logoUrl,accountUserId,sport_slug,city,country')
+        .eq('isActive', true)
+        .order('name');
+    return [for (final r in rows as List) Map<String, dynamic>.from(r as Map)];
+  }
+
+  Future<List<MatchModel>> _fetchAll() async {
+    final rows = await _sb.from('Match').select().order('kickoffAt');
+    return _mapRows(rows as List);
+  }
+
+  List<MatchModel> _mapRows(List rows) {
+    return [
+      for (final r in rows)
+        _fromRow(Map<String, dynamic>.from(r as Map)),
+    ];
+  }
+
+  MatchModel _fromRow(Map<String, dynamic> r) {
+    final home = (r['homeTeam'] as String?) ?? 'Home';
+    final away = (r['awayTeam'] as String?) ?? 'Away';
+    final homeScore = r['homeScore'];
+    final awayScore = r['awayScore'];
+    final statusRaw = ((r['status'] as String?) ?? 'scheduled').toLowerCase();
+    final kick = DateTime.tryParse((r['kickoffAt'] as String?) ?? '')?.toLocal() ??
+        DateTime.now();
+    final isLive = statusRaw == 'live' ||
+        statusRaw == 'in_play' ||
+        statusRaw == 'ht' ||
+        statusRaw == '1h' ||
+        statusRaw == '2h';
+    String score = '-';
+    if (homeScore != null && awayScore != null) {
+      score = '$homeScore-$awayScore';
+    }
+    String status;
+    if (isLive) {
+      final min = r['minute'];
+      status = min != null ? "$min'" : 'LIVE';
+    } else if (statusRaw == 'finished' || statusRaw == 'ft' || statusRaw == 'completed') {
+      status = 'FT';
+    } else if (r['events'] is Map && (r['events'] as Map)['round'] != null) {
+      status = 'R${(r['events'] as Map)['round']}';
+    } else {
+      status = statusRaw;
+    }
+    final league = (r['league'] as String?) ?? 'League';
+    final homeLogo = (r['homeBadge'] as String?)?.trim();
+    final awayLogo = (r['awayBadge'] as String?)?.trim();
+    return MatchModel(
+      id: (r['id'] as String?) ?? 'match',
+      homeTeamName: home,
+      awayTeamName: away,
+      homeTeamLogo: (homeLogo != null && homeLogo.isNotEmpty)
+          ? homeLogo
+          : (NbcClubBadges.forName(home) ?? ''),
+      awayTeamLogo: (awayLogo != null && awayLogo.isNotEmpty)
+          ? awayLogo
+          : (NbcClubBadges.forName(away) ?? ''),
+      leagueName: league,
+      leagueLogo: NbcClubBadges.ligiKuuBara,
+      score: score,
+      status: status,
+      startTime: kick,
+      isLive: isLive,
+    );
   }
 }
-
-MatchModel _m(
-  int n,
-  int y,
-  int mo,
-  int d,
-  int h,
-  int min,
-  String home,
-  String away,
-  int round,
-) {
-  return MatchModel(
-    id: 'lkb-$n',
-    homeTeamName: home,
-    awayTeamName: away,
-    homeTeamLogo: NbcClubBadges.forName(home) ?? '',
-    awayTeamLogo: NbcClubBadges.forName(away) ?? '',
-    leagueName: 'Ligi Kuu Bara',
-    leagueLogo: NbcClubBadges.ligiKuuBara,
-    score: '-',
-    status: 'R$round',
-    startTime: DateTime(y, mo, d, h, min),
-    isLive: false,
-  );
-}
-
-final _all = <MatchModel>[
-  _m(1, 2026, 8, 14, 11, 0, 'Pamba Jiji FC', 'Dodoma Jiji', 1),
-  _m(2, 2026, 8, 14, 13, 15, 'Mbeya City', 'Geita Gold', 1),
-  _m(3, 2026, 8, 14, 16, 0, 'Singida Black Stars', 'Fountain Gate', 1),
-  _m(4, 2026, 8, 15, 13, 0, 'Polisi Tanzania', 'Azam FC', 1),
-  _m(5, 2026, 8, 15, 15, 30, 'Coastal Union', 'Mashujaa FC', 1),
-  _m(6, 2026, 8, 15, 18, 0, 'Namungo FC', 'Young Africans SC', 1),
-  _m(7, 2026, 8, 16, 15, 0, 'Kagera Sugar', 'Simba SC', 1),
-  _m(8, 2026, 8, 16, 17, 30, 'JKT Tanzania', 'TRA United', 1),
-  _m(9, 2026, 8, 18, 13, 0, 'Fountain Gate', 'Mashujaa FC', 2),
-  _m(10, 2026, 8, 18, 16, 0, 'Namungo FC', 'Geita Gold', 2),
-  _m(11, 2026, 8, 19, 11, 0, 'Mbeya City', 'Dodoma Jiji', 2),
-  _m(12, 2026, 8, 19, 13, 15, 'Pamba Jiji FC', 'Simba SC', 2),
-  _m(13, 2026, 8, 19, 16, 0, 'Kagera Sugar', 'Singida Black Stars', 2),
-  _m(14, 2026, 8, 20, 13, 0, 'Polisi Tanzania', 'JKT Tanzania', 2),
-  _m(15, 2026, 8, 20, 15, 30, 'Young Africans SC', 'Coastal Union', 2),
-  _m(16, 2026, 8, 20, 18, 0, 'Azam FC', 'TRA United', 2),
-  _m(17, 2026, 8, 22, 15, 0, 'Singida Black Stars', 'Simba SC', 3),
-  _m(18, 2026, 8, 22, 17, 30, 'Geita Gold', 'Kagera Sugar', 3),
-  _m(19, 2026, 8, 23, 13, 0, 'Mbeya City', 'Mashujaa FC', 3),
-  _m(20, 2026, 8, 23, 16, 0, 'Azam FC', 'Pamba Jiji FC', 3),
-  _m(21, 2026, 8, 24, 15, 0, 'Young Africans SC', 'JKT Tanzania', 3),
-  _m(22, 2026, 8, 24, 17, 30, 'Coastal Union', 'TRA United', 3),
-  _m(23, 2026, 8, 25, 15, 0, 'Namungo FC', 'Fountain Gate', 3),
-  _m(24, 2026, 8, 25, 17, 30, 'Dodoma Jiji', 'Polisi Tanzania', 3),
-  _m(25, 2026, 8, 27, 13, 0, 'Mashujaa FC', 'Kagera Sugar', 4),
-  _m(26, 2026, 8, 27, 16, 0, 'Simba SC', 'Coastal Union', 4),
-  _m(27, 2026, 8, 28, 13, 0, 'Fountain Gate', 'Mbeya City', 4),
-  _m(28, 2026, 8, 28, 15, 30, 'Geita Gold', 'Azam FC', 4),
-  _m(29, 2026, 8, 28, 18, 0, 'Young Africans SC', 'Pamba Jiji FC', 4),
-  _m(30, 2026, 8, 29, 13, 0, 'TRA United', 'Dodoma Jiji', 4),
-  _m(31, 2026, 8, 29, 15, 30, 'Singida Black Stars', 'Polisi Tanzania', 4),
-  _m(32, 2026, 8, 29, 18, 0, 'JKT Tanzania', 'Namungo FC', 4),
-  _m(33, 2026, 8, 31, 15, 0, 'Simba SC', 'Geita Gold', 5),
-  _m(34, 2026, 8, 31, 17, 30, 'Kagera Sugar', 'Azam FC', 5),
-  _m(35, 2026, 9, 1, 13, 0, 'Fountain Gate', 'Young Africans SC', 5),
-  _m(36, 2026, 9, 1, 16, 0, 'Singida Black Stars', 'Namungo FC', 5),
-  _m(37, 2026, 9, 4, 13, 0, 'TRA United', 'Mbeya City', 5),
-  _m(38, 2026, 9, 4, 16, 0, 'Dodoma Jiji', 'Mashujaa FC', 5),
-  _m(39, 2026, 9, 5, 16, 0, 'JKT Tanzania', 'Pamba Jiji FC', 5),
-  _m(40, 2026, 9, 6, 13, 0, 'Polisi Tanzania', 'Coastal Union', 5),
-  _m(41, 2026, 9, 8, 13, 0, 'Mashujaa FC', 'Singida Black Stars', 6),
-  _m(42, 2026, 9, 8, 16, 0, 'Young Africans SC', 'Geita Gold', 6),
-  _m(43, 2026, 9, 9, 16, 0, 'Azam FC', 'Simba SC', 6),
-  _m(44, 2026, 9, 11, 16, 0, 'Dodoma Jiji', 'Namungo FC', 6),
-  _m(45, 2026, 9, 12, 13, 0, 'Polisi Tanzania', 'Mbeya City', 6),
-  _m(46, 2026, 9, 12, 16, 0, 'Coastal Union', 'JKT Tanzania', 6),
-  _m(47, 2026, 9, 13, 13, 0, 'Pamba Jiji FC', 'TRA United', 6),
-  _m(48, 2026, 9, 13, 16, 0, 'Kagera Sugar', 'Fountain Gate', 6),
-  _m(49, 2026, 10, 8, 11, 0, 'Mashujaa FC', 'Polisi Tanzania', 7),
-  _m(50, 2026, 10, 8, 13, 15, 'Pamba Jiji FC', 'Geita Gold', 7),
-  _m(51, 2026, 10, 8, 15, 30, 'Namungo FC', 'TRA United', 7),
-  _m(52, 2026, 10, 8, 18, 0, 'Coastal Union', 'Azam FC', 7),
-  _m(53, 2026, 10, 9, 11, 0, 'Fountain Gate', 'JKT Tanzania', 7),
-  _m(54, 2026, 10, 9, 13, 15, 'Mbeya City', 'Kagera Sugar', 7),
-  _m(55, 2026, 10, 9, 16, 0, 'Dodoma Jiji', 'Singida Black Stars', 7),
-  _m(56, 2026, 10, 10, 16, 0, 'Simba SC', 'Young Africans SC', 7),
-  _m(57, 2026, 10, 12, 15, 0, 'Coastal Union', 'Singida Black Stars', 8),
-  _m(58, 2026, 10, 12, 17, 30, 'Azam FC', 'Namungo FC', 8),
-  _m(59, 2026, 10, 13, 13, 0, 'TRA United', 'Young Africans SC', 8),
-  _m(60, 2026, 10, 13, 16, 0, 'Simba SC', 'Mashujaa FC', 8),
-  _m(61, 2026, 10, 16, 13, 0, 'Fountain Gate', 'Pamba Jiji FC', 8),
-  _m(62, 2026, 10, 16, 16, 0, 'Geita Gold', 'Dodoma Jiji', 8),
-  _m(63, 2026, 10, 17, 16, 0, 'Kagera Sugar', 'Polisi Tanzania', 8),
-  _m(64, 2026, 10, 18, 16, 0, 'JKT Tanzania', 'Mbeya City', 8),
-  _m(65, 2026, 10, 23, 13, 0, 'Polisi Tanzania', 'Pamba Jiji FC', 9),
-  _m(66, 2026, 10, 24, 13, 0, 'Azam FC', 'Mashujaa FC', 9),
-  _m(67, 2026, 10, 24, 13, 0, 'Dodoma Jiji', 'Young Africans SC', 9),
-  _m(68, 2026, 10, 24, 13, 0, 'Simba SC', 'Mbeya City', 9),
-  _m(69, 2026, 10, 24, 13, 0, 'Singida Black Stars', 'TRA United', 9),
-  _m(70, 2026, 10, 24, 15, 0, 'JKT Tanzania', 'Kagera Sugar', 9),
-  _m(71, 2026, 10, 24, 17, 30, 'Namungo FC', 'Coastal Union', 9),
-  _m(72, 2026, 10, 25, 16, 0, 'Geita Gold', 'Fountain Gate', 9),
-  _m(73, 2026, 10, 27, 13, 0, 'Pamba Jiji FC', 'Singida Black Stars', 10),
-  _m(74, 2026, 10, 27, 15, 30, 'Young Africans SC', 'Mashujaa FC', 10),
-  _m(75, 2026, 10, 27, 18, 0, 'Dodoma Jiji', 'JKT Tanzania', 10),
-  _m(76, 2026, 10, 28, 13, 0, 'Fountain Gate', 'Simba SC', 10),
-  _m(77, 2026, 10, 28, 15, 30, 'Azam FC', 'Mbeya City', 10),
-  _m(78, 2026, 10, 28, 18, 0, 'Coastal Union', 'Kagera Sugar', 10),
-  _m(79, 2026, 10, 29, 13, 0, 'TRA United', 'Geita Gold', 10),
-  _m(80, 2026, 10, 29, 16, 0, 'Namungo FC', 'Polisi Tanzania', 10),
-  _m(81, 2026, 10, 31, 13, 0, 'Mbeya City', 'Singida Black Stars', 11),
-  _m(82, 2026, 10, 31, 15, 30, 'JKT Tanzania', 'Azam FC', 11),
-  _m(83, 2026, 10, 31, 18, 0, 'Coastal Union', 'Dodoma Jiji', 11),
-  _m(84, 2026, 11, 1, 13, 0, 'Polisi Tanzania', 'Geita Gold', 11),
-  _m(85, 2026, 11, 1, 16, 0, 'Young Africans SC', 'Kagera Sugar', 11),
-  _m(86, 2026, 11, 2, 11, 0, 'TRA United', 'Fountain Gate', 11),
-  _m(87, 2026, 11, 2, 13, 15, 'Mashujaa FC', 'Pamba Jiji FC', 11),
-  _m(88, 2026, 11, 2, 16, 0, 'Simba SC', 'Namungo FC', 11),
-  _m(89, 2026, 11, 20, 13, 0, 'Polisi Tanzania', 'Young Africans SC', 12),
-  _m(90, 2026, 11, 20, 15, 30, 'Namungo FC', 'Mbeya City', 12),
-  _m(91, 2026, 11, 20, 18, 0, 'Azam FC', 'Singida Black Stars', 12),
-  _m(92, 2026, 11, 21, 13, 0, 'Pamba Jiji FC', 'Coastal Union', 12),
-  _m(93, 2026, 11, 21, 15, 30, 'JKT Tanzania', 'Simba SC', 12),
-  _m(94, 2026, 11, 21, 18, 0, 'Dodoma Jiji', 'Fountain Gate', 12),
-  _m(95, 2026, 11, 22, 15, 0, 'Kagera Sugar', 'TRA United', 12),
-  _m(96, 2026, 11, 22, 17, 30, 'Geita Gold', 'Mashujaa FC', 12),
-  _m(97, 2026, 11, 27, 13, 0, 'Pamba Jiji FC', 'Namungo FC', 13),
-  _m(98, 2026, 11, 27, 16, 0, 'Kagera Sugar', 'Dodoma Jiji', 13),
-  _m(99, 2026, 11, 28, 13, 0, 'Fountain Gate', 'Azam FC', 13),
-  _m(100, 2026, 11, 28, 13, 0, 'Mashujaa FC', 'TRA United', 13),
-  _m(101, 2026, 11, 28, 13, 0, 'Mbeya City', 'Young Africans SC', 13),
-  _m(102, 2026, 11, 28, 13, 0, 'Simba SC', 'Polisi Tanzania', 13),
-  _m(103, 2026, 11, 28, 13, 0, 'Singida Black Stars', 'JKT Tanzania', 13),
-  _m(104, 2026, 11, 29, 16, 0, 'Geita Gold', 'Coastal Union', 13),
-  _m(105, 2026, 12, 4, 11, 0, 'TRA United', 'Polisi Tanzania', 14),
-  _m(106, 2026, 12, 4, 13, 15, 'Mbeya City', 'Pamba Jiji FC', 14),
-  _m(107, 2026, 12, 5, 13, 0, 'Simba SC', 'Dodoma Jiji', 14),
-  _m(108, 2026, 12, 5, 13, 0, 'Singida Black Stars', 'Geita Gold', 14),
-  _m(109, 2026, 12, 5, 13, 0, 'Young Africans SC', 'Azam FC', 14),
-  _m(110, 2026, 12, 5, 16, 0, 'Coastal Union', 'Fountain Gate', 14),
-  _m(111, 2026, 12, 6, 13, 0, 'Mashujaa FC', 'JKT Tanzania', 14),
-  _m(112, 2026, 12, 6, 16, 0, 'Kagera Sugar', 'Namungo FC', 14),
-  _m(113, 2026, 12, 11, 11, 0, 'Pamba Jiji FC', 'Kagera Sugar', 15),
-  _m(114, 2026, 12, 11, 13, 15, 'Mbeya City', 'Coastal Union', 15),
-  _m(115, 2026, 12, 11, 13, 15, 'TRA United', 'Simba SC', 15),
-  _m(116, 2026, 12, 12, 13, 0, 'Fountain Gate', 'Polisi Tanzania', 15),
-  _m(117, 2026, 12, 12, 15, 30, 'Singida Black Stars', 'Young Africans SC', 15),
-  _m(118, 2026, 12, 12, 18, 0, 'Azam FC', 'Dodoma Jiji', 15),
-  _m(119, 2026, 12, 13, 13, 0, 'Mashujaa FC', 'Namungo FC', 15),
-  _m(120, 2026, 12, 13, 16, 0, 'Geita Gold', 'JKT Tanzania', 15),
-  _m(121, 2026, 12, 29, 13, 0, 'Namungo FC', 'Singida Black Stars', 16),
-  _m(122, 2026, 12, 29, 15, 30, 'Kagera Sugar', 'Pamba Jiji FC', 16),
-  _m(123, 2026, 12, 29, 18, 0, 'Dodoma Jiji', 'TRA United', 16),
-  _m(124, 2026, 12, 30, 13, 0, 'Fountain Gate', 'Geita Gold', 16),
-  _m(125, 2026, 12, 30, 16, 0, 'Azam FC', 'Young Africans SC', 16),
-  _m(126, 2026, 12, 31, 13, 0, 'Polisi Tanzania', 'Simba SC', 16),
-  _m(127, 2026, 12, 31, 15, 30, 'JKT Tanzania', 'Mashujaa FC', 16),
-  _m(128, 2026, 12, 31, 18, 0, 'Coastal Union', 'Mbeya City', 16),
-  _m(129, 2027, 1, 15, 13, 0, 'JKT Tanzania', 'Dodoma Jiji', 17),
-  _m(130, 2027, 1, 16, 13, 0, 'Namungo FC', 'Azam FC', 17),
-  _m(131, 2027, 1, 16, 13, 0, 'Polisi Tanzania', 'Singida Black Stars', 17),
-  _m(132, 2027, 1, 16, 13, 0, 'Simba SC', 'Kagera Sugar', 17),
-  _m(133, 2027, 1, 16, 13, 0, 'TRA United', 'Coastal Union', 17),
-  _m(134, 2027, 1, 16, 13, 0, 'Young Africans SC', 'Fountain Gate', 17),
-  _m(135, 2027, 1, 16, 13, 0, 'Geita Gold', 'Pamba Jiji FC', 17),
-  _m(136, 2027, 1, 17, 13, 0, 'Mashujaa FC', 'Mbeya City', 17),
-  _m(137, 2027, 1, 22, 13, 0, 'Dodoma Jiji', 'Mbeya City', 18),
-  _m(138, 2027, 1, 23, 13, 0, 'Azam FC', 'Polisi Tanzania', 18),
-  _m(139, 2027, 1, 23, 13, 0, 'Coastal Union', 'Young Africans SC', 18),
-  _m(140, 2027, 1, 23, 13, 0, 'Geita Gold', 'Singida Black Stars', 18),
-  _m(141, 2027, 1, 23, 13, 0, 'Simba SC', 'Fountain Gate', 18),
-  _m(142, 2027, 1, 23, 13, 0, 'Namungo FC', 'Kagera Sugar', 18),
-  _m(143, 2027, 1, 24, 13, 0, 'Pamba Jiji FC', 'Mashujaa FC', 18),
-  _m(144, 2027, 1, 24, 13, 0, 'TRA United', 'JKT Tanzania', 18),
-  _m(145, 2027, 2, 2, 13, 0, 'Mashujaa FC', 'Geita Gold', 19),
-  _m(146, 2027, 2, 2, 13, 0, 'TRA United', 'Pamba Jiji FC', 19),
-  _m(147, 2027, 2, 2, 13, 0, 'Coastal Union', 'Simba SC', 19),
-  _m(148, 2027, 2, 3, 13, 0, 'Mbeya City', 'Namungo FC', 19),
-  _m(149, 2027, 2, 3, 13, 0, 'Singida Black Stars', 'Kagera Sugar', 19),
-  _m(150, 2027, 2, 3, 13, 0, 'Young Africans SC', 'Polisi Tanzania', 19),
-  _m(151, 2027, 2, 4, 13, 0, 'JKT Tanzania', 'Fountain Gate', 19),
-  _m(152, 2027, 2, 4, 13, 0, 'Dodoma Jiji', 'Azam FC', 19),
-  _m(153, 2027, 2, 6, 13, 0, 'Young Africans SC', 'Simba SC', 20),
-  _m(154, 2027, 2, 7, 13, 0, 'Polisi Tanzania', 'TRA United', 20),
-  _m(155, 2027, 2, 7, 13, 0, 'Kagera Sugar', 'Mbeya City', 20),
-  _m(156, 2027, 2, 7, 13, 0, 'Dodoma Jiji', 'Pamba Jiji FC', 20),
-  _m(157, 2027, 2, 8, 13, 0, 'Fountain Gate', 'Coastal Union', 20),
-  _m(158, 2027, 2, 8, 13, 0, 'Geita Gold', 'Namungo FC', 20),
-  _m(159, 2027, 2, 8, 13, 0, 'Singida Black Stars', 'Mashujaa FC', 20),
-  _m(160, 2027, 2, 8, 13, 0, 'Azam FC', 'JKT Tanzania', 20),
-  _m(161, 2027, 2, 11, 13, 0, 'TRA United', 'Singida Black Stars', 21),
-  _m(162, 2027, 2, 11, 13, 0, 'Mashujaa FC', 'Young Africans SC', 21),
-  _m(163, 2027, 2, 11, 13, 0, 'Azam FC', 'Coastal Union', 21),
-  _m(164, 2027, 2, 12, 13, 0, 'Fountain Gate', 'Namungo FC', 21),
-  _m(165, 2027, 2, 12, 13, 0, 'Pamba Jiji FC', 'Mbeya City', 21),
-  _m(166, 2027, 2, 12, 13, 0, 'Kagera Sugar', 'Geita Gold', 21),
-  _m(167, 2027, 2, 13, 13, 0, 'Polisi Tanzania', 'Dodoma Jiji', 21),
-  _m(168, 2027, 2, 13, 13, 0, 'Simba SC', 'JKT Tanzania', 21),
-  _m(169, 2027, 2, 15, 13, 0, 'TRA United', 'Azam FC', 22),
-  _m(170, 2027, 2, 15, 13, 0, 'Geita Gold', 'Mbeya City', 22),
-  _m(171, 2027, 2, 15, 13, 0, 'Singida Black Stars', 'Coastal Union', 22),
-  _m(172, 2027, 2, 16, 13, 0, 'Mashujaa FC', 'Fountain Gate', 22),
-  _m(173, 2027, 2, 16, 13, 0, 'Namungo FC', 'JKT Tanzania', 22),
-  _m(174, 2027, 2, 16, 13, 0, 'Dodoma Jiji', 'Simba SC', 22),
-  _m(175, 2027, 2, 17, 13, 0, 'Pamba Jiji FC', 'Polisi Tanzania', 22),
-  _m(176, 2027, 2, 17, 13, 0, 'Kagera Sugar', 'Young Africans SC', 22),
-  _m(177, 2027, 2, 23, 13, 0, 'JKT Tanzania', 'Singida Black Stars', 23),
-  _m(178, 2027, 2, 23, 13, 0, 'Simba SC', 'Pamba Jiji FC', 23),
-  _m(179, 2027, 2, 24, 13, 0, 'Young Africans SC', 'Dodoma Jiji', 23),
-  _m(180, 2027, 2, 24, 13, 0, 'Azam FC', 'Geita Gold', 23),
-  _m(181, 2027, 2, 26, 13, 0, 'Mbeya City', 'Fountain Gate', 23),
-  _m(182, 2027, 2, 26, 13, 0, 'TRA United', 'Mashujaa FC', 23),
-  _m(183, 2027, 2, 27, 13, 0, 'Polisi Tanzania', 'Kagera Sugar', 23),
-  _m(184, 2027, 2, 28, 13, 0, 'Coastal Union', 'Namungo FC', 23),
-  _m(185, 2027, 3, 5, 13, 0, 'Polisi Tanzania', 'Mashujaa FC', 24),
-  _m(186, 2027, 3, 5, 13, 0, 'Namungo FC', 'Pamba Jiji FC', 24),
-  _m(187, 2027, 3, 6, 13, 0, 'Mbeya City', 'JKT Tanzania', 24),
-  _m(188, 2027, 3, 7, 13, 0, 'Coastal Union', 'Geita Gold', 24),
-  _m(189, 2027, 3, 7, 13, 0, 'Dodoma Jiji', 'Kagera Sugar', 24),
-  _m(190, 2027, 3, 13, 13, 0, 'Fountain Gate', 'Singida Black Stars', 24),
-  _m(191, 2027, 3, 13, 13, 0, 'Simba SC', 'Azam FC', 24),
-  _m(192, 2027, 3, 12, 13, 0, 'Polisi Tanzania', 'Fountain Gate', 25),
-  _m(193, 2027, 3, 12, 13, 0, 'Young Africans SC', 'Mbeya City', 25),
-  _m(194, 2027, 3, 13, 13, 0, 'Namungo FC', 'Mashujaa FC', 25),
-  _m(195, 2027, 3, 13, 13, 0, 'Young Africans SC', 'TRA United', 25),
-  _m(196, 2027, 3, 13, 13, 0, 'Simba SC', 'TRA United', 25),
-  _m(197, 2027, 3, 13, 13, 0, 'Azam FC', 'Kagera Sugar', 25),
-  _m(198, 2027, 3, 14, 13, 0, 'Singida Black Stars', 'Dodoma Jiji', 25),
-  _m(199, 2027, 3, 14, 13, 0, 'JKT Tanzania', 'Geita Gold', 25),
-  _m(200, 2027, 3, 14, 13, 0, 'Coastal Union', 'Pamba Jiji FC', 25),
-  _m(201, 2027, 4, 6, 13, 0, 'Pamba Jiji FC', 'Young Africans SC', 26),
-  _m(202, 2027, 4, 7, 13, 0, 'Mbeya City', 'Simba SC', 26),
-  _m(203, 2027, 4, 7, 13, 0, 'Singida Black Stars', 'Azam FC', 26),
-  _m(204, 2027, 4, 9, 13, 0, 'Mashujaa FC', 'Coastal Union', 26),
-  _m(205, 2027, 4, 9, 13, 0, 'Kagera Sugar', 'JKT Tanzania', 26),
-  _m(206, 2027, 4, 10, 13, 0, 'TRA United', 'Namungo FC', 26),
-  _m(207, 2027, 4, 10, 13, 0, 'Geita Gold', 'Polisi Tanzania', 26),
-  _m(208, 2027, 4, 11, 13, 0, 'Fountain Gate', 'Dodoma Jiji', 26),
-  _m(209, 2027, 4, 16, 13, 0, 'Pamba Jiji FC', 'JKT Tanzania', 27),
-  _m(210, 2027, 4, 16, 13, 0, 'Mashujaa FC', 'Dodoma Jiji', 27),
-  _m(211, 2027, 4, 17, 13, 0, 'Fountain Gate', 'TRA United', 27),
-  _m(212, 2027, 4, 17, 13, 0, 'Geita Gold', 'Young Africans SC', 27),
-  _m(213, 2027, 4, 17, 13, 0, 'Mbeya City', 'Azam FC', 27),
-  _m(214, 2027, 4, 17, 13, 0, 'Simba SC', 'Singida Black Stars', 27),
-  _m(215, 2027, 4, 18, 13, 0, 'Polisi Tanzania', 'Namungo FC', 27),
-  _m(216, 2027, 4, 18, 13, 0, 'Kagera Sugar', 'Coastal Union', 27),
-  _m(217, 2027, 5, 3, 13, 0, 'Azam FC', 'Fountain Gate', 28),
-  _m(218, 2027, 5, 3, 13, 0, 'Coastal Union', 'Polisi Tanzania', 28),
-  _m(219, 2027, 5, 3, 13, 0, 'Dodoma Jiji', 'Geita Gold', 28),
-  _m(220, 2027, 5, 3, 13, 0, 'JKT Tanzania', 'Young Africans SC', 28),
-  _m(221, 2027, 5, 3, 13, 0, 'Kagera Sugar', 'Mashujaa FC', 28),
-  _m(222, 2027, 5, 3, 13, 0, 'Mbeya City', 'TRA United', 28),
-  _m(223, 2027, 5, 3, 13, 0, 'Namungo FC', 'Simba SC', 28),
-  _m(224, 2027, 5, 3, 13, 0, 'Singida Black Stars', 'Pamba Jiji FC', 28),
-  _m(225, 2027, 5, 12, 13, 0, 'Dodoma Jiji', 'Coastal Union', 29),
-  _m(226, 2027, 5, 12, 13, 0, 'Geita Gold', 'Simba SC', 29),
-  _m(227, 2027, 5, 12, 13, 0, 'JKT Tanzania', 'Polisi Tanzania', 29),
-  _m(228, 2027, 5, 12, 13, 0, 'Mashujaa FC', 'Azam FC', 29),
-  _m(229, 2027, 5, 12, 13, 0, 'Pamba Jiji FC', 'Fountain Gate', 29),
-  _m(230, 2027, 5, 12, 13, 0, 'Singida Black Stars', 'Mbeya City', 29),
-  _m(231, 2027, 5, 12, 13, 0, 'TRA United', 'Kagera Sugar', 29),
-  _m(232, 2027, 5, 12, 13, 0, 'Young Africans SC', 'Namungo FC', 29),
-  _m(233, 2027, 5, 16, 13, 0, 'Fountain Gate', 'Kagera Sugar', 30),
-  _m(234, 2027, 5, 16, 13, 0, 'Geita Gold', 'TRA United', 30),
-  _m(235, 2027, 5, 16, 13, 0, 'JKT Tanzania', 'Coastal Union', 30),
-  _m(236, 2027, 5, 16, 13, 0, 'Mashujaa FC', 'Simba SC', 30),
-  _m(237, 2027, 5, 16, 13, 0, 'Mbeya City', 'Polisi Tanzania', 30),
-  _m(238, 2027, 5, 16, 13, 0, 'Namungo FC', 'Dodoma Jiji', 30),
-  _m(239, 2027, 5, 16, 13, 0, 'Pamba Jiji FC', 'Azam FC', 30),
-  _m(240, 2027, 5, 16, 13, 0, 'Young Africans SC', 'Singida Black Stars', 30),
-];

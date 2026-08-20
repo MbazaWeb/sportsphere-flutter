@@ -6,6 +6,7 @@ import '../../../../core/theme/colors.dart';
 import '../../../../core/widgets/glass_container.dart';
 import '../../domain/models/match_model.dart';
 import '../providers/scores_provider.dart';
+import '../../data/scores_repository.dart';
 import '../widgets/match_card.dart';
 
 class ScoresPage extends ConsumerStatefulWidget {
@@ -209,7 +210,34 @@ class _StandingsView extends StatefulWidget {
 
 class _StandingsViewState extends State<_StandingsView> {
   String _sport = 'Football';
-  String _league = 'Premier League';
+  String _league = 'NBC Premier League';
+  List<String> _leagues = const ['NBC Premier League', 'Ligi Kuu Bara', 'CRDB Federation Cup'];
+  bool _loadingLeagues = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLeagues();
+  }
+
+  Future<void> _loadLeagues() async {
+    try {
+      final slug = {
+        'Football': 'football',
+        'Basketball': 'basketball',
+        'Tennis': 'tennis',
+      }[_sport];
+      final names = await const ScoresRepository().listLeagues(sportSlug: slug);
+      if (!mounted) return;
+      setState(() {
+        _leagues = names.isNotEmpty ? names : _leagues;
+        if (!_leagues.contains(_league)) _league = _leagues.first;
+        _loadingLeagues = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loadingLeagues = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -228,12 +256,9 @@ class _StandingsViewState extends State<_StandingsView> {
                     if (v == null) return;
                     setState(() {
                       _sport = v;
-                      _league = {
-                        'Football': 'Premier League',
-                        'Basketball': 'NBA',
-                        'Tennis': 'ATP Rankings',
-                      }[v] ?? 'Premier League';
+                      _loadingLeagues = true;
                     });
+                    _loadLeagues();
                   },
                 ),
               ),
@@ -241,12 +266,8 @@ class _StandingsViewState extends State<_StandingsView> {
               Expanded(
                 child: _Dropdown(
                   label: 'League',
-                  value: _league,
-                  items: _sport == 'Football'
-                      ? const ['Premier League', 'La Liga', 'Champions League', 'Tanzania PL']
-                      : _sport == 'Basketball'
-                          ? const ['NBA', 'EuroLeague', 'BAL']
-                          : const ['ATP Rankings', 'WTA Rankings'],
+                  value: _leagues.contains(_league) ? _league : _leagues.first,
+                  items: _loadingLeagues ? [_league] : _leagues,
                   onChanged: (v) => setState(() => _league = v!),
                 ),
               ),
