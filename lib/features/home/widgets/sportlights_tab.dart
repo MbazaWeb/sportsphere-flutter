@@ -254,6 +254,13 @@ class _SportlightsTabState extends State<SportlightsTab> {
             }
           } catch (_) {}
         }
+        final postType = (r['postType'] as String?) ?? '';
+        final teamTag = r['teamTag']?.toString();
+        if (postType == 'welcome' || (teamTag != null && teamTag.isNotEmpty)) {
+          type = _SpotlightType.team;
+          roleLabel = 'Team';
+          handle = _handleFromTeamTag(teamTag);
+        }
         items.add(_SpotlightItem(
           type: type,
           author: author,
