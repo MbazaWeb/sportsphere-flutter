@@ -304,7 +304,7 @@ class _CommunityContentState extends State<_CommunityContent> {
             const Padding(
               padding: EdgeInsets.all(24),
               child: Text(
-                'No communities yet. Official can seed Community rows in Supabase.',
+                'No communities yet. Join one when it\'s created.',
                 style: TextStyle(color: Colors.white54),
                 textAlign: TextAlign.center,
               ),

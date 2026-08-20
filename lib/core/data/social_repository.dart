@@ -2,10 +2,7 @@ import 'dart:typed_data';
 
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
-import '../../app/config/env.dart';
 
 /// Social repository for posts, comments, and user interactions
 class SocialRepository {
@@ -267,31 +264,6 @@ class SocialRepository {
     } catch (e) {
       debugPrint('Failed to toggle like: $e');
       rethrow;
-    }
-  }
-
-  /// Increment/decrement a post counter
-  Future<void> _bumpPost(String postId, String col, int delta) async {
-    try {
-      try {
-        await _sb.rpc('increment_post_counter', params: {
-          'p_post_id': postId,
-          'p_column': col,
-          'p_delta': delta,
-        });
-      } catch (e) {
-        debugPrint('increment_post_counter RPC: $e');
-        final row = await _sb
-            .from('Post')
-            .select(col)
-            .eq('id', postId)
-            .maybeSingle();
-        final current = (row?[col] as int?) ?? 0;
-        final next = (current + delta).clamp(0, 1 << 30);
-        await _sb.from('Post').update({col: next}).eq('id', postId);
-      }
-    } catch (e) {
-      debugPrint('Failed to update post count: $e');
     }
   }
 

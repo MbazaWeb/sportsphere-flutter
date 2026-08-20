@@ -28,18 +28,24 @@ const _disappearOptions = [
 const _tagSuggestions = [
   (name: 'Simba SC', handle: '@simbasc', icon: Icons.groups_rounded),
   (name: 'Young Africans', handle: '@yanga', icon: Icons.groups_rounded),
-  (name: 'Clatous Chama', handle: '@chama', icon: Icons.person_rounded),
-  (name: 'Ali Kingu', handle: '@alikingu', icon: Icons.analytics_rounded),
+  (name: 'Azam FC', handle: '@azamfc', icon: Icons.groups_rounded),
+  (name: 'Singida Black Stars', handle: '@singida_bs', icon: Icons.groups_rounded),
+  (name: 'Kagera Sugar', handle: '@kagera_sugar', icon: Icons.groups_rounded),
+  (name: 'Coastal Union', handle: '@coastal_union', icon: Icons.groups_rounded),
   (name: 'TFF', handle: '@tff_tz', icon: Icons.emoji_events_rounded),
+  (name: 'NBC Premier League', handle: '@nbc_pl', icon: Icons.emoji_events_rounded),
 ];
 
 // ── Location suggestions ──────────────────────────────────────────────────────
 const _locationSuggestions = [
-  'Dar es Salaam, Tanzania',
-  'National Stadium, DSM',
-  'Mkapa Stadium, DSM',
+  'Dar es Salaam',
+  'Dodoma',
+  'Arusha',
+  'Mwanza',
   'Benjamin Mkapa Stadium',
-  'Nairobi, Kenya',
+  'National Stadium',
+  'Azam Complex',
+  'Kambarage Stadium',
 ];
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -104,10 +110,10 @@ class _CreateComposerState extends State<_CreateComposer>
 
 
   // ── Prediction state ──────────────────────────────────────────
-  String _predHomeTeam = 'Simba SC';
-  String _predAwayTeam = 'Young Africans';
-  int _predHomeScore = 1;
-  int _predAwayScore = 1;
+  String _predHomeTeam = '';
+  String _predAwayTeam = '';
+  int _predHomeScore = 0;
+  int _predAwayScore = 0;
 
   // ── Extras ────────────────────────────────────────────────────
   String? _location;

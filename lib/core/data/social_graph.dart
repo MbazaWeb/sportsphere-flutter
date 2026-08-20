@@ -1,8 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
-import '../../app/config/env.dart';
 
 /// Represents a person in the social graph
 class GraphPerson {

@@ -23,14 +23,8 @@ class _Stories extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final names = [
+    const names = [
       'Your Story',
-      'Football',
-      'Premier League',
-      'La Liga',
-      'NBA',
-      'Champions',
-      'Community',
     ];
 
     return SizedBox(
@@ -160,17 +154,10 @@ class _PostCard extends StatelessWidget {
                       shape: BoxShape.circle,
                       color: SportSphereColors.background,
                     ),
-                    child: ClipOval(
-                      child: Image.asset(
-                        'assets/images/sport_sphere_header_logo.png',
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) {
-                          return const Icon(
-                            Icons.sports_soccer,
-                            color: SportSphereColors.white,
-                          );
-                        },
-                      ),
+                    child: const Icon(
+                      Icons.sports_soccer_rounded,
+                      color: SportSphereColors.muted,
+                      size: 20,
                     ),
                   ),
                 ),

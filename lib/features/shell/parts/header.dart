@@ -7,6 +7,8 @@ class _Header extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authControllerProvider);
     final isGuest = auth.isGuest || auth.status == AuthStatus.unknown;
+    final notifCount = ref.watch(notificationsProvider).unreadCount;
+    final notifBadge = notifCount > 0 ? '$notifCount' : null;
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
       child: Row(
@@ -52,7 +54,7 @@ class _Header extends ConsumerWidget {
               button: true,
               child: _HeaderButton(
                 icon: Icons.notifications_none_rounded,
-                badge: '3',
+                badge: notifBadge,
                 onTap: () => _showNotifications(context),
               ),
             ),
@@ -62,7 +64,6 @@ class _Header extends ConsumerWidget {
               button: true,
               child: _HeaderButton(
                 icon: Icons.mail_outline_rounded,
-                badge: '2',
                 onTap: () => _showMessages(context),
               ),
             ),

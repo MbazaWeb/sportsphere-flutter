@@ -18,6 +18,8 @@ class _SearchSheetState extends State<_SearchSheet> {
 
   String _query = '';
 
+  List<Map<String, dynamic>> _results = [];
+
   @override
   void initState() {
     super.initState();
@@ -43,6 +45,7 @@ class _SearchSheetState extends State<_SearchSheet> {
     if (query.isEmpty) {
       setState(() {
         _loading = false;
+        _results = [];
       });
       return;
     }
@@ -54,15 +57,19 @@ class _SearchSheetState extends State<_SearchSheet> {
     _debounce = Timer(
       const Duration(milliseconds: 300),
       () {
-        if (!mounted) {
-          return;
-        }
-
-        setState(() {
-          _loading = false;
-        });
+        if (!mounted) return;
+        _performSearch(query);
       },
     );
+  }
+
+  Future<void> _performSearch(String query) async {
+    final results = await _SearchData.search(query);
+    if (!mounted) return;
+    setState(() {
+      _results = results;
+      _loading = false;
+    });
   }
 
   @override
@@ -168,22 +175,40 @@ class _SearchSheetState extends State<_SearchSheet> {
               Expanded(
                 child: _query.isEmpty
                     ? const _SearchEmptyState()
-                    : ScrollConfiguration(
-                        behavior: const _InvisibleScrollBehavior(),
-                        child: ListView(
-                          physics: const BouncingScrollPhysics(),
-                          padding: const EdgeInsets.fromLTRB(
-                            16,
-                            4,
-                            16,
-                            24,
-                          ),
-                          children: [
-                            for (final group in results)
-                              _SearchGroup(group: group),
-                          ],
-                        ),
-                      ),
+                    : _loading && _results.isEmpty
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: SportSphereColors.electricBlue,
+                            ),
+                          )
+                        : _results.isEmpty
+                            ? Center(
+                                child: Text(
+                                  'No results for "$_query"',
+                                  style: TextStyle(
+                                    color: SportSphereColors.muted
+                                        .withValues(alpha: 0.7),
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              )
+                            : ScrollConfiguration(
+                                behavior: const _InvisibleScrollBehavior(),
+                                child: ListView(
+                                  physics: const BouncingScrollPhysics(),
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    4,
+                                    16,
+                                    24,
+                                  ),
+                                  children: [
+                                    for (final item in _results)
+                                      _SearchResultTile(item: item),
+                                  ],
+                                ),
+                              ),
               ),
             ],
           ),
@@ -193,110 +218,184 @@ class _SearchSheetState extends State<_SearchSheet> {
   }
 }
 
-class _SearchGroup extends StatelessWidget {
-  final _SearchGroupData group;
+class _SearchResultTile extends StatelessWidget {
+  final Map<String, dynamic> item;
 
-  const _SearchGroup({
-    required this.group,
-  });
+  const _SearchResultTile({required this.item});
+
+  IconData get _icon {
+    switch (item['type']) {
+      case 'user':
+        return Icons.person_rounded;
+      case 'team':
+        return Icons.groups_rounded;
+      case 'post':
+        return Icons.article_rounded;
+      default:
+        return Icons.search_rounded;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (group.items.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
     return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 8),
-            child: Text(
-              group.title.toUpperCase(),
-              style: const TextStyle(
-                color: SportSphereColors.muted,
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.1,
-              ),
+      padding: const EdgeInsets.only(bottom: 8),
+      child: GestureDetector(
+        onTap: () {
+          final route = item['route'] as String?;
+          if (route != null && route.isNotEmpty) {
+            context.push(route);
+          }
+        },
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.035),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.06),
             ),
           ),
-
-          ...group.items.map(
-            (item) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.035),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.06),
+          child: Row(
+            children: [
+              if (item['avatar'] != null)
+                CircleAvatar(
+                  radius: 22,
+                  backgroundImage: NetworkImage(item['avatar'] as String),
+                  backgroundColor: SportSphereColors.surface2,
+                )
+              else
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: SportSphereColors.surface2,
+                    border: Border.all(
+                      color: SportSphereColors.electricBlue
+                          .withValues(alpha: 0.18),
+                    ),
+                  ),
+                  child: Icon(
+                    _icon,
+                    color: SportSphereColors.electricBlue,
+                    size: 21,
                   ),
                 ),
-                child: Row(
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: SportSphereColors.surface2,
-                        border: Border.all(
-                          color: SportSphereColors.electricBlue
-                              .withValues(alpha: 0.18),
-                        ),
-                      ),
-                      child: Icon(
-                        item.icon,
-                        color: SportSphereColors.electricBlue,
-                        size: 21,
+                    Text(
+                      item['title'] as String? ?? '',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: SportSphereColors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: SportSphereColors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            item.subtitle,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: SportSphereColors.muted,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
+                    const SizedBox(height: 3),
+                    Text(
+                      item['subtitle'] as String? ?? '',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: SportSphereColors.muted,
+                        fontSize: 12,
                       ),
-                    ),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: SportSphereColors.muted,
-                      size: 20,
                     ),
                   ],
                 ),
               ),
-            ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: SportSphereColors.muted,
+                size: 20,
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
+  }
+}
+
+class _SearchData {
+  static Future<List<Map<String, dynamic>>> search(String q) async {
+    if (q.trim().length < 2) return [];
+    final sb = Supabase.instance.client;
+    final query = q.trim().replaceAll('@', '');
+    final results = <Map<String, dynamic>>[];
+
+    // Search users
+    try {
+      final users = await sb
+          .from('User')
+          .select('id, name, handle, avatarUrl, role')
+          .or('handle.ilike.%$query%,name.ilike.%$query%')
+          .limit(10);
+      for (final r in users as List) {
+        final m = Map<String, dynamic>.from(r as Map);
+        results.add({
+          'type': 'user',
+          'id': m['id'],
+          'title': m['name'] ?? m['handle'],
+          'subtitle': '@${m['handle']}',
+          'avatar': m['avatarUrl'],
+          'role': m['role'],
+          'route': '/profile/${m['handle']}',
+        });
+      }
+    } catch (_) {}
+
+    // Search teams
+    try {
+      final teams = await sb
+          .from('Team')
+          .select('id, name, slug, logoUrl')
+          .ilike('name', '%$query%')
+          .limit(5);
+      for (final r in teams as List) {
+        final m = Map<String, dynamic>.from(r as Map);
+        final slug = (m['slug'] as String?) ?? '';
+        results.add({
+          'type': 'team',
+          'id': m['id'],
+          'title': m['name'],
+          'subtitle': 'Team',
+          'avatar': m['logoUrl'],
+          'role': 'team',
+          'route': '/team/${slug.replaceAll('-', '_')}',
+        });
+      }
+    } catch (_) {}
+
+    // Search posts (top 5 by likes)
+    try {
+      final posts = await sb
+          .from('Post')
+          .select('id, content, likeCount')
+          .ilike('content', '%$query%')
+          .order('likeCount', ascending: false)
+          .limit(5);
+      for (final r in posts as List) {
+        final m = Map<String, dynamic>.from(r as Map);
+        results.add({
+          'type': 'post',
+          'id': m['id'],
+          'title': (m['content'] as String?)?.substring(0, 60) ?? 'Post',
+          'subtitle': '♥ ${m['likeCount'] ?? 0}',
+          'avatar': null,
+          'role': 'post',
+          'route': null,
+        });
+      }
+    } catch (_) {}
+
+    return results;
   }
 }
 
@@ -834,104 +933,3 @@ class _ActivityItem {
     required this.subtitle,
     required this.time,
   });
-}
-
-class _SearchItem {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-
-  const _SearchItem({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-  });
-}
-
-class _SearchGroupData {
-  final String title;
-  final List<_SearchItem> items;
-
-  const _SearchGroupData({
-    required this.title,
-    required this.items,
-  });
-}
-
-class _SearchData {
-  static List<_SearchGroupData> search(String query) {
-    final q = query.toLowerCase();
-
-    if (q.isEmpty) {
-      return const [];
-    }
-
-    final people = <_SearchItem>[
-      const _SearchItem(
-        title: 'Clatous Chama',
-        subtitle: 'Player · Football',
-        icon: Icons.person_rounded,
-      ),
-      const _SearchItem(
-        title: 'Ali Kingu',
-        subtitle: 'Football Analyst',
-        icon: Icons.analytics_rounded,
-      ),
-      const _SearchItem(
-        title: 'SportSphere Fan',
-        subtitle: 'Fan',
-        icon: Icons.person_outline_rounded,
-      ),
-    ].where((item) {
-      return item.title.toLowerCase().contains(q) ||
-          item.subtitle.toLowerCase().contains(q);
-    }).toList();
-
-    final teams = <_SearchItem>[
-      const _SearchItem(
-        title: 'Simba SC',
-        subtitle: 'Football Team',
-        icon: Icons.groups_rounded,
-      ),
-      const _SearchItem(
-        title: 'Young Africans SC',
-        subtitle: 'Football Team',
-        icon: Icons.groups_rounded,
-      ),
-    ].where((item) {
-      return item.title.toLowerCase().contains(q) ||
-          item.subtitle.toLowerCase().contains(q);
-    }).toList();
-
-    final posts = <_SearchItem>[
-      const _SearchItem(
-        title: 'Football analysis',
-        subtitle: 'Post · Match prediction and discussion',
-        icon: Icons.article_rounded,
-      ),
-      const _SearchItem(
-        title: 'Latest football action',
-        subtitle: 'Post · SportSphere community',
-        icon: Icons.feed_rounded,
-      ),
-    ].where((item) {
-      return item.title.toLowerCase().contains(q) ||
-          item.subtitle.toLowerCase().contains(q);
-    }).toList();
-
-    return [
-      _SearchGroupData(
-        title: 'People',
-        items: people,
-      ),
-      _SearchGroupData(
-        title: 'Teams',
-        items: teams,
-      ),
-      _SearchGroupData(
-        title: 'Posts',
-        items: posts,
-      ),
-    ];
-  }
-}

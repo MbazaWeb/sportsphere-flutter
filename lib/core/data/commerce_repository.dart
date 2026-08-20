@@ -36,16 +36,9 @@ class CommerceRepository {
       'unitPriceTzs': unitPriceTzs,
       'amountTzs': amount,
       'status': status,
+      'paymentMethod': paymentMethod,
       'createdAt': DateTime.now().toIso8601String(),
     });
-    // Optional metadata table-free: store method in itemName suffix if columns missing
-    try {
-      await _sb.from('ShopOrder').update({
-        'status': status,
-      }).eq('id', id);
-    } catch (e) {
-      debugPrint('order meta: $e');
-    }
     return id;
   }
 
@@ -189,5 +182,51 @@ class CommerceRepository {
       'yellowCards': y,
       'redCards': r,
     };
+  }
+
+  // ─── Order History ──────────────────────────────────────
+
+  /// Buyer's order history
+  Future<List<Map<String, dynamic>>> myOrders({int limit = 50}) async {
+    final uid = _uid;
+    if (uid == null) return [];
+    try {
+      final rows = await _sb
+          .from('ShopOrder')
+          .select()
+          .eq('userId', uid)
+          .order('createdAt', ascending: false)
+          .limit(limit);
+      return [for (final r in rows as List) Map<String, dynamic>.from(r as Map)];
+    } catch (e) {
+      debugPrint('myOrders: $e');
+      return [];
+    }
+  }
+
+  /// Seller's received orders
+  Future<List<Map<String, dynamic>>> sellerOrders({int limit = 50}) async {
+    final uid = _uid;
+    if (uid == null) return [];
+    try {
+      // Find seller handle from User table
+      final user = await _sb
+          .from('User')
+          .select('handle')
+          .eq('id', uid)
+          .maybeSingle();
+      final handle = user?['handle'] as String?;
+      if (handle == null || handle.isEmpty) return [];
+      final rows = await _sb
+          .from('ShopOrder')
+          .select()
+          .eq('sellerHandle', handle)
+          .order('createdAt', ascending: false)
+          .limit(limit);
+      return [for (final r in rows as List) Map<String, dynamic>.from(r as Map)];
+    } catch (e) {
+      debugPrint('sellerOrders: $e');
+      return [];
+    }
   }
 }

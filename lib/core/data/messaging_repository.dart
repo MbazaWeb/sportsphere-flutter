@@ -205,10 +205,10 @@ class MessagingRepository {
         'p_user_id': receiverId,
         'p_type': 'message',
         'p_title': 'New message',
-        'p_body': content.length > 60 ? '${content.substring(0, 60)}…' : content,
+        'p_body': content.length > 60 ? '${content.substring(0, 60)}...' : content,
         'p_actor_id': uid,
         'p_reference_id': null,
-        'p_target_id': uid,
+        'p_target_id': receiverId,
         'p_target_type': 'user',
       });
     } catch (e) {

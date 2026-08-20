@@ -8,6 +8,7 @@ import 'app/app.dart' show SportSphereApp;
 import 'app/config/env.dart';
 import 'core/notifications/local_notification_service.dart';
 import 'core/notifications/fcm_service.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,6 +18,15 @@ Future<void> main() async {
   if (!AppEnv.isConfigured) {
     runApp(const _MissingConfigApp());
     return;
+  }
+
+  // Initialize Firebase first (required for FCM).
+  // Will be a no-op on web or if google-services.json is missing.
+  try {
+    // ignore: depend_on_referenced_packages
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint('Firebase init skipped (no config): $e');
   }
 
   await Supabase.initialize(

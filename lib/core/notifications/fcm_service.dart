@@ -1,23 +1,63 @@
+import 'dart:io';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// FCM device token registration.
 ///
-/// Full push requires Firebase project + `google-services.json` /
-/// `GoogleService-Info.plist` and the packages `firebase_core` +
-/// `firebase_messaging`. Until then tokens can still be stored when
-/// provided (e.g. from a future native channel). Edge Function
-/// `send-fcm` delivers using `FCM_SERVER_KEY` + `device_tokens`.
+/// Requires `firebase_core` and `firebase_messaging` packages plus
+/// platform config files (google-services.json / GoogleService-Info.plist).
+/// Edge Function `send-fcm` delivers using `FCM_SERVER_KEY` + `device_tokens`.
 class FcmService {
   FcmService._();
   static final instance = FcmService._();
 
+  bool _initialized = false;
+
   Future<void> initAndRegister() async {
-    if (kIsWeb) return;
-    // Hook: when Firebase is configured, obtain token and call registerToken.
-    debugPrint(
-      'FCM: add Firebase config then wire FirebaseMessaging.getToken() → registerToken',
-    );
+    if (kIsWeb || _initialized) return;
+    try {
+      final messaging = FirebaseMessaging.instance;
+
+      // Request permission (iOS / Android 13+)
+      await messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
+      );
+
+      // Foreground presentation
+      messaging.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      // Get and register token
+      final token = await messaging.getToken();
+      if (token != null && token.isNotEmpty) {
+        await registerToken(token, platform: Platform.isIOS ? 'ios' : 'android');
+        debugPrint('FCM: token registered');
+      }
+
+      // Listen for token refreshes
+      messaging.onTokenRefresh.listen((newToken) {
+        registerToken(newToken, platform: Platform.isIOS ? 'ios' : 'android');
+      });
+
+      // Handle foreground messages
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        debugPrint('FCM foreground: ${message.notification?.title}');
+        // The notifications_provider already handles in-app display
+        // via Supabase realtime. This ensures foreground FCM is logged.
+      });
+
+      _initialized = true;
+      debugPrint('FCM: initialized successfully');
+    } catch (e) {
+      debugPrint('FCM init error (config may be missing): $e');
+    }
   }
 
   Future<void> registerToken(String token, {String platform = 'android'}) async {

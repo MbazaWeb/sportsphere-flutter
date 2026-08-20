@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/data/commerce_repository.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/glass_container.dart';
 import '../models/shop_models.dart';
@@ -61,8 +62,32 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
     return 'TZS $buf';
   }
 
+  bool _needsPhone(String method) {
+    final m = method.toLowerCase();
+    return m.contains('pesa') || m.contains('airtel');
+  }
+
+  String _methodKey(String method) {
+    final m = method.toLowerCase();
+    if (m.contains('pesa')) return 'mpesa';
+    if (m.contains('airtel')) return 'airtel';
+    return 'card';
+  }
+
   Future<void> _pay() async {
     if (_paying) return;
+
+    // Validate phone before any API call
+    if (_needsPhone(_method)) {
+      final phone = _phoneCtrl.text.trim();
+      if (phone.isEmpty || phone.length < 9) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Enter a valid phone number')),
+        );
+        return;
+      }
+    }
+
     HapticFeedback.mediumImpact();
     setState(() => _paying = true);
     try {
@@ -72,11 +97,7 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
           ? 1
           : _qty;
       final commerce = CommerceRepository();
-      final method = _method.toLowerCase().contains('pesa')
-          ? 'mpesa'
-          : _method.toLowerCase().contains('airtel')
-              ? 'airtel'
-              : 'card';
+      final method = _methodKey(_method);
       final orderId = await commerce.placeOrder(
         itemId: item.id,
         itemName: item.name,
@@ -89,19 +110,18 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
         phone: _phoneCtrl.text.trim(),
       );
       if (method == 'mpesa') {
-        final phone = _phoneCtrl.text.trim();
-        if (phone.isEmpty) {
-          throw StateError('Enter M-Pesa phone (07… or 254…)');
-        }
         final stk = await commerce.initiateMpesaStk(
           orderId: orderId,
-          phone: phone,
+          phone: _phoneCtrl.text.trim(),
           amountTzs: unit * qty,
         );
         if (stk['error'] != null && stk['ResponseCode'] != '0') {
-          // Still show done with pending if secrets missing
           debugPrint('STK: $stk');
         }
+      } else if (method == 'airtel') {
+        debugPrint('Airtel Money: no gateway wired yet for $orderId');
+      } else {
+        debugPrint('Card: no gateway wired yet for $orderId');
       }
       if (!mounted) return;
       setState(() {
@@ -233,6 +253,36 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
             _QtyBtn(icon: Icons.add, onTap: () => setState(() => _qty++)),
           ]),
         ],
+        // Phone input for mobile money
+        if (_needsPhone(_method)) ...[
+          const SizedBox(height: 14),
+          TextField(
+            controller: _phoneCtrl,
+            keyboardType: TextInputType.phone,
+            style: const TextStyle(color: SportSphereColors.white),
+            decoration: InputDecoration(
+              hintText: _method.toLowerCase().contains('pesa')
+                  ? 'M-Pesa phone (07… or 254…)'
+                  : 'Airtel Money phone',
+              hintStyle: const TextStyle(color: SportSphereColors.muted, fontSize: 13),
+              prefixIcon: const Icon(Icons.phone_rounded, color: SportSphereColors.muted, size: 20),
+              filled: true,
+              fillColor: Colors.white.withValues(alpha: 0.04),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: accent.withValues(alpha: 0.50)),
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 18),
         Row(children: [
           for (final m in const ['M-Pesa', 'Airtel Money', 'Card']) ...[
@@ -295,9 +345,15 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
           ),
         ),
         const SizedBox(height: 8),
-        const Center(
-          child: Text('Demo payment recorded (no M-Pesa charge yet)',
-              style: TextStyle(color: SportSphereColors.muted, fontSize: 11)),
+        Center(
+          child: Text(
+            _methodKey(_method) == 'mpesa'
+                ? 'You\'ll receive an STK push on your phone'
+                : _methodKey(_method) == 'airtel'
+                    ? 'Airtel Money payment coming soon'
+                    : 'Card payments coming soon',
+            style: const TextStyle(color: SportSphereColors.muted, fontSize: 11),
+          ),
         ),
       ],
     );
