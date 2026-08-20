@@ -9,7 +9,7 @@
 
 
     <application
-        android:label="sportsphere_app"
+        android:label="SportSphere"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
