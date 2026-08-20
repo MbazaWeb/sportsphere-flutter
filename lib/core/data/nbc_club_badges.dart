@@ -33,6 +33,8 @@ class NbcClubBadges {
   // ─── LEAGUES ─────────────────────────────────────────────────
   static String get nbcPremierLeague => '$_base/leagues/nbc-premier-league.png';
   static String get ligiKuuBara => nbcPremierLeague;
+  /// Fallback when a club has no uploaded badge.
+  static String get defaultTeam => '$_base/teams/default-team.png';
   static String get federationCup => '$_base/leagues/crdb-federation-cup.png';
   static String get pbzPremierLeague => '$_base/leagues/pbz-premier-league.png';
 
@@ -86,38 +88,28 @@ class NbcClubBadges {
   };
 
   // ─── LOOKUP METHOD ──────────────────────────────────────────
-  static String? forName(String name) {
+  static String forName(String name) {
     final key = name.trim().toLowerCase();
 
     // Exact match first
-    if (byKey.containsKey(key)) return byKey[key];
+    if (byKey.containsKey(key)) return byKey[key]!;
 
-    // Partial match - only if exact match fails
-    // Find the best match by checking if key contains search term
+    // Partial match
     String? bestMatch;
     int bestScore = 0;
-
     for (final entry in byKey.entries) {
-      final entryKey = entry.key.toLowerCase();
-      // Score: full word match > partial match > no match
-      if (entryKey == key) {
-        return entry.value;
-      } else if (key.contains(entryKey) || entryKey.contains(key)) {
-        final score = key.contains(entryKey)
-            ? entryKey.length
-            : key.length;
+      if (key.contains(entry.key) || entry.key.contains(key)) {
+        final score = entry.key.length;
         if (score > bestScore) {
           bestScore = score;
           bestMatch = entry.value;
         }
       }
     }
-
-    return bestMatch;
+    return bestMatch ?? defaultTeam;
   }
 
-  // ─── BATCH LOOKUP ───────────────────────────────────────────
-  static Map<String, String?> forNames(List<String> names) {
+  static Map<String, String> forNames(List<String> names) {
     return {for (final name in names) name: forName(name)};
   }
 }

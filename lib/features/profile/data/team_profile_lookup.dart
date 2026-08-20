@@ -58,7 +58,7 @@ Future<TeamProfileModel> lookupTeamProfile(String handle) async {
   final name = (team?['name'] as String?) ?? (user?['name'] as String?) ?? handle;
   final logo = (team?['logoUrl'] as String?) ??
       (user?['avatarUrl'] as String?) ??
-      NbcClubBadges.forName(name);
+      NbcClubBadges.forName(name); // never null — defaultTeam
   return TeamProfileModel(
     name: name,
     handle: (user?['handle'] as String?) ?? key,
