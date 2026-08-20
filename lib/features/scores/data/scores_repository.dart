@@ -2,8 +2,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/data/nbc_club_badges.dart';
 import '../domain/models/match_model.dart';
+import '../domain/models/standing_model.dart';
 
-/// Live scores/fixtures from Supabase `Match` + `League` (not hardcoded seed).
+/// Live scores / standings from Supabase only (no hardcoded fixtures).
 class ScoresRepository {
   const ScoresRepository();
 
@@ -17,7 +18,6 @@ class ScoresRepository {
         .order('kickoffAt');
     final list = _mapRows(rows as List);
     if (list.isNotEmpty) return list;
-    // Soft live window when admin has not flipped status yet
     final now = DateTime.now().toUtc();
     final all = await _fetchAll();
     return all.where((m) {
@@ -41,12 +41,11 @@ class ScoresRepository {
 
   Future<List<MatchModel>> getUpcoming({DateTime? day}) async {
     final now = DateTime.now().toUtc();
-    var q = _sb
+    final rows = await _sb
         .from('Match')
         .select()
         .gte('kickoffAt', now.toIso8601String())
         .order('kickoffAt');
-    final rows = await q;
     var list = _mapRows(rows as List);
     if (day != null) {
       list = list
@@ -63,11 +62,10 @@ class ScoresRepository {
     final rows = await _sb
         .from('Match')
         .select()
-        .or('status.eq.finished,status.eq.ft,status.eq.completed')
+        .or('status.eq.finished,status.eq.ft,status.eq.completed,status.eq.FT')
         .order('kickoffAt', ascending: false);
     var list = _mapRows(rows as List);
     if (list.isEmpty) {
-      // Past kickoffs without score still show as result slots for admin
       final now = DateTime.now().toUtc();
       final all = await _fetchAll();
       list = all
@@ -87,8 +85,11 @@ class ScoresRepository {
   }
 
   Future<List<String>> listLeagues({String? sportSlug}) async {
-    var q = _sb.from('League').select('name,sport_slug,isActive').eq('isActive', true).order('name');
-    final rows = await q;
+    final rows = await _sb
+        .from('League')
+        .select('name,sport_slug,isActive')
+        .eq('isActive', true)
+        .order('name');
     final names = <String>[];
     for (final r in rows as List) {
       final m = Map<String, dynamic>.from(r as Map);
@@ -99,11 +100,10 @@ class ScoresRepository {
       final name = m['name'] as String?;
       if (name != null && name.isNotEmpty) names.add(name);
     }
-    if (names.isEmpty) return const ['NBC Premier League', 'Ligi Kuu Bara'];
     return names;
   }
 
-  Future<List<Map<String, dynamic>>> listTeams({String? leagueHint}) async {
+  Future<List<Map<String, dynamic>>> listTeams() async {
     final rows = await _sb
         .from('Team')
         .select('id,name,logoUrl,accountUserId,sport_slug,city,country')
@@ -112,17 +112,105 @@ class ScoresRepository {
     return [for (final r in rows as List) Map<String, dynamic>.from(r as Map)];
   }
 
+  /// Standings from admin-finished matches only (homeScore/awayScore set).
+  Future<List<StandingRow>> getStandings({required String league}) async {
+    final rows = await _sb.from('Match').select(
+        'homeTeam,awayTeam,homeScore,awayScore,status,homeBadge,awayBadge,league');
+
+    final stats = <String, _Acc>{};
+    final logos = <String, String>{};
+
+    for (final raw in rows as List) {
+      final r = Map<String, dynamic>.from(raw as Map);
+      final leagueName = (r['league'] as String?) ?? '';
+      if (league.isNotEmpty &&
+          !leagueName.toLowerCase().contains(league.toLowerCase()) &&
+          !league.toLowerCase().contains(leagueName.toLowerCase())) {
+        // Allow NBC Premier League ↔ Ligi Kuu Bara alias
+        final aliases = {
+          'nbc premier league': 'ligi kuu bara',
+          'ligi kuu bara': 'nbc premier league',
+        };
+        final a = league.toLowerCase();
+        final b = leagueName.toLowerCase();
+        final ok = aliases[a] == b || aliases[b] == a;
+        if (!ok) continue;
+      }
+      final status = ((r['status'] as String?) ?? '').toLowerCase();
+      final hs = r['homeScore'];
+      final ascore = r['awayScore'];
+      if (hs == null || ascore == null) continue;
+      if (!(status == 'finished' ||
+          status == 'ft' ||
+          status == 'completed' ||
+          status == 'full_time')) {
+        continue;
+      }
+      final home = (r['homeTeam'] as String?) ?? 'Home';
+      final away = (r['awayTeam'] as String?) ?? 'Away';
+      final h = (hs as num).toInt();
+      final a = (ascore as num).toInt();
+      stats.putIfAbsent(home, _Acc.new);
+      stats.putIfAbsent(away, _Acc.new);
+      final hb = (r['homeBadge'] as String?) ?? '';
+      final ab = (r['awayBadge'] as String?) ?? '';
+      if (hb.isNotEmpty) logos[home] = hb;
+      if (ab.isNotEmpty) logos[away] = ab;
+
+      stats[home]!.played++;
+      stats[away]!.played++;
+      stats[home]!.gf += h;
+      stats[home]!.ga += a;
+      stats[away]!.gf += a;
+      stats[away]!.ga += h;
+      if (h > a) {
+        stats[home]!.won++;
+        stats[away]!.lost++;
+        stats[home]!.pts += 3;
+      } else if (h < a) {
+        stats[away]!.won++;
+        stats[home]!.lost++;
+        stats[away]!.pts += 3;
+      } else {
+        stats[home]!.drawn++;
+        stats[away]!.drawn++;
+        stats[home]!.pts++;
+        stats[away]!.pts++;
+      }
+    }
+
+    final list = [
+      for (final e in stats.entries)
+        StandingRow(
+          teamName: e.key,
+          played: e.value.played,
+          won: e.value.won,
+          drawn: e.value.drawn,
+          lost: e.value.lost,
+          goalsFor: e.value.gf,
+          goalsAgainst: e.value.ga,
+          points: e.value.pts,
+          logoUrl: logos[e.key] ?? NbcClubBadges.forName(e.key) ?? '',
+        ),
+    ];
+    list.sort((a, b) {
+      final p = b.points.compareTo(a.points);
+      if (p != 0) return p;
+      final gd = b.goalDifference.compareTo(a.goalDifference);
+      if (gd != 0) return gd;
+      return b.goalsFor.compareTo(a.goalsFor);
+    });
+    return list;
+  }
+
   Future<List<MatchModel>> _fetchAll() async {
     final rows = await _sb.from('Match').select().order('kickoffAt');
     return _mapRows(rows as List);
   }
 
-  List<MatchModel> _mapRows(List rows) {
-    return [
-      for (final r in rows)
-        _fromRow(Map<String, dynamic>.from(r as Map)),
-    ];
-  }
+  List<MatchModel> _mapRows(List rows) => [
+        for (final r in rows) _fromRow(Map<String, dynamic>.from(r as Map)),
+      ];
 
   MatchModel _fromRow(Map<String, dynamic> r) {
     final home = (r['homeTeam'] as String?) ?? 'Home';
@@ -130,22 +218,25 @@ class ScoresRepository {
     final homeScore = r['homeScore'];
     final awayScore = r['awayScore'];
     final statusRaw = ((r['status'] as String?) ?? 'scheduled').toLowerCase();
-    final kick = DateTime.tryParse((r['kickoffAt'] as String?) ?? '')?.toLocal() ??
-        DateTime.now();
+    final kick =
+        DateTime.tryParse((r['kickoffAt'] as String?) ?? '')?.toLocal() ??
+            DateTime.now();
     final isLive = statusRaw == 'live' ||
         statusRaw == 'in_play' ||
         statusRaw == 'ht' ||
         statusRaw == '1h' ||
         statusRaw == '2h';
-    String score = '-';
+    var score = '-';
     if (homeScore != null && awayScore != null) {
       score = '$homeScore-$awayScore';
     }
-    String status;
+    late final String status;
     if (isLive) {
       final min = r['minute'];
       status = min != null ? "$min'" : 'LIVE';
-    } else if (statusRaw == 'finished' || statusRaw == 'ft' || statusRaw == 'completed') {
+    } else if (statusRaw == 'finished' ||
+        statusRaw == 'ft' ||
+        statusRaw == 'completed') {
       status = 'FT';
     } else if (r['events'] is Map && (r['events'] as Map)['round'] != null) {
       status = 'R${(r['events'] as Map)['round']}';
@@ -173,4 +264,14 @@ class ScoresRepository {
       isLive: isLive,
     );
   }
+}
+
+class _Acc {
+  int played = 0;
+  int won = 0;
+  int drawn = 0;
+  int lost = 0;
+  int gf = 0;
+  int ga = 0;
+  int pts = 0;
 }

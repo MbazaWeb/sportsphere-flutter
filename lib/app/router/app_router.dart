@@ -132,7 +132,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           final handle = state.pathParameters['handle'] ?? '';
           return RouteTransitions.slideUp(
             state.pageKey,
-            FanProfileView(profile: ProfileLoader.loadFanProfile(handle)),
+            FutureBuilder(
+              future: ProfileLoader.loadFanProfile(handle),
+              builder: (context, snap) {
+                if (!snap.hasData) {
+                  return const Scaffold(body: Center(child: CircularProgressIndicator()));
+                }
+                return FanProfileView(profile: snap.data!);
+              },
+            ),
           );
         },
       ),
@@ -142,8 +150,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           final handle = state.pathParameters['handle'] ?? '';
           return RouteTransitions.slideUp(
             state.pageKey,
-            PlayerProfileView(
-              profile: ProfileLoader.loadPlayerProfile(handle),
+            FutureBuilder(
+              future: ProfileLoader.loadPlayerProfile(handle),
+              builder: (context, snap) {
+                if (!snap.hasData) {
+                  return const Scaffold(body: Center(child: CircularProgressIndicator()));
+                }
+                return PlayerProfileView(profile: snap.data!);
+              },
             ),
           );
         },
@@ -154,8 +168,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           final handle = state.pathParameters['handle'] ?? '';
           return RouteTransitions.slideUp(
             state.pageKey,
-            TeamProfileView(
-              profile: ProfileLoader.loadTeamProfile(handle),
+            FutureBuilder(
+              future: ProfileLoader.loadTeamProfile(handle),
+              builder: (context, snap) {
+                if (!snap.hasData) {
+                  return const Scaffold(body: Center(child: CircularProgressIndicator()));
+                }
+                return TeamProfileView(profile: snap.data!);
+              },
             ),
           );
         },
@@ -167,8 +187,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           final handle = state.pathParameters['handle'] ?? role;
           return RouteTransitions.slideUp(
             state.pageKey,
-            RoleProfileShell(
-              profile: ProfileLoader.loadRoleProfile(role, handle),
+            FutureBuilder(
+              future: ProfileLoader.loadRoleProfile(role, handle),
+              builder: (context, snap) {
+                if (!snap.hasData) {
+                  return const Scaffold(body: Center(child: CircularProgressIndicator()));
+                }
+                return RoleProfileShell(profile: snap.data!);
+              },
             ),
           );
         },

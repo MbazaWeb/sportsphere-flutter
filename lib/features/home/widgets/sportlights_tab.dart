@@ -194,7 +194,7 @@ final _welcomeFeed = <_SpotlightItem>[
   _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.coastalUnion, likes: 0, comments: 0, shares: 0, accent: Color(0xFFE31B23)),
 ];
 
-final _feedItems = _welcomeFeed;
+final _feedItems = <_SpotlightItem>[];
 
 // ============================================================
 // MAIN WIDGET
@@ -345,7 +345,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
       }
       if (mounted) setState(() => _live = items);
     } catch (_) {
-      // keep bundled welcome cards
+      // empty feed if API fails — no mock seed
     }
   }
 

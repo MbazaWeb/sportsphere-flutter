@@ -70,11 +70,11 @@ export async function updateMatchResult(
   id: string,
   homeScore: number,
   awayScore: number,
-  status: string = 'FT',
+  status: string = 'finished',
 ) {
   const { data, error } = await supabase
     .from('Match')
-    .update({ homeScore, awayScore, status, updatedAt: new Date().toISOString() })
+    .update({ homeScore, awayScore, status: status === 'FT' ? 'finished' : status, updatedAt: new Date().toISOString() })
     .eq('id', id)
     .select()
     .single()

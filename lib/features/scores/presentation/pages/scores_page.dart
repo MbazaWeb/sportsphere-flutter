@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/widgets/glass_container.dart';
 import '../../domain/models/match_model.dart';
+import '../../domain/models/standing_model.dart';
 import '../providers/scores_provider.dart';
 import '../../data/scores_repository.dart';
 import '../widgets/match_card.dart';
@@ -275,70 +276,55 @@ class _StandingsViewState extends State<_StandingsView> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: GlassContainer(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                children: [
-                  // Header
-                  Row(
-                    children: const [
-                      SizedBox(
-                        width: 28,
-                        child: Text('#',
-                            style: TextStyle(
-                                color: SportSphereColors.muted,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600)),
+            child: FutureBuilder<List<StandingRow>>(
+              future: const ScoresRepository().getStandings(league: _league),
+              key: ValueKey(_league),
+              builder: (context, snap) {
+                if (snap.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final rows = snap.data ?? const <StandingRow>[];
+                if (rows.isEmpty) {
+                  return GlassContainer(
+                    padding: const EdgeInsets.all(20),
+                    child: Center(
+                      child: Text(
+                        'No finished matches yet for $_league.\nAdmin: update scores in Match Updates to fill the table.',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: SportSphereColors.muted, height: 1.4),
                       ),
+                    ),
+                  );
+                }
+                return GlassContainer(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    children: [
+                      const Row(
+                        children: [
+                          SizedBox(width: 28, child: Text('#', style: TextStyle(color: SportSphereColors.muted, fontSize: 12, fontWeight: FontWeight.w600))),
+                          Expanded(child: Text('Team', style: TextStyle(color: SportSphereColors.muted, fontSize: 12, fontWeight: FontWeight.w600))),
+                          SizedBox(width: 28, child: Text('P', textAlign: TextAlign.center, style: TextStyle(color: SportSphereColors.muted, fontSize: 12, fontWeight: FontWeight.w600))),
+                          SizedBox(width: 28, child: Text('W', textAlign: TextAlign.center, style: TextStyle(color: SportSphereColors.muted, fontSize: 12, fontWeight: FontWeight.w600))),
+                          SizedBox(width: 28, child: Text('D', textAlign: TextAlign.center, style: TextStyle(color: SportSphereColors.muted, fontSize: 12, fontWeight: FontWeight.w600))),
+                          SizedBox(width: 28, child: Text('L', textAlign: TextAlign.center, style: TextStyle(color: SportSphereColors.muted, fontSize: 12, fontWeight: FontWeight.w600))),
+                          SizedBox(width: 36, child: Text('GD', textAlign: TextAlign.center, style: TextStyle(color: SportSphereColors.muted, fontSize: 12, fontWeight: FontWeight.w600))),
+                          SizedBox(width: 36, child: Text('Pts', textAlign: TextAlign.center, style: TextStyle(color: SportSphereColors.muted, fontSize: 12, fontWeight: FontWeight.w700))),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
                       Expanded(
-                        child: Text('Team',
-                            style: TextStyle(
-                                color: SportSphereColors.muted,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600)),
-                      ),
-                      SizedBox(
-                        width: 30,
-                        child: Text('PL',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                color: SportSphereColors.muted,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600)),
-                      ),
-                      SizedBox(
-                        width: 30,
-                        child: Text('GD',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                color: SportSphereColors.muted,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600)),
-                      ),
-                      SizedBox(
-                        width: 34,
-                        child: Text('PTS',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                color: SportSphereColors.muted,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700)),
+                        child: ListView.builder(
+                          itemCount: rows.length,
+                          itemBuilder: (context, i) {
+                            return _StandingRow(data: rows[i], rank: i + 1);
+                          },
+                        ),
                       ),
                     ],
                   ),
-                  const Divider(color: Colors.white10, height: 16),
-                  Expanded(
-                    child: ListView.separated(
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: _mockStandings.length,
-                      separatorBuilder: (_, __) =>
-                          const SizedBox(height: 2),
-                      itemBuilder: (_, i) =>
-                          _StandingRow(data: _mockStandings[i], rank: i + 1),
-                    ),
-                  ),
-                ],
-              ),
+                );
+              },
             ),
           ),
         ],
@@ -347,29 +333,17 @@ class _StandingsViewState extends State<_StandingsView> {
   }
 }
 
-const _mockStandings = [
-  ('Man City', 28, 34, 67),
-  ('Arsenal', 28, 29, 64),
-  ('Liverpool', 28, 31, 61),
-  ('Aston Villa', 28, 18, 55),
-  ('Tottenham', 28, 9, 50),
-  ('Chelsea', 28, 11, 48),
-  ('Man United', 28, -4, 38),
-  ('Newcastle', 28, 7, 36),
-  ('West Ham', 28, -6, 34),
-  ('Brighton', 28, 5, 32),
-];
-
 class _StandingRow extends StatelessWidget {
-  final (String, int, int, int) data;
+  final StandingRow data;
   final int rank;
   const _StandingRow({required this.data, required this.rank});
 
   @override
   Widget build(BuildContext context) {
-    final (name, played, gd, pts) = data;
     final isTop4 = rank <= 4;
     final isTop6 = rank <= 6;
+    final gd = data.goalDifference;
+    final gdText = gd > 0 ? '+$gd' : '$gd';
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
@@ -392,9 +366,7 @@ class _StandingRow extends StatelessWidget {
             child: Text(
               '$rank',
               style: TextStyle(
-                color: isTop4
-                    ? SportSphereColors.electricBlue
-                    : SportSphereColors.muted,
+                color: isTop4 ? SportSphereColors.electricBlue : SportSphereColors.muted,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),
@@ -402,7 +374,9 @@ class _StandingRow extends StatelessWidget {
           ),
           Expanded(
             child: Text(
-              name,
+              data.teamName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: SportSphereColors.white,
                 fontSize: 13,
@@ -410,37 +384,15 @@ class _StandingRow extends StatelessWidget {
               ),
             ),
           ),
+          _cell('${data.played}'),
+          _cell('${data.won}'),
+          _cell('${data.drawn}'),
+          _cell('${data.lost}'),
+          _cell(gdText),
           SizedBox(
-            width: 30,
+            width: 36,
             child: Text(
-              '$played',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: SportSphereColors.muted,
-                fontSize: 12,
-              ),
-            ),
-          ),
-          SizedBox(
-            width: 30,
-            child: Text(
-              gd >= 0 ? '+$gd' : '$gd',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: gd > 0
-                    ? SportSphereColors.sportGreen
-                    : gd < 0
-                        ? SportSphereColors.danger
-                        : SportSphereColors.muted,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          SizedBox(
-            width: 34,
-            child: Text(
-              '$pts',
+              '${data.points}',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: SportSphereColors.white,
@@ -453,7 +405,17 @@ class _StandingRow extends StatelessWidget {
       ),
     );
   }
+
+  Widget _cell(String v) => SizedBox(
+        width: 28,
+        child: Text(
+          v,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: SportSphereColors.muted, fontSize: 12),
+        ),
+      );
 }
+
 
 class _Dropdown extends StatelessWidget {
   final String label;

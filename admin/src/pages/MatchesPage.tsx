@@ -31,7 +31,7 @@ export function MatchesPage() {
 
   async function saveResult(m: MatchRow, hs: string, as: string) {
     try {
-      await updateMatchResult(m.id, Number(hs), Number(as), 'FT')
+      await updateMatchResult(m.id, Number(hs), Number(as), 'finished')
       setMsg(`Result saved: ${m.homeTeam} ${hs}-${as} ${m.awayTeam}`)
       load()
     } catch (e: any) {

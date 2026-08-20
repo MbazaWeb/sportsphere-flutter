@@ -8,7 +8,7 @@ String normalizeTeamHandle(String raw) {
   return raw.replaceAll('@', '').trim().toLowerCase().replaceAll('-', '_');
 }
 
-Future<TeamProfileModel> loadTeamProfile(String handle) async {
+Future<TeamProfileModel> lookupTeamProfile(String handle) async {
   final key = normalizeTeamHandle(handle);
   final sb = Supabase.instance.client;
 
