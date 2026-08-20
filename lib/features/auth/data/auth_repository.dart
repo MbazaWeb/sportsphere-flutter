@@ -26,7 +26,16 @@ class AuthRepository {
   Future<UserProfile?> currentProfile() async {
     final user = _sb.auth.currentUser;
     if (user == null) return null;
-    return _profileById(user.id);
+    try {
+      return await _profileById(user.id);
+    } catch (e) {
+      final msg = e.toString().toLowerCase();
+      if (msg.contains('401') || msg.contains('jwt') || msg.contains('unauthorized')) {
+        await clearLocalSession();
+        return null;
+      }
+      rethrow;
+    }
   }
 
   Future<void> login({
@@ -136,12 +145,26 @@ class AuthRepository {
       return raw.toLowerCase();
     }
     final handle = raw.toLowerCase().replaceAll('@', '');
-    final row = await _sb.from('profiles').select('email').eq('handle', handle).maybeSingle();
-    final email = row?['email'] as String?;
-    if (email == null || email.isEmpty) {
-      throw StateError('Unknown handle');
+    try {
+      final row = await _sb.from('profiles').select('email').eq('handle', handle).maybeSingle();
+      final email = row?['email'] as String?;
+      if (email == null || email.isEmpty) {
+        throw StateError('Unknown handle');
+      }
+      return email;
+    } catch (e) {
+      final msg = e.toString().toLowerCase();
+      if (msg.contains('401') || msg.contains('jwt') || msg.contains('unauthorized')) {
+        await clearLocalSession();
+        final row = await _sb.from('profiles').select('email').eq('handle', handle).maybeSingle();
+        final email = row?['email'] as String?;
+        if (email == null || email.isEmpty) {
+          throw StateError('Unknown handle');
+        }
+        return email;
+      }
+      rethrow;
     }
-    return email;
   }
 
   Future<UserProfile?> _profileById(String id) async {

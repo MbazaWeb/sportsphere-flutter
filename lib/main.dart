@@ -10,11 +10,9 @@ import 'app/config/env.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Silence logger in release builds — never leak logs to production console
   Logger.level = kDebugMode ? Level.debug : Level.off;
 
   if (!AppEnv.isConfigured) {
-    // Show a clear error screen instead of a cryptic crash
     runApp(const _MissingConfigApp());
     return;
   }
@@ -24,13 +22,31 @@ Future<void> main() async {
     anonKey: AppEnv.supabaseAnonKey,
     authOptions: const FlutterAuthClientOptions(
       authFlowType: AuthFlowType.pkce,
+      autoRefreshToken: true,
+      detectSessionInUri: true,
     ),
   );
+
+  // Drop stale / cross-project JWTs that cause REST 401 on profiles.
+  await _ensureValidSession();
 
   runApp(const ProviderScope(child: SportSphereApp()));
 }
 
-/// Shown when --dart-define vars are missing (e.g. bare `flutter run` with no defines).
+Future<void> _ensureValidSession() async {
+  final client = Supabase.instance.client;
+  final session = client.auth.currentSession;
+  if (session == null) return;
+  try {
+    // Validates access token against Auth API (not only local storage).
+    await client.auth.getUser();
+  } catch (_) {
+    try {
+      await client.auth.signOut(scope: SignOutScope.local);
+    } catch (_) {}
+  }
+}
+
 class _MissingConfigApp extends StatelessWidget {
   const _MissingConfigApp();
 
@@ -59,10 +75,10 @@ class _MissingConfigApp extends StatelessWidget {
                 const SizedBox(height: 12),
                 const Text(
                   'SUPABASE_URL and SUPABASE_ANON_KEY must be set.\n\n'
-                  'Run with:\n'
-                  'flutter run \\\n'
-                  '  --dart-define=SUPABASE_URL=https://... \\\n'
-                  '  --dart-define=SUPABASE_ANON_KEY=...',
+                  'Use the JWT anon key (starts with eyJ...), not only the sb_publishable_ key.\n\n'
+                  'flutter run -d chrome \\\n'
+                  '  --dart-define=SUPABASE_URL=https://xxx.supabase.co \\\n'
+                  '  --dart-define=SUPABASE_ANON_KEY=eyJ...',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Color(0xFF999999), fontSize: 13, height: 1.6),
                 ),
