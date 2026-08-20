@@ -20,6 +20,7 @@ class ProfilePost {
   final bool hasImage;
   final int imageCount;
   final bool hasVideo;
+  final String? imageUrl;
 
   const ProfilePost({
     required this.text,
@@ -31,6 +32,7 @@ class ProfilePost {
     this.hasImage = false,
     this.imageCount = 1,
     this.hasVideo = false,
+    this.imageUrl,
   });
 }
 
@@ -379,7 +381,16 @@ class _ProfilePostCardState extends State<ProfilePostCard> {
             ),
 
             // Media
-            if (post.hasImage) ...[
+            if (post.imageUrl != null && post.imageUrl!.startsWith('http')) ...[
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: AspectRatio(
+                  aspectRatio: 1.2,
+                  child: Image.network(post.imageUrl!, fit: BoxFit.contain),
+                ),
+              ),
+            ] else if (post.hasImage) ...[
               const SizedBox(height: 12),
               PostMedia(
                 imageCount: post.imageCount,
@@ -503,6 +514,7 @@ class _EngagementBtn extends StatelessWidget {
 class PostMedia extends StatelessWidget {
   final int imageCount;
   final bool hasVideo;
+  final String? imageUrl;
   final Color accent;
   const PostMedia({
     super.key,
@@ -529,6 +541,7 @@ class PostMedia extends StatelessWidget {
 class PostMediaTile extends StatelessWidget {
   final Color accent;
   final bool hasVideo;
+  final String? imageUrl;
   final double aspectRatio;
   const PostMediaTile({
     super.key,

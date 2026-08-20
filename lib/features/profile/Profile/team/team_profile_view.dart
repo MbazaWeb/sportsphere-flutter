@@ -271,6 +271,16 @@ final mockSimbaSC = TeamProfileModel(
 
 final _teamPosts = <ProfilePost>[
   const ProfilePost(
+    text: 'Welcome Simba SC.\n\nThe official Simba SC page is live on SportSphere. Follow the club and become a fan.',
+    hashtags: ['#LigiKuuBara', '#SportSphere', '#SimbaSC'],
+    timeAgo: 'now',
+    likes: 0,
+    comments: 0,
+    shares: 0,
+    hasImage: true,
+    imageUrl: NbcClubBadges.simba,
+  ),
+  const ProfilePost(
     text: 'Big match tonight! Ready for the challenge. 🦁🔴\nSimba family — make some noise!',
     hashtags: ['#SimbaSC', '#NguVuMoja'],
     timeAgo: '2h',

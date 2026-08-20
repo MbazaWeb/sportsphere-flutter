@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/data/nbc_club_badges.dart';
 
 // ============================================================
 // ROLE CONFIGURATION
@@ -116,7 +117,28 @@ class _SpotlightItem {
 // MOCK FEED DATA
 // ============================================================
 
-const _feedItems = <_SpotlightItem>[
+
+const _welcomeFeed = <_SpotlightItem>[
+  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.simba, likes: 0, comments: 0, shares: 0, accent: Color(0xFFE31B23)),
+  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.yanga, likes: 0, comments: 0, shares: 0, accent: Color(0xFFFFC400)),
+  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.azam, likes: 0, comments: 0, shares: 0, accent: Color(0xFF00A8FF)),
+  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.singidaBlackStars, likes: 0, comments: 0, shares: 0, accent: Color(0xFF168CFF)),
+  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.mbeyaCity, likes: 0, comments: 0, shares: 0, accent: Color(0xFF4D8F24)),
+  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.geitaGold, likes: 0, comments: 0, shares: 0, accent: Color(0xFFFFB900)),
+  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.mashujaa, likes: 0, comments: 0, shares: 0, accent: Color(0xFFE31B23)),
+  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.namungo, likes: 0, comments: 0, shares: 0, accent: Color(0xFF168CFF)),
+  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.fountainGate, likes: 0, comments: 0, shares: 0, accent: Color(0xFF00A8FF)),
+  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.polisi, likes: 0, comments: 0, shares: 0, accent: Color(0xFF4D8F24)),
+  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.jkt, likes: 0, comments: 0, shares: 0, accent: Color(0xFFE31B23)),
+  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.traUnited, likes: 0, comments: 0, shares: 0, accent: Color(0xFF168CFF)),
+  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.pamba, likes: 0, comments: 0, shares: 0, accent: Color(0xFF00A8FF)),
+  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.kageraSugar, likes: 0, comments: 0, shares: 0, accent: Color(0xFF4D8F24)),
+  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.dodomaJiji, likes: 0, comments: 0, shares: 0, accent: Color(0xFFFFB900)),
+  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.coastalUnion, likes: 0, comments: 0, shares: 0, accent: Color(0xFFE31B23)),
+];
+
+final _feedItems = <_SpotlightItem>[
+  ..._welcomeFeed,
   _SpotlightItem(
     type: _SpotlightType.team,
     author: 'Young Africans SC',
@@ -479,11 +501,17 @@ class _ImageContent extends StatelessWidget {
       borderRadius: BorderRadius.circular(18),
       child: AspectRatio(
         aspectRatio: 1.02,
-        child: Image.asset(
-          asset,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _GeneratedContent(item: item),
-        ),
+        child: asset.startsWith('http')
+            ? Image.network(
+                asset,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => _GeneratedContent(item: item),
+              )
+            : Image.asset(
+                asset,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _GeneratedContent(item: item),
+              ),
       ),
     );
   }
