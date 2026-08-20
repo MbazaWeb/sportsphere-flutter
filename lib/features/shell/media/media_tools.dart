@@ -12,7 +12,7 @@ Future<fp.FilePickerResult?> _pickFiles({
   bool withData = true,
 }) async {
   try {
-    return await fp.FilePicker.platform.pickFiles(
+    return await fp.FilePicker.pickFiles(
       type: type,
       allowedExtensions: allowedExtensions,
       withData: withData,
@@ -20,7 +20,7 @@ Future<fp.FilePickerResult?> _pickFiles({
     );
   } catch (_) {
     // Web / desktop fallback if platform channel is unavailable.
-    return await fp.FilePicker.platform.pickFiles(
+    return await fp.FilePicker.pickFiles(
       type: fp.FileType.any,
       withData: withData,
       allowMultiple: false,
