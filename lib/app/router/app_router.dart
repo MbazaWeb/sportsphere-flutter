@@ -28,6 +28,7 @@ import '../../features/profile/Profile/scout/scout_profile_view.dart';
 import '../../features/profile/Profile/sponsor/sponsor_profile_view.dart';
 import '../../features/profile/Profile/support_staff/support_staff_profile_view.dart';
 import '../../features/profile/Profile/team/team_profile_view.dart';
+import '../../features/profile/data/team_profile_lookup.dart';
 import '../../features/profile/Profile/venue/venue_profile_view.dart';
 import '../../features/profile/templates/role_profile_shell.dart';
 import '../../features/profile/data/role_mocks.dart';
@@ -147,19 +148,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/team/:handle',
         pageBuilder: (_, state) {
           final handle = state.pathParameters['handle'] ?? '';
-          final profile = handle == mockSimbaSC.handle
-              ? mockSimbaSC
-              : TeamProfileModel(
-                  name: handle, handle: handle,
-                  sport: 'Football', competition: 'Unknown',
-                  country: 'Unknown', city: 'Unknown',
-                  stadium: 'Unknown', founded: 2000,
-                  coach: 'Unknown', description: '',
-                  accentColor: const Color(0xFF009DFF),
-                  postCount: 0, fanCount: 0, followingCount: 0,
-                  squad: const [], seasonStats: const [],
-                );
-          return _slideTransition(state.pageKey, TeamProfileView(profile: profile));
+          return _slideTransition(
+            state.pageKey,
+            FutureBuilder<TeamProfileModel>(
+              future: loadTeamProfile(handle),
+              builder: (context, snap) {
+                if (!snap.hasData) {
+                  return const Scaffold(
+                    backgroundColor: Color(0xFF071422),
+                    body: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                return TeamProfileView(profile: snap.data!);
+              },
+            ),
+          );
         },
       ),
 

@@ -175,8 +175,8 @@ class _SpotlightItem {
 
 
 const _welcomeFeed = <_SpotlightItem>[
-  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.simba, likes: 0, comments: 0, shares: 0, accent: Color(0xFFE31B23)),
-  _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.yanga, likes: 0, comments: 0, shares: 0, accent: Color(0xFFFFC400)),
+  _SpotlightItem(type: _SpotlightType.team, author: 'Simba SC', handle: 'simba_sc', role: 'Team', age: 'Just now', asset: NbcClubBadges.simba, likes: 0, comments: 0, shares: 0, accent: Color(0xFFE31B23)),
+  _SpotlightItem(type: _SpotlightType.team, author: 'Young Africans', handle: 'yanga_sc', role: 'Team', age: 'Just now', asset: NbcClubBadges.yanga, likes: 0, comments: 0, shares: 0, accent: Color(0xFFFFC400)),
   _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.azam, likes: 0, comments: 0, shares: 0, accent: Color(0xFF00A8FF)),
   _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.singidaBlackStars, likes: 0, comments: 0, shares: 0, accent: Color(0xFF168CFF)),
   _SpotlightItem(type: _SpotlightType.team, author: 'SportSphere Official', role: 'Official', age: 'Just now', asset: NbcClubBadges.mbeyaCity, likes: 0, comments: 0, shares: 0, accent: Color(0xFF4D8F24)),
@@ -200,8 +200,14 @@ final _feedItems = _welcomeFeed;
 // ============================================================
 
 String _handleFromTeamTag(String? tag) {
-  if (tag == null || tag.isEmpty) return 'simba';
-  return tag.replaceFirst('tm-', '').replaceAll('_', '-');
+  if (tag == null || tag.isEmpty) return 'simba_sc';
+  final raw = tag.replaceFirst('tm-', '').replaceAll('-', '_');
+  const aliases = {
+    'simba': 'simba_sc',
+    'yanga': 'yanga_sc',
+    'azam': 'azam_fc',
+  };
+  return aliases[raw] ?? raw;
 }
 
 _SpotlightType _typeForRole(String role) {
@@ -297,12 +303,25 @@ class _SportlightsTabState extends State<SportlightsTab> {
           try {
             final team = await Supabase.instance.client
                 .from('Team')
-                .select('id,name,logoUrl,accountUserId')
+                .select('id,name,logoUrl,accountUserId,slug')
                 .eq('id', teamTag ?? '')
                 .maybeSingle();
             if (team != null) {
               author = (team['name'] as String?) ?? author;
               handle = _handleFromTeamTag(team['id'] as String?);
+              try {
+                final acc = team['accountUserId']?.toString();
+                if (acc != null) {
+                  final u = await Supabase.instance.client
+                      .from('User')
+                      .select('handle')
+                      .eq('id', acc)
+                      .maybeSingle();
+                  if (u != null && (u['handle'] as String?)?.isNotEmpty == true) {
+                    handle = u['handle'] as String;
+                  }
+                }
+              } catch (_) {}
               asset = (team['logoUrl'] as String?) ?? asset;
               targetUserId = team['accountUserId']?.toString();
             }
