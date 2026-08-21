@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -39,13 +38,13 @@ class FcmService {
       // Get and register token
       final token = await messaging.getToken().timeout(const Duration(seconds: 10));
       if (token != null && token.isNotEmpty) {
-        await registerToken(token, platform: Platform.isIOS ? 'ios' : 'android');
+        await registerToken(token, platform: defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android');
         debugPrint('FCM: token registered');
       }
 
       // Listen for token refreshes
       messaging.onTokenRefresh.listen((newToken) {
-        registerToken(newToken, platform: Platform.isIOS ? 'ios' : 'android');
+        registerToken(newToken, platform: defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android');
       });
 
       // Handle foreground messages
