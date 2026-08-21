@@ -5,7 +5,8 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../../shared/profile_widgets.dart';
-import '../../shared/shop_tab.dart';
+import '../../../shop/models/shop_models.dart';
+import '../../../shop/presentation/shop_tab.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MODELS
@@ -370,9 +371,13 @@ class _TeamProfileViewState extends State<TeamProfileView>
             _SquadTab(profile: p),
             _StatsTab(profile: p),
             ShopTab(
-              items: buildTeamShop(p.name, p.accentColor),
-              accent: p.accentColor,
-              sellerName: p.name,
+              catalog: p.handle == 'simbasc'
+                  ? simbaShopCatalog()
+                  : teamShopCatalog(
+                      name: p.name,
+                      handle: p.handle,
+                      accent: p.accentColor,
+                    ),
             ),
           ],
         ),
