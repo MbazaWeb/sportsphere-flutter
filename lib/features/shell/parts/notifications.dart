@@ -37,7 +37,7 @@ class _NotificationsScreenState
           }).toList();
 
     return Scaffold(
-      backgroundColor: SportSphereSportSphereColors.background,
+      backgroundColor: SportSphereColors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -50,7 +50,7 @@ class _NotificationsScreenState
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(
                       Icons.arrow_back_rounded,
-                      color: SportSphereSportSphereColors.white,
+                      color: SportSphereColors.white,
                       size: 28,
                     ),
                   ),
@@ -59,7 +59,7 @@ class _NotificationsScreenState
                     child: Text(
                       'Notifications',
                       style: TextStyle(
-                        color: SportSphereSportSphereColors.white,
+                        color: SportSphereColors.white,
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
                       ),
@@ -74,7 +74,7 @@ class _NotificationsScreenState
                         child: const Text(
                           'Mark all read',
                           style: TextStyle(
-                            color: SportSphereSportSphereColors.electricBlue,
+                            color: SportSphereColors.electricBlue,
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                           ),
@@ -107,23 +107,23 @@ class _NotificationsScreenState
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: active
-                              ? SportSphereSportSphereColors.electricBlue
+                              ? SportSphereColors.electricBlue
                                   .withValues(alpha: 0.14)
-                              : SportSphereSportSphereColors.surface,
+                              : SportSphereColors.surface,
                           borderRadius: BorderRadius.circular(22),
                           border: Border.all(
                             color: active
-                                ? SportSphereSportSphereColors.electricBlue
+                                ? SportSphereColors.electricBlue
                                     .withValues(alpha: 0.45)
-                                : SportSphereSportSphereColors.white.withValues(alpha: 0.06),
+                                : SportSphereColors.white.withValues(alpha: 0.06),
                           ),
                         ),
                         child: Text(
                           _tabs[i],
                           style: TextStyle(
                             color: active
-                                ? SportSphereSportSphereColors.electricBlue
-                                : SportSphereSportSphereColors.muted,
+                                ? SportSphereColors.electricBlue
+                                : SportSphereColors.muted,
                             fontWeight: active
                                 ? FontWeight.w700
                                 : FontWeight.w500,
@@ -201,15 +201,15 @@ class _NotificationTile extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: item.unread
-                ? SportSphereSportSphereColors.electricBlue
+                ? SportSphereColors.electricBlue
                     .withValues(alpha: 0.075)
-                : SportSphereSportSphereColors.surface,
+                : SportSphereColors.surface,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
               color: item.unread
-                  ? SportSphereSportSphereColors.electricBlue
+                  ? SportSphereColors.electricBlue
                       .withValues(alpha: 0.16)
-                  : SportSphereSportSphereColors.white.withValues(alpha: 0.055),
+                  : SportSphereColors.white.withValues(alpha: 0.055),
             ),
           ),
           child: Row(
@@ -220,16 +220,16 @@ class _NotificationTile extends StatelessWidget {
                 height: 46,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: SportSphereSportSphereColors.electricBlue
+                  color: SportSphereColors.electricBlue
                       .withValues(alpha: 0.10),
                   border: Border.all(
-                    color: SportSphereSportSphereColors.electricBlue
+                    color: SportSphereColors.electricBlue
                         .withValues(alpha: 0.20),
                   ),
                 ),
                 child: Icon(
                   _icon,
-                  color: SportSphereSportSphereColors.electricBlue,
+                  color: SportSphereColors.electricBlue,
                   size: 21,
                 ),
               ),
@@ -243,7 +243,7 @@ class _NotificationTile extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: SportSphereSportSphereColors.white,
+                        color: SportSphereColors.white,
                         fontSize: 14,
                         height: 1.3,
                         fontWeight: item.unread
@@ -257,7 +257,7 @@ class _NotificationTile extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: SportSphereSportSphereColors.muted,
+                        color: SportSphereColors.muted,
                         fontSize: 12.5,
                         height: 1.3,
                       ),
@@ -266,7 +266,7 @@ class _NotificationTile extends StatelessWidget {
                     Text(
                       item.time,
                       style: TextStyle(
-                        color: SportSphereSportSphereColors.muted
+                        color: SportSphereColors.muted
                             .withValues(alpha: 0.75),
                         fontSize: 11,
                       ),
@@ -282,7 +282,7 @@ class _NotificationTile extends StatelessWidget {
                       const EdgeInsets.only(left: 8, top: 6),
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
-                    color: SportSphereSportSphereColors.electricBlue,
+                    color: SportSphereColors.electricBlue,
                   ),
                 ),
             ],
@@ -308,13 +308,13 @@ class _NotificationsEmpty extends StatelessWidget {
               Icons.notifications_none_rounded,
               size: 58,
               color:
-                  SportSphereSportSphereColors.electricBlue.withValues(alpha: 0.65),
+                  SportSphereColors.electricBlue.withValues(alpha: 0.65),
             ),
             const SizedBox(height: 16),
             const Text(
               'No notifications here',
               style: TextStyle(
-                color: SportSphereSportSphereColors.white,
+                color: SportSphereColors.white,
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
               ),
@@ -324,7 +324,7 @@ class _NotificationsEmpty extends StatelessWidget {
               'New activity from your community will appear here.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: SportSphereSportSphereColors.muted,
+                color: SportSphereColors.muted,
                 fontSize: 13,
               ),
             ),

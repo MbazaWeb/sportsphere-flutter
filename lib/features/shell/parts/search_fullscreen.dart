@@ -2,7 +2,6 @@ part of '../app_shell.dart';
 
 class _FullScreenSearch extends StatefulWidget {
   const _FullScreenSearch();
-
   @override
   State<_FullScreenSearch> createState() => _FullScreenSearchState();
 }
@@ -10,32 +9,55 @@ class _FullScreenSearch extends StatefulWidget {
 class _FullScreenSearchState extends State<_FullScreenSearch> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
-
-  final List<String> _history = [
-    'Simba SC',
-    'Young Africans',
-    'Premier League',
-  ];
-
   String _query = '';
+  List<Map<String, dynamic>> _results = [];
+  bool _loading = false;
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _focusNode.requestFocus());
+    _controller.addListener(_onChanged);
+  }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _focusNode.requestFocus();
-    });
-
-    _controller.addListener(() {
+  void _onChanged() {
+    final q = _controller.text.trim();
+    setState(() => _query = q);
+    _debounce?.cancel();
+    if (q.length < 2) {
       setState(() {
-        _query = _controller.text.trim();
+        _results = [];
+        _loading = false;
       });
-    });
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 350), () => _search(q));
+  }
+
+  Future<void> _search(String q) async {
+    if (!mounted) return;
+    setState(() => _loading = true);
+    try {
+      final rows = await Supabase.instance.client
+          .from('profiles')
+          .select('id, handle, first_name, last_name, role, avatar_url')
+          .or('handle.ilike.%$q%,first_name.ilike.%$q%,last_name.ilike.%$q%')
+          .limit(25);
+      if (mounted) {
+        setState(() {
+          _results = List<Map<String, dynamic>>.from(rows as List);
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -43,37 +65,35 @@ class _FullScreenSearchState extends State<_FullScreenSearch> {
 
   @override
   Widget build(BuildContext context) {
-    final hasQuery = _query.isNotEmpty;
-
+    final hasQuery = _query.length >= 2;
     return Scaffold(
-      backgroundColor: SportSphereSportSphereColors.background,
+      backgroundColor: SportSphereColors.background,
       body: SafeArea(
         child: Column(
           children: [
+            // ── Search bar ────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
               child: Row(
                 children: [
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(
-                      Icons.arrow_back_rounded,
-                      color: SportSphereSportSphereColors.white,
-                    ),
+                    icon: const Icon(Icons.arrow_back_rounded,
+                        color: SportSphereColors.white),
                   ),
                   Expanded(
                     child: Container(
                       height: 50,
                       decoration: BoxDecoration(
-                        color: SportSphereSportSphereColors.surface,
+                        color: SportSphereColors.surface,
                         borderRadius: BorderRadius.circular(26),
                         border: Border.all(
-                          color: SportSphereSportSphereColors.electricBlue
+                          color: SportSphereColors.electricBlue
                               .withValues(alpha: 0.22),
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: SportSphereSportSphereColors.electricBlue
+                            color: SportSphereColors.electricBlue
                                 .withValues(alpha: 0.08),
                             blurRadius: 20,
                           ),
@@ -82,32 +102,27 @@ class _FullScreenSearchState extends State<_FullScreenSearch> {
                       child: TextField(
                         controller: _controller,
                         focusNode: _focusNode,
-                        autofocus: true,
-                        style: const TextStyle(
-                          color: SportSphereSportSphereColors.white,
-                          fontSize: 16,
-                        ),
-                        cursorColor: SportSphereSportSphereColors.electricBlue,
+                        style:
+                            const TextStyle(color: SportSphereColors.white),
+                        cursorColor: SportSphereColors.electricBlue,
                         decoration: InputDecoration(
-                          border: InputBorder.none,
-                          prefixIcon: const Icon(
-                            Icons.search_rounded,
-                            color: SportSphereSportSphereColors.electricBlue,
-                          ),
-                          hintText: 'Search SportSphere',
+                          hintText: 'Search players, teams, fans...',
                           hintStyle: TextStyle(
-                            color: SportSphereSportSphereColors.muted
-                                .withValues(alpha: 0.8),
-                          ),
-                          suffixIcon: hasQuery
+                              color: SportSphereColors.muted
+                                  .withValues(alpha: 0.6)),
+                          prefixIcon: const Icon(Icons.search_rounded,
+                              color: SportSphereColors.electricBlue),
+                          suffixIcon: _query.isNotEmpty
                               ? IconButton(
-                                  onPressed: _controller.clear,
-                                  icon: const Icon(
-                                    Icons.close_rounded,
-                                    color: SportSphereSportSphereColors.muted,
-                                  ),
+                                  icon: const Icon(Icons.close_rounded,
+                                      color: SportSphereColors.muted,
+                                      size: 18),
+                                  onPressed: () => _controller.clear(),
                                 )
                               : null,
+                          border: InputBorder.none,
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 14),
                         ),
                       ),
                     ),
@@ -116,102 +131,99 @@ class _FullScreenSearchState extends State<_FullScreenSearch> {
               ),
             ),
 
+            // ── Content ───────────────────────────────────────────
             Expanded(
-              child: ListView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
-                children: [
-                  if (!hasQuery) ...[
-                    const _SearchSectionTitle(
-                      icon: Icons.history_rounded,
-                      title: 'Recent searches',
-                    ),
-                    const SizedBox(height: 10),
+              child: _loading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                          color: SportSphereColors.electricBlue,
+                          strokeWidth: 2))
+                  : !hasQuery
+                      ? _Discover()
+                      : _results.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.search_off_rounded,
+                                      size: 48,
+                                      color: SportSphereColors.muted
+                                          .withValues(alpha: 0.4)),
+                                  const SizedBox(height: 12),
+                                  Text('No results for "$_query"',
+                                      style: const TextStyle(
+                                          color: SportSphereColors.muted,
+                                          fontSize: 14)),
+                                ],
+                              ),
+                            )
+                          : ListView.separated(
+                              physics: const BouncingScrollPhysics(),
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 8, 16, 40),
+                              itemCount: _results.length,
+                              separatorBuilder: (_, __) => Divider(
+                                  height: 1,
+                                  color:
+                                      Colors.white.withValues(alpha: 0.06)),
+                              itemBuilder: (_, i) {
+                                final r = _results[i];
+                                final first =
+                                    (r['first_name'] as String?) ?? '';
+                                final last =
+                                    (r['last_name'] as String?) ?? '';
+                                final name = '$first $last'.trim();
+                                final handle =
+                                    (r['handle'] as String?) ?? '';
+                                final role =
+                                    (r['role'] as String?) ?? 'fan';
+                                final avatarUrl =
+                                    r['avatar_url'] as String?;
+                                final displayRole = role.isNotEmpty
+                                    ? role[0].toUpperCase() +
+                                        role.substring(1)
+                                    : 'Fan';
 
-                    ..._history.map(
-                      (item) => _SearchHistoryItem(
-                        text: item,
-                        onTap: () {
-                          _controller.text = item;
-                          _controller.selection = TextSelection.collapsed(
-                            offset: item.length,
-                          );
-                        },
-                      ),
-                    ),
-
-                    const SizedBox(height: 22),
-
-                    const _SearchSectionTitle(
-                      icon: Icons.auto_awesome_rounded,
-                      title: 'Explore',
-                    ),
-                    const SizedBox(height: 12),
-
-                    const _SearchSuggestion(
-                      icon: Icons.person_rounded,
-                      title: 'Players',
-                      subtitle: 'Footballers, athletes and profiles',
-                    ),
-                    const _SearchSuggestion(
-                      icon: Icons.groups_rounded,
-                      title: 'Teams',
-                      subtitle: 'Clubs, national teams and squads',
-                    ),
-                    const _SearchSuggestion(
-                      icon: Icons.article_rounded,
-                      title: 'Posts',
-                      subtitle: 'Community posts and discussions',
-                    ),
-                    const _SearchSuggestion(
-                      icon: Icons.play_circle_fill_rounded,
-                      title: 'Videos',
-                      subtitle: 'Football and sports videos',
-                    ),
-                    const _SearchSuggestion(
-                      icon: Icons.image_rounded,
-                      title: 'Images',
-                      subtitle: 'Photos and visual content',
-                    ),
-                  ] else ...[
-                    const _SearchSectionTitle(
-                      icon: Icons.bolt_rounded,
-                      title: 'Results',
-                    ),
-                    const SizedBox(height: 12),
-
-                    _SearchResult(
-                      icon: Icons.person_rounded,
-                      title: _query,
-                      subtitle: 'Player / Fan / Coach / Athlete',
-                    ),
-
-                    _SearchResult(
-                      icon: Icons.groups_rounded,
-                      title: '$_query Team',
-                      subtitle: 'Team or club',
-                    ),
-
-                    _SearchResult(
-                      icon: Icons.article_rounded,
-                      title: 'Posts about $_query',
-                      subtitle: 'Community posts',
-                    ),
-
-                    _SearchResult(
-                      icon: Icons.play_circle_fill_rounded,
-                      title: 'Videos about $_query',
-                      subtitle: 'Highlighted videos',
-                    ),
-
-                    _SearchResult(
-                      icon: Icons.image_rounded,
-                      title: 'Images about $_query',
-                      subtitle: 'Photos and media',
-                    ),
-                  ],
-                ],
-              ),
+                                return ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 4, vertical: 6),
+                                  leading: CircleAvatar(
+                                    radius: 24,
+                                    backgroundColor: SportSphereColors
+                                        .electricBlue
+                                        .withValues(alpha: 0.15),
+                                    backgroundImage: avatarUrl != null
+                                        ? NetworkImage(avatarUrl)
+                                        : null,
+                                    child: avatarUrl == null
+                                        ? const Icon(Icons.person_rounded,
+                                            color:
+                                                SportSphereColors.electricBlue)
+                                        : null,
+                                  ),
+                                  title: Text(
+                                    name.isNotEmpty ? name : '@$handle',
+                                    style: const TextStyle(
+                                        color: SportSphereColors.white,
+                                        fontWeight: FontWeight.w700),
+                                  ),
+                                  subtitle: Text(
+                                    '@$handle  ·  $displayRole',
+                                    style: const TextStyle(
+                                        color: SportSphereColors.muted,
+                                        fontSize: 12),
+                                  ),
+                                  trailing: const Icon(
+                                      Icons.chevron_right_rounded,
+                                      color: SportSphereColors.muted,
+                                      size: 20),
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    context.push('/profile/$handle');
+                                  },
+                                );
+                              },
+                            ),
             ),
           ],
         ),
@@ -220,192 +232,65 @@ class _FullScreenSearchState extends State<_FullScreenSearch> {
   }
 }
 
-class _SearchSectionTitle extends StatelessWidget {
-  final IconData icon;
-  final String title;
-
-  const _SearchSectionTitle({
-    required this.icon,
-    required this.title,
-  });
-
+class _Discover extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return ListView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
       children: [
-        Icon(
-          icon,
-          color: SportSphereSportSphereColors.electricBlue,
-          size: 20,
-        ),
-        const SizedBox(width: 8),
         Text(
-          title,
-          style: const TextStyle(
-            color: SportSphereSportSphereColors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
+          'EXPLORE',
+          style: TextStyle(
+            color: SportSphereColors.muted.withValues(alpha: 0.6),
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.2,
           ),
         ),
+        const SizedBox(height: 12),
+        _DiscoverChip(
+            label: 'Players', icon: Icons.sports_soccer_rounded),
+        _DiscoverChip(
+            label: 'Teams', icon: Icons.groups_rounded),
+        _DiscoverChip(
+            label: 'Coaches', icon: Icons.sports_rounded),
+        _DiscoverChip(
+            label: 'Communities', icon: Icons.forum_rounded),
       ],
     );
   }
 }
 
-class _SearchHistoryItem extends StatelessWidget {
-  final String text;
-  final VoidCallback onTap;
-
-  const _SearchHistoryItem({
-    required this.text,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      onTap: onTap,
-      leading: const Icon(
-        Icons.history_rounded,
-        color: SportSphereSportSphereColors.muted,
-      ),
-      title: Text(
-        text,
-        style: const TextStyle(
-          color: SportSphereSportSphereColors.white,
-          fontSize: 14,
-        ),
-      ),
-      trailing: const Icon(
-        Icons.north_west_rounded,
-        color: SportSphereSportSphereColors.muted,
-        size: 18,
-      ),
-    );
-  }
-}
-
-class _SearchSuggestion extends StatelessWidget {
+class _DiscoverChip extends StatelessWidget {
+  final String label;
   final IconData icon;
-  final String title;
-  final String subtitle;
-
-  const _SearchSuggestion({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
+  const _DiscoverChip({required this.label, required this.icon});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: SportSphereSportSphereColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: SportSphereSportSphereColors.white.withValues(alpha: 0.06),
-        ),
-      ),
-      child: ListTile(
-        leading: Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: SportSphereSportSphereColors.electricBlue.withValues(alpha: 0.10),
-          ),
-          child: Icon(
-            icon,
-            color: SportSphereSportSphereColors.electricBlue,
-          ),
-        ),
-        title: Text(
-          title,
-          style: const TextStyle(
-            color: SportSphereSportSphereColors.white,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: const TextStyle(
-            color: SportSphereSportSphereColors.muted,
-            fontSize: 12,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SearchResult extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  const _SearchResult({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: SportSphereSportSphereColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: SportSphereSportSphereColors.white.withValues(alpha: 0.06),
-        ),
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(14),
+        border:
+            Border.all(color: Colors.white.withValues(alpha: 0.07)),
       ),
       child: Row(
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: SportSphereSportSphereColors.electricBlue.withValues(alpha: 0.10),
-            ),
-            child: Icon(
-              icon,
-              color: SportSphereSportSphereColors.electricBlue,
-            ),
-          ),
+          Icon(icon, color: SportSphereColors.electricBlue, size: 20),
           const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: SportSphereSportSphereColors.white,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: SportSphereSportSphereColors.muted,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Icon(
-            Icons.chevron_right_rounded,
-            color: SportSphereSportSphereColors.muted,
-          ),
+          Text(label,
+              style: const TextStyle(
+                  color: SportSphereColors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600)),
+          const Spacer(),
+          Icon(Icons.chevron_right_rounded,
+              color: SportSphereColors.muted.withValues(alpha: 0.5),
+              size: 20),
         ],
       ),
     );

@@ -20,7 +20,7 @@ class SportSphereColors {
 // Temporary compatibility aliases for references created by an accidental
 // project-wide rename. Keeping them here avoids breaking the shell while the
 // affected files are being normalised.
-abstract final class SportSphereSportSphereColors {
+abstract final class SportSphereColors {
   static const background = SportSphereColors.background;
   static const surface = SportSphereColors.surface;
   static const surface2 = SportSphereColors.surface2;
@@ -34,7 +34,7 @@ abstract final class SportSphereSportSphereColors {
   static const danger = SportSphereColors.danger;
 }
 
-abstract final class SportSphereSportSphereSportSphereColors {
+abstract final class SportSphereColors {
   static const transparent = Colors.transparent;
   static const black = Colors.black;
   static const white = Colors.white;

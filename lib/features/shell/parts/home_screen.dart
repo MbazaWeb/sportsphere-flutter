@@ -85,8 +85,8 @@ class _HomeTabBar extends StatelessWidget {
                       tabs[index],
                       style: TextStyle(
                         color: active
-                            ? SportSphereSportSphereColors.white
-                            : SportSphereSportSphereColors.muted,
+                            ? SportSphereColors.white
+                            : SportSphereColors.muted,
                         fontWeight:
                             active ? FontWeight.w700 : FontWeight.w500,
                         fontSize: 11,
@@ -157,7 +157,7 @@ class _TrendingContentState extends State<_TrendingContent> {
     }
     if (_rows.isEmpty) {
       return const Center(
-        child: Text('No trending posts yet', style: TextStyle(color: SportSphereSportSphereSportSphereColors.white54)),
+        child: Text('No trending posts yet', style: TextStyle(color: SportSphereColors.white54)),
       );
     }
     return RefreshIndicator(
@@ -175,11 +175,11 @@ class _TrendingContentState extends State<_TrendingContent> {
                 '${post['content'] ?? ''}',
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: SportSphereSportSphereColors.white, fontWeight: FontWeight.w600),
+                style: const TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w600),
               ),
               subtitle: Text(
                 '♥ ${post['likeCount'] ?? 0} · 💬 ${post['commentCount'] ?? 0} · ↗ ${post['shareCount'] ?? 0}',
-                style: const TextStyle(color: SportSphereSportSphereSportSphereColors.white54, fontSize: 12),
+                style: const TextStyle(color: SportSphereColors.white54, fontSize: 12),
               ),
             ),
           );
@@ -292,7 +292,7 @@ class _CommunityContentState extends State<_CommunityContent> {
               hintText: 'Search communities',
               prefixIcon: const Icon(Icons.search),
               filled: true,
-              fillColor: SportSphereSportSphereColors.white.withValues(alpha: 0.06),
+              fillColor: SportSphereColors.white.withValues(alpha: 0.06),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide.none,
@@ -305,7 +305,7 @@ class _CommunityContentState extends State<_CommunityContent> {
               padding: EdgeInsets.all(24),
               child: Text(
                 'No communities yet. Join one when it\'s created.',
-                style: TextStyle(color: SportSphereSportSphereSportSphereColors.white54),
+                style: TextStyle(color: SportSphereColors.white54),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -317,13 +317,13 @@ class _CommunityContentState extends State<_CommunityContent> {
                 title: Text(
                   '${g['name'] ?? 'Community'}',
                   style: const TextStyle(
-                    color: SportSphereSportSphereColors.white,
+                    color: SportSphereColors.white,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
                 subtitle: Text(
                   '${g['memberCount'] ?? 0} members · ${g['topic'] ?? g['description'] ?? ''}',
-                  style: const TextStyle(color: SportSphereSportSphereSportSphereColors.white54, fontSize: 12),
+                  style: const TextStyle(color: SportSphereColors.white54, fontSize: 12),
                   maxLines: 2,
                 ),
                 trailing: TextButton(
@@ -375,7 +375,7 @@ class _ComingSoonPlaceholder extends StatelessWidget {
             Text(
               label,
               style: const TextStyle(
-                color: SportSphereSportSphereColors.white,
+                color: SportSphereColors.white,
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
               ),
@@ -385,7 +385,7 @@ class _ComingSoonPlaceholder extends StatelessWidget {
               subtitle,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: SportSphereSportSphereColors.muted.withValues(alpha: 0.85),
+                color: SportSphereColors.muted.withValues(alpha: 0.85),
                 fontSize: 14,
                 height: 1.5,
               ),
@@ -428,9 +428,9 @@ class _SimpleCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(color: SportSphereSportSphereColors.white, fontWeight: FontWeight.w700)),
+          Text(title, style: const TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
-          Text(subtitle, style: const TextStyle(color: SportSphereSportSphereColors.muted, fontSize: 12)),
+          Text(subtitle, style: const TextStyle(color: SportSphereColors.muted, fontSize: 12)),
         ],
       ),
     );

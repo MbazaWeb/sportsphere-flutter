@@ -26,7 +26,7 @@ class _Header extends ConsumerWidget {
                   return const Text(
                     'SPORT SPHERE',
                     style: TextStyle(
-                      color: SportSphereSportSphereColors.white,
+                      color: SportSphereColors.white,
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 1,
@@ -102,8 +102,8 @@ class _Header extends ConsumerWidget {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: SportSphereSportSphereSportSphereColors.transparent,
-      barrierColor: SportSphereSportSphereSportSphereColors.black.withValues(alpha: 0.58),
+      backgroundColor: SportSphereColors.transparent,
+      barrierColor: SportSphereColors.black.withValues(alpha: 0.58),
       builder: (_) => const _MessageSheet(),
     );
   }
@@ -133,13 +133,13 @@ class _HeaderButton extends StatelessWidget {
             height: 42,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: SportSphereSportSphereColors.surface.withValues(alpha: 0.72),
+              color: SportSphereColors.surface.withValues(alpha: 0.72),
               border: Border.all(
-                color: SportSphereSportSphereColors.white.withValues(alpha: 0.12),
+                color: SportSphereColors.white.withValues(alpha: 0.12),
               ),
               boxShadow: [
                 BoxShadow(
-                  color: SportSphereSportSphereSportSphereColors.black.withValues(alpha: 0.18),
+                  color: SportSphereColors.black.withValues(alpha: 0.18),
                   blurRadius: 14,
                   spreadRadius: -4,
                 ),
@@ -147,7 +147,7 @@ class _HeaderButton extends StatelessWidget {
             ),
             child: Icon(
               icon,
-              color: SportSphereSportSphereColors.white,
+              color: SportSphereColors.white,
               size: 21,
             ),
           ),
@@ -160,13 +160,13 @@ class _HeaderButton extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  color: SportSphereSportSphereColors.electricBlue,
+                  color: SportSphereColors.electricBlue,
                 ),
                 child: Center(
                   child: Text(
                     badge!,
                     style: const TextStyle(
-                      color: SportSphereSportSphereColors.white,
+                      color: SportSphereColors.white,
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
                     ),
