@@ -46,7 +46,7 @@ class _FullScreenSearchState extends State<_FullScreenSearch> {
     final hasQuery = _query.isNotEmpty;
 
     return Scaffold(
-      backgroundColor: SportSphereColors.background,
+      backgroundColor: SportSphereSportSphereColors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -58,22 +58,22 @@ class _FullScreenSearchState extends State<_FullScreenSearch> {
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(
                       Icons.arrow_back_rounded,
-                      color: SportSphereColors.white,
+                      color: SportSphereSportSphereColors.white,
                     ),
                   ),
                   Expanded(
                     child: Container(
                       height: 50,
                       decoration: BoxDecoration(
-                        color: SportSphereColors.surface,
+                        color: SportSphereSportSphereColors.surface,
                         borderRadius: BorderRadius.circular(26),
                         border: Border.all(
-                          color: SportSphereColors.electricBlue
+                          color: SportSphereSportSphereColors.electricBlue
                               .withValues(alpha: 0.22),
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: SportSphereColors.electricBlue
+                            color: SportSphereSportSphereColors.electricBlue
                                 .withValues(alpha: 0.08),
                             blurRadius: 20,
                           ),
@@ -84,19 +84,19 @@ class _FullScreenSearchState extends State<_FullScreenSearch> {
                         focusNode: _focusNode,
                         autofocus: true,
                         style: const TextStyle(
-                          color: SportSphereColors.white,
+                          color: SportSphereSportSphereColors.white,
                           fontSize: 16,
                         ),
-                        cursorColor: SportSphereColors.electricBlue,
+                        cursorColor: SportSphereSportSphereColors.electricBlue,
                         decoration: InputDecoration(
                           border: InputBorder.none,
                           prefixIcon: const Icon(
                             Icons.search_rounded,
-                            color: SportSphereColors.electricBlue,
+                            color: SportSphereSportSphereColors.electricBlue,
                           ),
                           hintText: 'Search SportSphere',
                           hintStyle: TextStyle(
-                            color: SportSphereColors.muted
+                            color: SportSphereSportSphereColors.muted
                                 .withValues(alpha: 0.8),
                           ),
                           suffixIcon: hasQuery
@@ -104,7 +104,7 @@ class _FullScreenSearchState extends State<_FullScreenSearch> {
                                   onPressed: _controller.clear,
                                   icon: const Icon(
                                     Icons.close_rounded,
-                                    color: SportSphereColors.muted,
+                                    color: SportSphereSportSphereColors.muted,
                                   ),
                                 )
                               : null,
@@ -235,14 +235,14 @@ class _SearchSectionTitle extends StatelessWidget {
       children: [
         Icon(
           icon,
-          color: SportSphereColors.electricBlue,
+          color: SportSphereSportSphereColors.electricBlue,
           size: 20,
         ),
         const SizedBox(width: 8),
         Text(
           title,
           style: const TextStyle(
-            color: SportSphereColors.white,
+            color: SportSphereSportSphereColors.white,
             fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
@@ -268,18 +268,18 @@ class _SearchHistoryItem extends StatelessWidget {
       onTap: onTap,
       leading: const Icon(
         Icons.history_rounded,
-        color: SportSphereColors.muted,
+        color: SportSphereSportSphereColors.muted,
       ),
       title: Text(
         text,
         style: const TextStyle(
-          color: SportSphereColors.white,
+          color: SportSphereSportSphereColors.white,
           fontSize: 14,
         ),
       ),
       trailing: const Icon(
         Icons.north_west_rounded,
-        color: SportSphereColors.muted,
+        color: SportSphereSportSphereColors.muted,
         size: 18,
       ),
     );
@@ -302,10 +302,10 @@ class _SearchSuggestion extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: SportSphereColors.surface,
+        color: SportSphereSportSphereColors.surface,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.06),
+          color: SportSphereSportSphereColors.white.withValues(alpha: 0.06),
         ),
       ),
       child: ListTile(
@@ -314,24 +314,24 @@ class _SearchSuggestion extends StatelessWidget {
           height: 42,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: SportSphereColors.electricBlue.withValues(alpha: 0.10),
+            color: SportSphereSportSphereColors.electricBlue.withValues(alpha: 0.10),
           ),
           child: Icon(
             icon,
-            color: SportSphereColors.electricBlue,
+            color: SportSphereSportSphereColors.electricBlue,
           ),
         ),
         title: Text(
           title,
           style: const TextStyle(
-            color: SportSphereColors.white,
+            color: SportSphereSportSphereColors.white,
             fontWeight: FontWeight.w700,
           ),
         ),
         subtitle: Text(
           subtitle,
           style: const TextStyle(
-            color: SportSphereColors.muted,
+            color: SportSphereSportSphereColors.muted,
             fontSize: 12,
           ),
         ),
@@ -357,10 +357,10 @@ class _SearchResult extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: SportSphereColors.surface,
+        color: SportSphereSportSphereColors.surface,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.06),
+          color: SportSphereSportSphereColors.white.withValues(alpha: 0.06),
         ),
       ),
       child: Row(
@@ -370,11 +370,11 @@ class _SearchResult extends StatelessWidget {
             height: 44,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: SportSphereColors.electricBlue.withValues(alpha: 0.10),
+              color: SportSphereSportSphereColors.electricBlue.withValues(alpha: 0.10),
             ),
             child: Icon(
               icon,
-              color: SportSphereColors.electricBlue,
+              color: SportSphereSportSphereColors.electricBlue,
             ),
           ),
           const SizedBox(width: 12),
@@ -387,7 +387,7 @@ class _SearchResult extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: SportSphereColors.white,
+                    color: SportSphereSportSphereColors.white,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -395,7 +395,7 @@ class _SearchResult extends StatelessWidget {
                 Text(
                   subtitle,
                   style: const TextStyle(
-                    color: SportSphereColors.muted,
+                    color: SportSphereSportSphereColors.muted,
                     fontSize: 12,
                   ),
                 ),
@@ -404,7 +404,7 @@ class _SearchResult extends StatelessWidget {
           ),
           const Icon(
             Icons.chevron_right_rounded,
-            color: SportSphereColors.muted,
+            color: SportSphereSportSphereColors.muted,
           ),
         ],
       ),

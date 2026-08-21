@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 
 import '../data/auth_repository.dart';
 import '../domain/auth_state.dart';
@@ -137,6 +137,96 @@ class AuthController extends Notifier<AuthState> {
       return session.accessToken;
     } catch (_) {
       return null;
+    }
+  }
+
+  // -- Send password reset ----------------------------------------------
+  Future<bool> sendPasswordReset(String email) async {
+    state = state.copyWith(isLoading: true, errorMessage: _keep);
+    try {
+      await ref.read(authRepositoryProvider).sendPasswordReset(email);
+      state = state.copyWith(isLoading: false);
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: e.toString().replaceFirst('Exception: ', ''),
+      );
+      return false;
+    }
+  }
+
+  // -- Resend confirmation ----------------------------------------------
+  Future<bool> resendConfirmation(String email) async {
+    state = state.copyWith(isLoading: true, errorMessage: _keep);
+    try {
+      await ref.read(authRepositoryProvider).resendConfirmation(email);
+      state = state.copyWith(isLoading: false);
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: e.toString().replaceFirst('Exception: ', ''),
+      );
+      return false;
+    }
+  }
+
+  // -- Refresh profile --------------------------------------------------
+  Future<UserProfile?> refreshProfile() async {
+    try {
+      final profile = await ref.read(authRepositoryProvider).refreshProfile();
+      if (profile != null) {
+        state = AuthState(
+          status: AuthStatus.authenticated,
+          token: ref.read(authRepositoryProvider).currentSession?.accessToken,
+          user: profile,
+        );
+      }
+      return profile;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // -- Update profile ---------------------------------------------------
+  Future<bool> updateProfile(Map<String, dynamic> data) async {
+    state = state.copyWith(isLoading: true, errorMessage: _keep);
+    try {
+      final updated = await ref.read(authRepositoryProvider).updateProfile(data);
+      if (updated != null) {
+        state = AuthState(
+          status: AuthStatus.authenticated,
+          token: ref.read(authRepositoryProvider).currentSession?.accessToken,
+          user: updated,
+          isLoading: false,
+        );
+        return true;
+      }
+      state = state.copyWith(isLoading: false);
+      return false;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: e.toString().replaceFirst('Exception: ', ''),
+      );
+      return false;
+    }
+  }
+
+  // -- Change password --------------------------------------------------
+  Future<bool> changePassword(String currentPassword, String newPassword) async {
+    state = state.copyWith(isLoading: true, errorMessage: _keep);
+    try {
+      await ref.read(authRepositoryProvider).changePassword(currentPassword, newPassword);
+      state = state.copyWith(isLoading: false);
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: e.toString().replaceFirst('Exception: ', ''),
+      );
+      return false;
     }
   }
 }

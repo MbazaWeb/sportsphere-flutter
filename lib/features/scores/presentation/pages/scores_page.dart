@@ -10,7 +10,7 @@ import '../../../../core/widgets/glass_container.dart';
 import '../../domain/models/match_model.dart';
 import '../../domain/models/standing_model.dart';
 import '../providers/scores_provider.dart';
-import 'admin_live_control.dart';
+import '../admin_live_control.dart';
 import '../../data/scores_repository.dart';
 import '../widgets/match_card.dart';
 

@@ -1,68 +1,34 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../domain/auth_state.dart';
-
-// ══════════════════════════════════════════════════════════════════════════════
-// AUTH REPOSITORY — Supabase only
-// ══════════════════════════════════════════════════════════════════════════════
-//
-// Single source of truth for authentication. Uses Supabase Auth directly.
-// Supabase manages session persistence internally — no TokenStore needed.
-// The Dio ApiClient is kept for other REST calls, NOT used here.
 
 class AuthRepository {
   const AuthRepository();
 
-  static SupabaseClient get _sb => Supabase.instance.client;
+  // Get the Supabase client instance
+  SupabaseClient get _supabase => Supabase.instance.client;
 
-  // ── Session helpers ────────────────────────────────────────────────────────
+  // ── Session check ──────────────────────────────────────────────────────────
+  bool get hasSession => _supabase.auth.currentSession != null;
 
-  Session? get currentSession => _sb.auth.currentSession;
-  bool get hasSession => currentSession != null;
-
-  // ── Hydrate (app start) ───────────────────────────────────────────────────
-
-  /// Reads the persisted Supabase session and fetches the profile row.
-  /// Returns null when no session exists → guest mode.
-  Future<UserProfile?> hydrateProfile() async {
-    final session = currentSession;
-    if (session == null) return null;
-    try {
-      return await _fetchProfile(session.user.id);
-    } catch (e) {
-      debugPrint('[Auth] hydrateProfile error: $e');
-      return _minimalProfile(session.user);
-    }
-  }
+  Session? get currentSession => _supabase.auth.currentSession;
 
   // ── Login ──────────────────────────────────────────────────────────────────
-
   Future<UserProfile> login({
     required String identifier,
     required String password,
   }) async {
-    // Accept handle or email — handle → email@sportsphere.test convention
-    final clean = identifier.trim().toLowerCase().replaceAll('@', '');
-    final email = clean.contains('.') || clean.contains('@')
-        ? identifier.trim().toLowerCase()
-        : '$clean@sportsphere.test';
+    final response = await _supabase.auth.signInWithPassword(
+      email: identifier,
+      password: password,
+    );
 
-    try {
-      final res = await _sb.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
-      final user = res.user;
-      if (user == null) throw AuthException('Sign-in returned no user.');
-      return await _fetchProfile(user.id);
-    } on AuthException catch (e) {
-      throw _friendly(e);
-    }
+    final user = response.user;
+    if (user == null) throw Exception('Login failed');
+
+    return _userFromSupabase(user);
   }
 
   // ── Register ───────────────────────────────────────────────────────────────
-
   Future<UserProfile> register({
     required String firstName,
     required String lastName,
@@ -72,151 +38,122 @@ class AuthRepository {
     required DateTime dob,
     required String password,
   }) async {
-    try {
-      final res = await _sb.auth.signUp(
-        email: email.trim().toLowerCase(),
-        password: password,
-        data: {
-          'first_name': firstName.trim(),
-          'last_name': lastName.trim(),
-          'handle': handle.trim().toLowerCase().replaceAll('@', ''),
-          'role': 'fan',
-        },
-      );
-
-      final user = res.user;
-      if (user == null) {
-        // Email confirmation required
-        throw AuthException(
-            'Check your email to confirm your account, then log in.');
-      }
-
-      final profileData = <String, dynamic>{
-        'id': user.id,
-        'first_name': firstName.trim(),
-        'last_name': lastName.trim(),
-        'email': email.trim().toLowerCase(),
-        'handle': handle.trim().toLowerCase().replaceAll('@', ''),
+    final response = await _supabase.auth.signUp(
+      email: email,
+      password: password,
+      data: {
+        'first_name': firstName,
+        'last_name': lastName,
+        'handle': handle,
         'country': country,
-        'dob': dob.toIso8601String().split('T').first,
-        'role': 'fan',
-        'createdAt': DateTime.now().toIso8601String(),
-      };
+        'dob': dob.toIso8601String(),
+      },
+    );
 
-      // Upsert into User table (falls back to profiles)
-      try {
-        await _sb.from('User').upsert(profileData);
-      } catch (_) {
-        try {
-          await _sb.from('profiles').upsert(profileData);
-        } catch (e2) {
-          debugPrint('[Auth] profile upsert failed: $e2');
-        }
-      }
+    final user = response.user;
+    if (user == null) throw Exception('Registration failed');
 
-      return UserProfile(
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        email: email.trim().toLowerCase(),
-        handle: handle.trim().toLowerCase().replaceAll('@', ''),
-        country: country,
-        dob: dob,
-        joinedDate: DateTime.now(),
-        role: 'fan',
-      );
-    } on AuthException catch (e) {
-      throw _friendly(e);
-    }
+    return _userFromSupabase(user);
   }
 
   // ── Sign out ───────────────────────────────────────────────────────────────
-
   Future<void> signOut() async {
-    try {
-      await _sb.auth.signOut(scope: SignOutScope.local);
-    } catch (e) {
-      debugPrint('[Auth] signOut error: $e');
-    }
+    await _supabase.auth.signOut();
   }
 
-  // ── Profile fetch ──────────────────────────────────────────────────────────
+  // ── Hydrate profile ────────────────────────────────────────────────────────
+  Future<UserProfile?> hydrateProfile() async {
+    final session = currentSession;
+    if (session == null) return null;
 
-  Future<UserProfile> _fetchProfile(String uid) async {
-    Map<String, dynamic>? row;
-    try {
-      row = await _sb.from('User').select().eq('id', uid).maybeSingle();
-    } catch (_) {}
-    try {
-      row ??= await _sb.from('profiles').select().eq('id', uid).maybeSingle();
-    } catch (_) {}
-
-    if (row != null) return _rowToProfile(row);
-
-    final user = _sb.auth.currentUser;
-    if (user != null) return _minimalProfile(user);
-    throw StateError('No profile found for uid $uid');
-  }
-
-  UserProfile _rowToProfile(Map<String, dynamic> r) {
-    DateTime _d(Object? v, DateTime fb) =>
-        v == null ? fb : (DateTime.tryParse(v.toString()) ?? fb);
-
-    final first = (r['first_name'] as String?) ??
-        (r['name'] as String?)?.split(' ').first ??
-        '';
-    final last = (r['last_name'] as String?) ??
-        ((r['name'] as String?)?.split(' ').skip(1).join(' ') ?? '');
+    final userId = session.user.id;
+    final response = await _supabase
+        .from('profiles')
+        .select()
+        .eq('id', userId)
+        .single();
 
     return UserProfile(
-      firstName: first,
-      lastName: last,
-      email: (r['email'] as String?) ?? '',
-      handle: (r['handle'] as String?) ?? '',
-      country: (r['country'] as String?) ?? '',
-      dob: _d(r['dob'], DateTime(1990)),
-      joinedDate: _d(r['createdAt'] ?? r['joinedDate'], DateTime.now()),
-      role: (r['role'] as String?) ?? 'fan',
-      avatarUrl: r['avatarUrl'] as String?,
-      coverUrl: r['coverUrl'] as String?,
-      isVerified: (r['isVerified'] as bool?) ?? false,
-      bio: (r['bio'] as String?) ?? '',
-      postCount: (r['postCount'] as int?) ?? 0,
-      followerCount: (r['followerCount'] as int?) ?? 0,
-      followingCount: (r['followingCount'] as int?) ?? 0,
+      firstName: response['first_name'] ?? '',
+      lastName: response['last_name'] ?? '',
+      email: session.user.email ?? '',
+      handle: response['handle'] ?? '',
+      country: response['country'] ?? '',
+      dob: DateTime.tryParse(response['dob'] ?? '') ?? DateTime.now(),
+      joinedDate: DateTime.tryParse(response['created_at'] ?? '') ?? DateTime.now(),
+      role: response['role'] ?? 'fan',
+      avatarUrl: response['avatar_url'],
+      coverUrl: response['cover_url'],
+      isVerified: response['is_verified'] ?? false,
+      themeColor: response['theme_color'] ?? '#168CFF',
+      bio: response['bio'] ?? '',
+      createdAt: DateTime.tryParse(response['created_at']),
+      postCount: response['post_count'] ?? 0,
+      followerCount: response['follower_count'] ?? 0,
+      followingCount: response['following_count'] ?? 0,
     );
   }
 
-  UserProfile _minimalProfile(User user) {
-    final m = user.userMetadata ?? {};
+  // ── Password reset ─────────────────────────────────────────────────────────
+  Future<void> sendPasswordReset(String email) async {
+    await _supabase.auth.resetPasswordForEmail(email);
+  }
+
+  // ── Resend confirmation ────────────────────────────────────────────────────
+  Future<void> resendConfirmation(String email) async {
+    await _supabase.auth.resend(
+      type: OtpType.signup,
+      email: email,
+    );
+  }
+
+  // ── Refresh profile ────────────────────────────────────────────────────────
+  Future<UserProfile?> refreshProfile() async {
+    final session = currentSession;
+    if (session == null) return null;
+    return hydrateProfile();
+  }
+
+  // ── Update profile ─────────────────────────────────────────────────────────
+  Future<UserProfile?> updateProfile(Map<String, dynamic> data) async {
+    final session = currentSession;
+    if (session == null) return null;
+
+    final userId = session.user.id;
+    await _supabase
+        .from('profiles')
+        .update(data)
+        .match({'id': userId});
+
+    return hydrateProfile();
+  }
+
+  // ── Change password ────────────────────────────────────────────────────────
+  Future<void> changePassword(String currentPassword, String newPassword) async {
+    await _supabase.auth.updateUser(
+      UserAttributes(password: newPassword),
+    );
+  }
+
+  // ── Helper: Convert Supabase user to UserProfile ──────────────────────────
+  UserProfile _userFromSupabase(User user) {
+    final metadata = user.userMetadata ?? {};
+
     return UserProfile(
-      firstName:
-          (m['first_name'] as String?) ?? user.email?.split('@').first ?? 'User',
-      lastName: (m['last_name'] as String?) ?? '',
+      firstName: metadata['first_name'] ?? '',
+      lastName: metadata['last_name'] ?? '',
       email: user.email ?? '',
-      handle: (m['handle'] as String?) ??
-          (user.email?.split('@').first ?? 'user'),
-      country: (m['country'] as String?) ?? '',
-      dob: DateTime(1990),
+      handle: metadata['handle'] ?? '',
+      country: metadata['country'] ?? '',
+      dob: DateTime.tryParse(metadata['dob'] ?? '') ?? DateTime.now(),
       joinedDate: DateTime.tryParse(user.createdAt) ?? DateTime.now(),
-      role: (m['role'] as String?) ?? 'fan',
+      role: metadata['role'] ?? 'fan',
+      avatarUrl: metadata['avatar_url'],
+      coverUrl: metadata['cover_url'],
+      isVerified: metadata['is_verified'] ?? false,
+      themeColor: metadata['theme_color'] ?? '#168CFF',
+      bio: metadata['bio'] ?? '',
+      createdAt: DateTime.tryParse(user.createdAt),
     );
-  }
-
-
-  Exception _friendly(AuthException e) {
-    final m = e.message.toLowerCase();
-    if (m.contains('invalid login') ||
-        m.contains('invalid credentials') ||
-        m.contains('email not confirmed')) {
-      return Exception('Incorrect email or password.');
-    }
-    if (m.contains('already registered') || m.contains('already exists')) {
-      return Exception(
-          'An account with this email already exists. Try logging in.');
-    }
-    if (m.contains('rate limit')) {
-      return Exception('Too many attempts. Please wait a moment.');
-    }
-    return Exception(e.message);
   }
 }

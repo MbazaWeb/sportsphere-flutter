@@ -32,10 +32,10 @@ class _BottomNavigation extends ConsumerWidget {
                 color: const Color(0xEE061321),
                 borderRadius: BorderRadius.circular(30),
                 border:
-                    Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                    Border.all(color: SportSphereSportSphereSportSphereColors.white.withValues(alpha: 0.12)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.45),
+                    color: SportSphereSportSphereSportSphereColors.black.withValues(alpha: 0.45),
                     blurRadius: 28,
                     offset: const Offset(0, 10),
                   ),
@@ -97,13 +97,13 @@ class _GuestNav extends StatelessWidget {
                   borderRadius: BorderRadius.circular(22),
                   gradient: const LinearGradient(
                     colors: [
-                      SportSphereColors.electricBlue,
+                      SportSphereSportSphereColors.electricBlue,
                       Color(0xFF0066DD),
                     ],
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: SportSphereColors.electricBlue
+                      color: SportSphereSportSphereColors.electricBlue
                           .withValues(alpha: 0.38),
                       blurRadius: 16,
                       offset: const Offset(0, 4),
@@ -113,12 +113,12 @@ class _GuestNav extends StatelessWidget {
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.login_rounded, color: Colors.white, size: 18),
+                    Icon(Icons.login_rounded, color: SportSphereSportSphereSportSphereColors.white, size: 18),
                     SizedBox(width: 7),
                     Text(
                       'Log In',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: SportSphereSportSphereSportSphereColors.white,
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.3,
@@ -174,13 +174,13 @@ class _AuthNav extends StatelessWidget {
                   shape: BoxShape.circle,
                   gradient: const LinearGradient(
                     colors: [
-                      SportSphereColors.electricBlue,
+                      SportSphereSportSphereColors.electricBlue,
                       Color(0xFF0077D4),
                     ],
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: SportSphereColors.electricBlue
+                      color: SportSphereSportSphereColors.electricBlue
                           .withValues(alpha: 0.35),
                       blurRadius: 18,
                     ),
@@ -188,7 +188,7 @@ class _AuthNav extends StatelessWidget {
                 ),
                 child: const Icon(
                   Icons.add_rounded,
-                  color: Colors.white,
+                  color: SportSphereSportSphereSportSphereColors.white,
                   size: 30,
                 ),
               ),
@@ -233,8 +233,8 @@ class _NavItem extends StatelessWidget {
             Icon(
               icon,
               color: active
-                  ? SportSphereColors.electricBlue
-                  : SportSphereColors.muted,
+                  ? SportSphereSportSphereColors.electricBlue
+                  : SportSphereSportSphereColors.muted,
               size: 23,
             ),
             const SizedBox(height: 3),
@@ -242,8 +242,8 @@ class _NavItem extends StatelessWidget {
               label,
               style: TextStyle(
                 color: active
-                    ? SportSphereColors.electricBlue
-                    : SportSphereColors.muted,
+                    ? SportSphereSportSphereColors.electricBlue
+                    : SportSphereSportSphereColors.muted,
                 fontSize: 10,
                 fontWeight: active ? FontWeight.w700 : FontWeight.w500,
               ),

@@ -224,15 +224,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                       ),
                                     );
                                     if (ok != true || !context.mounted) return;
-                                    final err = await ref
+                                    final sent = await ref
                                         .read(authControllerProvider.notifier)
                                         .sendPasswordReset(ctrl.text.trim());
                                     if (!context.mounted) return;
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
-                                          err ??
-                                              'Password reset email sent. Check your inbox.',
+                                          sent
+                                              ? 'Password reset email sent. Check your inbox.'
+                                              : 'Unable to send the password reset email.',
                                         ),
                                       ),
                                     );

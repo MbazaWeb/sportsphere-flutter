@@ -52,7 +52,7 @@ class _CreateScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: SportSphereColors.background,
+      backgroundColor: SportSphereSportSphereColors.background,
       body: SafeArea(
         child: _CreateComposer(),
       ),
@@ -452,8 +452,8 @@ class _ComposerHeader extends StatelessWidget {
               shape: BoxShape.circle,
               gradient: const LinearGradient(
                 colors: [
-                  SportSphereColors.electricBlue,
-                  SportSphereColors.sportGreen,
+                  SportSphereSportSphereColors.electricBlue,
+                  SportSphereSportSphereColors.sportGreen,
                 ],
               ),
             ),
@@ -462,7 +462,7 @@ class _ComposerHeader extends StatelessWidget {
               child: Container(
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  color: SportSphereColors.background,
+                  color: SportSphereSportSphereColors.background,
                 ),
                 child: ClipOval(
                   child: Image.asset(
@@ -470,7 +470,7 @@ class _ComposerHeader extends StatelessWidget {
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => const Icon(
                       Icons.person_rounded,
-                      color: SportSphereColors.muted,
+                      color: SportSphereSportSphereColors.muted,
                       size: 22,
                     ),
                   ),
@@ -488,7 +488,7 @@ class _ComposerHeader extends StatelessWidget {
                     const Text(
                       'You',
                       style: TextStyle(
-                        color: SportSphereColors.white,
+                        color: SportSphereSportSphereColors.white,
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                       ),
@@ -501,18 +501,18 @@ class _ComposerHeader extends StatelessWidget {
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: SportSphereColors.sportGreen
+                        color: SportSphereSportSphereColors.sportGreen
                             .withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: SportSphereColors.sportGreen
+                          color: SportSphereSportSphereColors.sportGreen
                               .withValues(alpha: 0.35),
                         ),
                       ),
                       child: Text(
                         'Fan',
                         style: TextStyle(
-                          color: SportSphereColors.sportGreen,
+                          color: SportSphereSportSphereColors.sportGreen,
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
                         ),
@@ -530,11 +530,11 @@ class _ComposerHeader extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: SportSphereColors.electricBlue
+                      color: SportSphereSportSphereColors.electricBlue
                           .withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: SportSphereColors.electricBlue
+                        color: SportSphereSportSphereColors.electricBlue
                             .withValues(alpha: 0.30),
                       ),
                     ),
@@ -543,14 +543,14 @@ class _ComposerHeader extends StatelessWidget {
                       children: [
                         Icon(
                           _audienceIcon(audience),
-                          color: SportSphereColors.electricBlue,
+                          color: SportSphereSportSphereColors.electricBlue,
                           size: 12,
                         ),
                         const SizedBox(width: 4),
                         Text(
                           audience,
                           style: TextStyle(
-                            color: SportSphereColors.electricBlue,
+                            color: SportSphereSportSphereColors.electricBlue,
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                           ),
@@ -558,7 +558,7 @@ class _ComposerHeader extends StatelessWidget {
                         const SizedBox(width: 3),
                         Icon(
                           Icons.expand_more_rounded,
-                          color: SportSphereColors.electricBlue,
+                          color: SportSphereSportSphereColors.electricBlue,
                           size: 13,
                         ),
                       ],
@@ -575,7 +575,7 @@ class _ComposerHeader extends StatelessWidget {
               Text(
                 'New Post',
                 style: TextStyle(
-                  color: SportSphereColors.white,
+                  color: SportSphereSportSphereColors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                 ),
@@ -601,7 +601,7 @@ class _ComposerHeader extends StatelessWidget {
   void _showAudiencePicker(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SportSphereSportSphereSportSphereColors.transparent,
       builder: (_) => _AudiencePicker(
         selected: audience,
         onSelect: (v) {
@@ -638,21 +638,21 @@ class _AudiencePicker extends StatelessWidget {
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: active
-                    ? SportSphereColors.electricBlue.withValues(alpha: 0.10)
-                    : Colors.white.withValues(alpha: 0.04),
+                    ? SportSphereSportSphereColors.electricBlue.withValues(alpha: 0.10)
+                    : SportSphereSportSphereColors.white.withValues(alpha: 0.04),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: active
-                      ? SportSphereColors.electricBlue.withValues(alpha: 0.45)
-                      : Colors.white.withValues(alpha: 0.08),
+                      ? SportSphereSportSphereColors.electricBlue.withValues(alpha: 0.45)
+                      : SportSphereSportSphereColors.white.withValues(alpha: 0.08),
                 ),
               ),
               child: Row(
                 children: [
                   Icon(o.icon,
                       color: active
-                          ? SportSphereColors.electricBlue
-                          : SportSphereColors.muted,
+                          ? SportSphereSportSphereColors.electricBlue
+                          : SportSphereSportSphereColors.muted,
                       size: 22),
                   const SizedBox(width: 12),
                   Expanded(
@@ -662,13 +662,13 @@ class _AudiencePicker extends StatelessWidget {
                         Text(o.label,
                             style: TextStyle(
                               color: active
-                                  ? SportSphereColors.electricBlue
-                                  : SportSphereColors.white,
+                                  ? SportSphereSportSphereColors.electricBlue
+                                  : SportSphereSportSphereColors.white,
                               fontWeight: FontWeight.w700,
                             )),
                         Text(o.sub,
                             style: const TextStyle(
-                              color: SportSphereColors.muted,
+                              color: SportSphereSportSphereColors.muted,
                               fontSize: 12,
                             )),
                       ],
@@ -676,7 +676,7 @@ class _AudiencePicker extends StatelessWidget {
                   ),
                   if (active)
                     Icon(Icons.check_circle_rounded,
-                        color: SportSphereColors.electricBlue, size: 20),
+                        color: SportSphereSportSphereColors.electricBlue, size: 20),
                 ],
               ),
             ),
@@ -711,12 +711,12 @@ class _TextArea extends StatelessWidget {
       children: [
         Container(
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.035),
+            color: SportSphereSportSphereColors.white.withValues(alpha: 0.035),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: overLimit
-                  ? SportSphereColors.danger.withValues(alpha: 0.5)
-                  : Colors.white.withValues(alpha: 0.07),
+                  ? SportSphereSportSphereColors.danger.withValues(alpha: 0.5)
+                  : SportSphereSportSphereColors.white.withValues(alpha: 0.07),
             ),
           ),
           child: TextField(
@@ -724,16 +724,16 @@ class _TextArea extends StatelessWidget {
             maxLines: 6,
             minLines: 3,
             style: const TextStyle(
-              color: SportSphereColors.white,
+              color: SportSphereSportSphereColors.white,
               fontSize: 16,
               height: 1.55,
             ),
-            cursorColor: SportSphereColors.electricBlue,
+            cursorColor: SportSphereSportSphereColors.electricBlue,
             decoration: InputDecoration(
               hintText:
                   "What's happening in your world of sport? Use @ to mention someone…",
               hintStyle: TextStyle(
-                color: SportSphereColors.muted.withValues(alpha: 0.55),
+                color: SportSphereSportSphereColors.muted.withValues(alpha: 0.55),
                 fontSize: 15,
                 height: 1.55,
               ),
@@ -752,10 +752,10 @@ class _TextArea extends StatelessWidget {
                 : '$charsLeft',
             style: TextStyle(
               color: overLimit
-                  ? SportSphereColors.danger
+                  ? SportSphereSportSphereColors.danger
                   : nearLimit
-                      ? SportSphereColors.sportOrange
-                      : SportSphereColors.muted.withValues(alpha: 0.6),
+                      ? SportSphereSportSphereColors.sportOrange
+                      : SportSphereSportSphereColors.muted.withValues(alpha: 0.6),
               fontSize: 12,
               fontWeight:
                   nearLimit ? FontWeight.w700 : FontWeight.w400,
@@ -794,21 +794,21 @@ class _MediaStrip extends StatelessWidget {
                         borderRadius: BorderRadius.circular(14),
                         gradient: LinearGradient(
                           colors: [
-                            SportSphereColors.electricBlue
+                            SportSphereSportSphereColors.electricBlue
                                 .withValues(alpha: 0.25),
-                            SportSphereColors.sportGreen
+                            SportSphereSportSphereColors.sportGreen
                                 .withValues(alpha: 0.15),
                           ],
                         ),
                         border: Border.all(
                           color:
-                              Colors.white.withValues(alpha: 0.10),
+                              SportSphereSportSphereColors.white.withValues(alpha: 0.10),
                         ),
                       ),
                       child: const Center(
                         child: Icon(
                           Icons.image_rounded,
-                          color: Colors.white54,
+                          color: SportSphereSportSphereSportSphereColors.white54,
                           size: 32,
                         ),
                       ),
@@ -824,11 +824,11 @@ class _MediaStrip extends StatelessWidget {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color:
-                                Colors.black.withValues(alpha: 0.65),
+                                SportSphereSportSphereSportSphereColors.black.withValues(alpha: 0.65),
                           ),
                           child: const Icon(
                             Icons.close_rounded,
-                            color: Colors.white,
+                            color: SportSphereSportSphereColors.white,
                             size: 14,
                           ),
                         ),
@@ -851,15 +851,15 @@ class _MediaStrip extends StatelessWidget {
                   height: 100,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(14),
-                    color: Colors.white.withValues(alpha: 0.035),
+                    color: SportSphereSportSphereColors.white.withValues(alpha: 0.035),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.10),
+                      color: SportSphereSportSphereColors.white.withValues(alpha: 0.10),
                       style: BorderStyle.solid,
                     ),
                   ),
                   child: const Icon(
                     Icons.add_rounded,
-                    color: SportSphereColors.muted,
+                    color: SportSphereSportSphereColors.muted,
                   ),
                 ),
               ),
@@ -901,7 +901,7 @@ class _PollPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return _ContentPanel(
       label: 'POLL',
-      color: SportSphereColors.electricBlue,
+      color: SportSphereSportSphereColors.electricBlue,
       icon: Icons.poll_rounded,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -924,7 +924,7 @@ class _PollPanel extends StatelessWidget {
                       onTap: () => onRemoveOption(i),
                       child: Icon(
                         Icons.remove_circle_outline_rounded,
-                        color: SportSphereColors.danger
+                        color: SportSphereSportSphereColors.danger
                             .withValues(alpha: 0.75),
                         size: 22,
                       ),
@@ -946,7 +946,7 @@ class _PollPanel extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: SportSphereColors.electricBlue
+                    color: SportSphereSportSphereColors.electricBlue
                         .withValues(alpha: 0.30),
                     style: BorderStyle.solid,
                   ),
@@ -956,14 +956,14 @@ class _PollPanel extends StatelessWidget {
                   children: [
                     Icon(
                       Icons.add_circle_outline_rounded,
-                      color: SportSphereColors.electricBlue,
+                      color: SportSphereSportSphereColors.electricBlue,
                       size: 18,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'Add option',
                       style: TextStyle(
-                        color: SportSphereColors.electricBlue,
+                        color: SportSphereSportSphereColors.electricBlue,
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
@@ -977,7 +977,7 @@ class _PollPanel extends StatelessWidget {
           Text(
             'Poll duration',
             style: TextStyle(
-              color: SportSphereColors.muted,
+              color: SportSphereSportSphereColors.muted,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -999,20 +999,20 @@ class _PollPanel extends StatelessWidget {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
                     color: active
-                        ? SportSphereColors.electricBlue
-                        : Colors.white.withValues(alpha: 0.06),
+                        ? SportSphereSportSphereColors.electricBlue
+                        : SportSphereSportSphereColors.white.withValues(alpha: 0.06),
                     border: Border.all(
                       color: active
-                          ? SportSphereColors.electricBlue
-                          : Colors.white.withValues(alpha: 0.10),
+                          ? SportSphereSportSphereColors.electricBlue
+                          : SportSphereSportSphereColors.white.withValues(alpha: 0.10),
                     ),
                   ),
                   child: Text(
                     d.label,
                     style: TextStyle(
                       color: active
-                          ? Colors.white
-                          : SportSphereColors.muted,
+                          ? SportSphereSportSphereColors.white
+                          : SportSphereSportSphereColors.muted,
                       fontSize: 12,
                       fontWeight: active
                           ? FontWeight.w700
@@ -1054,7 +1054,7 @@ class _PredictionPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return _ContentPanel(
       label: 'PREDICTION',
-      color: SportSphereColors.sportGreen,
+      color: SportSphereSportSphereColors.sportGreen,
       icon: Icons.insights_rounded,
       child: Row(
         children: [
@@ -1064,7 +1064,7 @@ class _PredictionPanel extends StatelessWidget {
               children: [
                 const Icon(
                   Icons.shield_rounded,
-                  color: Colors.white70,
+                  color: SportSphereSportSphereSportSphereColors.white70,
                   size: 36,
                 ),
                 const SizedBox(height: 6),
@@ -1091,7 +1091,7 @@ class _PredictionPanel extends StatelessWidget {
                 const Text(
                   'VS',
                   style: TextStyle(
-                    color: Colors.white38,
+                    color: SportSphereSportSphereSportSphereColors.white38,
                     fontWeight: FontWeight.w900,
                     fontSize: 13,
                     letterSpacing: 1,
@@ -1104,13 +1104,13 @@ class _PredictionPanel extends StatelessWidget {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.3),
+                    color: SportSphereSportSphereSportSphereColors.black.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     '$homeScore - $awayScore',
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: SportSphereSportSphereColors.white,
                       fontSize: 22,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 2,
@@ -1127,7 +1127,7 @@ class _PredictionPanel extends StatelessWidget {
               children: [
                 const Icon(
                   Icons.shield_outlined,
-                  color: Colors.white70,
+                  color: SportSphereSportSphereSportSphereColors.white70,
                   size: 36,
                 ),
                 const SizedBox(height: 6),
@@ -1170,7 +1170,7 @@ class _ScoreStepper extends StatelessWidget {
           child: Text(
             '$value',
             style: const TextStyle(
-              color: Colors.white,
+              color: SportSphereSportSphereColors.white,
               fontSize: 20,
               fontWeight: FontWeight.w900,
             ),
@@ -1200,20 +1200,20 @@ class _StepBtn extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: onTap != null
-              ? SportSphereColors.sportGreen.withValues(alpha: 0.15)
-              : Colors.white.withValues(alpha: 0.04),
+              ? SportSphereSportSphereColors.sportGreen.withValues(alpha: 0.15)
+              : SportSphereSportSphereColors.white.withValues(alpha: 0.04),
           border: Border.all(
             color: onTap != null
-                ? SportSphereColors.sportGreen.withValues(alpha: 0.4)
-                : Colors.white.withValues(alpha: 0.06),
+                ? SportSphereSportSphereColors.sportGreen.withValues(alpha: 0.4)
+                : SportSphereSportSphereColors.white.withValues(alpha: 0.06),
           ),
         ),
         child: Icon(
           icon,
           size: 16,
           color: onTap != null
-              ? SportSphereColors.sportGreen
-              : SportSphereColors.muted.withValues(alpha: 0.4),
+              ? SportSphereSportSphereColors.sportGreen
+              : SportSphereSportSphereColors.muted.withValues(alpha: 0.4),
         ),
       ),
     );
@@ -1238,7 +1238,7 @@ class _LocationPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return _ContentPanel(
       label: 'LOCATION',
-      color: SportSphereColors.sportOrange,
+      color: SportSphereSportSphereColors.sportOrange,
       icon: Icons.location_on_rounded,
       child: Column(
         children: _locationSuggestions.map((l) {
@@ -1254,14 +1254,14 @@ class _LocationPanel extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 color: active
-                    ? SportSphereColors.sportOrange
+                    ? SportSphereSportSphereColors.sportOrange
                         .withValues(alpha: 0.12)
-                    : Colors.white.withValues(alpha: 0.04),
+                    : SportSphereSportSphereColors.white.withValues(alpha: 0.04),
                 border: Border.all(
                   color: active
-                      ? SportSphereColors.sportOrange
+                      ? SportSphereSportSphereColors.sportOrange
                           .withValues(alpha: 0.4)
-                      : Colors.white.withValues(alpha: 0.07),
+                      : SportSphereSportSphereColors.white.withValues(alpha: 0.07),
                 ),
               ),
               child: Row(
@@ -1269,8 +1269,8 @@ class _LocationPanel extends StatelessWidget {
                   Icon(
                     Icons.place_rounded,
                     color: active
-                        ? SportSphereColors.sportOrange
-                        : SportSphereColors.muted,
+                        ? SportSphereSportSphereColors.sportOrange
+                        : SportSphereSportSphereColors.muted,
                     size: 18,
                   ),
                   const SizedBox(width: 10),
@@ -1279,8 +1279,8 @@ class _LocationPanel extends StatelessWidget {
                       l,
                       style: TextStyle(
                         color: active
-                            ? SportSphereColors.white
-                            : SportSphereColors.muted,
+                            ? SportSphereSportSphereColors.white
+                            : SportSphereSportSphereColors.muted,
                         fontSize: 13,
                         fontWeight: active
                             ? FontWeight.w600
@@ -1291,7 +1291,7 @@ class _LocationPanel extends StatelessWidget {
                   if (active)
                     Icon(
                       Icons.check_rounded,
-                      color: SportSphereColors.sportOrange,
+                      color: SportSphereSportSphereColors.sportOrange,
                       size: 18,
                     ),
                 ],
@@ -1322,7 +1322,7 @@ class _DisappearingPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return _ContentPanel(
       label: 'DISAPPEARS IN',
-      color: SportSphereColors.danger,
+      color: SportSphereSportSphereColors.danger,
       icon: Icons.timer_rounded,
       child: Wrap(
         spacing: 10,
@@ -1340,12 +1340,12 @@ class _DisappearingPanel extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20),
                 color: active
-                    ? SportSphereColors.danger
-                    : Colors.white.withValues(alpha: 0.05),
+                    ? SportSphereSportSphereColors.danger
+                    : SportSphereSportSphereColors.white.withValues(alpha: 0.05),
                 border: Border.all(
                   color: active
-                      ? SportSphereColors.danger
-                      : Colors.white.withValues(alpha: 0.10),
+                      ? SportSphereSportSphereColors.danger
+                      : SportSphereSportSphereColors.white.withValues(alpha: 0.10),
                 ),
               ),
               child: Row(
@@ -1355,16 +1355,16 @@ class _DisappearingPanel extends StatelessWidget {
                     o.icon,
                     size: 14,
                     color: active
-                        ? Colors.white
-                        : SportSphereColors.muted,
+                        ? SportSphereSportSphereColors.white
+                        : SportSphereSportSphereColors.muted,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     o.label,
                     style: TextStyle(
                       color: active
-                          ? Colors.white
-                          : SportSphereColors.muted,
+                          ? SportSphereSportSphereColors.white
+                          : SportSphereSportSphereColors.muted,
                       fontSize: 13,
                       fontWeight: active
                           ? FontWeight.w700
@@ -1394,7 +1394,7 @@ class _TagPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return _ContentPanel(
       label: 'TAG PEOPLE OR TEAMS',
-      color: SportSphereColors.brightBlue,
+      color: SportSphereSportSphereColors.brightBlue,
       icon: Icons.alternate_email_rounded,
       child: Column(
         children: _tagSuggestions.map((s) {
@@ -1410,14 +1410,14 @@ class _TagPanel extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 color: isAdded
-                    ? SportSphereColors.brightBlue
+                    ? SportSphereSportSphereColors.brightBlue
                         .withValues(alpha: 0.10)
-                    : Colors.white.withValues(alpha: 0.04),
+                    : SportSphereSportSphereColors.white.withValues(alpha: 0.04),
                 border: Border.all(
                   color: isAdded
-                      ? SportSphereColors.brightBlue
+                      ? SportSphereSportSphereColors.brightBlue
                           .withValues(alpha: 0.35)
-                      : Colors.white.withValues(alpha: 0.07),
+                      : SportSphereSportSphereColors.white.withValues(alpha: 0.07),
                 ),
               ),
               child: Row(
@@ -1427,11 +1427,11 @@ class _TagPanel extends StatelessWidget {
                     height: 34,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: SportSphereColors.surface2,
+                      color: SportSphereSportSphereColors.surface2,
                     ),
                     child: Icon(
                       s.icon,
-                      color: SportSphereColors.electricBlue,
+                      color: SportSphereSportSphereColors.electricBlue,
                       size: 18,
                     ),
                   ),
@@ -1443,7 +1443,7 @@ class _TagPanel extends StatelessWidget {
                         Text(
                           s.name,
                           style: const TextStyle(
-                            color: SportSphereColors.white,
+                            color: SportSphereSportSphereColors.white,
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
                           ),
@@ -1451,7 +1451,7 @@ class _TagPanel extends StatelessWidget {
                         Text(
                           s.handle,
                           style: const TextStyle(
-                            color: SportSphereColors.muted,
+                            color: SportSphereSportSphereColors.muted,
                             fontSize: 11,
                           ),
                         ),
@@ -1463,8 +1463,8 @@ class _TagPanel extends StatelessWidget {
                         ? Icons.check_circle_rounded
                         : Icons.add_circle_outline_rounded,
                     color: isAdded
-                        ? SportSphereColors.brightBlue
-                        : SportSphereColors.muted,
+                        ? SportSphereSportSphereColors.brightBlue
+                        : SportSphereSportSphereColors.muted,
                     size: 20,
                   ),
                 ],
@@ -1495,10 +1495,10 @@ class _TagChips extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
-            color: SportSphereColors.electricBlue.withValues(alpha: 0.12),
+            color: SportSphereSportSphereColors.electricBlue.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: SportSphereColors.electricBlue.withValues(alpha: 0.35),
+              color: SportSphereSportSphereColors.electricBlue.withValues(alpha: 0.35),
             ),
           ),
           child: Row(
@@ -1507,7 +1507,7 @@ class _TagChips extends StatelessWidget {
               Text(
                 t,
                 style: TextStyle(
-                  color: SportSphereColors.electricBlue,
+                  color: SportSphereSportSphereColors.electricBlue,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1518,7 +1518,7 @@ class _TagChips extends StatelessWidget {
                 child: Icon(
                   Icons.close_rounded,
                   size: 13,
-                  color: SportSphereColors.electricBlue
+                  color: SportSphereSportSphereColors.electricBlue
                       .withValues(alpha: 0.7),
                 ),
               ),
@@ -1557,14 +1557,14 @@ class _MetaBadges extends StatelessWidget {
           _MetaBadge(
             icon: Icons.place_rounded,
             label: location!,
-            color: SportSphereColors.sportOrange,
+            color: SportSphereSportSphereColors.sportOrange,
             onRemove: onRemoveLocation,
           ),
         if (disappearsIn != null)
           _MetaBadge(
             icon: Icons.timer_rounded,
             label: disappearsIn!,
-            color: SportSphereColors.danger,
+            color: SportSphereSportSphereColors.danger,
             onRemove: onRemoveDisappearing,
           ),
       ],
@@ -1676,10 +1676,10 @@ class _AttachmentBar extends StatelessWidget {
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(
-            color: Colors.white.withValues(alpha: 0.07),
+            color: SportSphereSportSphereColors.white.withValues(alpha: 0.07),
           ),
         ),
-        color: SportSphereColors.background.withValues(alpha: 0.96),
+        color: SportSphereSportSphereColors.background.withValues(alpha: 0.96),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1698,7 +1698,7 @@ class _AttachmentBar extends StatelessWidget {
                       icon: Icons.image_outlined,
                       label: 'Media',
                       active: activeType == _PostType.media,
-                      color: SportSphereColors.electricBlue,
+                      color: SportSphereSportSphereColors.electricBlue,
                       onTap: onMedia,
                     ),
                     const SizedBox(width: 8),
@@ -1706,7 +1706,7 @@ class _AttachmentBar extends StatelessWidget {
                       icon: Icons.poll_outlined,
                       label: 'Poll',
                       active: activeType == _PostType.poll,
-                      color: SportSphereColors.electricBlue,
+                      color: SportSphereSportSphereColors.electricBlue,
                       onTap: onPoll,
                     ),
                     const SizedBox(width: 8),
@@ -1714,7 +1714,7 @@ class _AttachmentBar extends StatelessWidget {
                       icon: Icons.insights_rounded,
                       label: 'Predict',
                       active: activeType == _PostType.prediction,
-                      color: SportSphereColors.sportGreen,
+                      color: SportSphereSportSphereColors.sportGreen,
                       onTap: onPrediction,
                     ),
                     const SizedBox(width: 8),
@@ -1722,7 +1722,7 @@ class _AttachmentBar extends StatelessWidget {
                       icon: Icons.place_outlined,
                       label: 'Location',
                       active: showLocation,
-                      color: SportSphereColors.sportOrange,
+                      color: SportSphereSportSphereColors.sportOrange,
                       onTap: onLocation,
                     ),
                     const SizedBox(width: 8),
@@ -1730,7 +1730,7 @@ class _AttachmentBar extends StatelessWidget {
                       icon: Icons.timer_outlined,
                       label: 'Vanish',
                       active: showDisappearing,
-                      color: SportSphereColors.danger,
+                      color: SportSphereSportSphereColors.danger,
                       onTap: onDisappearing,
                     ),
                     const SizedBox(width: 8),
@@ -1738,7 +1738,7 @@ class _AttachmentBar extends StatelessWidget {
                       icon: Icons.alternate_email_rounded,
                       label: 'Tag',
                       active: showTag,
-                      color: SportSphereColors.brightBlue,
+                      color: SportSphereSportSphereColors.brightBlue,
                       onTap: onTag,
                     ),
                   ],
@@ -1767,14 +1767,14 @@ class _AttachmentBar extends StatelessWidget {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: expanded
-                            ? SportSphereColors.electricBlue
+                            ? SportSphereSportSphereColors.electricBlue
                                 .withValues(alpha: 0.15)
-                            : Colors.white.withValues(alpha: 0.05),
+                            : SportSphereSportSphereColors.white.withValues(alpha: 0.05),
                         border: Border.all(
                           color: expanded
-                              ? SportSphereColors.electricBlue
+                              ? SportSphereSportSphereColors.electricBlue
                                   .withValues(alpha: 0.45)
-                              : Colors.white.withValues(alpha: 0.10),
+                              : SportSphereSportSphereColors.white.withValues(alpha: 0.10),
                         ),
                       ),
                       child: AnimatedRotation(
@@ -1783,8 +1783,8 @@ class _AttachmentBar extends StatelessWidget {
                         child: Icon(
                           Icons.add_rounded,
                           color: expanded
-                              ? SportSphereColors.electricBlue
-                              : SportSphereColors.muted,
+                              ? SportSphereSportSphereColors.electricBlue
+                              : SportSphereSportSphereColors.muted,
                           size: 24,
                         ),
                       ),
@@ -1813,20 +1813,20 @@ class _AttachmentBar extends StatelessWidget {
                           gradient: LinearGradient(
                             colors: (canPost && !posting)
                                 ? [
-                                    SportSphereColors.electricBlue,
+                                    SportSphereSportSphereColors.electricBlue,
                                     const Color(0xFF0066DD),
                                   ]
                                 : [
-                                    SportSphereColors.muted
+                                    SportSphereSportSphereColors.muted
                                         .withValues(alpha: 0.25),
-                                    SportSphereColors.muted
+                                    SportSphereSportSphereColors.muted
                                         .withValues(alpha: 0.20),
                                   ],
                           ),
                           boxShadow: (canPost && !posting && !submitted)
                               ? [
                                   BoxShadow(
-                                    color: SportSphereColors.electricBlue
+                                    color: SportSphereSportSphereColors.electricBlue
                                         .withValues(alpha: 0.35),
                                     blurRadius: 16,
                                     offset: const Offset(0, 4),
@@ -1841,14 +1841,14 @@ class _AttachmentBar extends StatelessWidget {
                                   children: const [
                                     Icon(
                                       Icons.check_circle_rounded,
-                                      color: Colors.white,
+                                      color: SportSphereSportSphereColors.white,
                                       size: 18,
                                     ),
                                     SizedBox(width: 7),
                                     Text(
                                       'Posted!',
                                       style: TextStyle(
-                                        color: Colors.white,
+                                        color: SportSphereSportSphereColors.white,
                                         fontSize: 14,
                                         fontWeight: FontWeight.w800,
                                       ),
@@ -1860,14 +1860,14 @@ class _AttachmentBar extends StatelessWidget {
                                       width: 18,
                                       height: 18,
                                       child: CircularProgressIndicator(
-                                        color: Colors.white,
+                                        color: SportSphereSportSphereColors.white,
                                         strokeWidth: 2,
                                       ),
                                     )
                                   : const Text(
                                       'Post',
                                       style: TextStyle(
-                                        color: Colors.white,
+                                        color: SportSphereSportSphereColors.white,
                                         fontSize: 15,
                                         fontWeight: FontWeight.w800,
                                         letterSpacing: 0.3,
@@ -1917,11 +1917,11 @@ class _AttachChip extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             color: active
                 ? color.withValues(alpha: 0.15)
-                : Colors.white.withValues(alpha: 0.05),
+                : SportSphereSportSphereColors.white.withValues(alpha: 0.05),
             border: Border.all(
               color: active
                   ? color.withValues(alpha: 0.5)
-                  : Colors.white.withValues(alpha: 0.08),
+                  : SportSphereSportSphereColors.white.withValues(alpha: 0.08),
             ),
           ),
           child: Row(
@@ -1929,12 +1929,12 @@ class _AttachChip extends StatelessWidget {
             children: [
               Icon(icon,
                   size: 16,
-                  color: active ? color : SportSphereColors.muted),
+                  color: active ? color : SportSphereSportSphereColors.muted),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: TextStyle(
-                  color: active ? color : SportSphereColors.muted,
+                  color: active ? color : SportSphereSportSphereColors.muted,
                   fontSize: 12,
                   fontWeight:
                       active ? FontWeight.w700 : FontWeight.w500,
@@ -2021,28 +2021,28 @@ class _PanelField extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
+        color: SportSphereSportSphereColors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.09)),
+        border: Border.all(color: SportSphereSportSphereColors.white.withValues(alpha: 0.09)),
       ),
       child: TextField(
         controller: controller,
         onChanged: onChanged,
         textAlign: textAlign,
         style: const TextStyle(
-          color: SportSphereColors.white,
+          color: SportSphereSportSphereColors.white,
           fontSize: 13,
           fontWeight: FontWeight.w600,
         ),
-        cursorColor: SportSphereColors.electricBlue,
+        cursorColor: SportSphereSportSphereColors.electricBlue,
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: TextStyle(
-            color: SportSphereColors.muted.withValues(alpha: 0.55),
+            color: SportSphereSportSphereColors.muted.withValues(alpha: 0.55),
             fontSize: 13,
           ),
           prefixIcon: Icon(icon,
-              color: SportSphereColors.muted, size: 16),
+              color: SportSphereSportSphereColors.muted, size: 16),
           prefixIconConstraints:
               const BoxConstraints(minWidth: 36, minHeight: 36),
           border: InputBorder.none,
@@ -2066,7 +2066,7 @@ class _BottomSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: SportSphereColors.surface,
+        color: SportSphereSportSphereColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
@@ -2079,7 +2079,7 @@ class _BottomSheet extends StatelessWidget {
             height: 4,
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
+              color: SportSphereSportSphereColors.white.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(10),
             ),
           ),
@@ -2088,7 +2088,7 @@ class _BottomSheet extends StatelessWidget {
             child: Text(
               title,
               style: const TextStyle(
-                color: SportSphereColors.white,
+                color: SportSphereSportSphereColors.white,
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
               ),

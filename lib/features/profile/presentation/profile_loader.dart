@@ -76,7 +76,6 @@ class ProfileLoader {
           (row?['isVerified'] as bool?) == true,
       isOwnProfile: _sb.auth.currentUser?.id != null &&
           row?['id']?.toString() == _sb.auth.currentUser?.id,
-      userId: row?['id']?.toString(),
     );
   }
 

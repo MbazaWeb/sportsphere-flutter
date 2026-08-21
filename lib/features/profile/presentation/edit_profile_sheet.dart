@@ -108,17 +108,17 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
 
   Future<void> _save() async {
     setState(() => _saving = true);
-    final ok = await ref.read(authControllerProvider.notifier).updateProfile(
-          firstName: _first.text.trim(),
-          lastName: _last.text.trim(),
-          handle: _handle.text.trim(),
-          country: _country.text.trim(),
-          dob: _dob,
-          bio: _bio.text.trim(),
-          avatarUrl: _avatarUrl,
-          coverUrl: _coverUrl,
-          themeColor: _theme,
-        );
+    final ok = await ref.read(authControllerProvider.notifier).updateProfile({
+          'first_name': _first.text.trim(),
+          'last_name': _last.text.trim(),
+          'handle': _handle.text.trim(),
+          'country': _country.text.trim(),
+          'dob': _dob?.toIso8601String(),
+          'bio': _bio.text.trim(),
+          'avatar_url': _avatarUrl,
+          'cover_url': _coverUrl,
+          'theme_color': _theme,
+        });
     if (!mounted) return;
     setState(() => _saving = false);
     try {
@@ -348,10 +348,12 @@ Future<void> showChangePasswordDialog(BuildContext context, WidgetRef ref) async
     }
     return;
   }
-  final err = await ref.read(authControllerProvider.notifier).changePassword(a.text);
+  final updated = await ref
+      .read(authControllerProvider.notifier)
+      .changePassword('', a.text);
   if (context.mounted) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(err ?? 'Password updated')),
+      SnackBar(content: Text(updated ? 'Password updated' : 'Unable to update password')),
     );
   }
 }

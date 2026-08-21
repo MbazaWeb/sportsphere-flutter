@@ -87,9 +87,6 @@ Future<TeamProfileModel> lookupTeamProfile(String handle) async {
     squad: squad,
     seasonStats: seasonStats,
     logoAsset: logo,
-    entityId: teamId,
-    accountUserId: accountUserId,
-    isClaimable: accountUserId == null,
     isVerified: true,
   );
 }

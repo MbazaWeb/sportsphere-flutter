@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 /// A widget that catches and handles errors in its child subtree
 class ErrorBoundary extends StatefulWidget {

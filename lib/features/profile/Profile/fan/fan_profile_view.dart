@@ -35,23 +35,15 @@ class FanProfileModel {
   final String firstName;
   final String lastName;
   final String handle;
-
-  // "Fan of" team name + accent colour
   final String fanOf;
   final Color fanOfAccent;
-
   final String bio;
   final String sport;
   final String location;
-
-  /// When this user joined SportSphere (not their date of birth).
   final DateTime joinedDate;
-
   final int postCount;
   final int followerCount;
   final int followingCount;
-
-  /// Contact email — shown in About tab for own profile only.
   final String? email;
   final String? avatarAsset;
   final String? coverAsset;
@@ -68,8 +60,6 @@ class FanProfileModel {
     return '$followerCount';
   }
 }
-
-// ── Mock data for own profile ──────────────────────────────────────────────────
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SCREEN
@@ -113,7 +103,6 @@ class _FanProfileViewState extends State<FanProfileView>
       backgroundColor: SportSphereColors.background,
       body: NestedScrollView(
         headerSliverBuilder: (context, innerScrolled) => [
-          // ── Cover + header ────────────────────────────────────
           SliverToBoxAdapter(
             child: _ProfileHeader(
               profile: p,
@@ -127,8 +116,6 @@ class _FanProfileViewState extends State<FanProfileView>
               onInfo: () => _tabCtrl.animateTo(1),
             ),
           ),
-
-          // ── Sticky tab bar ─────────────────────────────────────
           SliverPersistentHeader(
             pinned: true,
             delegate: _TabBarDelegate(
@@ -136,7 +123,6 @@ class _FanProfileViewState extends State<FanProfileView>
             ),
           ),
         ],
-
         body: TabBarView(
           controller: _tabCtrl,
           children: [
@@ -186,11 +172,9 @@ class _ProfileHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Cover banner ────────────────────────────────────────
         Stack(
           clipBehavior: Clip.none,
           children: [
-            // Cover image / gradient
             SizedBox(
               height: coverH,
               width: double.infinity,
@@ -204,8 +188,6 @@ class _ProfileHeader extends StatelessWidget {
                     )
                   : _CoverGradient(accent: profile.fanOfAccent),
             ),
-
-            // Dark overlay bottom fade
             Positioned(
               bottom: 0,
               left: 0,
@@ -218,66 +200,52 @@ class _ProfileHeader extends StatelessWidget {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      SportSphereColors.background.withValues(alpha: 0.95),
+                      SportSphereColors.background.withOpacity(0.95),
                     ],
                   ),
                 ),
               ),
             ),
-
-            // Back button
             Positioned(
               top: MediaQuery.of(context).padding.top + 8,
               left: 12,
-              child: Semantics(
-                label: 'Go back',
-                button: true,
-                child: GestureDetector(
-                  onTap: onBack,
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.black.withValues(alpha: 0.45),
-                    ),
-                    child: const Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      color: Colors.white,
-                      size: 16,
-                    ),
+              child: GestureDetector(
+                onTap: onBack,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.black.withOpacity(0.45),
+                  ),
+                  child: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    color: Colors.white,
+                    size: 16,
                   ),
                 ),
               ),
             ),
-
-            // More (⋯) button
             Positioned(
               top: MediaQuery.of(context).padding.top + 8,
               right: 12,
-              child: Semantics(
-                label: 'More options',
-                button: true,
-                child: GestureDetector(
-                  onTap: onMore,
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.black.withValues(alpha: 0.45),
-                    ),
-                    child: const Icon(
-                      Icons.more_horiz_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
+              child: GestureDetector(
+                onTap: onMore,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.black.withOpacity(0.45),
+                  ),
+                  child: const Icon(
+                    Icons.more_horiz_rounded,
+                    color: Colors.white,
+                    size: 20,
                   ),
                 ),
               ),
             ),
-
-            // Avatar overlapping the cover bottom edge
             Positioned(
               bottom: -(avatarR * 0.5),
               left: 16,
@@ -289,11 +257,7 @@ class _ProfileHeader extends StatelessWidget {
             ),
           ],
         ),
-
-        // ── Gap for avatar overlap ──────────────────────────────
         SizedBox(height: avatarR * 0.5 + 10),
-
-        // ── Name row ───────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
@@ -303,7 +267,6 @@ class _ProfileHeader extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Name + verified
                     Row(
                       children: [
                         Text(
@@ -325,7 +288,6 @@ class _ProfileHeader extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 2),
-                    // @handle
                     Text(
                       profile.atHandle,
                       style: const TextStyle(
@@ -334,7 +296,6 @@ class _ProfileHeader extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    // Fan of
                     _FanOfBadge(
                       teamName: profile.fanOf,
                       accent: profile.fanOfAccent,
@@ -342,46 +303,34 @@ class _ProfileHeader extends StatelessWidget {
                   ],
                 ),
               ),
-
-              // ⓘ info / About shortcut
-              Semantics(
-                label: 'View About section',
-                button: true,
-                child: GestureDetector(
-                  onTap: onInfo,
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.07),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.12),
-                      ),
+              GestureDetector(
+                onTap: onInfo,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.07),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.12),
                     ),
-                    child: const Icon(
-                      Icons.info_outline_rounded,
-                      color: SportSphereColors.muted,
-                      size: 18,
-                    ),
+                  ),
+                  child: const Icon(
+                    Icons.info_outline_rounded,
+                    color: SportSphereColors.muted,
+                    size: 18,
                   ),
                 ),
               ),
             ],
           ),
         ),
-
         const SizedBox(height: 14),
-
-        // ── Stats row ─────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: _StatsRow(profile: profile),
         ),
-
         const SizedBox(height: 16),
-
-        // ── Action buttons ────────────────────────────────────
         if (!profile.isOwnProfile)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
@@ -391,20 +340,16 @@ class _ProfileHeader extends StatelessWidget {
               fanOfAccent: profile.fanOfAccent,
             ),
           ),
-
         if (profile.isOwnProfile)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
             child: _EditProfileButton(),
           ),
-
         const SizedBox(height: 4),
       ],
     );
   }
 }
-
-// ── Cover gradient (fallback when no image) ────────────────────────────────────
 
 class _CoverGradient extends StatelessWidget {
   final Color accent;
@@ -419,7 +364,7 @@ class _CoverGradient extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [
             const Color(0xFF08111E),
-            accent.withValues(alpha: 0.40),
+            accent.withOpacity(0.40),
             const Color(0xFF030810),
           ],
         ),
@@ -428,14 +373,12 @@ class _CoverGradient extends StatelessWidget {
         child: Icon(
           Icons.groups_rounded,
           size: 72,
-          color: accent.withValues(alpha: 0.18),
+          color: accent.withOpacity(0.18),
         ),
       ),
     );
   }
 }
-
-// ── Avatar ────────────────────────────────────────────────────────────────────
 
 class _Avatar extends StatelessWidget {
   final String? asset;
@@ -457,7 +400,7 @@ class _Avatar extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: accentColor.withValues(alpha: 0.30),
+            color: accentColor.withOpacity(0.30),
             blurRadius: 20,
             spreadRadius: 2,
           ),
@@ -483,13 +426,11 @@ class _AvatarFallback extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: accent.withValues(alpha: 0.15),
-      child: Icon(Icons.person_rounded, color: accent.withValues(alpha: 0.6), size: 40),
+      color: accent.withOpacity(0.15),
+      child: Icon(Icons.person_rounded, color: accent.withOpacity(0.6), size: 40),
     );
   }
 }
-
-// ── "Fan of" badge ────────────────────────────────────────────────────────────
 
 class _FanOfBadge extends StatelessWidget {
   final String teamName;
@@ -522,8 +463,8 @@ class _FanOfBadge extends StatelessWidget {
           height: 18,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: accent.withValues(alpha: 0.15),
-            border: Border.all(color: accent.withValues(alpha: 0.4)),
+            color: accent.withOpacity(0.15),
+            border: Border.all(color: accent.withOpacity(0.4)),
           ),
           child: Icon(Icons.shield_rounded, color: accent, size: 10),
         ),
@@ -531,8 +472,6 @@ class _FanOfBadge extends StatelessWidget {
     );
   }
 }
-
-// ── Stats row ─────────────────────────────────────────────────────────────────
 
 class _StatsRow extends StatelessWidget {
   final FanProfileModel profile;
@@ -590,12 +529,10 @@ class _Divider extends StatelessWidget {
       width: 1,
       height: 28,
       margin: const EdgeInsets.symmetric(horizontal: 20),
-      color: Colors.white.withValues(alpha: 0.10),
+      color: Colors.white.withOpacity(0.10),
     );
   }
 }
-
-// ── Action buttons (other profile) ────────────────────────────────────────────
 
 class _ActionButtons extends StatelessWidget {
   final bool following;
@@ -612,53 +549,49 @@ class _ActionButtons extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: Semantics(
-            label: following ? 'Following' : 'Follow',
-            button: true,
-            child: GestureDetector(
-              onTap: onFollow,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                height: 40,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  gradient: following
-                      ? null
-                      : const LinearGradient(
-                          colors: [
-                            SportSphereColors.electricBlue,
-                            Color(0xFF0066DD),
-                          ],
-                        ),
-                  color: following
-                      ? Colors.white.withValues(alpha: 0.06)
-                      : null,
-                  border: following
-                      ? Border.all(
-                          color: Colors.white.withValues(alpha: 0.18),
-                        )
-                      : null,
-                  boxShadow: following
-                      ? null
-                      : [
-                          BoxShadow(
-                            color: SportSphereColors.electricBlue
-                                .withValues(alpha: 0.30),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
+          child: GestureDetector(
+            onTap: onFollow,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              height: 40,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                gradient: following
+                    ? null
+                    : const LinearGradient(
+                        colors: [
+                          SportSphereColors.electricBlue,
+                          Color(0xFF0066DD),
                         ],
-                ),
-                child: Center(
-                  child: Text(
-                    following ? 'Following' : 'Follow',
-                    style: TextStyle(
-                      color: following
-                          ? SportSphereColors.muted
-                          : Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
+                      ),
+                color: following
+                    ? Colors.white.withOpacity(0.06)
+                    : null,
+                border: following
+                    ? Border.all(
+                        color: Colors.white.withOpacity(0.18),
+                      )
+                    : null,
+                boxShadow: following
+                    ? null
+                    : [
+                        BoxShadow(
+                          color: SportSphereColors.electricBlue
+                              .withOpacity(0.30),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+              ),
+              child: Center(
+                child: Text(
+                  following ? 'Following' : 'Follow',
+                  style: TextStyle(
+                    color: following
+                        ? SportSphereColors.muted
+                        : Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -666,26 +599,22 @@ class _ActionButtons extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 10),
-        Semantics(
-          label: 'Send message',
-          button: true,
-          child: GestureDetector(
-            onTap: () {},
-            child: Container(
-              height: 40,
-              width: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.06),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.14),
-                ),
+        GestureDetector(
+          onTap: () {},
+          child: Container(
+            height: 40,
+            width: 40,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withOpacity(0.06),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.14),
               ),
-              child: const Icon(
-                Icons.mail_outline_rounded,
-                color: SportSphereColors.muted,
-                size: 18,
-              ),
+            ),
+            child: const Icon(
+              Icons.mail_outline_rounded,
+              color: SportSphereColors.muted,
+              size: 18,
             ),
           ),
         ),
@@ -694,34 +623,28 @@ class _ActionButtons extends StatelessWidget {
   }
 }
 
-// ── Edit profile button (own profile) ─────────────────────────────────────────
-
 class _EditProfileButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      label: 'Edit profile',
-      button: true,
-      child: GestureDetector(
-        onTap: () {},
-        child: Container(
-          width: double.infinity,
-          height: 40,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            color: Colors.white.withValues(alpha: 0.06),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.15),
-            ),
+    return GestureDetector(
+      onTap: () {},
+      child: Container(
+        width: double.infinity,
+        height: 40,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: Colors.white.withOpacity(0.06),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.15),
           ),
-          child: const Center(
-            child: Text(
-              'Edit Profile',
-              style: TextStyle(
-                color: SportSphereColors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
+        ),
+        child: const Center(
+          child: Text(
+            'Edit Profile',
+            style: TextStyle(
+              color: SportSphereColors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),
@@ -793,17 +716,12 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
 // SPOTLIGHTS FEED TAB
 // ══════════════════════════════════════════════════════════════════════════════
 
-// ── Spotlights feed — real posts loaded from Supabase via ProfileLoader ───────
-
 class _SportlightsFeed extends StatelessWidget {
   final FanProfileModel profile;
   const _SportlightsFeed({required this.profile});
 
   @override
   Widget build(BuildContext context) {
-    // Posts are loaded by the parent ProfileLoader / RoleProfileShell.
-    // Until the post-list widget is wired to Supabase, show an empty state
-    // so no fake content appears.
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40),
@@ -813,7 +731,7 @@ class _SportlightsFeed extends StatelessWidget {
             Icon(
               Icons.bolt_rounded,
               size: 48,
-              color: profile.fanOfAccent.withValues(alpha: 0.35),
+              color: profile.fanOfAccent.withOpacity(0.35),
             ),
             const SizedBox(height: 16),
             const Text(
@@ -842,24 +760,6 @@ class _SportlightsFeed extends StatelessWidget {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ABOUT TAB
-                      color: Colors.white,
-                      size: 30,
-                    ),
-                  ),
-                )
-              : Icon(
-                  Icons.image_rounded,
-                  color: accent.withValues(alpha: 0.25),
-                  size: 40,
-                ),
-        ),
-      ),
-    );
-  }
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// ABOUT TAB
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _AboutTab extends StatelessWidget {
@@ -872,7 +772,6 @@ class _AboutTab extends StatelessWidget {
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
       children: [
-        // Bio
         if (profile.bio.isNotEmpty) ...[
           _AboutSection(
             title: 'Bio',
@@ -887,8 +786,6 @@ class _AboutTab extends StatelessWidget {
           ),
           const SizedBox(height: 14),
         ],
-
-        // Details
         _AboutSection(
           title: 'Details',
           child: Column(
@@ -913,7 +810,6 @@ class _AboutTab extends StatelessWidget {
                   label: 'Location',
                   value: profile.location,
                 ),
-              // Fix #15: Show email for own profile only
               if (profile.isOwnProfile && (profile.email?.isNotEmpty ?? false))
                 _AboutRow(
                   icon: Icons.email_outlined,
@@ -948,7 +844,7 @@ class _AboutSection extends StatelessWidget {
         color: const Color(0xD0071422),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.07),
+          color: Colors.white.withOpacity(0.07),
         ),
       ),
       padding: const EdgeInsets.all(16),
@@ -958,7 +854,7 @@ class _AboutSection extends StatelessWidget {
           Text(
             title.toUpperCase(),
             style: TextStyle(
-              color: SportSphereColors.muted.withValues(alpha: 0.7),
+              color: SportSphereColors.muted.withOpacity(0.7),
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.1,
@@ -1002,7 +898,7 @@ class _AboutRow extends StatelessWidget {
                 height: 32,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: iconColor.withValues(alpha: 0.10),
+                  color: iconColor.withOpacity(0.10),
                 ),
                 child: Icon(icon, color: iconColor, size: 16),
               ),
@@ -1030,7 +926,7 @@ class _AboutRow extends StatelessWidget {
         if (!isLast)
           Divider(
             height: 1,
-            color: Colors.white.withValues(alpha: 0.06),
+            color: Colors.white.withOpacity(0.06),
           ),
       ],
     );
@@ -1061,7 +957,7 @@ class _MoreSheet extends StatelessWidget {
             height: 4,
             margin: const EdgeInsets.only(bottom: 18),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
+              color: Colors.white.withOpacity(0.18),
               borderRadius: BorderRadius.circular(10),
             ),
           ),
@@ -1095,27 +991,23 @@ class _SheetOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = isDestructive ? SportSphereColors.danger : SportSphereColors.white;
-    return Semantics(
-      label: label,
-      button: true,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          child: Row(
-            children: [
-              Icon(icon, color: color, size: 22),
-              const SizedBox(width: 16),
-              Text(
-                label,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 22),
+            const SizedBox(width: 16),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

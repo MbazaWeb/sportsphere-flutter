@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../shop/models/shop_models.dart';
+import '../shared/profile_widgets.dart';
 import '../templates/role_profile_model.dart';
 
 /// Unified DB loader for all non-fan/team/player roles.
