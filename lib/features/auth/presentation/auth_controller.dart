@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 
@@ -26,8 +27,18 @@ final authControllerProvider =
 class AuthController extends Notifier<AuthState> {
   @override
   AuthState build() {
-    _hydrate();
-    return const AuthState(); // unknown until _hydrate completes
+    final repo = ref.read(authRepositoryProvider);
+
+    // Fresh install / signed out: resolve immediately so the router never
+    // stays in `unknown` (which pins every route to the splash).
+    if (!repo.hasSession) {
+      return const AuthState(status: AuthStatus.guest);
+    }
+
+    // Has a persisted session: start as unknown (splash holds) while the
+    // profile hydrates asynchronously.
+    Future<void>(() => _hydrate());
+    return const AuthState();
   }
 
   // ── Hydrate: read persisted Supabase session on app start ─────────────────
@@ -49,7 +60,7 @@ class AuthController extends Notifier<AuthState> {
         token: repo.currentSession?.accessToken,
         user: profile,
       );
-    } catch (_) {
+    } catch (e) {
       state = const AuthState(status: AuthStatus.guest);
     }
   }
