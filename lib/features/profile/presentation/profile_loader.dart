@@ -25,6 +25,40 @@ class ProfileLoader {
       row ??= await _sb.from('User').select().eq('handle', key).maybeSingle();
     } catch (_) {}
 
+    final role = (row?['role'] as String? ?? '').toLowerCase();
+    final isOfficial = key == 'sportsphere' ||
+        key == 'sportsphere_official' ||
+        key == 'sportsphere_app' ||
+        role == 'admin' ||
+        role == 'official';
+
+    // Admin / Official special treatment
+    if (isOfficial) {
+      return FanProfileModel(
+        firstName: 'SportSphere',
+        lastName: '',
+        handle: (row?['handle'] as String?) ?? key,
+        fanOf: '', // no "Fan of" section
+        fanOfAccent: const Color(0xFFFFD700),
+        bio: (row?['bio'] as String?) ??
+            'Official SportSphere account. Platform news, live scores and verified content.',
+        sport: 'All Sports',
+        location: '', // no country shown
+        joinedDate: DateTime.tryParse((row?['created_at'] as String?) ?? '') ??
+            DateTime(2024, 1, 1),
+        postCount: (row?['postCount'] as int?) ?? 0,
+        followerCount: (row?['followerCount'] as int?) ?? 0,
+        followingCount: (row?['followingCount'] as int?) ?? 0,
+        avatarAsset:
+            (row?['avatar_url'] as String?) ?? (row?['avatarUrl'] as String?),
+        coverAsset:
+            (row?['cover_url'] as String?) ?? (row?['coverUrl'] as String?),
+        isVerified: true, // always gold tick
+        isOwnProfile: _sb.auth.currentUser?.id != null &&
+            row?['id']?.toString() == _sb.auth.currentUser?.id,
+      );
+    }
+
     var fanOf = 'SportSphere Fan';
     try {
       final id = row?['id']?.toString();

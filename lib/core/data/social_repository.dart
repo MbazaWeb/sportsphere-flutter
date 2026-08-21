@@ -4,6 +4,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../taxonomy/sport_catalog.dart';
+
 /// Social repository for posts, comments, and user interactions
 class SocialRepository {
   const SocialRepository();
@@ -460,11 +462,30 @@ class SocialRepository {
     }
   }
 
-  /// Get the current user's sport slugs
+  /// Get the current user's sport slugs.
+  /// Admin / official accounts always get all sports (no selection required).
   Future<List<String>> mySportSlugs() async {
     try {
       final uid = _uid;
       if (uid == null) return [];
+
+      // Admin special case: unlock all sports, label as All Sports
+      try {
+        final meta = _sb.auth.currentUser?.userMetadata ?? {};
+        final handle =
+            '${meta['handle'] ?? ''}'.toLowerCase().replaceAll('@', '');
+        final role = '${meta['role'] ?? ''}'.toLowerCase();
+        final email = (_sb.auth.currentUser?.email ?? '').toLowerCase();
+        final isAdmin = role == 'admin' ||
+            role == 'official' ||
+            handle == 'sportsphere' ||
+            handle == 'sportsphere_official' ||
+            handle == 'sportsphere_app' ||
+            email == 'sportsphere.app@sportsphere.com';
+        if (isAdmin) {
+          return List<String>.from(kAllSports);
+        }
+      } catch (_) {}
 
       final rows = await _sb
           .from('UserSport')
