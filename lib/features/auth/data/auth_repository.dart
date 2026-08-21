@@ -25,7 +25,8 @@ class AuthRepository {
     final user = response.user;
     if (user == null) throw Exception('Login failed');
 
-    return _userFromSupabase(user);
+    // Read role from profiles table — not from metadata which may be stale
+    return _profileFromDb(user);
   }
 
   // ── Register ───────────────────────────────────────────────────────────────
@@ -53,7 +54,8 @@ class AuthRepository {
     final user = response.user;
     if (user == null) throw Exception('Registration failed');
 
-    return _userFromSupabase(user);
+    // Read role from profiles table — trigger should have created the row
+    return _profileFromDb(user);
   }
 
   // ── Sign out ───────────────────────────────────────────────────────────────
@@ -155,5 +157,38 @@ class AuthRepository {
       bio: metadata['bio'] ?? '',
       createdAt: DateTime.tryParse(user.createdAt),
     );
+  }
+
+  /// Always reads role from profiles table (source of truth).
+  /// Falls back to metadata if DB read fails.
+  Future<UserProfile> _profileFromDb(User user) async {
+    try {
+      final r = await _supabase
+          .from('profiles')
+          .select()
+          .eq('id', user.id)
+          .single();
+      return UserProfile(
+        firstName: r['first_name'] ?? '',
+        lastName: r['last_name'] ?? '',
+        email: user.email ?? '',
+        handle: r['handle'] ?? '',
+        country: r['country'] ?? '',
+        dob: DateTime.tryParse(r['dob'] ?? '') ?? DateTime.now(),
+        joinedDate: DateTime.tryParse(r['created_at'] ?? '') ?? DateTime.now(),
+        role: r['role'] ?? 'fan',
+        avatarUrl: r['avatar_url'],
+        coverUrl: r['cover_url'],
+        isVerified: r['is_verified'] ?? false,
+        themeColor: r['theme_color'] ?? '#168CFF',
+        bio: r['bio'] ?? '',
+        createdAt: DateTime.tryParse(r['created_at'] ?? ''),
+        postCount: r['post_count'] ?? 0,
+        followerCount: r['follower_count'] ?? 0,
+        followingCount: r['following_count'] ?? 0,
+      );
+    } catch (_) {
+      return _userFromSupabase(user);
+    }
   }
 }
