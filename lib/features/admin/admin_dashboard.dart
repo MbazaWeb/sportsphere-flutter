@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/theme/colors.dart';
 import '../../../core/admin/app_admin.dart';
 import '../../../features/auth/presentation/auth_controller.dart';
-import '../../scores/presentation/admin_live_control.dart';
+import '../scores/presentation/admin_live_control.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ADMIN DASHBOARD — full-screen admin panel for sportsphere.app@sportsphere.com
@@ -49,20 +50,20 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard>
   Future<void> _loadStats() async {
     setState(() => _statsLoading = true);
     try {
-      final results = await Future.wait([
-        _sb.from('User').select('id', const FetchOptions(count: CountOption.exact, head: true)),
-        _sb.from('Post').select('id', const FetchOptions(count: CountOption.exact, head: true)),
-        _sb.from('Match').select('id', const FetchOptions(count: CountOption.exact, head: true)),
-        _sb.from('NewsItem').select('id', const FetchOptions(count: CountOption.exact, head: true)),
-        _sb.from('Team').select('id', const FetchOptions(count: CountOption.exact, head: true)),
+      final counts = await Future.wait([
+        _sb.from('User').select('id').then((r) => (r as List).length),
+        _sb.from('Post').select('id').then((r) => (r as List).length),
+        _sb.from('Match').select('id').then((r) => (r as List).length),
+        _sb.from('NewsItem').select('id').then((r) => (r as List).length),
+        _sb.from('Team').select('id').then((r) => (r as List).length),
       ]);
       if (mounted) {
         setState(() {
-          _totalUsers = (results[0] as PostgrestResponse).count ?? 0;
-          _totalPosts = (results[1] as PostgrestResponse).count ?? 0;
-          _totalMatches = (results[2] as PostgrestResponse).count ?? 0;
-          _totalNews = (results[3] as PostgrestResponse).count ?? 0;
-          _totalTeams = (results[4] as PostgrestResponse).count ?? 0;
+          _totalUsers   = counts[0];
+          _totalPosts   = counts[1];
+          _totalMatches = counts[2];
+          _totalNews    = counts[3];
+          _totalTeams   = counts[4];
           _statsLoading = false;
         });
       }
