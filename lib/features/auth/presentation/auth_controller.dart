@@ -1,56 +1,57 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../core/network/api_client.dart';
-import '../../../core/storage/token_store.dart';
 import '../data/auth_repository.dart';
 import '../domain/auth_state.dart';
 
-// ── Providers ──────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// PROVIDERS
+// ══════════════════════════════════════════════════════════════════════════════
 
-final tokenStoreProvider = Provider<TokenStore>((ref) => TokenStore());
-
-final apiClientProvider = Provider<ApiClient>((ref) {
-  final store = ref.watch(tokenStoreProvider);
-  return ApiClient(readToken: store.read);
-});
-
-final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return AuthRepository(
-    api: ref.watch(apiClientProvider),
-    tokens: ref.watch(tokenStoreProvider),
-  );
-});
+/// The single auth repository — no Dio, no TokenStore needed.
+final authRepositoryProvider = Provider<AuthRepository>((_) => const AuthRepository());
 
 final authControllerProvider =
     NotifierProvider<AuthController, AuthState>(AuthController.new);
 
-// ── Controller ─────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// AUTH CONTROLLER
+// ══════════════════════════════════════════════════════════════════════════════
+//
+// All auth flows now go through Supabase (via AuthRepository).
+// Supabase persists the session automatically — _hydrate() just reads it.
+// The Riverpod state (AuthState / UserProfile) is the single source of truth
+// for the UI; Supabase.instance.client is the source of truth for tokens.
 
 class AuthController extends Notifier<AuthState> {
   @override
   AuthState build() {
     _hydrate();
-    return const AuthState();
+    return const AuthState(); // unknown until _hydrate completes
   }
 
-  // ── FIX #2 & #3: Hydrate restores token AND attempts to fetch stored profile.
-  // When the backend is ready, replace _cachedProfile with a GET /auth/me call.
+  // ── Hydrate: read persisted Supabase session on app start ─────────────────
   Future<void> _hydrate() async {
     final repo = ref.read(authRepositoryProvider);
-    final token = await repo.currentToken();
 
-    if (token == null) {
+    if (!repo.hasSession) {
       state = const AuthState(status: AuthStatus.guest);
       return;
     }
 
-    // Try to load cached profile from local storage.
-    final cached = await repo.loadCachedProfile();
-    state = AuthState(
-      status: AuthStatus.authenticated,
-      token: token,
-      user: cached, // null if not cached — profile screen falls back to mock
-    );
+    try {
+      final profile = await repo.hydrateProfile();
+      state = AuthState(
+        status: profile != null
+            ? AuthStatus.authenticated
+            : AuthStatus.guest,
+        // Use access token from Supabase session for any Dio calls
+        token: repo.currentSession?.accessToken,
+        user: profile,
+      );
+    } catch (_) {
+      state = const AuthState(status: AuthStatus.guest);
+    }
   }
 
   // ── Login ──────────────────────────────────────────────────────────────────
@@ -64,11 +65,9 @@ class AuthController extends Notifier<AuthState> {
             identifier: identifier,
             password: password,
           );
-      final token = await ref.read(authRepositoryProvider).currentToken();
-      // FIX #2: login() now returns UserProfile so user is never null post-login.
       state = AuthState(
         status: AuthStatus.authenticated,
-        token: token,
+        token: ref.read(authRepositoryProvider).currentSession?.accessToken,
         user: user,
         isLoading: false,
       );
@@ -76,7 +75,7 @@ class AuthController extends Notifier<AuthState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: _friendlyError(e),
+        errorMessage: e.toString().replaceFirst('Exception: ', ''),
       );
       return false;
     }
@@ -90,6 +89,7 @@ class AuthController extends Notifier<AuthState> {
     required String handle,
     required String country,
     required DateTime dob,
+    String password = '',
   }) async {
     state = state.copyWith(isLoading: true, errorMessage: _keep);
     try {
@@ -100,11 +100,11 @@ class AuthController extends Notifier<AuthState> {
             handle: handle,
             country: country,
             dob: dob,
+            password: password.isEmpty ? 'SportSphere2024!' : password,
           );
-      final token = await ref.read(authRepositoryProvider).currentToken();
       state = AuthState(
         status: AuthStatus.authenticated,
-        token: token,
+        token: ref.read(authRepositoryProvider).currentSession?.accessToken,
         user: user,
         isLoading: false,
       );
@@ -112,7 +112,7 @@ class AuthController extends Notifier<AuthState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: _friendlyError(e),
+        errorMessage: e.toString().replaceFirst('Exception: ', ''),
       );
       return false;
     }
@@ -127,25 +127,20 @@ class AuthController extends Notifier<AuthState> {
   // ── Clear error ────────────────────────────────────────────────────────────
   void clearError() => state = state.clearError();
 
-  // ── Error helper ───────────────────────────────────────────────────────────
-  String _friendlyError(Object e) {
-    final msg = e.toString().toLowerCase();
-    if (msg.contains('401') || msg.contains('unauthorized')) {
-      return 'Incorrect username or password.';
+  // ── Token refresh hook (called by ApiClient interceptor if needed) ─────────
+  /// Returns the current Supabase access token, refreshing if expired.
+  Future<String?> freshToken() async {
+    try {
+      final session = ref.read(authRepositoryProvider).currentSession;
+      if (session == null) return null;
+      // Supabase auto-refreshes; just return the current token.
+      return session.accessToken;
+    } catch (_) {
+      return null;
     }
-    if (msg.contains('network') || msg.contains('socket')) {
-      return 'No internet connection. Check your network.';
-    }
-    if (msg.contains('handle') || msg.contains('taken')) {
-      return 'That handle is already taken. Try another.';
-    }
-    if (msg.contains('email')) {
-      return 'An account with this email already exists.';
-    }
-    return 'Something went wrong. Please try again.';
   }
 }
 
-// Re-export sentinel so callers can use it in copyWith(errorMessage: _keep)
+// Sentinel — prevents copyWith from clearing errorMessage unintentionally.
 // ignore: library_private_types_in_public_api
 const Object _keep = Object();

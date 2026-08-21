@@ -1,13 +1,24 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/config/env.dart';
 import 'api_exception.dart';
 import 'auth_interceptor.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ApiClient — Dio wrapper for REST endpoints outside Supabase.
+//
+// The token reader now pulls from Supabase.instance.client.auth.currentSession
+// so the Bearer header always carries the current Supabase JWT.
+// ─────────────────────────────────────────────────────────────────────────────
+
+String? _supabaseToken() =>
+    Supabase.instance.client.auth.currentSession?.accessToken;
+
 class ApiClient {
   ApiClient({
-    required TokenReader readToken,
+    TokenReader? readToken,
     Dio? dio,
   }) : _dio = dio ??
             Dio(
@@ -21,12 +32,12 @@ class ApiClient {
                 },
               ),
             ) {
-    _dio.interceptors.add(AuthInterceptor(readToken));
-    // Only log in debug builds — never in production
+    // Use Supabase token by default; allow injection for tests.
+    _dio.interceptors
+        .add(AuthInterceptor(readToken ?? () async => _supabaseToken()));
     if (kDebugMode) {
-      _dio.interceptors.add(
-        LogInterceptor(requestBody: false, responseBody: false),
-      );
+      _dio.interceptors
+          .add(LogInterceptor(requestBody: false, responseBody: false));
     }
   }
 
@@ -34,30 +45,23 @@ class ApiClient {
 
   Dio get raw => _dio;
 
-  Future<Response<T>> get<T>(
-    String path, {
-    Map<String, dynamic>? query,
-  }) {
-    return _guard(() => _dio.get<T>(path, queryParameters: query));
-  }
+  Future<Response<T>> get<T>(String path,
+      {Map<String, dynamic>? query}) =>
+      _guard(() => _dio.get<T>(path, queryParameters: query));
 
-  Future<Response<T>> post<T>(String path, {Object? data}) {
-    return _guard(() => _dio.post<T>(path, data: data));
-  }
+  Future<Response<T>> post<T>(String path, {Object? data}) =>
+      _guard(() => _dio.post<T>(path, data: data));
 
-  Future<Response<T>> put<T>(String path, {Object? data}) {
-    return _guard(() => _dio.put<T>(path, data: data));
-  }
+  Future<Response<T>> put<T>(String path, {Object? data}) =>
+      _guard(() => _dio.put<T>(path, data: data));
 
-  Future<Response<T>> delete<T>(String path) {
-    return _guard(() => _dio.delete<T>(path));
-  }
+  Future<Response<T>> delete<T>(String path) =>
+      _guard(() => _dio.delete<T>(path));
 
   Future<Response<T>> _guard<T>(Future<Response<T>> Function() run) async {
     try {
       return await run();
     } on DioException catch (e) {
-      // 401 — token expired, caller should handle sign-out / refresh
       if (e.response?.statusCode == 401) {
         throw ApiException(
           message: 'Session expired. Please log in again.',
