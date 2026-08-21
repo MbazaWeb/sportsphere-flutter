@@ -2,10 +2,13 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../../shared/profile_widgets.dart';
+import '../../presentation/edit_profile_sheet.dart';
+import '../../../auth/presentation/auth_controller.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MODEL
@@ -296,10 +299,11 @@ class _ProfileHeader extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    _FanOfBadge(
-                      teamName: profile.fanOf,
-                      accent: profile.fanOfAccent,
-                    ),
+                    if (profile.fanOf.isNotEmpty)
+                      _FanOfBadge(
+                        teamName: profile.fanOf,
+                        accent: profile.fanOfAccent,
+                      ),
                   ],
                 ),
               ),
@@ -623,19 +627,24 @@ class _ActionButtons extends StatelessWidget {
   }
 }
 
-class _EditProfileButton extends StatelessWidget {
+class _EditProfileButton extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authControllerProvider).user;
     return GestureDetector(
-      onTap: () {},
+      onTap: () {
+        if (user != null) {
+          showEditProfileSheet(context, user);
+        }
+      },
       child: Container(
         width: double.infinity,
         height: 40,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          color: Colors.white.withOpacity(0.06),
+          color: Colors.white.withValues(alpha: 0.06),
           border: Border.all(
-            color: Colors.white.withOpacity(0.15),
+            color: Colors.white.withValues(alpha: 0.15),
           ),
         ),
         child: const Center(
@@ -790,13 +799,14 @@ class _AboutTab extends StatelessWidget {
           title: 'Details',
           child: Column(
             children: [
-              _AboutRow(
-                icon: Icons.favorite_rounded,
-                iconColor: profile.fanOfAccent,
-                label: 'Fan of',
-                value: profile.fanOf,
-                valueColor: profile.fanOfAccent,
-              ),
+              if (profile.fanOf.isNotEmpty)
+                _AboutRow(
+                  icon: Icons.favorite_rounded,
+                  iconColor: profile.fanOfAccent,
+                  label: 'Fan of',
+                  value: profile.fanOf,
+                  valueColor: profile.fanOfAccent,
+                ),
               _AboutRow(
                 icon: Icons.sports_soccer_rounded,
                 iconColor: SportSphereColors.electricBlue,

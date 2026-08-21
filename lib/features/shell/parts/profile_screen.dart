@@ -27,7 +27,7 @@ class _ProfileScreen extends ConsumerWidget {
       lastName: user.lastName,
       handle: user.handle,
       email: user.email,
-      fanOf: 'SportSphere',
+      fanOf: '',        // empty until user chooses a team via Edit Profile
       fanOfAccent: SportSphereColors.electricBlue,
       bio: user.bio,
       sport: 'Football',
