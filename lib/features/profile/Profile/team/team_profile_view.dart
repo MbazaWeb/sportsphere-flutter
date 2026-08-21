@@ -125,185 +125,6 @@ class TeamProfileModel {
       squad.where((m) => m.role == SquadRole.staff).toList();
 }
 
-// ── Mock: Simba SC ─────────────────────────────────────────────────────────────
-
-final mockSimbaSC = TeamProfileModel(
-  name: 'Simba SC',
-  handle: 'simbasc',
-  sport: 'Football',
-  competition: 'Tanzania Premier League',
-  country: 'Tanzania',
-  city: 'Dar es Salaam',
-  stadium: 'Benjamin Mkapa Stadium',
-  founded: 1936,
-  coach: 'Sergio Traguil',
-  description:
-      'Simba Sports Club is a professional football club based in Dar es Salaam, Tanzania. Founded in 1936, Simba SC is one of the most successful clubs in East African football and holds the record for most Tanzania Premier League titles.',
-  accentColor: const Color(0xFFE31B23),
-  postCount: 1240,
-  fanCount: 890000,
-  followingCount: 48,
-  logoAsset: 'assets/images/sport_sphere_icon.png',
-  isVerified: true,
-  joinedDate: DateTime(2023, 6, 1),
-  squad: const [
-    // Players
-    SquadMember(
-      name: 'Clatous Chama',
-      handle: 'clatouschama',
-      role: SquadRole.player,
-      subrole: 'Forward',
-      squadNumber: 11,
-      nationality: 'Zambian',
-      profileRoute: '/player/clatouschama',
-    ),
-    SquadMember(
-      name: 'John Bocco',
-      handle: 'johnbocco',
-      role: SquadRole.player,
-      subrole: 'Forward',
-      squadNumber: 9,
-      nationality: 'Tanzanian',
-      profileRoute: '/player/johnbocco',
-    ),
-    SquadMember(
-      name: 'Aishi Manula',
-      handle: 'aishimanula',
-      role: SquadRole.player,
-      subrole: 'Goalkeeper',
-      squadNumber: 1,
-      nationality: 'Tanzanian',
-      profileRoute: '/player/aishimanula',
-    ),
-    SquadMember(
-      name: 'Jonas Mkude',
-      handle: 'jonasmkude',
-      role: SquadRole.player,
-      subrole: 'Midfielder',
-      squadNumber: 8,
-      nationality: 'Tanzanian',
-      profileRoute: '/player/jonasmkude',
-    ),
-    SquadMember(
-      name: 'Pascal Wawa',
-      handle: 'pascalwawa',
-      role: SquadRole.player,
-      subrole: 'Defender',
-      squadNumber: 5,
-      nationality: 'Tanzanian',
-      profileRoute: '/player/pascalwawa',
-    ),
-    SquadMember(
-      name: 'Gnamien Koffi',
-      handle: 'koffi',
-      role: SquadRole.player,
-      subrole: 'Midfielder',
-      squadNumber: 7,
-      nationality: 'Ivorian',
-      profileRoute: '/player/koffi',
-    ),
-    // Coaches
-    SquadMember(
-      name: 'Sergio Traguil',
-      handle: 'traguil',
-      role: SquadRole.coach,
-      subrole: 'Head Coach',
-      nationality: 'Portuguese',
-    ),
-    SquadMember(
-      name: 'Mohamed Mrisho',
-      handle: 'mrisho',
-      role: SquadRole.coach,
-      subrole: 'Assistant Coach',
-      nationality: 'Tanzanian',
-    ),
-    // Staff
-    SquadMember(
-      name: 'Dr. Hassan Ally',
-      handle: 'drhassan',
-      role: SquadRole.staff,
-      subrole: 'Team Doctor',
-    ),
-    SquadMember(
-      name: 'James Otieno',
-      handle: 'otieno',
-      role: SquadRole.staff,
-      subrole: 'Physiotherapist',
-    ),
-  ],
-  seasonStats: const [
-    TeamSeasonStats(
-      season: '2026/27',
-      competition: 'Tanzania Premier League',
-      matches: 22,
-      wins: 15,
-      draws: 4,
-      losses: 3,
-      goalsFor: 48,
-      goalsAgainst: 19,
-      cleanSheets: 9,
-      leaguePosition: 1,
-    ),
-    TeamSeasonStats(
-      season: '2025/26',
-      competition: 'Tanzania Premier League',
-      matches: 30,
-      wins: 22,
-      draws: 5,
-      losses: 3,
-      goalsFor: 67,
-      goalsAgainst: 24,
-      cleanSheets: 14,
-      leaguePosition: 1,
-    ),
-  ],
-);
-
-// ── Mock team posts ────────────────────────────────────────────────────────────
-
-final _teamPosts = <ProfilePost>[
-  const ProfilePost(
-    text: 'Big match tonight! Ready for the challenge. 🦁🔴\nSimba family — make some noise!',
-    hashtags: ['#SimbaSC', '#NguVuMoja'],
-    timeAgo: '2h',
-    likes: 5200,
-    comments: 368,
-    shares: 280,
-    hasImage: true,
-    imageCount: 2,
-  ),
-  const ProfilePost(
-    text: 'Training complete. The squad is focused and ready for Sunday. 💪',
-    hashtags: ['#Simba', '#TrainingDay'],
-    timeAgo: '1d',
-    likes: 3800,
-    comments: 212,
-    shares: 140,
-    hasImage: true,
-    imageCount: 1,
-  ),
-  const ProfilePost(
-    text: 'FULL TIME! Three points secured. Magnificent performance from the whole squad! 🏆',
-    hashtags: ['#SimbaSC', '#WekunduWaMsimbazi'],
-    timeAgo: '3d',
-    likes: 12400,
-    comments: 891,
-    shares: 620,
-    hasImage: true,
-    imageCount: 1,
-    hasVideo: true,
-  ),
-  const ProfilePost(
-    text: 'Congratulations to our fans — you are the 12th player. Asante sana! ❤️',
-    hashtags: ['#SimbaNation'],
-    timeAgo: '5d',
-    likes: 8900,
-    comments: 445,
-    shares: 310,
-    hasImage: false,
-  ),
-];
-
 // ══════════════════════════════════════════════════════════════════════════════
 // SCREEN
 // ══════════════════════════════════════════════════════════════════════════════
@@ -834,17 +655,24 @@ class _SportlightsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(0, 8, 0, 120),
-      itemCount: _teamPosts.length,
-      itemBuilder: (_, i) => ProfilePostCard(
-        post: _teamPosts[i],
-        authorName: profile.name,
-        authorHandle: profile.atHandle,
-        authorAvatarAsset: profile.logoAsset,
-        isVerified: profile.isVerified,
-        accentColor: profile.accentColor,
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.bolt_rounded, size: 48,
+                color: profile.accentColor.withValues(alpha: 0.35)),
+            const SizedBox(height: 16),
+            const Text('No posts yet',
+                style: TextStyle(color: SportSphereColors.white,
+                    fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Text('Posts from \${profile.name} will appear here.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: SportSphereColors.muted, fontSize: 14)),
+          ],
+        ),
       ),
     );
   }

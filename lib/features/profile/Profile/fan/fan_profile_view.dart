@@ -70,66 +70,6 @@ class FanProfileModel {
 }
 
 // ── Mock data for own profile ──────────────────────────────────────────────────
-final mockOwnFanProfile = FanProfileModel(
-  firstName: 'Mbaza',
-  lastName: '',
-  handle: 'mbaza',
-  fanOf: 'Simba SC',
-  fanOfAccent: const Color(0xFFE31B23),
-  bio: 'Mshabiki wa kweli wa Simba SC 🦁🔴. Football is life.',
-  sport: 'Football',
-  location: 'Dar es Salaam, Tanzania',
-  joinedDate: DateTime(2024, 3, 1),
-  postCount: 48,
-  followerCount: 1200,
-  followingCount: 180,
-  avatarAsset: 'assets/images/sport_sphere_icon.png',
-  isVerified: true,
-  isOwnProfile: true,
-);
-
-// ── Mock posts — now uses shared ProfilePost (fix #6) ─────────────────────────
-final _mockFanPosts = <ProfilePost>[
-  const ProfilePost(
-    text: 'Simba iko tayari kwa mchezo mkubwa! 🔥🦁',
-    hashtags: ['#NguVuMoja'],
-    timeAgo: '2h',
-    likes: 124,
-    comments: 18,
-    shares: 32,
-    hasImage: true,
-    imageCount: 1,
-  ),
-  const ProfilePost(
-    text: 'Vibe ya Msimbazi juzi ilikuwa ya kipekee! Asante mashabiki wetu wa nguvu! ❤️',
-    hashtags: ['#WekunduWaMsimbazi'],
-    timeAgo: '1d',
-    likes: 96,
-    comments: 12,
-    shares: 21,
-    hasImage: true,
-    imageCount: 2,
-    hasVideo: true,
-  ),
-  const ProfilePost(
-    text: 'Next game, next mission. Tunasonga mbele! 💪⚽',
-    hashtags: ['#SimbaSC'],
-    timeAgo: '3d',
-    likes: 58,
-    comments: 7,
-    shares: 11,
-  ),
-  const ProfilePost(
-    text: 'Derby ya Kariakoo kesho — moyo wangu uko tayari. Simba daima! 🏆',
-    hashtags: ['#KarikarooDerby', '#SimbaSC'],
-    timeAgo: '5d',
-    likes: 201,
-    comments: 34,
-    shares: 44,
-    hasImage: true,
-    imageCount: 1,
-  ),
-];
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SCREEN
@@ -853,7 +793,7 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
 // SPOTLIGHTS FEED TAB
 // ══════════════════════════════════════════════════════════════════════════════
 
-// ── Spotlights feed — uses shared ProfilePostCard (fix #6) ────────────────────
+// ── Spotlights feed — real posts loaded from Supabase via ProfileLoader ───────
 
 class _SportlightsFeed extends StatelessWidget {
   final FanProfileModel profile;
@@ -861,17 +801,40 @@ class _SportlightsFeed extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(0, 8, 0, 120),
-      itemCount: _mockFanPosts.length,
-      itemBuilder: (_, i) => ProfilePostCard(
-        post: _mockFanPosts[i],
-        authorName: profile.displayName,
-        authorHandle: profile.atHandle,
-        authorAvatarAsset: profile.avatarAsset,
-        isVerified: profile.isVerified,
-        accentColor: profile.fanOfAccent,
+    // Posts are loaded by the parent ProfileLoader / RoleProfileShell.
+    // Until the post-list widget is wired to Supabase, show an empty state
+    // so no fake content appears.
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.bolt_rounded,
+              size: 48,
+              color: profile.fanOfAccent.withValues(alpha: 0.35),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'No posts yet',
+              style: TextStyle(
+                color: SportSphereColors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Posts from ${profile.displayName} will appear here.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: SportSphereColors.muted,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

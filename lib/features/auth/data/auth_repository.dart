@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'test_accounts.dart';
 import '../domain/auth_state.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -43,16 +42,11 @@ class AuthRepository {
     required String identifier,
     required String password,
   }) async {
+    // Accept handle or email — handle → email@sportsphere.test convention
     final clean = identifier.trim().toLowerCase().replaceAll('@', '');
-
-    // Demo account support: match handle or email
-    final demo = findTestAccount(clean, password) ??
-        findTestAccount('$clean@sportsphere.test', password);
-
-    // Determine email to use for Supabase signIn
-    final email = clean.contains('@')
-        ? clean
-        : (demo?.email ?? '$clean@sportsphere.test');
+    final email = clean.contains('.') || clean.contains('@')
+        ? identifier.trim().toLowerCase()
+        : '$clean@sportsphere.test';
 
     try {
       final res = await _sb.auth.signInWithPassword(
@@ -63,18 +57,7 @@ class AuthRepository {
       if (user == null) throw AuthException('Sign-in returned no user.');
       return await _fetchProfile(user.id);
     } on AuthException catch (e) {
-      // Network/offline: if demo account, return offline profile
-      if (demo != null) {
-        debugPrint('[Auth] offline demo login: ${demo.handle}');
-        return _demoProfile(demo);
-      }
       throw _friendly(e);
-    } catch (e) {
-      if (demo != null) {
-        debugPrint('[Auth] offline demo fallback: ${demo.handle}');
-        return _demoProfile(demo);
-      }
-      rethrow;
     }
   }
 
@@ -219,16 +202,6 @@ class AuthRepository {
     );
   }
 
-  UserProfile _demoProfile(TestAccount demo) => UserProfile(
-        firstName: demo.firstName,
-        lastName: demo.lastName,
-        email: demo.email,
-        handle: demo.handle,
-        country: 'Tanzania',
-        dob: DateTime(1995, 6, 15),
-        joinedDate: DateTime(2024, 1, 1),
-        role: demo.role,
-      );
 
   Exception _friendly(AuthException e) {
     final m = e.message.toLowerCase();

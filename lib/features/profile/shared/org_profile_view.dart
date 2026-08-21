@@ -68,38 +68,6 @@ class OrgProfileModel {
   String get atHandle => '@$handle';
 }
 
-// ── Mock posts ─────────────────────────────────────────────────────────────────
-
-final _orgPosts = <ProfilePost>[
-  const ProfilePost(
-    text: 'Welcome to the official SportSphere page! Follow for updates, news and community content.',
-    hashtags: [],
-    timeAgo: '1h',
-    likes: 3420,
-    comments: 184,
-    shares: 96,
-    hasImage: true,
-    imageCount: 1,
-  ),
-  const ProfilePost(
-    text: 'Exciting announcements coming this season. Stay connected and be part of the journey.',
-    hashtags: ['#StayConnected'],
-    timeAgo: '2d',
-    likes: 1880,
-    comments: 72,
-    shares: 44,
-  ),
-  const ProfilePost(
-    text: 'Thank you to all our members and supporters for the incredible response. More to come! 🙏',
-    hashtags: [],
-    timeAgo: '5d',
-    likes: 2540,
-    comments: 118,
-    shares: 65,
-    hasImage: true,
-    imageCount: 2,
-  ),
-];
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SCREEN
@@ -436,17 +404,25 @@ class _OrgSportlightsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(0, 8, 0, 120),
-      itemCount: _orgPosts.length,
-      itemBuilder: (_, i) => ProfilePostCard(
-        post: _orgPosts[i],
-        authorName: profile.name,
-        authorHandle: profile.atHandle,
-        authorAvatarAsset: profile.logoAsset,
-        isVerified: profile.isVerified,
-        accentColor: profile.accentColor,
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.bolt_rounded, size: 48,
+                color: profile.accentColor.withValues(alpha: 0.35)),
+            const SizedBox(height: 16),
+            const Text('No posts yet',
+                style: TextStyle(color: SportSphereColors.white,
+                    fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Text('Posts from ${profile.name} will appear here.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: SportSphereColors.muted, fontSize: 14)),
+          ],
+        ),
       ),
     );
   }
