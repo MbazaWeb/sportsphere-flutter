@@ -20,12 +20,14 @@ class FcmService {
       final messaging = FirebaseMessaging.instance;
 
       // Request permission (iOS / Android 13+)
-      await messaging.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-        provisional: false,
-      );
+      await messaging
+          .requestPermission(
+            alert: true,
+            badge: true,
+            sound: true,
+            provisional: false,
+          )
+          .timeout(const Duration(seconds: 10));
 
       // Foreground presentation
       messaging.setForegroundNotificationPresentationOptions(
@@ -35,7 +37,7 @@ class FcmService {
       );
 
       // Get and register token
-      final token = await messaging.getToken();
+      final token = await messaging.getToken().timeout(const Duration(seconds: 10));
       if (token != null && token.isNotEmpty) {
         await registerToken(token, platform: Platform.isIOS ? 'ios' : 'android');
         debugPrint('FCM: token registered');

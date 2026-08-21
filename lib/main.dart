@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,15 +22,6 @@ Future<void> main() async {
     return;
   }
 
-  // Initialize Firebase first (required for FCM).
-  // Will be a no-op on web or if google-services.json is missing.
-  try {
-    // ignore: depend_on_referenced_packages
-    await Firebase.initializeApp();
-  } catch (e) {
-    debugPrint('Firebase init skipped (no config): $e');
-  }
-
   await Supabase.initialize(
     url: AppEnv.supabaseUrl,
     anonKey: AppEnv.supabaseAnonKey,
@@ -39,12 +32,30 @@ Future<void> main() async {
     ),
   );
 
-  // Drop stale / cross-project JWTs that cause REST 401 on profiles.
-  await _ensureValidSession();
-  await LocalNotificationService.instance.init();
-  await FcmService.instance.initAndRegister();
+  // Never block startup on optional services (Firebase, notifications,
+  // network validation) — a hang here leaves the app stuck on the splash.
+  unawaited(_initOptionalServices());
 
   runApp(const ProviderScope(child: SportSphereApp()));
+}
+
+Future<void> _initOptionalServices() async {
+  // Initialize Firebase (required for FCM). No-op if config is missing.
+  try {
+    await Firebase.initializeApp().timeout(const Duration(seconds: 8));
+  } catch (e) {
+    debugPrint('Firebase init skipped (no config): $e');
+    return;
+  }
+  await _ensureValidSession();
+  try {
+    await LocalNotificationService.instance
+        .init()
+        .timeout(const Duration(seconds: 8));
+  } catch (e) {
+    debugPrint('Local notifications init failed: $e');
+  }
+  await FcmService.instance.initAndRegister();
 }
 
 Future<void> _ensureValidSession() async {
@@ -53,7 +64,7 @@ Future<void> _ensureValidSession() async {
   if (session == null) return;
   try {
     // Validates access token against Auth API (not only local storage).
-    await client.auth.getUser();
+    await client.auth.getUser().timeout(const Duration(seconds: 8));
   } catch (_) {
     try {
       await client.auth.signOut(scope: SignOutScope.local);
