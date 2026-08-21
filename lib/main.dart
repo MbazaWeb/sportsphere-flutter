@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/app.dart' show SportSphereApp;
@@ -15,7 +14,6 @@ import 'package:firebase_core/firebase_core.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  Logger.level = kDebugMode ? Level.debug : Level.off;
 
   if (!AppEnv.isConfigured) {
     runApp(const _MissingConfigApp());
