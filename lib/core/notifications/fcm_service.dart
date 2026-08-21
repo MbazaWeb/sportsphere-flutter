@@ -7,7 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 ///
 /// Requires `firebase_core` and `firebase_messaging` packages plus
 /// platform config files (google-services.json / GoogleService-Info.plist).
-/// Edge Function `send-fcm` delivers using `FCM_SERVER_KEY` + `device_tokens`.
+/// Edge Function `send-fcm` delivers via FCM HTTP v1 + `device_tokens`.
 class FcmService {
   FcmService._();
   static final instance = FcmService._();
