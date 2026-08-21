@@ -108,6 +108,8 @@ class _SplashScreenState extends State<SplashScreen>
     _spinCtrl.stop();
     _exitCtrl.forward().then((_) {
       if (!mounted) return;
+      // Let the router redirect logic decide where to go
+      // based on auth state (home if logged in, login if guest)
       context.go('/home');
     });
   }

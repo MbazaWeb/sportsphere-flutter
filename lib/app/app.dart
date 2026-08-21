@@ -22,6 +22,13 @@ class SportSphereApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'SportSphere',
       debugShowCheckedModeBanner: false,
+      theme: ThemeData.dark().copyWith(
+        scaffoldBackgroundColor: const Color(0xFF020A14),
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFF009DFF),
+          surface: Color(0xFF0B1628),
+        ),
+      ),
       routerConfig: ref.watch(routerProvider),
     );
   }
@@ -224,9 +231,14 @@ String? _redirectLogic(Ref ref, GoRouterState state) {
   final auth = ref.read(authControllerProvider);
   final location = state.uri.toString();
 
-  // Still loading - show splash
+  // Still hydrating — hold on splash only, don't redirect other routes
   if (auth.status == AuthStatus.unknown) {
     return location == AppRoutes.splash ? null : AppRoutes.splash;
+  }
+
+  // Auth resolved — redirect away from splash
+  if (location == AppRoutes.splash) {
+    return auth.isAuthenticated ? AppRoutes.home : AppRoutes.login;
   }
 
   // Check if current route requires authentication
@@ -243,7 +255,6 @@ String? _redirectLogic(Ref ref, GoRouterState state) {
     return AppRoutes.home;
   }
 
-  // Allow navigation
   return null;
 }
 
