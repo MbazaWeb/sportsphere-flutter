@@ -18,8 +18,8 @@ class AppAdmin {
 
   static bool isAdminUser(UserProfile? user) {
     if (user == null) return false;
-    // Check by UID first (fastest, most reliable)
-    if (_adminUids.contains(user.id)) return true;
+    // Check by email first (most reliable without an id field)
+    if (user.email == 'sportsphere.app@sportsphere.com') return true;
     final handle = user.handle.replaceAll('@', '').toLowerCase();
     if (handle == kOfficialHandle ||
         handle == 'sportsphere' ||
