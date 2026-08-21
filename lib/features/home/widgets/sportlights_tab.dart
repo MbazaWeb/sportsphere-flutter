@@ -1985,6 +1985,34 @@ class _ActionRowState extends State<_ActionRow> {
   bool _following = false;
   bool _isFan = false;
   bool _joinedCommunity = false;
+  bool _stateLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInitialState();
+  }
+
+  Future<void> _loadInitialState() async {
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid == null) return;
+    try {
+      final target = await _resolveTargetId();
+      if (target == null) return;
+      final graph = SocialGraph();
+      final results = await Future.wait([
+        graph.isFollowing(uid, target),
+        if (_fanRoles.contains(widget.item.type)) graph.isFan(uid, target),
+      ]);
+      if (mounted) {
+        setState(() {
+          _following = results[0] as bool;
+          if (results.length > 1) _isFan = results[1] as bool;
+          _stateLoaded = true;
+        });
+      }
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -6,8 +6,10 @@ import { Shell } from './components/Shell'
 import { LoginPage } from './pages/LoginPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { UsersPage } from './pages/UsersPage'
+import { CreateUserPage } from './pages/CreateUserPage'
 import { SportSpherePage } from './pages/SportSpherePage'
 import { EntitiesPage } from './pages/EntitiesPage'
+import { NewsPage } from './pages/NewsPage'
 import { SyncPage } from './pages/SyncPage'
 import { ModerationPage } from './pages/ModerationPage'
 import { MatchesPage } from './pages/MatchesPage'
@@ -41,12 +43,14 @@ export default function App() {
       <Routes>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/users" element={<UsersPage />} />
+        <Route path="/create-user" element={<CreateUserPage />} />
         <Route path="/sportsphere" element={<SportSpherePage />} />
         <Route path="/entities" element={<EntitiesPage />} />
-        <Route path="/ai" element={<AiAssistantPage />} />
-        <Route path="/sync" element={<SyncPage />} />
-        <Route path="/moderation" element={<ModerationPage />} />
         <Route path="/matches" element={<MatchesPage />} />
+        <Route path="/news" element={<NewsPage />} />
+        <Route path="/ai" element={<AiAssistantPage />} />
+        <Route path="/moderation" element={<ModerationPage />} />
+        <Route path="/sync" element={<SyncPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Shell>

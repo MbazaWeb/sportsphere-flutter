@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/theme/colors.dart';
 import '../../../core/admin/app_admin.dart';
+import '../../../core/data/world_countries.dart';
+import '../../../core/data/social_repository.dart';
 import '../../../features/auth/presentation/auth_controller.dart';
 import '../scores/presentation/admin_live_control.dart';
 
@@ -1977,194 +1980,31 @@ Future<void> _showNewsCompose(BuildContext context,
   );
 }
 
-Future<void> _showCreateCompetition(BuildContext context) {
+Future<void> _showCreateCompetition(BuildContext context) async {
   final nameCtrl = TextEditingController();
-  final countryCtrl = TextEditingController();
   final seasonCtrl = TextEditingController();
+  final urlCtrl = TextEditingController();
+  final searchCtrl = TextEditingController();
   String sport = 'football';
+  String? selectedCountry;
+  String? logoUrl;
+  bool saving = false;
 
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: SportSphereColors.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
-    builder: (ctx) => Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 20,
-        bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-      ),
-      child: StatefulBuilder(
-        builder: (ctx, setLocal) => Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Create Competition',
-                style: TextStyle(
-                    color: SportSphereColors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 18)),
-            const SizedBox(height: 16),
-            _AdminField(controller: nameCtrl, label: 'Name'),
-            _AdminField(controller: countryCtrl, label: 'Country'),
-            _AdminField(controller: seasonCtrl, label: 'Season (e.g. 2025/26)'),
-            const Text('Sport',
-                style: TextStyle(color: SportSphereColors.muted, fontSize: 12)),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 8,
-              children: [
-                'football',
-                'basketball',
-                'netball',
-                'athletics',
-                'volleyball',
-                'rugby'
-              ]
-                  .map((s) => ChoiceChip(
-                        label: Text(s),
-                        selected: sport == s,
-                        selectedColor:
-                            SportSphereColors.electricBlue.withValues(alpha: 0.25),
-                        labelStyle: TextStyle(
-                            color: sport == s
-                                ? SportSphereColors.electricBlue
-                                : SportSphereColors.muted,
-                            fontSize: 12),
-                        onSelected: (_) => setLocal(() => sport = s),
-                      ))
-                  .toList(),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFB800),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                onPressed: () async {
-                  if (nameCtrl.text.trim().isEmpty) return;
-                  try {
-                    final id =
-                        'comp-${DateTime.now().millisecondsSinceEpoch}';
-                    await Supabase.instance.client.from('Competition').insert({
-                      'id': id,
-                      'name': nameCtrl.text.trim(),
-                      'sport': sport,
-                      'country': countryCtrl.text.trim(),
-                      'season': seasonCtrl.text.trim(),
-                      'created_at':
-                          DateTime.now().toUtc().toIso8601String(),
-                    });
-                    if (ctx.mounted) Navigator.pop(ctx);
-                  } catch (e) {
-                    // Table may not exist yet – still close & inform
-                    if (ctx.mounted) {
-                      ScaffoldMessenger.of(ctx).showSnackBar(
-                          SnackBar(content: Text('Competition: $e')));
-                      Navigator.pop(ctx);
-                    }
-                  }
-                },
-                child: const Text('Create Competition',
-                    style: TextStyle(fontWeight: FontWeight.w800)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
+  final _picker = ImagePicker();
+  final _social = SocialRepository();
 
-Future<void> _showCreateTeam(BuildContext context) {
-  final nameCtrl = TextEditingController();
-  final handleCtrl = TextEditingController();
-  final countryCtrl = TextEditingController();
-  final leagueCtrl = TextEditingController();
+  // Pre-load sport IDs
+  final sports = await Supabase.instance.client
+      .from('Sport')
+      .select('id,slug,name')
+      .eq('isActive', true);
+  String? sportId;
+  if (sports.isNotEmpty) {
+    sportId = (sports.first as Map)['id'] as String?;
+  }
 
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: SportSphereColors.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
-    builder: (ctx) => Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 20,
-        bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Create Team',
-              style: TextStyle(
-                  color: SportSphereColors.white,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 18)),
-          const SizedBox(height: 16),
-          _AdminField(controller: nameCtrl, label: 'Team name'),
-          _AdminField(controller: handleCtrl, label: 'Handle'),
-          _AdminField(controller: countryCtrl, label: 'Country'),
-          _AdminField(controller: leagueCtrl, label: 'League / Competition'),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF9B6DFF),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              onPressed: () async {
-                if (nameCtrl.text.trim().isEmpty) return;
-                try {
-                  final id = 'team-${DateTime.now().millisecondsSinceEpoch}';
-                  await Supabase.instance.client.from('Team').insert({
-                    'id': id,
-                    'name': nameCtrl.text.trim(),
-                    'handle': handleCtrl.text
-                        .trim()
-                        .replaceAll('@', '')
-                        .toLowerCase(),
-                    'country': countryCtrl.text.trim(),
-                    'league': leagueCtrl.text.trim(),
-                    'created_at':
-                        DateTime.now().toUtc().toIso8601String(),
-                  });
-                  if (ctx.mounted) Navigator.pop(ctx);
-                } catch (e) {
-                  if (ctx.mounted) {
-                    ScaffoldMessenger.of(ctx)
-                        .showSnackBar(SnackBar(content: Text('$e')));
-                  }
-                }
-              },
-              child: const Text('Create Team',
-                  style: TextStyle(fontWeight: FontWeight.w800)),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-Future<void> _showAddFixture(BuildContext context) {
-  final homeCtrl = TextEditingController();
-  final awayCtrl = TextEditingController();
-  final leagueCtrl = TextEditingController();
-  final venueCtrl = TextEditingController();
-  DateTime kickoff = DateTime.now().add(const Duration(days: 1));
-
-  return showModalBottomSheet<void>(
+  if (!context.mounted) return;
+  await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: SportSphereColors.surface,
@@ -2174,9 +2014,561 @@ Future<void> _showAddFixture(BuildContext context) {
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, setLocal) => Padding(
         padding: EdgeInsets.only(
-          left: 20,
-          right: 20,
-          top: 20,
+          left: 20, right: 20, top: 20,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Create Competition / League',
+                  style: TextStyle(
+                      color: SportSphereColors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18)),
+              const SizedBox(height: 16),
+              _AdminField(controller: nameCtrl, label: 'Name'),
+              const SizedBox(height: 8),
+              // Country dropdown
+              GestureDetector(
+                onTap: () async {
+                  await showModalBottomSheet<void>(
+                    context: ctx,
+                    isScrollControlled: true,
+                    backgroundColor: const Color(0xFF071422),
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+                    ),
+                    builder: (_) => StatefulBuilder(
+                      builder: (bCtx, bSet) => DraggableScrollableSheet(
+                        initialChildSize: 0.7,
+                        minChildSize: 0.4,
+                        maxChildSize: 0.9,
+                        expand: false,
+                        builder: (_, scrollCtrl) => Column(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                              child: TextField(
+                                controller: searchCtrl,
+                                style: const TextStyle(color: Colors.white),
+                                onChanged: (_) => bSet(() {}),
+                                decoration: InputDecoration(
+                                  hintText: 'Search countries...',
+                                  hintStyle: const TextStyle(color: Colors.white38),
+                                  filled: true,
+                                  fillColor: const Color(0xFF0B1626),
+                                  prefixIcon: const Icon(Icons.search_rounded, color: Colors.white54, size: 20),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                  isDense: true,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: ListView.builder(
+                                controller: scrollCtrl,
+                                itemCount: searchCountries(searchCtrl.text).length,
+                                itemBuilder: (_, i) {
+                                  final c = searchCountries(searchCtrl.text)[i];
+                                  final sel = selectedCountry == c.name;
+                                  return GestureDetector(
+                                    onTap: () {
+                                      setLocal(() => selectedCountry = c.name);
+                                      Navigator.pop(bCtx);
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+                                      color: sel ? SportSphereColors.electricBlue.withValues(alpha: 0.12) : Colors.transparent,
+                                      child: Row(
+                                        children: [
+                                          Text('${c.name}  ', style: TextStyle(
+                                            color: sel ? SportSphereColors.electricBlue : Colors.white,
+                                            fontWeight: sel ? FontWeight.w700 : FontWeight.w500, fontSize: 14,
+                                          )),
+                                          Text(c.code, style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                                          if (sel) ...[
+                                            const Spacer(),
+                                            const Icon(Icons.check_circle_rounded, color: SportSphereColors.electricBlue, size: 18),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: 'Country',
+                    labelStyle: const TextStyle(color: SportSphereColors.muted),
+                    filled: true,
+                    fillColor: const Color(0xFF0B1626),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    suffixIcon: const Icon(Icons.arrow_drop_down_rounded, color: Colors.white54),
+                  ),
+                  child: Text(
+                    selectedCountry ?? 'Select country',
+                    style: TextStyle(color: selectedCountry != null ? Colors.white : Colors.white38),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _AdminField(controller: seasonCtrl, label: 'Season (e.g. 2025/26)'),
+              _AdminField(controller: urlCtrl, label: 'Website URL (optional)'),
+              const SizedBox(height: 8),
+              // Logo upload
+              GestureDetector(
+                onTap: () async {
+                  final file = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+                  if (file == null) return;
+                  setLocal(() => saving = true);
+                  try {
+                    final url = await _social.uploadPickedFile(
+                      bucket: 'posts', folder: 'logos', file: file,
+                    );
+                    setLocal(() { logoUrl = url; saving = false; });
+                  } catch (e) {
+                    setLocal(() => saving = false);
+                    if (ctx.mounted) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Logo upload: $e')));
+                    }
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                  ),
+                  child: Row(
+                    children: [
+                      if (logoUrl != null) ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: Image.network(logoUrl!, width: 28, height: 28, fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_rounded, color: Colors.white38, size: 28)),
+                        ),
+                        const SizedBox(width: 10),
+                      ],
+                      Icon(Icons.upload_rounded, color: SportSphereColors.electricBlue, size: 20),
+                      const SizedBox(width: 8),
+                      Text(logoUrl != null ? 'Change logo' : 'Upload logo',
+                          style: TextStyle(color: logoUrl != null ? SportSphereColors.white : SportSphereColors.muted, fontSize: 13)),
+                      const Spacer(),
+                      if (saving) const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: SportSphereColors.electricBlue, strokeWidth: 2)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Sport', style: TextStyle(color: SportSphereColors.muted, fontSize: 12)),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 8,
+                children: (sports as List).map((s) {
+                  final sMap = s as Map;
+                  final slug = sMap['slug'] as String? ?? '';
+                  final name = sMap['name'] as String? ?? slug;
+                  return ChoiceChip(
+                    label: Text(name),
+                    selected: sport == slug,
+                    selectedColor: SportSphereColors.electricBlue.withValues(alpha: 0.25),
+                    labelStyle: TextStyle(
+                      color: sport == slug ? SportSphereColors.electricBlue : SportSphereColors.muted,
+                      fontSize: 12,
+                    ),
+                    onSelected: (_) {
+                      setLocal(() {
+                        sport = slug;
+                        sportId = sMap['id'] as String?;
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFB800),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  onPressed: saving ? null : () async {
+                    if (nameCtrl.text.trim().isEmpty) return;
+                    setLocal(() => saving = true);
+                    try {
+                      final slug = nameCtrl.text.trim()
+                          .toLowerCase().replaceAll(RegExp(r'\s+'), '-').replaceAll(RegExp(r'[^a-z0-9-]'), '');
+                      final countryCode = kWorldCountries
+                          .where((c) => c.name == selectedCountry)
+                          .map((c) => c.code)
+                          .firstOrNull;
+                      await Supabase.instance.client.from('"League"').insert({
+                        'name': nameCtrl.text.trim(),
+                        'slug': slug,
+                        'sportId': sportId,
+                        'country': selectedCountry,
+                        'countryCode': countryCode,
+                        'logoUrl': logoUrl,
+                        'type': 'competition',
+                        'season': seasonCtrl.text.trim(),
+                        'description': urlCtrl.text.trim().isNotEmpty ? 'Website: ${urlCtrl.text.trim()}' : null,
+                        'metadata': {'websiteUrl': urlCtrl.text.trim()},
+                        'source': 'admin',
+                      });
+                      if (ctx.mounted) Navigator.pop(ctx);
+                    } catch (e) {
+                      if (ctx.mounted) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(content: Text('Competition: $e')));
+                        setLocal(() => saving = false);
+                      }
+                    }
+                  },
+                  child: Text(saving ? 'Creating...' : 'Create Competition',
+                      style: const TextStyle(fontWeight: FontWeight.w800)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+Future<void> _showCreateTeam(BuildContext context) async {
+  final nameCtrl = TextEditingController();
+  final handleCtrl = TextEditingController();
+  final searchCtrl = TextEditingController();
+  final venueCtrl = TextEditingController();
+  String? selectedCountry;
+  String? selectedLeagueId;
+  String? selectedLeagueName;
+  String? logoUrl;
+  bool saving = false;
+
+  final _picker = ImagePicker();
+  final _social = SocialRepository();
+
+  // Pre-load leagues for dropdown
+  final leagues = await Supabase.instance.client
+      .from('"League"').select('id,name,slug').order('name').limit(100);
+
+  if (!context.mounted) return;
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: SportSphereColors.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setLocal) => Padding(
+        padding: EdgeInsets.only(
+          left: 20, right: 20, top: 20,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Create Team',
+                  style: TextStyle(
+                      color: SportSphereColors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18)),
+              const SizedBox(height: 16),
+              _AdminField(controller: nameCtrl, label: 'Team name'),
+              _AdminField(controller: handleCtrl, label: 'Handle (auto-generated if empty)', hintText: 'e.g. simba-sc'),
+              const SizedBox(height: 8),
+              // Country dropdown
+              GestureDetector(
+                onTap: () async {
+                  await showModalBottomSheet<void>(
+                    context: ctx,
+                    isScrollControlled: true,
+                    backgroundColor: const Color(0xFF071422),
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+                    ),
+                    builder: (_) => StatefulBuilder(
+                      builder: (bCtx, bSet) => DraggableScrollableSheet(
+                        initialChildSize: 0.7,
+                        minChildSize: 0.4,
+                        maxChildSize: 0.9,
+                        expand: false,
+                        builder: (_, scrollCtrl) => Column(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                              child: TextField(
+                                controller: searchCtrl,
+                                style: const TextStyle(color: Colors.white),
+                                onChanged: (_) => bSet(() {}),
+                                decoration: InputDecoration(
+                                  hintText: 'Search countries...',
+                                  hintStyle: const TextStyle(color: Colors.white38),
+                                  filled: true,
+                                  fillColor: const Color(0xFF0B1626),
+                                  prefixIcon: const Icon(Icons.search_rounded, color: Colors.white54, size: 20),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                  isDense: true,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: ListView.builder(
+                                controller: scrollCtrl,
+                                itemCount: searchCountries(searchCtrl.text).length,
+                                itemBuilder: (_, i) {
+                                  final c = searchCountries(searchCtrl.text)[i];
+                                  final sel = selectedCountry == c.name;
+                                  return GestureDetector(
+                                    onTap: () {
+                                      setLocal(() => selectedCountry = c.name);
+                                      Navigator.pop(bCtx);
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+                                      color: sel ? SportSphereColors.electricBlue.withValues(alpha: 0.12) : Colors.transparent,
+                                      child: Row(
+                                        children: [
+                                          Text('${c.name}  ', style: TextStyle(
+                                            color: sel ? SportSphereColors.electricBlue : Colors.white,
+                                            fontWeight: sel ? FontWeight.w700 : FontWeight.w500, fontSize: 14,
+                                          )),
+                                          Text(c.code, style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                                          if (sel) ...[
+                                            const Spacer(),
+                                            const Icon(Icons.check_circle_rounded, color: SportSphereColors.electricBlue, size: 18),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: 'Country',
+                    labelStyle: const TextStyle(color: SportSphereColors.muted),
+                    filled: true,
+                    fillColor: const Color(0xFF0B1626),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    suffixIcon: const Icon(Icons.arrow_drop_down_rounded, color: Colors.white54),
+                  ),
+                  child: Text(
+                    selectedCountry ?? 'Select country',
+                    style: TextStyle(color: selectedCountry != null ? Colors.white : Colors.white38),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // League/Competition dropdown
+              if (leagues.isNotEmpty)
+                GestureDetector(
+                  onTap: () {
+                    showModalBottomSheet<void>(
+                      context: ctx,
+                      backgroundColor: const Color(0xFF071422),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+                      ),
+                      builder: (_) => DraggableScrollableSheet(
+                        initialChildSize: 0.5,
+                        minChildSize: 0.3,
+                        maxChildSize: 0.8,
+                        expand: false,
+                        builder: (_, scrollCtrl) => ListView.builder(
+                          controller: scrollCtrl,
+                          itemCount: (leagues as List).length,
+                          itemBuilder: (_, i) {
+                            final l = (leagues as List)[i] as Map;
+                            final name = l['name'] as String? ?? '';
+                            final sel = selectedLeagueId == l['id'];
+                            return GestureDetector(
+                              onTap: () {
+                                setLocal(() {
+                                  selectedLeagueId = l['id'] as String;
+                                  selectedLeagueName = name;
+                                });
+                                Navigator.pop(ctx);
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+                                color: sel ? SportSphereColors.electricBlue.withValues(alpha: 0.12) : Colors.transparent,
+                                child: Row(
+                                  children: [
+                                    Text(name, style: TextStyle(
+                                      color: sel ? SportSphereColors.electricBlue : Colors.white,
+                                      fontWeight: sel ? FontWeight.w700 : FontWeight.w500, fontSize: 14,
+                                    )),
+                                    if (sel) ...[
+                                      const Spacer(),
+                                      const Icon(Icons.check_circle_rounded, color: SportSphereColors.electricBlue, size: 18),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: 'League / Competition',
+                      labelStyle: const TextStyle(color: SportSphereColors.muted),
+                      filled: true,
+                      fillColor: const Color(0xFF0B1626),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      suffixIcon: const Icon(Icons.arrow_drop_down_rounded, color: Colors.white54),
+                    ),
+                    child: Text(
+                      selectedLeagueName ?? 'Select league',
+                      style: TextStyle(color: selectedLeagueName != null ? Colors.white : Colors.white38),
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 12),
+              _AdminField(controller: venueCtrl, label: 'Venue (optional)'),
+              const SizedBox(height: 8),
+              // Logo upload
+              GestureDetector(
+                onTap: () async {
+                  final file = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+                  if (file == null) return;
+                  setLocal(() => saving = true);
+                  try {
+                    final url = await _social.uploadPickedFile(
+                      bucket: 'posts', folder: 'team-logos', file: file,
+                    );
+                    setLocal(() { logoUrl = url; saving = false; });
+                  } catch (e) {
+                    setLocal(() => saving = false);
+                    if (ctx.mounted) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Logo upload: $e')));
+                    }
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                  ),
+                  child: Row(
+                    children: [
+                      if (logoUrl != null) ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: Image.network(logoUrl!, width: 28, height: 28, fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_rounded, color: Colors.white38, size: 28)),
+                        ),
+                        const SizedBox(width: 10),
+                      ],
+                      Icon(Icons.upload_rounded, color: const Color(0xFF9B6DFF), size: 20),
+                      const SizedBox(width: 8),
+                      Text(logoUrl != null ? 'Change logo' : 'Upload team logo',
+                          style: TextStyle(color: logoUrl != null ? SportSphereColors.white : SportSphereColors.muted, fontSize: 13)),
+                      const Spacer(),
+                      if (saving) const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Color(0xFF9B6DFF), strokeWidth: 2)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF9B6DFF),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  onPressed: saving ? null : () async {
+                    if (nameCtrl.text.trim().isEmpty) return;
+                    setLocal(() => saving = true);
+                    try {
+                      final slug = handleCtrl.text.trim().isNotEmpty
+                          ? handleCtrl.text.trim().replaceAll('@', '').toLowerCase()
+                          : nameCtrl.text.trim().toLowerCase().replaceAll(RegExp(r'\s+'), '-').replaceAll(RegExp(r'[^a-z0-9-]'), '');
+                      await Supabase.instance.client.from('"Team"').insert({
+                        'name': nameCtrl.text.trim(),
+                        'slug': slug,
+                        'shortName': nameCtrl.text.trim().split(' ').take(2).join(' '),
+                        'country': selectedCountry,
+                        'leagueId': selectedLeagueId,
+                        'logoUrl': logoUrl,
+                        'venue': venueCtrl.text.trim().isNotEmpty ? venueCtrl.text.trim() : null,
+                        'source': 'admin',
+                      });
+                      if (ctx.mounted) Navigator.pop(ctx);
+                    } catch (e) {
+                      if (ctx.mounted) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('$e')));
+                        setLocal(() => saving = false);
+                      }
+                    }
+                  },
+                  child: Text(saving ? 'Creating...' : 'Create Team',
+                      style: const TextStyle(fontWeight: FontWeight.w800)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+Future<void> _showAddFixture(BuildContext context) async {
+  String? homeTeamId;
+  String? homeTeamName;
+  String? awayTeamId;
+  String? awayTeamName;
+  String? selectedLeagueId;
+  String? selectedLeagueName;
+  final venueCtrl = TextEditingController();
+  final searchCtrl = TextEditingController();
+  DateTime kickoff = DateTime.now().add(const Duration(days: 1));
+
+  // Pre-load teams and leagues
+  final teams = await Supabase.instance.client
+      .from('"Team"').select('id,name,logoUrl').order('name').limit(200);
+  final leagues = await Supabase.instance.client
+      .from('"League"').select('id,name').order('name').limit(100);
+
+  if (!context.mounted) return;
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: SportSphereColors.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setLocal) => Padding(
+        padding: EdgeInsets.only(
+          left: 20, right: 20, top: 20,
           bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
         ),
         child: SingleChildScrollView(
@@ -2190,23 +2582,251 @@ Future<void> _showAddFixture(BuildContext context) {
                       fontWeight: FontWeight.w900,
                       fontSize: 18)),
               const SizedBox(height: 16),
-              _AdminField(controller: homeCtrl, label: 'Home team'),
-              _AdminField(controller: awayCtrl, label: 'Away team'),
-              _AdminField(
-                  controller: leagueCtrl, label: 'Competition / League'),
+              // Home team dropdown
+              GestureDetector(
+                onTap: () {
+                  showModalBottomSheet<void>(
+                    context: ctx,
+                    backgroundColor: const Color(0xFF071422),
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+                    ),
+                    builder: (_) => StatefulBuilder(
+                      builder: (bCtx, bSet) => Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                            child: Text('Select Home Team', style: TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                            child: TextField(
+                              controller: searchCtrl,
+                              style: const TextStyle(color: Colors.white),
+                              onChanged: (_) => bSet(() {}),
+                              decoration: InputDecoration(
+                                hintText: 'Search teams...',
+                                hintStyle: const TextStyle(color: Colors.white38),
+                                filled: true,
+                                fillColor: const Color(0xFF0B1626),
+                                prefixIcon: const Icon(Icons.search_rounded, color: Colors.white54, size: 20),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                isDense: true,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: _searchList(teams, searchCtrl.text, 'name').length,
+                              itemBuilder: (_, i) {
+                                final t = _searchList(teams, searchCtrl.text, 'name')[i];
+                                final name = t['name'] as String? ?? '';
+                                final sel = homeTeamId == t['id'];
+                                return GestureDetector(
+                                  onTap: () {
+                                    setLocal(() {
+                                      homeTeamId = t['id'] as String;
+                                      homeTeamName = name;
+                                    });
+                                    Navigator.pop(ctx);
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+                                    color: sel ? SportSphereColors.sportGreen.withValues(alpha: 0.12) : Colors.transparent,
+                                    child: Row(
+                                      children: [
+                                        Text(name, style: TextStyle(
+                                          color: sel ? SportSphereColors.sportGreen : Colors.white,
+                                          fontWeight: sel ? FontWeight.w700 : FontWeight.w500, fontSize: 14,
+                                        )),
+                                        if (sel) ...[
+                                          const Spacer(),
+                                          const Icon(Icons.check_circle_rounded, color: SportSphereColors.sportGreen, size: 18),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: 'Home Team',
+                    labelStyle: const TextStyle(color: SportSphereColors.muted),
+                    filled: true, fillColor: const Color(0xFF0B1626),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    suffixIcon: const Icon(Icons.arrow_drop_down_rounded, color: Colors.white54),
+                  ),
+                  child: Text(homeTeamName ?? 'Select home team',
+                      style: TextStyle(color: homeTeamName != null ? Colors.white : Colors.white38)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Away team dropdown
+              GestureDetector(
+                onTap: () {
+                  searchCtrl.clear();
+                  showModalBottomSheet<void>(
+                    context: ctx,
+                    backgroundColor: const Color(0xFF071422),
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+                    ),
+                    builder: (_) => StatefulBuilder(
+                      builder: (bCtx, bSet) => Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                            child: Text('Select Away Team', style: TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                            child: TextField(
+                              controller: searchCtrl,
+                              style: const TextStyle(color: Colors.white),
+                              onChanged: (_) => bSet(() {}),
+                              decoration: InputDecoration(
+                                hintText: 'Search teams...',
+                                hintStyle: const TextStyle(color: Colors.white38),
+                                filled: true, fillColor: const Color(0xFF0B1626),
+                                prefixIcon: const Icon(Icons.search_rounded, color: Colors.white54, size: 20),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                isDense: true,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: _searchList(teams, searchCtrl.text, 'name').length,
+                              itemBuilder: (_, i) {
+                                final t = _searchList(teams, searchCtrl.text, 'name')[i];
+                                final name = t['name'] as String? ?? '';
+                                final sel = awayTeamId == t['id'];
+                                return GestureDetector(
+                                  onTap: () {
+                                    setLocal(() {
+                                      awayTeamId = t['id'] as String;
+                                      awayTeamName = name;
+                                    });
+                                    Navigator.pop(ctx);
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+                                    color: sel ? SportSphereColors.sportGreen.withValues(alpha: 0.12) : Colors.transparent,
+                                    child: Row(
+                                      children: [
+                                        Text(name, style: TextStyle(
+                                          color: sel ? SportSphereColors.sportGreen : Colors.white,
+                                          fontWeight: sel ? FontWeight.w700 : FontWeight.w500, fontSize: 14,
+                                        )),
+                                        if (sel) ...[
+                                          const Spacer(),
+                                          const Icon(Icons.check_circle_rounded, color: SportSphereColors.sportGreen, size: 18),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: 'Away Team',
+                    labelStyle: const TextStyle(color: SportSphereColors.muted),
+                    filled: true, fillColor: const Color(0xFF0B1626),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    suffixIcon: const Icon(Icons.arrow_drop_down_rounded, color: Colors.white54),
+                  ),
+                  child: Text(awayTeamName ?? 'Select away team',
+                      style: TextStyle(color: awayTeamName != null ? Colors.white : Colors.white38)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // League/Competition dropdown
+              if (leagues.isNotEmpty)
+                GestureDetector(
+                  onTap: () {
+                    showModalBottomSheet<void>(
+                      context: ctx,
+                      backgroundColor: const Color(0xFF071422),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+                      ),
+                      builder: (_) => DraggableScrollableSheet(
+                        initialChildSize: 0.5, minChildSize: 0.3, maxChildSize: 0.8, expand: false,
+                        builder: (_, scrollCtrl) => ListView.builder(
+                          controller: scrollCtrl,
+                          itemCount: (leagues as List).length,
+                          itemBuilder: (_, i) {
+                            final l = (leagues as List)[i] as Map;
+                            final name = l['name'] as String? ?? '';
+                            final sel = selectedLeagueId == l['id'];
+                            return GestureDetector(
+                              onTap: () {
+                                setLocal(() {
+                                  selectedLeagueId = l['id'] as String;
+                                  selectedLeagueName = name;
+                                });
+                                Navigator.pop(ctx);
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+                                color: sel ? SportSphereColors.electricBlue.withValues(alpha: 0.12) : Colors.transparent,
+                                child: Row(
+                                  children: [
+                                    Text(name, style: TextStyle(
+                                      color: sel ? SportSphereColors.electricBlue : Colors.white,
+                                      fontWeight: sel ? FontWeight.w700 : FontWeight.w500, fontSize: 14,
+                                    )),
+                                    if (sel) ...[
+                                      const Spacer(),
+                                      const Icon(Icons.check_circle_rounded, color: SportSphereColors.electricBlue, size: 18),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: 'Competition / League',
+                      labelStyle: const TextStyle(color: SportSphereColors.muted),
+                      filled: true, fillColor: const Color(0xFF0B1626),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      suffixIcon: const Icon(Icons.arrow_drop_down_rounded, color: Colors.white54),
+                    ),
+                    child: Text(selectedLeagueName ?? 'Select competition',
+                        style: TextStyle(color: selectedLeagueName != null ? Colors.white : Colors.white38)),
+                  ),
+                ),
+              const SizedBox(height: 12),
               _AdminField(controller: venueCtrl, label: 'Venue'),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Kick-off',
-                    style: TextStyle(color: SportSphereColors.muted)),
+                title: const Text('Kick-off', style: TextStyle(color: SportSphereColors.muted)),
                 subtitle: Text(
                   '${kickoff.day}/${kickoff.month}/${kickoff.year}  ${kickoff.hour.toString().padLeft(2, '0')}:${kickoff.minute.toString().padLeft(2, '0')}',
-                  style: const TextStyle(
-                      color: SportSphereColors.white,
-                      fontWeight: FontWeight.w600),
+                  style: const TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w600),
                 ),
-                trailing: const Icon(Icons.calendar_today_rounded,
-                    color: SportSphereColors.electricBlue),
+                trailing: const Icon(Icons.calendar_today_rounded, color: SportSphereColors.electricBlue),
                 onTap: () async {
                   final date = await showDatePicker(
                     context: ctx,
@@ -2220,8 +2840,7 @@ Future<void> _showAddFixture(BuildContext context) {
                     initialTime: TimeOfDay.fromDateTime(kickoff),
                   );
                   if (time == null) return;
-                  setLocal(() => kickoff = DateTime(date.year, date.month,
-                      date.day, time.hour, time.minute));
+                  setLocal(() => kickoff = DateTime(date.year, date.month, date.day, time.hour, time.minute));
                 },
               ),
               const SizedBox(height: 16),
@@ -2232,17 +2851,12 @@ Future<void> _showAddFixture(BuildContext context) {
                     backgroundColor: SportSphereColors.sportGreen,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
-                  onPressed: () async {
-                    if (homeCtrl.text.trim().isEmpty ||
-                        awayCtrl.text.trim().isEmpty) return;
+                  onPressed: (homeTeamName == null || awayTeamName == null) ? null : () async {
                     try {
-                      final id =
-                          'match-${DateTime.now().millisecondsSinceEpoch}';
-                      await Supabase.instance.client.from('Match').insert({
-                        'id': id,
-                        'homeTeam': homeCtrl.text.trim(),
-                        'awayTeam': awayCtrl.text.trim(),
-                        'league': leagueCtrl.text.trim(),
+                      await Supabase.instance.client.from('"Match"').insert({
+                        'homeTeam': homeTeamName,
+                        'awayTeam': awayTeamName,
+                        'league': selectedLeagueName ?? '',
                         'venue': venueCtrl.text.trim(),
                         'kickoffAt': kickoff.toUtc().toIso8601String(),
                         'status': 'scheduled',
@@ -2252,13 +2866,11 @@ Future<void> _showAddFixture(BuildContext context) {
                       if (ctx.mounted) Navigator.pop(ctx);
                     } catch (e) {
                       if (ctx.mounted) {
-                        ScaffoldMessenger.of(ctx)
-                            .showSnackBar(SnackBar(content: Text('$e')));
+                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('$e')));
                       }
                     }
                   },
-                  child: const Text('Schedule Match',
-                      style: TextStyle(fontWeight: FontWeight.w800)),
+                  child: const Text('Schedule Match', style: TextStyle(fontWeight: FontWeight.w800)),
                 ),
               ),
             ],
@@ -2267,6 +2879,17 @@ Future<void> _showAddFixture(BuildContext context) {
       ),
     ),
   );
+}
+
+/// Helper to search a Supabase result list by a text field.
+List<Map<String, dynamic>> _searchList(dynamic data, String query, String field) {
+  final list = data as List;
+  if (query.isEmpty) return List<Map<String, dynamic>>.from(list);
+  final q = query.toLowerCase();
+  return list
+      .where((item) => ((item as Map)[field] as String? ?? '').toLowerCase().contains(q))
+      .cast<Map<String, dynamic>>()
+      .toList();
 }
 
 // ── Shared widgets ─────────────────────────────────────────────────────────────
@@ -2399,10 +3022,12 @@ class _ActionCard extends StatelessWidget {
 class _AdminField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
+  final String? hintText;
   final int maxLines;
   const _AdminField({
     required this.controller,
     required this.label,
+    this.hintText,
     this.maxLines = 1,
   });
 
@@ -2417,6 +3042,7 @@ class _AdminField extends StatelessWidget {
         decoration: InputDecoration(
           labelText: label,
           labelStyle: const TextStyle(color: SportSphereColors.muted),
+          hintText: hintText,
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide:
