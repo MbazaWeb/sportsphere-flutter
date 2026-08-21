@@ -9,7 +9,7 @@ import '../../features/auth/presentation/pages/register_screen.dart';
 import '../../features/profile/Profile/fan/fan_profile_view.dart';
 import '../../features/profile/Profile/player/player_profile_view.dart';
 import '../../features/profile/Profile/team/team_profile_view.dart';
-import '../../features/profile/templates/role_profile_shell.dart';
+import '../../features/admin/admin_dashboard.dart';
 import '../../features/profile/presentation/profile_loader.dart';
 import '../../features/shell/app_shell.dart';
 import '../../splash_screen.dart';
@@ -218,6 +218,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             ),
           );
         },
+      ),
+      GoRoute(
+        path: '/admin',
+        pageBuilder: (_, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const AdminDashboard(),
+          transitionsBuilder: (_, anim, __, child) =>
+              FadeTransition(opacity: anim, child: child),
+        ),
       ),
     ],
   );
