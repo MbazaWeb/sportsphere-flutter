@@ -57,8 +57,6 @@ Future<TeamProfileModel> lookupTeamProfile(String handle) async {
   final logo = (team?['logoUrl'] as String?) ??
       (user?['avatarUrl'] as String?) ??
       NbcClubBadges.forName(name);
-  final accountUserId =
-      team?['accountUserId']?.toString() ?? user?['id']?.toString();
   final teamId = team?['id']?.toString();
 
   final squad = await _loadSquad(sb, teamId: teamId, teamName: name);

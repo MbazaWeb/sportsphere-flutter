@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../core/admin/app_admin.dart';
@@ -10,7 +9,7 @@ import '../../../core/data/commerce_repository.dart';
 import '../../shell/media/media_tools.dart';
 import '../../shell/media/pdf_viewer_page.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../../core/data/nbc_club_badges.dart';
+
 import '../../../core/branding.dart';
 
 // ============================================================
@@ -300,7 +299,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
         if (postType == 'live_coverage') {
           type = _SpotlightType.liveCoverage;
           roleLabel = 'LIVE';
-        } else if (postType == 'welcome' || (teamTag != null && teamTag.isNotEmpty && !(teamTag ?? '').startsWith('match:'))) {
+        } else if (postType == 'welcome' || (teamTag != null && teamTag.isNotEmpty && !teamTag.startsWith('match:'))) {
           type = _SpotlightType.team;
           roleLabel = 'Team';
           handle = _handleFromTeamTag(teamTag);
@@ -1836,31 +1835,7 @@ class _CommentSheetState extends State<_CommentSheet> {
   }
 }
 
-class _EngagementBtn extends StatelessWidget {
-  final IconData icon;
-  final int value;
-  const _EngagementBtn({required this.icon, required this.value});
 
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, color: Colors.white, size: 22),
-        if (value > 0) ...[
-          const SizedBox(width: 6),
-          Text(
-            '$value',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.78),
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
 
 // ============================================================
 // ACTION ROW  — role-aware button logic
@@ -1985,7 +1960,7 @@ class _ActionRowState extends State<_ActionRow> {
   bool _following = false;
   bool _isFan = false;
   bool _joinedCommunity = false;
-  bool _stateLoaded = false;
+  // _stateLoaded removed — unused
 
   @override
   void initState() {
@@ -2006,9 +1981,8 @@ class _ActionRowState extends State<_ActionRow> {
       ]);
       if (mounted) {
         setState(() {
-          _following = results[0] as bool;
-          if (results.length > 1) _isFan = results[1] as bool;
-          _stateLoaded = true;
+          _following = results[0];
+          if (results.length > 1) _isFan = results[1];
         });
       }
     } catch (_) {}

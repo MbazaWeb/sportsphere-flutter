@@ -126,7 +126,7 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
           'last_name': _last.text.trim(),
           'handle': _handle.text.trim(),
           'country': _selectedCountryName ?? _country.text.trim(),
-          'dob': _dob?.toIso8601String(),
+          'dob': _dob.toIso8601String(),
           'bio': _bio.text.trim(),
           'avatar_url': _avatarUrl,
           'cover_url': _coverUrl,
