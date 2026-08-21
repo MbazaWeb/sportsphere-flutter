@@ -54,6 +54,10 @@ android {
 
     buildTypes {
         release {
+            // R8 shrinking breaks flutter_secure_storage / Supabase session
+            // reads at runtime (auth never resolves -> splash loops).
+            isMinifyEnabled = false
+            isShrinkResources = false
             signingConfig = if (keystorePropertiesFile.exists()) {
                 signingConfigs.getByName("release")
             } else {
