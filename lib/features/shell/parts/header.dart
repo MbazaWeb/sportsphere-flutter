@@ -19,7 +19,7 @@ class _Header extends ConsumerWidget {
             child: SizedBox(
               height: 52,
               child: Image.asset(
-                'assets/images/sport_sphere_header_logo.png',
+                'assets/images/playify_header_logo.png',
                 alignment: Alignment.centerLeft,
                 fit: BoxFit.contain,
                 errorBuilder: (_, __, ___) {

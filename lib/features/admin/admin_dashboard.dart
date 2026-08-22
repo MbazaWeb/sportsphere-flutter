@@ -1289,63 +1289,225 @@ Future<void> _showNewsCompose(BuildContext ctx) {
 }
 
 // ── Create Post ────────────────────────────────────────────────────────────────
-Future<void> _showCreatePost(BuildContext ctx) {
-  final textCtrl=TextEditingController();
-  String postType='text';
-  bool uploading=false;
-  List<String> mediaUrls=[];
+Future<void> _showCreatePost(BuildContext ctx) async {
+  final teams = await _repo.listTeams();
+  if (!ctx.mounted) return;
+  final textCtrl = TextEditingController();
+  final formKey = GlobalKey<FormState>();
+  String postType = 'text';
+  String? teamId;
+  String? playerId;
+  bool uploading = false;
+  List<String> mediaUrls = [];
 
-  return showModalBottomSheet<void>(context:ctx, isScrollControlled:true,
-    backgroundColor:GrassForm.sheetBg,
-    shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(24))),
-    builder:(_)=>StatefulBuilder(builder:(c,setL)=>Padding(
-      padding:EdgeInsets.fromLTRB(20,20,20,MediaQuery.of(c).viewInsets.bottom+20),
-      child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-        const Text('Create Post', style:TextStyle(color:SportSphereColors.white, fontSize:18, fontWeight:FontWeight.w800)),
-        const SizedBox(height:12),
-        DropdownButtonFormField<String>(value:postType, dropdownColor:SportSphereColors.surface,
-          style:const TextStyle(color:SportSphereColors.white),
-          decoration:const InputDecoration(labelText:'Post Type', labelStyle:TextStyle(color:SportSphereColors.muted)),
-          items:const[
-            DropdownMenuItem(value:'text', child:Text('Text / Announcement')),
-            DropdownMenuItem(value:'media', child:Text('Photo / Video')),
-          ],
-          onChanged:(v)=>setL(()=>postType=v??postType)),
-        const SizedBox(height:12),
-        _AdminField(controller:textCtrl, label:'Content *', maxLines:6),
-
-        // Media preview + upload
-        if(mediaUrls.isNotEmpty) Wrap(spacing:8, children:mediaUrls.map((u)=>Chip(
-          label:const Text('Media', style:TextStyle(fontSize:11)),
-          backgroundColor:SportSphereColors.sportGreen.withValues(alpha:0.15),
-          labelStyle:const TextStyle(color:SportSphereColors.sportGreen),
-          deleteIcon:const Icon(Icons.close, size:14, color:SportSphereColors.danger),
-          onDeleted:()=>setL(()=>mediaUrls.remove(u)))).toList()),
-
-        if(mediaUrls.length < 4) OutlinedButton.icon(
-          style:OutlinedButton.styleFrom(foregroundColor:SportSphereColors.muted),
-          icon:uploading?const SizedBox(width:14,height:14,child:CircularProgressIndicator(strokeWidth:2))
-                       :const Icon(Icons.add_photo_alternate_rounded, size:16),
-          label:Text(uploading?'Uploading...':'Add Photo / Video', style:const TextStyle(fontSize:12)),
-          onPressed:uploading?null:() async {
-            setL(()=>uploading=true);
-            final url=await _pickAndUpload(c, folder:'posts');
-            if(url!=null) { setL((){mediaUrls.add(url);uploading=false;postType='media';}); }
-            else setL(()=>uploading=false);
-          }),
-        const SizedBox(height:16),
-        SizedBox(width:double.infinity, child:FilledButton(
-          style:FilledButton.styleFrom(backgroundColor:GrassForm.greenBright, padding:const EdgeInsets.symmetric(vertical:14)),
-          onPressed:() async {
-            if(textCtrl.text.trim().isEmpty && mediaUrls.isEmpty) return;
-            try {
-              await SocialRepository().createPost(
-                content:textCtrl.text.trim(), postType:postType, mediaUrls:mediaUrls);
-              if(c.mounted) Navigator.pop(c);
-            } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text(friendlyError(e)))); }
-          },
-          child:const Text('Post', style:TextStyle(fontWeight:FontWeight.w800)))),
-      ])))));
+  return showModalBottomSheet<void>(
+    context: ctx,
+    isScrollControlled: true,
+    backgroundColor: GrassForm.sheetBg,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: (_) => StatefulBuilder(
+      builder: (c, setL) {
+        final selectedTeam = teamId == null
+            ? null
+            : teams.cast<Map<String, dynamic>?>().firstWhere(
+                  (t) => t?['id']?.toString() == teamId,
+                  orElse: () => null,
+                );
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+              20, 20, 20, MediaQuery.of(c).viewInsets.bottom + 20),
+          child: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const GrassFormHeader(
+                    title: 'Create Post',
+                    subtitle: 'Announce teams, players, or general updates',
+                    icon: Icons.campaign_rounded,
+                  ),
+                  const SizedBox(height: 14),
+                  GrassDropdown<String>(
+                    label: 'Post type *',
+                    value: postType,
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'text',
+                          child: Text('Announcement',
+                              style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(
+                          value: 'image',
+                          child: Text('Photo post',
+                              style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(
+                          value: 'video',
+                          child: Text('Video post',
+                              style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(
+                          value: 'welcome',
+                          child: Text('Welcome team / become a fan',
+                              style: TextStyle(color: Colors.white))),
+                    ],
+                    onChanged: (v) => setL(() => postType = v ?? postType),
+                  ),
+                  if (postType == 'welcome') ...[
+                    GrassDropdown<String?>(
+                      label: 'Team to promote *',
+                      value: teamId,
+                      items: [
+                        const DropdownMenuItem(
+                            value: null,
+                            child: Text('Select team',
+                                style: TextStyle(color: Colors.white54))),
+                        ...teams.map((t) => DropdownMenuItem(
+                              value: t['id'].toString(),
+                              child: Text('${t['name']}',
+                                  style: const TextStyle(color: Colors.white)),
+                            )),
+                      ],
+                      onChanged: (v) {
+                        setL(() {
+                          teamId = v;
+                          if (v != null && textCtrl.text.trim().isEmpty) {
+                            final name = teams
+                                .firstWhere((t) => t['id'].toString() == v,
+                                    orElse: () => {'name': 'Team'})['name'];
+                            textCtrl.text =
+                                'Welcoming $name to Playify! Follow and become a fan.';
+                          }
+                        });
+                      },
+                      validator: (v) {
+                        if (postType == 'welcome' && (v == null || v.isEmpty)) {
+                          return 'Select a team';
+                        }
+                        return null;
+                      },
+                    ),
+                    if (selectedTeam != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Text(
+                          'Follow / Become Fan will apply to ${selectedTeam['name']}, not the admin account.',
+                          style: const TextStyle(
+                              color: Color(0xFF76D42B), fontSize: 12),
+                        ),
+                      ),
+                  ],
+                  _AdminField(
+                    controller: textCtrl,
+                    label: 'Content *',
+                    maxLines: 5,
+                    validator: (v) {
+                      if ((v == null || v.trim().isEmpty) && mediaUrls.isEmpty) {
+                        return 'Write something or add media';
+                      }
+                      return null;
+                    },
+                  ),
+                  if (mediaUrls.isNotEmpty)
+                    Wrap(
+                      spacing: 8,
+                      children: mediaUrls
+                          .map((u) => Chip(
+                                label: Text(
+                                    u.toLowerCase().contains('.mp4')
+                                        ? 'Video'
+                                        : 'Photo',
+                                    style: const TextStyle(fontSize: 11)),
+                                backgroundColor: const Color(0xFF2E7D32)
+                                    .withValues(alpha: 0.2),
+                                deleteIcon: const Icon(Icons.close, size: 14),
+                                onDeleted: () =>
+                                    setL(() => mediaUrls.remove(u)),
+                              ))
+                          .toList(),
+                    ),
+                  if (mediaUrls.length < 4)
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white70),
+                      icon: uploading
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.add_photo_alternate_rounded,
+                              size: 16),
+                      label: Text(uploading ? 'Uploading…' : 'Add photo / video',
+                          style: const TextStyle(fontSize: 12)),
+                      onPressed: uploading
+                          ? null
+                          : () async {
+                              setL(() => uploading = true);
+                              final url =
+                                  await _pickAndUpload(c, folder: 'posts');
+                              if (url != null) {
+                                setL(() {
+                                  mediaUrls.add(url);
+                                  uploading = false;
+                                  if (postType == 'text') postType = 'image';
+                                });
+                              } else {
+                                setL(() => uploading = false);
+                              }
+                            },
+                    ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: GrassForm.greenBright,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      onPressed: () async {
+                        if (!(formKey.currentState?.validate() ?? false)) return;
+                        if (postType == 'welcome' &&
+                            (teamId == null || teamId!.isEmpty)) {
+                          ScaffoldMessenger.of(c).showSnackBar(
+                            const SnackBar(
+                                content: Text('Select a team to welcome')),
+                          );
+                          return;
+                        }
+                        try {
+                          var pt = postType;
+                          if (pt == 'text' && mediaUrls.isNotEmpty) {
+                            final anyVid = mediaUrls.any((u) =>
+                                u.toLowerCase().contains('.mp4') ||
+                                u.toLowerCase().contains('/videos/'));
+                            pt = anyVid ? 'video' : 'image';
+                          }
+                          await SocialRepository().createPost(
+                            content: textCtrl.text.trim(),
+                            postType: pt,
+                            mediaUrls: mediaUrls,
+                            teamTag: postType == 'welcome' ? teamId : null,
+                          );
+                          if (c.mounted) Navigator.pop(c);
+                        } catch (e) {
+                          if (c.mounted) {
+                            ScaffoldMessenger.of(c).showSnackBar(
+                                SnackBar(content: Text(friendlyError(e))));
+                          }
+                        }
+                      },
+                      child: const Text('Publish',
+                          style: TextStyle(fontWeight: FontWeight.w800)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    ),
+  );
 }
 
 // ── Upload Button widget ───────────────────────────────────────────────────────

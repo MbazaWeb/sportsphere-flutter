@@ -15,6 +15,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../core/branding.dart';
 import '../../../core/utils/friendly_error.dart';
+import '../../../core/utils/media_type.dart';
 
 // ============================================================
 // ROLE CONFIGURATION
@@ -335,7 +336,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
 
         final uid =
             (r['userId'] ?? r['authorId'] ?? r['user_id'])?.toString();
-        String author = 'SportSphere Official';
+        String author = 'Playify Official';
         String handle = 'sportsphere';
         String roleLabel = (r['postType'] as String?) ??
             (r['post_type'] as String?) ??
@@ -380,8 +381,13 @@ class _SportlightsTabState extends State<SportlightsTab> {
           type = _SpotlightType.poll;
         } else if (postType == 'prediction') {
           type = _SpotlightType.prediction;
-        } else if (postType == 'video' || postType == 'media') {
+        } else if (postType == 'video' ||
+            (postType == 'media' && isVideoMediaUrl(asset))) {
           type = _SpotlightType.video;
+        } else if (postType == 'image' ||
+            (postType == 'media' && asset != null && asset.isNotEmpty)) {
+          // Keep role-based type for author badge; media still shows as image
+          // via _MediaArea default branch when not video.
         }
 
         final contentText = (r['content'] as String?) ?? '';
@@ -950,19 +956,19 @@ class _ImageContent extends StatelessWidget {
       );
     }
 
-    final isLogo = asset.startsWith('http');
+    final isNetwork = asset.startsWith('http');
     return ClipRRect(
       borderRadius: BorderRadius.circular(18),
-      child: isLogo
+      child: isNetwork
           ? Container(
-              height: 220,
+              height: 280,
               width: double.infinity,
               color: const Color(0xFF071421),
-              alignment: Alignment.center,
-              padding: const EdgeInsets.all(28),
               child: Image.network(
                 asset,
-                fit: BoxFit.contain,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: 280,
                 filterQuality: FilterQuality.high,
                 errorBuilder: (_, __, ___) => _GeneratedContent(item: item),
               ),
@@ -2024,25 +2030,60 @@ class _ActionRow extends StatefulWidget {
 class _ActionRowState extends State<_ActionRow> {
   Future<String?> _resolveTargetId() async {
     final item = widget.item;
+    final sb = Supabase.instance.client;
+    final handle = item.handle.replaceAll('@', '').trim();
+
+    // Team / welcome posts: follow the TEAM account, never the admin author
+    if (item.type == _SpotlightType.team) {
+      try {
+        Map<String, dynamic>? team;
+        if (item.targetUserId != null && item.targetUserId!.isNotEmpty) {
+          // may already be team id or user id
+          team = await sb
+              .from('Team')
+              .select('id, accountUserId, name, slug')
+              .eq('id', item.targetUserId!)
+              .maybeSingle();
+        }
+        team ??= await sb
+            .from('Team')
+            .select('id, accountUserId, name, slug')
+            .or('id.eq.$handle,slug.eq.$handle')
+            .maybeSingle();
+        if (team == null && handle.isNotEmpty) {
+          final rows = await sb
+              .from('Team')
+              .select('id, accountUserId, name, slug')
+              .ilike('name', '%$handle%')
+              .limit(1);
+          if ((rows as List).isNotEmpty) {
+            team = Map<String, dynamic>.from(rows.first as Map);
+          }
+        }
+        if (team != null) {
+          final aid = team['accountUserId']?.toString();
+          if (aid != null && aid.isNotEmpty) return aid;
+          // Fallback: team id itself (graph may resolve)
+          final tid = team['id']?.toString();
+          if (tid != null && tid.isNotEmpty) return tid;
+        }
+      } catch (_) {}
+    }
+
     if (item.targetUserId != null && item.targetUserId!.isNotEmpty) {
       return item.targetUserId;
     }
-    final handle = item.handle.replaceAll('@', '').trim();
     if (handle.isEmpty) return null;
-    final sb = Supabase.instance.client;
-    // Prefer team account user id for team posts
-    if (item.type == _SpotlightType.team) {
-      final team = await sb
-          .from('Team')
-          .select('accountUserId,id')
-          .or('id.eq.$handle,id.eq.tm-$handle')
-          .maybeSingle();
-      final aid = team?['accountUserId']?.toString();
-      if (aid != null && aid.isNotEmpty) return aid;
-      // also try by profile handle
+    try {
+      final u = await sb.from('User').select('id').eq('handle', handle).maybeSingle();
+      if (u?['id'] != null) return u!['id'].toString();
+    } catch (_) {}
+    try {
+      final p = await sb.from('profiles').select('id').eq('handle', handle).maybeSingle();
+      return p?['id']?.toString();
+    } catch (_) {
+      return null;
     }
-    final u = await sb.from('User').select('id').eq('handle', handle).maybeSingle();
-    return u?['id']?.toString();
   }
 
   Future<void> _toggleFollow(bool next) async {

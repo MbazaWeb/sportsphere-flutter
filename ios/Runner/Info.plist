@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>SportSphere</string>
+	<string>Playify</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>SportSphere</string>
+	<string>Playify</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -46,12 +46,12 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>SportSphere needs camera access so you can take photos for posts and your profile.</string>
+	<string>Playify needs camera access so you can take photos for posts and your profile.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>SportSphere needs photo library access so you can attach images to posts and your profile.</string>
+	<string>Playify needs photo library access so you can attach images to posts and your profile.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>SportSphere uses the microphone when you record a video.</string>
+	<string>Playify uses the microphone when you record a video.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>SportSphere needs permission to save images you choose to keep.</string>
+	<string>Playify needs permission to save images you choose to keep.</string>
 </dict>
 </plist>

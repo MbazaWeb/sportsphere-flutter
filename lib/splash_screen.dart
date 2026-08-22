@@ -264,7 +264,7 @@ class _BallWithGlow extends StatelessWidget {
           ),
           // The ball image itself — no clip here; ClipOval sits above in the tree
           Image.asset(
-            'assets/images/sport_sphere_ball.png',
+            'assets/images/playify_ball.png',
             width: size,
             height: size,
             fit: BoxFit.cover,
@@ -316,28 +316,7 @@ class _SplashTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            _titleText('SP'),
-            // Inline ball icon replacing the 'O'
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 1),
-              child: ClipOval(
-                child: Image.asset(
-                  'assets/images/sport_sphere_ball.png',
-                  width: 36,
-                  height: 36,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const _CircleFallback(size: 36),
-                ),
-              ),
-            ),
-            _titleText('RT'),
-          ],
-        ),
+        _titleText('PLAYIFY'),
         const SizedBox(height: 2),
         _titleText('SPHERE', size: 34, spacing: 14),
         const SizedBox(height: 8),

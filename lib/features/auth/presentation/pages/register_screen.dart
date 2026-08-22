@@ -637,7 +637,7 @@ class _MiniLogo extends StatelessWidget {
           ),
           child: ClipOval(
             child: Image.asset(
-              'assets/images/sport_sphere_icon.png',
+              'assets/images/playify_icon.png',
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => Container(
                 color: SportSphereColors.surface,

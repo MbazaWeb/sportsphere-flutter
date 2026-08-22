@@ -18,7 +18,7 @@ class _ProfileScreen extends ConsumerWidget {
 
     final isAdmin = AppAdmin.isAdminUser(user);
 
-    // Admin profile: show as "SportSphere Official" with no country, no fanOf
+    // Admin profile: show as "Playify Official" with no country, no fanOf
     final profile = FanProfileModel(
       firstName: isAdmin ? 'SportSphere' : user.firstName,
       lastName: isAdmin ? '' : user.lastName,

@@ -239,7 +239,7 @@ class _CreateComposerState extends ConsumerState<_CreateComposer>
         handle == 'sportsphere_official' ||
         role == 'admin' ||
         role == 'official') {
-      return 'SportSphere';
+      return 'Playify';
     }
     final name = '${user?.firstName ?? ''} ${user?.lastName ?? ''}'.trim();
     if (name.isNotEmpty) return name;
@@ -608,10 +608,21 @@ class _CreateComposerState extends ConsumerState<_CreateComposer>
           }
 
         default:
+          final urls = List<String>.from(_mediaTiles);
+          String pt = 'text';
+          if (urls.isNotEmpty) {
+            final anyVideo = _mediaIsVideo.isNotEmpty
+                ? _mediaIsVideo.any((v) => v)
+                : urls.any((u) =>
+                    u.toLowerCase().contains('.mp4') ||
+                    u.toLowerCase().contains('.mov') ||
+                    u.toLowerCase().contains('/videos/'));
+            pt = anyVideo ? 'video' : 'image';
+          }
           await repo.createPost(
             content: text,
-            postType: _type == _PostType.media ? 'media' : 'text',
-            mediaUrls: List<String>.from(_mediaTiles),
+            postType: pt,
+            mediaUrls: urls,
             hashtags: hashtags,
           );
       }
@@ -677,7 +688,7 @@ class _CreateComposerState extends ConsumerState<_CreateComposer>
       shell?.goHome();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Posted to SportLights'),
+          content: Text('Posted to PlayLights'),
           backgroundColor: Color(0xFF2E7D32),
           behavior: SnackBarBehavior.floating,
           duration: Duration(seconds: 2),
@@ -960,7 +971,7 @@ class _ComposerHeader extends StatelessWidget {
                 ),
                 child: ClipOval(
                   child: Image.asset(
-                    'assets/images/sport_sphere_icon.png',
+                    'assets/images/playify_icon.png',
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => const Icon(
                       Icons.person_rounded,
