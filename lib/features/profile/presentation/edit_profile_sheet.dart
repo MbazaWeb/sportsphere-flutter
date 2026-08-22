@@ -7,6 +7,8 @@ import '../../../core/data/world_countries.dart';
 import '../../../core/taxonomy/sport_catalog.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/grass_form.dart';
+import '../../../core/widgets/country_picker_field.dart';
+import '../../../core/utils/form_validators.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../../core/utils/friendly_error.dart';
@@ -122,6 +124,21 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
   }
 
   Future<void> _save() async {
+    final fn = FormValidators.required(_first.text, field: 'First name');
+    final ln = FormValidators.required(_last.text, field: 'Last name');
+    final h = FormValidators.handle(_handle.text);
+    if (fn != null || ln != null || h != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(fn ?? ln ?? h ?? 'Check the form')),
+      );
+      return;
+    }
+    if (_selectedCountryName == null || _selectedCountryName!.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select your country')),
+      );
+      return;
+    }
     setState(() => _saving = true);
     final ok = await ref.read(authControllerProvider.notifier).updateProfile({
           'first_name': _first.text.trim(),
@@ -252,11 +269,34 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
               ],
             ),
             const SizedBox(height: 14),
-            _field('First name', _first),
-            _field('Last name', _last),
-            _field('Handle', _handle),
-            _countryField(context),
-            _field('Bio', _bio, maxLines: 3),
+            GrassTextField(
+              controller: _first,
+              label: 'First name *',
+              validator: (v) => FormValidators.required(v, field: 'First name'),
+            ),
+            GrassTextField(
+              controller: _last,
+              label: 'Last name *',
+              validator: (v) => FormValidators.required(v, field: 'Last name'),
+            ),
+            GrassTextField(
+              controller: _handle,
+              label: 'Handle *',
+              validator: FormValidators.handle,
+            ),
+            CountryPickerField(
+              label: 'Country *',
+              value: _selectedCountryName,
+              onChanged: (v) => setState(() {
+                _selectedCountryName = v;
+                _country.text = v;
+              }),
+            ),
+            GrassTextField(
+              controller: _bio,
+              label: 'Bio',
+              maxLines: 3,
+            ),
             const SizedBox(height: 8),
             ListTile(
               contentPadding: EdgeInsets.zero,

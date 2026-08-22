@@ -37,9 +37,14 @@ const _tagSuggestions = [
 const _locationSuggestions = [
   'Dar es Salaam, Tanzania',
   'National Stadium, DSM',
-  'Mkapa Stadium, DSM',
   'Benjamin Mkapa Stadium',
+  'Mkapa Stadium, DSM',
+  'Amaan Stadium, Zanzibar',
   'Nairobi, Kenya',
+  'Kampala, Uganda',
+  'Kigali, Rwanda',
+  'Johannesburg, South Africa',
+  'Lagos, Nigeria',
 ];
 
 // ══════════════════════════════════════════════════════════════════════════════

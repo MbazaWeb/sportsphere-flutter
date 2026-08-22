@@ -9,10 +9,11 @@ import '../../../core/theme/colors.dart';
 import '../../../core/widgets/country_picker_field.dart';
 import '../../../core/widgets/team_color_picker.dart';
 import '../../../core/widgets/grass_form.dart';
+import '../../../core/utils/form_validators.dart';
 import '../../../features/auth/presentation/auth_controller.dart';
 import '../scores/presentation/admin_live_control.dart';
 import 'admin_repository.dart';
-import '../../core/utils/friendly_error.dart';
+import '../../../core/utils/friendly_error.dart';
 
 final _repo = AdminRepository();
 
@@ -464,119 +465,303 @@ Future<void> _showCreateUser(BuildContext ctx) {
 
 // ── Create Competition ─────────────────────────────────────────────────────────
 Future<void> _showCreateCompetition(BuildContext ctx) {
-  final name=TextEditingController(),
-        season=TextEditingController(text:'2026/27'), description=TextEditingController(),
-        website=TextEditingController();
-  String type='league';
-  String country='Tanzania';
+  final name = TextEditingController();
+  final description = TextEditingController();
+  final website = TextEditingController();
+  final formKey = GlobalKey<FormState>();
+  String country = 'Tanzania';
+  String season = '2026/27';
+  String type = 'league';
   String? logoUrl;
-  bool uploading=false;
+  bool uploading = false;
 
-  return showModalBottomSheet<void>(context:ctx, isScrollControlled:true,
-    backgroundColor:GrassForm.sheetBg,
-    shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(24))),
-    builder:(_)=>StatefulBuilder(builder:(c,setL)=>Padding(
-      padding:EdgeInsets.fromLTRB(20,20,20,MediaQuery.of(c).viewInsets.bottom+20),
-      child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-        const GrassFormHeader(title:'Create Competition', subtitle:'League or cup on the SportSphere pitch', icon:Icons.emoji_events_rounded),
-        const SizedBox(height:16),
-        _AdminField(controller:name, label:'Competition Name *'),
-        CountryPickerField(label:'Country', value:country, onChanged:(v)=>setL(()=>country=v)),
-        _AdminField(controller:season, label:'Season (e.g. 2026/27)'),
-        _AdminField(controller:description, label:'Description', maxLines:3),
-        _AdminField(controller:website, label:'Website (optional)', keyboardType:TextInputType.url),
-        DropdownButtonFormField<String>(value:type, dropdownColor:SportSphereColors.surface,
-          decoration:const InputDecoration(labelText:'Type', labelStyle:TextStyle(color:SportSphereColors.muted)),
-          items:['league','cup','friendly','international'].map((t)=>DropdownMenuItem(value:t,
-              child:Text(t[0].toUpperCase()+t.substring(1), style:const TextStyle(color:SportSphereColors.white)))).toList(),
-          onChanged:(v)=>setL(()=>type=v??type)),
-        const SizedBox(height:12),
-        _UploadButton(url:logoUrl, uploading:uploading, label:'Upload Logo',
-          onTap:() async {
-            setL(()=>uploading=true);
-            final url=await _pickAndUpload(c, folder:'logos');
-            setL((){logoUrl=url;uploading=false;});
-          }),
-        const SizedBox(height:16),
-        SizedBox(width:double.infinity, child:FilledButton(
-          style:FilledButton.styleFrom(backgroundColor:GrassForm.greenBright, padding:const EdgeInsets.symmetric(vertical:14)),
-          onPressed:() async {
-            if(name.text.trim().isEmpty) return;
-            try {
-              await _repo.createCompetition(name:name.text.trim(), country:country,
-                season:season.text.trim().isEmpty?null:season.text.trim(), type:type);
-              if(c.mounted) Navigator.pop(c);
-            } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text(friendlyError(e)))); }
-          },
-          child:const Text('Create Competition', style:TextStyle(fontWeight:FontWeight.w800)))),
-      ])))));
+  return showModalBottomSheet<void>(
+    context: ctx,
+    isScrollControlled: true,
+    backgroundColor: GrassForm.sheetBg,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: (_) => StatefulBuilder(
+      builder: (c, setL) => Padding(
+        padding: EdgeInsets.fromLTRB(
+            20, 20, 20, MediaQuery.of(c).viewInsets.bottom + 20),
+        child: SingleChildScrollView(
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const GrassFormHeader(
+                  title: 'Create Competition',
+                  subtitle: 'League or cup on the SportSphere pitch',
+                  icon: Icons.emoji_events_rounded,
+                ),
+                const SizedBox(height: 16),
+                _AdminField(
+                  controller: name,
+                  label: 'Competition Name *',
+                  validator: (v) => FormValidators.required(v, field: 'Competition name'),
+                ),
+                CountryPickerField(
+                  label: 'Country *',
+                  value: country,
+                  onChanged: (v) => setL(() => country = v),
+                ),
+                GrassDropdown<String>(
+                  label: 'Season *',
+                  value: season,
+                  icon: Icons.calendar_month_rounded,
+                  items: kSeasonOptions
+                      .map((s) => DropdownMenuItem(
+                            value: s,
+                            child: Text(s, style: const TextStyle(color: SportSphereColors.white)),
+                          ))
+                      .toList(),
+                  onChanged: (v) => setL(() => season = v ?? season),
+                  validator: (v) => FormValidators.dropdownRequired(v, field: 'season'),
+                ),
+                GrassDropdown<String>(
+                  label: 'Type *',
+                  value: type,
+                  icon: Icons.category_rounded,
+                  items: kCompetitionTypes
+                      .map((t) => DropdownMenuItem(
+                            value: t,
+                            child: Text(
+                              t[0].toUpperCase() + t.substring(1),
+                              style: const TextStyle(color: SportSphereColors.white),
+                            ),
+                          ))
+                      .toList(),
+                  onChanged: (v) => setL(() => type = v ?? type),
+                  validator: (v) => FormValidators.dropdownRequired(v, field: 'type'),
+                ),
+                _AdminField(controller: description, label: 'Description', maxLines: 3),
+                _AdminField(
+                  controller: website,
+                  label: 'Website (optional)',
+                  keyboardType: TextInputType.url,
+                ),
+                _UploadButton(
+                  url: logoUrl,
+                  uploading: uploading,
+                  label: 'Upload Logo',
+                  onTap: () async {
+                    setL(() => uploading = true);
+                    final url = await _pickAndUpload(c, folder: 'logos');
+                    setL(() {
+                      logoUrl = url;
+                      uploading = false;
+                    });
+                  },
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: GrassForm.greenBright,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    onPressed: () async {
+                      if (!(formKey.currentState?.validate() ?? false)) return;
+                      if (country.trim().isEmpty) {
+                        ScaffoldMessenger.of(c).showSnackBar(
+                          const SnackBar(content: Text('Select a country')),
+                        );
+                        return;
+                      }
+                      try {
+                        await _repo.createCompetition(
+                          name: name.text.trim(),
+                          country: country,
+                          season: season,
+                          type: type,
+                        );
+                        if (c.mounted) Navigator.pop(c);
+                      } catch (e) {
+                        if (c.mounted) {
+                          ScaffoldMessenger.of(c).showSnackBar(
+                              SnackBar(content: Text(friendlyError(e))));
+                        }
+                      }
+                    },
+                    child: const Text('Create Competition',
+                        style: TextStyle(fontWeight: FontWeight.w800)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
-// ── Create Team ────────────────────────────────────────────────────────────────
 Future<void> _showCreateTeam(BuildContext ctx, List<Map<String,dynamic>>? preloaded) async {
   final comps = preloaded ?? await _repo.listCompetitions();
   if (!ctx.mounted) return;
-  final name=TextEditingController(),
-        city=TextEditingController(), venue=TextEditingController(),
-        founded=TextEditingController(), shortName=TextEditingController(),
-        description=TextEditingController();
+  final name = TextEditingController();
+  final shortName = TextEditingController();
+  final venue = TextEditingController();
+  final founded = TextEditingController();
+  final description = TextEditingController();
+  final formKey = GlobalKey<FormState>();
   String country = 'Tanzania';
+  String? city = 'Dar es Salaam';
   String primaryColor = '#E31B23';
   String? leagueId, logoUrl;
-  bool uploading=false;
+  bool uploading = false;
 
-  showModalBottomSheet<void>(context:ctx, isScrollControlled:true,
-    backgroundColor:GrassForm.sheetBg,
-    shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(24))),
-    builder:(_)=>StatefulBuilder(builder:(c,setL)=>Padding(
-      padding:EdgeInsets.fromLTRB(20,20,20,MediaQuery.of(c).viewInsets.bottom+20),
-      child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-        const GrassFormHeader(title:'Create Team', subtitle:'Club colours, country and badge', icon:Icons.groups_rounded),
-        const SizedBox(height:16),
-        _AdminField(controller:name, label:'Full Club Name *'),
-        _AdminField(controller:shortName, label:'Short Name (e.g. SIM, YAN)'),
-        CountryPickerField(label:'Country', value:country, onChanged:(v)=>setL(()=>country=v)),
-        TeamColorPicker(valueHex:primaryColor, onChanged:(v)=>setL(()=>primaryColor=v)),
-        _AdminField(controller:city, label:'City'),
-        _AdminField(controller:venue, label:'Stadium / Venue'),
-        _AdminField(controller:founded, label:'Founded Year', keyboardType:TextInputType.number),
-        _AdminField(controller:description, label:'Club Description', maxLines:3),
-        if(comps.isNotEmpty) DropdownButtonFormField<String?>(value:leagueId,
-          dropdownColor:SportSphereColors.surface,
-          decoration:const InputDecoration(labelText:'Competition (optional)', labelStyle:TextStyle(color:SportSphereColors.muted)),
-          items:[const DropdownMenuItem(value:null,child:Text('None',style:TextStyle(color:SportSphereColors.muted))),
-            ...comps.map((comp)=>DropdownMenuItem(value:comp['id'].toString(),child:Text(comp['name'].toString(),style:const TextStyle(color:SportSphereColors.white))))],
-          onChanged:(v)=>setL(()=>leagueId=v)),
-        const SizedBox(height:12),
-        _UploadButton(url:logoUrl, uploading:uploading, label:'Upload Team Logo / Badge',
-          onTap:() async {
-            setL(()=>uploading=true);
-            final url=await _pickAndUpload(c, folder:'logos');
-            setL((){logoUrl=url;uploading=false;});
-          }),
-        const SizedBox(height:16),
-        SizedBox(width:double.infinity, child:FilledButton(
-          style:FilledButton.styleFrom(
-            backgroundColor: parseHexColor(primaryColor) ?? SportSphereColors.electricBlue,
-            padding:const EdgeInsets.symmetric(vertical:14)),
-          onPressed:() async {
-            if(name.text.trim().isEmpty) return;
-            try {
-              await _repo.createTeam(
-                name:name.text.trim(),
-                country:country,
-                city:city.text.trim().isEmpty?null:city.text.trim(),
-                leagueId:leagueId,
-                venue:venue.text.trim().isEmpty?null:venue.text.trim(),
-                foundedYear:int.tryParse(founded.text.trim()),
-                primaryColor:primaryColor,
-                logoUrl:logoUrl,
-              );
-              if(c.mounted) Navigator.pop(c);
-            } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text(friendlyError(e)))); }
-          },
-          child:const Text('Create Team', style:TextStyle(fontWeight:FontWeight.w800)))),
-      ])))));
+  showModalBottomSheet<void>(
+    context: ctx,
+    isScrollControlled: true,
+    backgroundColor: GrassForm.sheetBg,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: (_) => StatefulBuilder(
+      builder: (c, setL) => Padding(
+        padding: EdgeInsets.fromLTRB(
+            20, 20, 20, MediaQuery.of(c).viewInsets.bottom + 20),
+        child: SingleChildScrollView(
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const GrassFormHeader(
+                  title: 'Create Team',
+                  subtitle: 'Club colours, country and badge',
+                  icon: Icons.groups_rounded,
+                ),
+                const SizedBox(height: 16),
+                _AdminField(
+                  controller: name,
+                  label: 'Full Club Name *',
+                  validator: (v) => FormValidators.required(v, field: 'Club name'),
+                ),
+                _AdminField(controller: shortName, label: 'Short Name (e.g. SIM, YAN)'),
+                CountryPickerField(
+                  label: 'Country *',
+                  value: country,
+                  onChanged: (v) => setL(() => country = v),
+                ),
+                GrassDropdown<String>(
+                  label: 'City *',
+                  value: city,
+                  icon: Icons.location_city_rounded,
+                  items: kCityOptions
+                      .map((s) => DropdownMenuItem(
+                            value: s,
+                            child: Text(s,
+                                style: const TextStyle(
+                                    color: SportSphereColors.white)),
+                          ))
+                      .toList(),
+                  onChanged: (v) => setL(() => city = v),
+                  validator: (v) =>
+                      FormValidators.dropdownRequired(v, field: 'city'),
+                ),
+                TeamColorPicker(
+                    valueHex: primaryColor,
+                    onChanged: (v) => setL(() => primaryColor = v)),
+                _AdminField(controller: venue, label: 'Stadium / Venue'),
+                _AdminField(
+                  controller: founded,
+                  label: 'Founded Year',
+                  keyboardType: TextInputType.number,
+                  validator: FormValidators.year,
+                ),
+                _AdminField(
+                    controller: description,
+                    label: 'Club Description',
+                    maxLines: 3),
+                if (comps.isNotEmpty)
+                  GrassDropdown<String?>(
+                    label: 'Competition (optional)',
+                    value: leagueId,
+                    items: [
+                      const DropdownMenuItem(
+                          value: null,
+                          child: Text('None',
+                              style:
+                                  TextStyle(color: SportSphereColors.muted))),
+                      ...comps.map((comp) => DropdownMenuItem(
+                            value: comp['id'].toString(),
+                            child: Text(comp['name'].toString(),
+                                style: const TextStyle(
+                                    color: SportSphereColors.white)),
+                          )),
+                    ],
+                    onChanged: (v) => setL(() => leagueId = v),
+                  ),
+                _UploadButton(
+                  url: logoUrl,
+                  uploading: uploading,
+                  label: 'Upload Team Logo / Badge',
+                  onTap: () async {
+                    setL(() => uploading = true);
+                    final url = await _pickAndUpload(c, folder: 'logos');
+                    setL(() {
+                      logoUrl = url;
+                      uploading = false;
+                    });
+                  },
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor:
+                          parseHexColor(primaryColor) ?? GrassForm.greenBright,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    onPressed: () async {
+                      if (!(formKey.currentState?.validate() ?? false)) return;
+                      if (country.trim().isEmpty) {
+                        ScaffoldMessenger.of(c).showSnackBar(
+                          const SnackBar(content: Text('Select a country')),
+                        );
+                        return;
+                      }
+                      try {
+                        await _repo.createTeam(
+                          name: name.text.trim(),
+                          country: country,
+                          city: (city == null || city == 'Other')
+                              ? null
+                              : city,
+                          leagueId: leagueId,
+                          venue: venue.text.trim().isEmpty
+                              ? null
+                              : venue.text.trim(),
+                          foundedYear: int.tryParse(founded.text.trim()),
+                          primaryColor: primaryColor,
+                          logoUrl: logoUrl,
+                        );
+                        if (c.mounted) Navigator.pop(c);
+                      } catch (e) {
+                        if (c.mounted) {
+                          ScaffoldMessenger.of(c).showSnackBar(
+                              SnackBar(content: Text(friendlyError(e))));
+                        }
+                      }
+                    },
+                    child: const Text('Create Team',
+                        style: TextStyle(fontWeight: FontWeight.w800)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 Future<void> _showCreatePlayer(BuildContext ctx, List<Map<String,dynamic>> teams) {
@@ -830,6 +1015,10 @@ Future<void> _showCreatePlayer(BuildContext ctx, List<Map<String,dynamic>> teams
                           '${firstName.text.trim()} ${lastName.text.trim()}'
                               .trim();
                       if (fullName.isEmpty && name.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(c).showSnackBar(
+                          const SnackBar(
+                              content: Text('Enter the player name')),
+                        );
                         return;
                       }
                       try {
@@ -1250,11 +1439,13 @@ class _AdminField extends StatelessWidget {
   final String label;
   final int maxLines;
   final TextInputType? keyboardType;
+  final String? Function(String?)? validator;
   const _AdminField({
     required this.controller,
     required this.label,
     this.maxLines = 1,
     this.keyboardType,
+    this.validator,
   });
 
   @override
@@ -1264,6 +1455,7 @@ class _AdminField extends StatelessWidget {
       label: label,
       maxLines: maxLines,
       keyboardType: keyboardType,
+      validator: validator,
     );
   }
 }

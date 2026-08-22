@@ -498,3 +498,75 @@ class GrassSectionLabel extends StatelessWidget {
     );
   }
 }
+
+
+/// Styled dropdown matching grass form fields.
+class GrassDropdown<T> extends StatelessWidget {
+  final String label;
+  final T? value;
+  final List<DropdownMenuItem<T>> items;
+  final ValueChanged<T?> onChanged;
+  final String? Function(T?)? validator;
+  final IconData? icon;
+
+  const GrassDropdown({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+    this.validator,
+    this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: DropdownButtonFormField<T>(
+        value: value,
+        items: items,
+        onChanged: onChanged,
+        validator: validator,
+        dropdownColor: GrassForm.sheetBg,
+        style: const TextStyle(color: SportSphereColors.white, fontSize: 14),
+        icon: const Icon(Icons.arrow_drop_down_rounded, color: GrassForm.greenLine),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: const TextStyle(
+            color: SportSphereColors.muted,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+          prefixIcon: icon == null
+              ? null
+              : Icon(icon, color: GrassForm.greenLine, size: 18),
+          filled: true,
+          fillColor: GrassForm.fieldFill,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(
+              color: GrassForm.greenLine.withValues(alpha: 0.22),
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide:
+                const BorderSide(color: GrassForm.greenLine, width: 1.6),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: SportSphereColors.danger),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide:
+                const BorderSide(color: SportSphereColors.danger, width: 1.6),
+          ),
+        ),
+      ),
+    );
+  }
+}

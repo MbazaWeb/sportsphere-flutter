@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/grass_form.dart';
+import '../../../core/utils/form_validators.dart';
 import '../../../core/utils/friendly_error.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../data/claim_repository.dart';
@@ -67,6 +68,7 @@ class _ClaimProfileSheetState extends ConsumerState<ClaimProfileSheet> {
   final _phone = TextEditingController();
   final _notes = TextEditingController();
   bool _saving = false;
+  final _formKey = GlobalKey<FormState>();
 
   @override
   void initState() {
@@ -90,6 +92,22 @@ class _ClaimProfileSheetState extends ConsumerState<ClaimProfileSheet> {
     if (auth.user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Log in to claim this profile')),
+      );
+      return;
+    }
+    final emailErr = FormValidators.email(_email.text);
+    if (emailErr != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(emailErr)));
+      return;
+    }
+    final phoneErr = FormValidators.phone(_phone.text, required: true);
+    if (phoneErr != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(phoneErr)));
+      return;
+    }
+    if (_notes.text.trim().length < 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add a short note (at least 10 characters)')),
       );
       return;
     }
@@ -157,9 +175,32 @@ class _ClaimProfileSheetState extends ConsumerState<ClaimProfileSheet> {
               icon: Icons.flag_rounded,
             ),
             const SizedBox(height: 16),
-            _field('Contact email', _email, TextInputType.emailAddress),
-            _field('Phone / WhatsApp', _phone, TextInputType.phone),
-            _field('Evidence / notes', _notes, TextInputType.multiline, maxLines: 4),
+            GrassTextField(
+              controller: _email,
+              label: 'Contact email *',
+              keyboardType: TextInputType.emailAddress,
+              icon: Icons.email_outlined,
+              validator: FormValidators.email,
+            ),
+            GrassTextField(
+              controller: _phone,
+              label: 'Phone / WhatsApp *',
+              keyboardType: TextInputType.phone,
+              icon: Icons.phone_outlined,
+              validator: (v) => FormValidators.phone(v, required: true),
+            ),
+            GrassTextField(
+              controller: _notes,
+              label: 'Evidence / notes *',
+              maxLines: 4,
+              icon: Icons.notes_rounded,
+              validator: (v) {
+                if (v == null || v.trim().length < 10) {
+                  return 'Add a short note (at least 10 characters)';
+                }
+                return null;
+              },
+            ),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,

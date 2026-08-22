@@ -151,6 +151,7 @@ class CountryPickerField extends StatelessWidget {
   final String? value;
   final ValueChanged<String> onChanged;
   final String placeholder;
+  final String? Function(String?)? validator;
 
   const CountryPickerField({
     super.key,
@@ -158,17 +159,35 @@ class CountryPickerField extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.placeholder = 'Select country',
+    this.validator,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
+      child: FormField<String>(
+        initialValue: value,
+        validator: validator ??
+            (v) {
+              final cur = value ?? v;
+              if (cur == null || cur.trim().isEmpty) {
+                return 'Select country';
+              }
+              return null;
+            },
+        builder: (state) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              InkWell(
         borderRadius: BorderRadius.circular(10),
         onTap: () async {
           final picked = await showCountryPicker(context, selected: value);
-          if (picked != null) onChanged(picked);
+          if (picked != null) {
+            onChanged(picked);
+            state.didChange(picked);
+          }
         },
         child: InputDecorator(
           decoration: InputDecoration(
@@ -198,6 +217,19 @@ class CountryPickerField extends StatelessWidget {
             ),
           ),
         ),
+              ),
+              if (state.hasError)
+                Padding(
+                  padding: const EdgeInsets.only(left: 12, top: 6),
+                  child: Text(
+                    state.errorText!,
+                    style: const TextStyle(
+                        color: Color(0xFFE31B23), fontSize: 12),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }

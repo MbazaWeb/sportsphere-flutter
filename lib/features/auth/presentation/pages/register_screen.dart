@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../../../../core/widgets/grass_form.dart';
+import '../../../../core/utils/form_validators.dart';
 import '../auth_controller.dart';
 
 // ── Country list ───────────────────────────────────────────────────────────────
@@ -204,8 +205,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    if (_country == null) {
-      _showSnack('Please select your country.');
+    if (_country == null || _country!.trim().isEmpty) {
+      _showSnack('Please select your country from the list.');
       return;
     }
     if (_dob == null) {
