@@ -7,7 +7,7 @@ import '../../../core/admin/app_admin.dart';
 import '../../../core/data/social_repository.dart';
 import '../../../core/theme/colors.dart';
 import '../../../features/auth/presentation/auth_controller.dart';
-import '../../scores/presentation/admin_live_control.dart';
+import '../scores/presentation/admin_live_control.dart';
 import 'admin_repository.dart';
 
 final _repo = AdminRepository();

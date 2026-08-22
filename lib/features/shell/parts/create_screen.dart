@@ -207,24 +207,24 @@ class _CreateComposerState extends State<_CreateComposer>
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
-      builder: (_) => SafeArea(
+      builder: (sheetCtx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
               leading: const Icon(Icons.photo_library_rounded, color: SportSphereColors.electricBlue),
               title: const Text('Gallery', style: TextStyle(color: SportSphereColors.white)),
-              onTap: () => Navigator.pop(_, ImageSource.gallery),
+              onTap: () => Navigator.pop(sheetCtx, ImageSource.gallery),
             ),
             ListTile(
               leading: const Icon(Icons.videocam_rounded, color: SportSphereColors.sportGreen),
               title: const Text('Camera (Photo)', style: TextStyle(color: SportSphereColors.white)),
-              onTap: () => Navigator.pop(_, ImageSource.camera),
+              onTap: () => Navigator.pop(sheetCtx, ImageSource.camera),
             ),
             ListTile(
               leading: const Icon(Icons.video_library_rounded, color: SportSphereColors.sportOrange),
               title: const Text('Camera (Video)', style: TextStyle(color: SportSphereColors.white)),
-              onTap: () => Navigator.pop(_, ImageSource.camera),
+              onTap: () => Navigator.pop(sheetCtx, ImageSource.camera),
             ),
           ],
         ),
@@ -245,14 +245,14 @@ class _CreateComposerState extends State<_CreateComposer>
       if (pickVideo) {
         final file = await _picker.pickVideo(source: source);
         if (file == null) return;
-        setState(() => _saving = true);
+        setState(() => _posting = true);
         final url = await _social.uploadPickedFile(
           bucket: 'media', folder: 'videos', file: file,
         );
         setState(() {
           _mediaTiles.add(url);
           _mediaIsVideo.add(true);
-          _saving = false;
+          _posting = false;
         });
       } else {
         // Show a quick image/video choice if gallery
@@ -457,7 +457,13 @@ class _CreateComposerState extends State<_CreateComposer>
                   const SizedBox(height: 14),
                   _MediaStrip(
                     tiles: _mediaTiles,
-                    onRemove: (i) => setState(() => _mediaTiles.removeAt(i)),
+                    isVideo: _mediaIsVideo.isNotEmpty
+                        ? List<bool>.from(_mediaIsVideo)
+                        : List.filled(_mediaTiles.length, false),
+                    onRemove: (i) => setState(() {
+                      _mediaTiles.removeAt(i);
+                      if (i < _mediaIsVideo.length) _mediaIsVideo.removeAt(i);
+                    }),
                   ),
                 ],
 
