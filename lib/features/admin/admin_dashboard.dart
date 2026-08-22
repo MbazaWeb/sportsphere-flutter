@@ -8,6 +8,7 @@ import '../../../core/data/social_repository.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/country_picker_field.dart';
 import '../../../core/widgets/team_color_picker.dart';
+import '../../../core/widgets/grass_form.dart';
 import '../../../features/auth/presentation/auth_controller.dart';
 import '../scores/presentation/admin_live_control.dart';
 import 'admin_repository.dart';
@@ -202,7 +203,7 @@ class _UsersTabState extends State<_UsersTab> {
     final roles=['fan','player','coach','team','journalist','analyst','creator','scout','agent','moderator','official','admin'];
     String sel=roles.contains(cur)?cur:'fan';
     showDialog<void>(context:ctx,builder:(_)=>StatefulBuilder(builder:(c,setL)=>AlertDialog(
-      backgroundColor:SportSphereColors.surface,
+      backgroundColor:GrassForm.sheetBg,
       title:const Text('Change Role',style:TextStyle(color:SportSphereColors.white)),
       content:DropdownButton<String>(value:sel,dropdownColor:SportSphereColors.surface,isExpanded:true,
         style:const TextStyle(color:SportSphereColors.white),
@@ -216,7 +217,7 @@ class _UsersTabState extends State<_UsersTab> {
   }
   void _confirmDelete(BuildContext ctx,String uid,String name){
     showDialog<void>(context:ctx,builder:(_)=>AlertDialog(
-      backgroundColor:SportSphereColors.surface,
+      backgroundColor:GrassForm.sheetBg,
       title:const Text('Delete User?',style:TextStyle(color:SportSphereColors.white)),
       content:Text('Permanently delete $name?',style:const TextStyle(color:SportSphereColors.muted)),
       actions:[
@@ -347,7 +348,7 @@ class _MatchesTabState extends ConsumerState<_MatchesTab> {
     String status=m['status']??'upcoming';
     final statuses=['upcoming','live','ht','finished','postponed','cancelled'];
     showDialog<void>(context:ctx,builder:(_)=>StatefulBuilder(builder:(c,setL)=>AlertDialog(
-      backgroundColor:SportSphereColors.surface,
+      backgroundColor:GrassForm.sheetBg,
       title:Text('${m['homeTeam']} vs ${m['awayTeam']}',style:const TextStyle(color:SportSphereColors.white,fontSize:14)),
       content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
         DropdownButtonFormField<String>(value:statuses.contains(status)?status:'upcoming',dropdownColor:SportSphereColors.surface,
@@ -452,7 +453,7 @@ Future<String?> _pickAndUpload(BuildContext ctx, {String folder='admin'}) async 
 // ── Create User ────────────────────────────────────────────────────────────────
 Future<void> _showCreateUser(BuildContext ctx) {
   return showDialog<void>(context:ctx, builder:(_)=>AlertDialog(
-    backgroundColor:SportSphereColors.surface,
+    backgroundColor:GrassForm.sheetBg,
     title:const Text('Create User', style:TextStyle(color:SportSphereColors.white)),
     content:const Text(
       'To create users:\n\nSupabase Dashboard → Authentication → Users → Add User\n\nRequires service role key (not available in app for security).',
@@ -472,12 +473,12 @@ Future<void> _showCreateCompetition(BuildContext ctx) {
   bool uploading=false;
 
   return showModalBottomSheet<void>(context:ctx, isScrollControlled:true,
-    backgroundColor:SportSphereColors.surface,
+    backgroundColor:GrassForm.sheetBg,
     shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(24))),
     builder:(_)=>StatefulBuilder(builder:(c,setL)=>Padding(
       padding:EdgeInsets.fromLTRB(20,20,20,MediaQuery.of(c).viewInsets.bottom+20),
       child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-        const Text('Create Competition', style:TextStyle(color:SportSphereColors.white, fontSize:18, fontWeight:FontWeight.w800)),
+        const GrassFormHeader(title:'Create Competition', subtitle:'League or cup on the SportSphere pitch', icon:Icons.emoji_events_rounded),
         const SizedBox(height:16),
         _AdminField(controller:name, label:'Competition Name *'),
         CountryPickerField(label:'Country', value:country, onChanged:(v)=>setL(()=>country=v)),
@@ -498,7 +499,7 @@ Future<void> _showCreateCompetition(BuildContext ctx) {
           }),
         const SizedBox(height:16),
         SizedBox(width:double.infinity, child:FilledButton(
-          style:FilledButton.styleFrom(backgroundColor:SportSphereColors.electricBlue, padding:const EdgeInsets.symmetric(vertical:14)),
+          style:FilledButton.styleFrom(backgroundColor:GrassForm.greenBright, padding:const EdgeInsets.symmetric(vertical:14)),
           onPressed:() async {
             if(name.text.trim().isEmpty) return;
             try {
@@ -525,12 +526,12 @@ Future<void> _showCreateTeam(BuildContext ctx, List<Map<String,dynamic>>? preloa
   bool uploading=false;
 
   showModalBottomSheet<void>(context:ctx, isScrollControlled:true,
-    backgroundColor:SportSphereColors.surface,
+    backgroundColor:GrassForm.sheetBg,
     shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(24))),
     builder:(_)=>StatefulBuilder(builder:(c,setL)=>Padding(
       padding:EdgeInsets.fromLTRB(20,20,20,MediaQuery.of(c).viewInsets.bottom+20),
       child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-        const Text('Create Team', style:TextStyle(color:SportSphereColors.white, fontSize:18, fontWeight:FontWeight.w800)),
+        const GrassFormHeader(title:'Create Team', subtitle:'Club colours, country and badge', icon:Icons.groups_rounded),
         const SizedBox(height:16),
         _AdminField(controller:name, label:'Full Club Name *'),
         _AdminField(controller:shortName, label:'Short Name (e.g. SIM, YAN)'),
@@ -593,7 +594,7 @@ Future<void> _showCreatePlayer(BuildContext ctx, List<Map<String,dynamic>> teams
     return showDialog<void>(
       context: ctx,
       builder: (_) => AlertDialog(
-        backgroundColor: SportSphereColors.surface,
+        backgroundColor: GrassForm.sheetBg,
         title: const Text('No clubs yet', style: TextStyle(color: SportSphereColors.white)),
         content: const Text(
           'Create a club/team first under Matches → Teams, then add the player and select their current club.',
@@ -617,7 +618,7 @@ Future<void> _showCreatePlayer(BuildContext ctx, List<Map<String,dynamic>> teams
   return showModalBottomSheet<void>(
     context: ctx,
     isScrollControlled: true,
-    backgroundColor: SportSphereColors.surface,
+    backgroundColor: GrassForm.sheetBg,
     shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
     builder: (_) => StatefulBuilder(
@@ -631,11 +632,11 @@ Future<void> _showCreatePlayer(BuildContext ctx, List<Map<String,dynamic>> teams
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Add Player',
-                    style: TextStyle(
-                        color: SportSphereColors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800)),
+                const GrassFormHeader(
+                  title: 'Add Player',
+                  subtitle: 'Select current club from existing teams',
+                  icon: Icons.sports_rounded,
+                ),
                 const SizedBox(height: 16),
                 // Required: current club
                 const Text('Current club / team *',
@@ -816,7 +817,7 @@ Future<void> _showCreatePlayer(BuildContext ctx, List<Map<String,dynamic>> teams
                   width: double.infinity,
                   child: FilledButton(
                     style: FilledButton.styleFrom(
-                        backgroundColor: SportSphereColors.electricBlue,
+                        backgroundColor: GrassForm.greenBright,
                         padding:
                             const EdgeInsets.symmetric(vertical: 14)),
                     onPressed: () async {
@@ -871,12 +872,12 @@ Future<void> _showCreateCoach(BuildContext ctx, List<Map<String,dynamic>> teams)
   bool uploading=false;
 
   return showModalBottomSheet<void>(context:ctx, isScrollControlled:true,
-    backgroundColor:SportSphereColors.surface,
+    backgroundColor:GrassForm.sheetBg,
     shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(24))),
     builder:(_)=>StatefulBuilder(builder:(c,setL)=>Padding(
       padding:EdgeInsets.fromLTRB(20,20,20,MediaQuery.of(c).viewInsets.bottom+20),
       child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-        const Text('Add Coach / Staff', style:TextStyle(color:SportSphereColors.white, fontSize:18, fontWeight:FontWeight.w800)),
+        const GrassFormHeader(title:'Add Coach / Staff', subtitle:'Link staff to a club', icon:Icons.psychology_rounded),
         const SizedBox(height:16),
         Row(children:[
           Expanded(child:_AdminField(controller:firstName, label:'First Name *')),
@@ -917,7 +918,7 @@ Future<void> _showCreateCoach(BuildContext ctx, List<Map<String,dynamic>> teams)
           }),
         const SizedBox(height:16),
         SizedBox(width:double.infinity, child:FilledButton(
-          style:FilledButton.styleFrom(backgroundColor:SportSphereColors.electricBlue, padding:const EdgeInsets.symmetric(vertical:14)),
+          style:FilledButton.styleFrom(backgroundColor:GrassForm.greenBright, padding:const EdgeInsets.symmetric(vertical:14)),
           onPressed:() async {
             final fullName = '${firstName.text.trim()} ${lastName.text.trim()}'.trim();
             if(fullName.isEmpty && name.text.trim().isEmpty) return;
@@ -945,7 +946,7 @@ Future<void> _showCreateMatch(BuildContext ctx) async {
   Map<String,dynamic>? homeTeam, awayTeam;
 
   showModalBottomSheet<void>(context:ctx, isScrollControlled:true,
-    backgroundColor:SportSphereColors.surface,
+    backgroundColor:GrassForm.sheetBg,
     shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(24))),
     builder:(_)=>StatefulBuilder(builder:(c,setL)=>Padding(
       padding:EdgeInsets.fromLTRB(20,20,20,MediaQuery.of(c).viewInsets.bottom+20),
@@ -1034,7 +1035,7 @@ Future<void> _showNewsCompose(BuildContext ctx) {
   bool uploading=false;
 
   return showModalBottomSheet<void>(context:ctx, isScrollControlled:true,
-    backgroundColor:SportSphereColors.surface,
+    backgroundColor:GrassForm.sheetBg,
     shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(24))),
     builder:(_)=>StatefulBuilder(builder:(c,setL)=>Padding(
       padding:EdgeInsets.fromLTRB(20,20,20,MediaQuery.of(c).viewInsets.bottom+20),
@@ -1082,7 +1083,7 @@ Future<void> _showNewsCompose(BuildContext ctx) {
           }),
         const SizedBox(height:16),
         SizedBox(width:double.infinity, child:FilledButton(
-          style:FilledButton.styleFrom(backgroundColor:SportSphereColors.electricBlue, padding:const EdgeInsets.symmetric(vertical:14)),
+          style:FilledButton.styleFrom(backgroundColor:GrassForm.greenBright, padding:const EdgeInsets.symmetric(vertical:14)),
           onPressed:() async {
             if(titleCtrl.text.trim().isEmpty) return;
             try {
@@ -1106,7 +1107,7 @@ Future<void> _showCreatePost(BuildContext ctx) {
   List<String> mediaUrls=[];
 
   return showModalBottomSheet<void>(context:ctx, isScrollControlled:true,
-    backgroundColor:SportSphereColors.surface,
+    backgroundColor:GrassForm.sheetBg,
     shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(24))),
     builder:(_)=>StatefulBuilder(builder:(c,setL)=>Padding(
       padding:EdgeInsets.fromLTRB(20,20,20,MediaQuery.of(c).viewInsets.bottom+20),
@@ -1145,7 +1146,7 @@ Future<void> _showCreatePost(BuildContext ctx) {
           }),
         const SizedBox(height:16),
         SizedBox(width:double.infinity, child:FilledButton(
-          style:FilledButton.styleFrom(backgroundColor:SportSphereColors.electricBlue, padding:const EdgeInsets.symmetric(vertical:14)),
+          style:FilledButton.styleFrom(backgroundColor:GrassForm.greenBright, padding:const EdgeInsets.symmetric(vertical:14)),
           onPressed:() async {
             if(textCtrl.text.trim().isEmpty && mediaUrls.isEmpty) return;
             try {
@@ -1164,25 +1165,24 @@ class _UploadButton extends StatelessWidget {
   final bool uploading;
   final String label;
   final VoidCallback onTap;
-  const _UploadButton({required this.url, required this.uploading,
-      required this.label, required this.onTap});
+  const _UploadButton({
+    required this.url,
+    required this.uploading,
+    required this.label,
+    required this.onTap,
+  });
+
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      style:OutlinedButton.styleFrom(foregroundColor:SportSphereColors.muted),
-      icon:uploading
-          ? const SizedBox(width:14,height:14,child:CircularProgressIndicator(strokeWidth:2))
-          : Icon(url!=null?Icons.check_circle_rounded:Icons.upload_rounded,
-              size:16, color:url!=null?SportSphereColors.sportGreen:null),
-      label:Text(uploading?'Uploading...':(url!=null?'Uploaded ✓':label),
-          style:TextStyle(fontSize:12,
-              color:url!=null?SportSphereColors.sportGreen:null)),
-      onPressed:uploading?null:onTap);
+    return GrassUploadTile(
+      url: url,
+      uploading: uploading,
+      label: label,
+      onTap: onTap,
+    );
   }
 }
 
-
-// ══ SHARED WIDGETS ══════════════════════════════════════════════════════════════
 
 class _Label extends StatelessWidget {
   final String t; const _Label(this.t);
@@ -1246,13 +1246,26 @@ class _SearchField extends StatelessWidget {
 }
 
 class _AdminField extends StatelessWidget {
-  final TextEditingController controller; final String label; final int maxLines; final TextInputType? keyboardType;
-  const _AdminField({required this.controller,required this.label,this.maxLines=1,this.keyboardType});
-  @override Widget build(BuildContext context)=>Padding(padding:const EdgeInsets.only(bottom:12),child:TextField(
-    controller:controller,maxLines:maxLines,keyboardType:keyboardType,style:const TextStyle(color:SportSphereColors.white),
-    decoration:InputDecoration(labelText:label,labelStyle:const TextStyle(color:SportSphereColors.muted),
-      enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(10),borderSide:BorderSide(color:Colors.white.withValues(alpha:0.12))),
-      focusedBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(10),borderSide:const BorderSide(color:SportSphereColors.electricBlue)))));
+  final TextEditingController controller;
+  final String label;
+  final int maxLines;
+  final TextInputType? keyboardType;
+  const _AdminField({
+    required this.controller,
+    required this.label,
+    this.maxLines = 1,
+    this.keyboardType,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GrassTextField(
+      controller: controller,
+      label: label,
+      maxLines: maxLines,
+      keyboardType: keyboardType,
+    );
+  }
 }
 
 class _Loader extends StatelessWidget {

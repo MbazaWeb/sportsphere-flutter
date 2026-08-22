@@ -6,6 +6,7 @@ import '../../../core/data/social_repository.dart';
 import '../../../core/data/world_countries.dart';
 import '../../../core/taxonomy/sport_catalog.dart';
 import '../../../core/theme/colors.dart';
+import '../../../core/widgets/grass_form.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../../core/utils/friendly_error.dart';
@@ -14,7 +15,7 @@ Future<void> showEditProfileSheet(BuildContext context, UserProfile user) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: const Color(0xFF071422),
+    backgroundColor: GrassForm.sheetBg,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
     ),
@@ -177,8 +178,11 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
               ),
             ),
             const SizedBox(height: 16),
-            const Text('Edit profile',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            const GrassFormHeader(
+              title: 'Edit profile',
+              subtitle: 'Update your details on the SportSphere pitch',
+              icon: Icons.person_rounded,
+            ),
             const SizedBox(height: 14),
             Row(
               children: [
@@ -282,7 +286,7 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
                   FilledButton(
                     onPressed: _saving ? null : _save,
                     style: FilledButton.styleFrom(
-                      backgroundColor: SportSphereColors.electricBlue,
+                      backgroundColor: GrassForm.greenBright,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                     child: Text(_saving ? 'Saving…' : 'Save'),
@@ -326,7 +330,7 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF071422),
+      backgroundColor: GrassForm.sheetBg,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),

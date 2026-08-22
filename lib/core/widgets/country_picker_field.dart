@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/world_countries.dart';
 import '../theme/colors.dart';
+import 'grass_form.dart';
 
 /// Searchable world-country selector (ISO list from [kWorldCountries]).
 Future<String?> showCountryPicker(
@@ -11,7 +12,7 @@ Future<String?> showCountryPicker(
   return showModalBottomSheet<String>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: SportSphereColors.surface,
+    backgroundColor: GrassForm.sheetBg,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
     ),
@@ -173,18 +174,19 @@ class CountryPickerField extends StatelessWidget {
           decoration: InputDecoration(
             labelText: label,
             labelStyle: const TextStyle(color: SportSphereColors.muted),
+            filled: true,
+            fillColor: GrassForm.fieldFill,
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide:
-                  BorderSide(color: Colors.white.withValues(alpha: 0.12)),
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(
+                  color: GrassForm.greenLine.withValues(alpha: 0.22)),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide:
-                  const BorderSide(color: SportSphereColors.electricBlue),
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: GrassForm.greenLine, width: 1.6),
             ),
             suffixIcon: const Icon(Icons.arrow_drop_down_rounded,
-                color: SportSphereColors.muted),
+                color: GrassForm.greenLine),
           ),
           child: Text(
             (value == null || value!.isEmpty) ? placeholder : value!,

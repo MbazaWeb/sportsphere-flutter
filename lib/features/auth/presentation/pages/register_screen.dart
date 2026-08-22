@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/colors.dart';
+import '../../../../core/widgets/grass_form.dart';
 import '../auth_controller.dart';
 
 // ── Country list ───────────────────────────────────────────────────────────────
@@ -709,13 +710,13 @@ class _Field extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         color: focused
-            ? SportSphereColors.electricBlue.withValues(alpha: 0.06)
-            : Colors.white.withValues(alpha: 0.04),
+            ? GrassForm.greenBright.withValues(alpha: 0.10)
+            : GrassForm.fieldFill,
         border: Border.all(
           color: focused
-              ? SportSphereColors.electricBlue.withValues(alpha: 0.55)
-              : Colors.white.withValues(alpha: 0.10),
-          width: focused ? 1.5 : 1,
+              ? GrassForm.greenLine.withValues(alpha: 0.75)
+              : GrassForm.greenLine.withValues(alpha: 0.22),
+          width: focused ? 1.6 : 1,
         ),
       ),
       child: Focus(
@@ -731,13 +732,11 @@ class _Field extends StatelessWidget {
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
-          cursorColor: SportSphereColors.electricBlue,
+          cursorColor: GrassForm.greenLine,
           decoration: InputDecoration(
             labelText: label,
             labelStyle: TextStyle(
-              color: focused
-                  ? SportSphereColors.electricBlue
-                  : SportSphereColors.muted,
+              color: focused ? GrassForm.greenLine : SportSphereColors.muted,
               fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
@@ -750,9 +749,7 @@ class _Field extends StatelessWidget {
               padding: const EdgeInsets.only(left: 12, right: 8),
               child: Icon(
                 icon,
-                color: focused
-                    ? SportSphereColors.electricBlue
-                    : SportSphereColors.muted,
+                color: focused ? GrassForm.greenLine : SportSphereColors.muted,
                 size: 18,
               ),
             ),
@@ -954,7 +951,7 @@ class _CountryPickerState extends State<_CountryPicker> {
                   color: SportSphereColors.white,
                   fontSize: 14,
                 ),
-                cursorColor: SportSphereColors.electricBlue,
+                cursorColor: GrassForm.greenLine,
                 decoration: InputDecoration(
                   border: InputBorder.none,
                   prefixIcon: const Icon(

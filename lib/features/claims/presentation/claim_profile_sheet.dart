@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/colors.dart';
+import '../../../core/widgets/grass_form.dart';
 import '../../../core/utils/friendly_error.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../data/claim_repository.dart';
@@ -148,19 +149,12 @@ class _ClaimProfileSheetState extends ConsumerState<ClaimProfileSheet> {
               ),
             ),
             const SizedBox(height: 16),
-            Text(
-              'Claim ${widget.profileName}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 20,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'This ${widget.profileType} profile was created by SportSphere. '
-              'Submit a claim if you represent this account. An admin will review your request.',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.65), height: 1.35),
+            GrassFormHeader(
+              title: 'Claim ${widget.profileName}',
+              subtitle:
+                  'This ${widget.profileType} profile was created by SportSphere. '
+                  'Submit a claim if you represent this account.',
+              icon: Icons.flag_rounded,
             ),
             const SizedBox(height: 16),
             _field('Contact email', _email, TextInputType.emailAddress),
@@ -170,12 +164,11 @@ class _ClaimProfileSheetState extends ConsumerState<ClaimProfileSheet> {
             SizedBox(
               width: double.infinity,
               height: 48,
-              child: FilledButton(
+              child: GrassSubmitButton(
+                label: _saving ? 'Submitting…' : 'Submit claim request',
+                loading: _saving,
                 onPressed: _saving ? null : _submit,
-                style: FilledButton.styleFrom(
-                  backgroundColor: SportSphereColors.electricBlue,
-                ),
-                child: Text(_saving ? 'Submitting…' : 'Submit claim request'),
+                icon: Icons.verified_user_rounded,
               ),
             ),
           ],
@@ -190,24 +183,11 @@ class _ClaimProfileSheetState extends ConsumerState<ClaimProfileSheet> {
     TextInputType type, {
     int maxLines = 1,
   }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: TextField(
-        controller: c,
-        keyboardType: type,
-        maxLines: maxLines,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(color: SportSphereColors.muted),
-          filled: true,
-          fillColor: Colors.white.withValues(alpha: 0.05),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide.none,
-          ),
-        ),
-      ),
+    return GrassTextField(
+      controller: c,
+      label: label,
+      maxLines: maxLines,
+      keyboardType: type,
     );
   }
 }
@@ -226,18 +206,18 @@ class ClaimProfileButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: SportSphereColors.electricBlue.withValues(alpha: 0.6)),
-          color: SportSphereColors.electricBlue.withValues(alpha: 0.12),
+          border: Border.all(color: GrassForm.greenLine.withValues(alpha: 0.7)),
+          color: GrassForm.greenBright.withValues(alpha: 0.15),
         ),
         child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.verified_user_outlined, size: 16, color: SportSphereColors.electricBlue),
+            Icon(Icons.verified_user_outlined, size: 16, color: GrassForm.greenLine),
             SizedBox(width: 6),
             Text(
               'Claim profile',
               style: TextStyle(
-                color: SportSphereColors.electricBlue,
+                color: GrassForm.greenLine,
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
               ),
