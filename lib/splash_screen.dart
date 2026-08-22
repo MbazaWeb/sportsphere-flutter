@@ -41,58 +41,58 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
 
-    // 1. Ball pops in
+    // 1. Logo pops in fast
     _entranceCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: const Duration(milliseconds: 500),
     );
-    _entranceScale = Tween<double>(begin: 0.3, end: 1.0).animate(
+    _entranceScale = Tween<double>(begin: 0.4, end: 1.0).animate(
       CurvedAnimation(parent: _entranceCtrl, curve: Curves.elasticOut),
     );
     _entranceOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _entranceCtrl,
-        curve: const Interval(0.0, 0.4, curve: Curves.easeIn),
+        curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
       ),
     );
 
-    // 2. Continuous spin — starts immediately, loops until exit
+    // 2. Spin
     _spinCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1800),
+      duration: const Duration(milliseconds: 1200),
     )..repeat();
 
-    // 3. Progress ring 0→100%
+    // 3. Progress ring — 1.5 seconds total hold
     _progressCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 3000),
+      duration: const Duration(milliseconds: 1500),
     );
     _progress = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _progressCtrl, curve: Curves.easeInOut),
     );
 
-    // 4. Exit spin: 3 fast turns, ball scales up and vanishes
+    // 4. Exit — fast scale up and vanish
     _exitCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 400),
     );
-    _exitAngle = Tween<double>(begin: 0.0, end: 6 * math.pi).animate(
+    _exitAngle = Tween<double>(begin: 0.0, end: 4 * math.pi).animate(
       CurvedAnimation(parent: _exitCtrl, curve: Curves.easeInOut),
     );
-    _exitScale = Tween<double>(begin: 1.0, end: 2.2).animate(
+    _exitScale = Tween<double>(begin: 1.0, end: 2.5).animate(
       CurvedAnimation(parent: _exitCtrl, curve: Curves.easeIn),
     );
     _exitOpacity = Tween<double>(begin: 1.0, end: 0.0).animate(
       CurvedAnimation(
         parent: _exitCtrl,
-        curve: const Interval(0.4, 1.0, curve: Curves.easeIn),
+        curve: const Interval(0.3, 1.0, curve: Curves.easeIn),
       ),
     );
 
-    // 5. Whole-screen fade out
+    // 5. Screen fade
     _screenFadeCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 300),
     );
     _screenOpacity = Tween<double>(begin: 1.0, end: 0.0).animate(
       CurvedAnimation(parent: _screenFadeCtrl, curve: Curves.easeIn),
@@ -108,9 +108,10 @@ class _SplashScreenState extends State<SplashScreen>
     _spinCtrl.stop();
     _exitCtrl.forward().then((_) {
       if (!mounted) return;
-      // Let the router redirect logic decide where to go
-      // based on auth state (home if logged in, login if guest)
-      context.go('/home');
+      _screenFadeCtrl.forward().then((_) {
+        if (!mounted) return;
+        context.go('/home');
+      });
     });
   }
 

@@ -243,23 +243,19 @@ String? _redirectLogic(Ref ref, GoRouterState state) {
   final auth = ref.read(authControllerProvider);
   final location = state.uri.toString();
 
-  // Still hydrating — hold on splash only, don't redirect other routes
-  if (auth.status == AuthStatus.unknown) {
-    return location == AppRoutes.splash ? null : AppRoutes.splash;
-  }
+  // Splash controls its own exit — never redirect away from it.
+  // It will call context.go('/home') when the animation finishes,
+  // and the router will then redirect to login if guest.
+  if (location == AppRoutes.splash) return null;
 
-  // Auth resolved — redirect away from splash
-  if (location == AppRoutes.splash) {
-    return auth.isAuthenticated ? AppRoutes.home : AppRoutes.login;
+  // Still hydrating — send non-splash routes to splash
+  if (auth.status == AuthStatus.unknown) {
+    return AppRoutes.splash;
   }
 
   // Check if current route requires authentication
   final isProtected = AppRoutes.protected.any(location.startsWith);
-
-  // Redirect unauthenticated users away from protected routes
-  if (isProtected && !auth.isAuthenticated) {
-    return AppRoutes.login;
-  }
+  if (isProtected && !auth.isAuthenticated) return AppRoutes.login;
 
   // Redirect authenticated users away from auth pages
   if ((location == AppRoutes.login || location == AppRoutes.register) &&
