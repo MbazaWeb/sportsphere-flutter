@@ -18,22 +18,23 @@ class _ProfileScreen extends ConsumerWidget {
 
     final isAdmin = AppAdmin.isAdminUser(user);
 
+    // Admin profile: show as "SportSphere Official" with no country, no fanOf
     final profile = FanProfileModel(
-      firstName: user.firstName,
-      lastName: user.lastName,
-      handle: user.handle,
+      firstName: isAdmin ? 'SportSphere' : user.firstName,
+      lastName: isAdmin ? '' : user.lastName,
+      handle: isAdmin ? 'sportsphere_app' : user.handle,
       email: user.email,
       fanOf: '',
       fanOfAccent: SportSphereColors.electricBlue,
-      bio: user.bio,
+      bio: isAdmin ? 'Official SportSphere platform account.' : user.bio,
       sport: 'Football',
-      location: user.country,
+      location: isAdmin ? '' : user.country,   // no country for admin
       joinedDate: user.joinedDate,
       postCount: user.postCount,
       followerCount: user.followerCount,
       followingCount: user.followingCount,
       avatarAsset: user.avatarUrl,
-      isVerified: user.isVerified,
+      isVerified: true,           // always verified for admin
       isOwnProfile: true,
     );
 
