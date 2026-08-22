@@ -264,7 +264,7 @@ class _BallWithGlow extends StatelessWidget {
           ),
           // The ball image itself — no clip here; ClipOval sits above in the tree
           Image.asset(
-            'assets/images/sport_sphere_ball.png',
+            'assets/images/Playify_logo.png',
             width: size,
             height: size,
             fit: BoxFit.cover,
@@ -327,7 +327,7 @@ class _SplashTitle extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 1),
               child: ClipOval(
                 child: Image.asset(
-                  'assets/images/sport_sphere_ball.png',
+                  'assets/images/Playify_logo.png',
                   width: 36,
                   height: 36,
                   fit: BoxFit.cover,

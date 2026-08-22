@@ -34,28 +34,40 @@ class ProfileLoader {
 
     // Admin / Official special treatment
     if (isOfficial) {
+      // Fetch live counts from real tables
+      final profileId = row?['id']?.toString() ?? '';
+      int postCount = 0, followerCount = 0, followingCount = 0;
+      try {
+        final counts = await Future.wait([
+          _sb.from('Post').select('id').eq('userId', profileId).then((r) => (r as List).length),
+          _sb.from('Follow').select('id').eq('"followingId"', profileId).then((r) => (r as List).length),
+          _sb.from('Follow').select('id').eq('"followerId"', profileId).then((r) => (r as List).length),
+        ]);
+        postCount = counts[0]; followerCount = counts[1]; followingCount = counts[2];
+      } catch (_) {}
+
+      final currentUid = _sb.auth.currentUser?.id?.toString() ?? '';
       return FanProfileModel(
         firstName: 'SportSphere',
         lastName: '',
         handle: (row?['handle'] as String?) ?? key,
-        fanOf: '', // no "Fan of" section
+        fanOf: '',
         fanOfAccent: const Color(0xFFFFD700),
         bio: (row?['bio'] as String?) ??
             'Official SportSphere account. Platform news, live scores and verified content.',
-        sport: 'All Sports',
-        location: '', // no country shown
+        sport: '',      // no sport shown for official/admin
+        location: '',   // no country shown
         joinedDate: DateTime.tryParse((row?['created_at'] as String?) ?? '') ??
             DateTime(2024, 1, 1),
-        postCount: (row?['postCount'] as int?) ?? 0,
-        followerCount: (row?['followerCount'] as int?) ?? 0,
-        followingCount: (row?['followingCount'] as int?) ?? 0,
+        postCount: postCount,
+        followerCount: followerCount,
+        followingCount: followingCount,
         avatarAsset:
             (row?['avatar_url'] as String?) ?? (row?['avatarUrl'] as String?),
         coverAsset:
             (row?['cover_url'] as String?) ?? (row?['coverUrl'] as String?),
-        isVerified: true, // always gold tick
-        isOwnProfile: _sb.auth.currentUser?.id != null &&
-            row?['id']?.toString() == _sb.auth.currentUser?.id,
+        isVerified: true,
+        isOwnProfile: currentUid.isNotEmpty && profileId == currentUid,
       );
     }
 

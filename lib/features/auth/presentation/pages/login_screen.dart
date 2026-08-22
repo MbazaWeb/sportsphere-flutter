@@ -356,7 +356,7 @@ class _LogoSection extends StatelessWidget {
             // Icon
             ClipOval(
               child: Image.asset(
-                'assets/images/sport_sphere_icon.png',
+                'assets/images/Playify_logo.png',
                 width: 104,
                 height: 104,
                 fit: BoxFit.cover,
