@@ -763,23 +763,46 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
   Future<void> _fetchPosts() async {
     setState(() => _loading = true);
     try {
-      // Find the user's id from profiles by handle
-      final profileRow = await Supabase.instance.client
-          .from('profiles')
+      // Post.userId is text referencing User.id (text).
+      // User.handle matches the profile handle.
+      final userRow = await Supabase.instance.client
+          .from('User')
           .select('id')
           .eq('handle', widget.profile.handle)
           .maybeSingle();
 
-      if (profileRow == null) {
-        if (mounted) setState(() => _loading = false);
+      if (userRow == null) {
+        // Try profiles table as fallback (uuid — cast to text for Post query)
+        final profileRow = await Supabase.instance.client
+            .from('profiles')
+            .select('id')
+            .eq('handle', widget.profile.handle)
+            .maybeSingle();
+
+        if (profileRow == null) {
+          if (mounted) setState(() => _loading = false);
+          return;
+        }
+        // profiles.id is uuid; Post.userId is text — cast it
+        final uid = profileRow['id'].toString();
+        final rows = await Supabase.instance.client
+            .from('Post')
+            .select()
+            .eq('userId', uid)
+            .order('createdAt', ascending: false)
+            .limit(30);
+        if (mounted) setState(() {
+          _posts = List<Map<String, dynamic>>.from(rows as List);
+          _loading = false;
+        });
         return;
       }
 
-      final uid = profileRow['id'].toString();
+      final uid = userRow['id'].toString();
       final rows = await Supabase.instance.client
           .from('Post')
           .select()
-          .eq('authorId', uid)
+          .eq('userId', uid)
           .order('createdAt', ascending: false)
           .limit(30);
 
@@ -790,6 +813,7 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
         });
       }
     } catch (e) {
+      debugPrint('[SportlightsFeed] fetchPosts error: $e');
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -837,16 +861,17 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
         itemBuilder: (_, i) {
           final p = _posts[i];
           final content = (p['content'] as String?) ?? '';
-          final type = (p['postType'] as String?) ?? 'text';
+          final type = (p['postType'] as String?) ?? 'post';
           final likes = (p['likeCount'] as int?) ?? 0;
           final comments = (p['commentCount'] as int?) ?? 0;
           final createdAt = DateTime.tryParse(p['createdAt'] ?? '');
-          final timeAgo = createdAt != null
-              ? _formatAgo(createdAt)
-              : '';
-          final mediaUrls = (p['mediaUrls'] as List?)
-              ?.map((e) => e.toString())
-              .toList() ?? [];
+          final timeAgo = createdAt != null ? _formatAgo(createdAt) : '';
+          // mediaUrls is stored as jsonb array in Post table
+          List<String> mediaUrls = [];
+          try {
+            final raw = p['mediaUrls'];
+            if (raw is List) mediaUrls = raw.map((e) => e.toString()).toList();
+          } catch (_) {}
 
           return ProfilePostCard(
             post: ProfilePost(

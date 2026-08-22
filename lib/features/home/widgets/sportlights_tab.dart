@@ -158,33 +158,33 @@ class _SpotlightItem {
       case _SpotlightType.player:
         return '/player/$h';
       case _SpotlightType.coach:
-        return '/coach/$h';
+        return '/role/coach/$h';
       case _SpotlightType.scout:
-        return '/scout/$h';
+        return '/role/scout/$h';
       case _SpotlightType.agent:
-        return '/agent/$h';
+        return '/role/agent/$h';
       case _SpotlightType.journalist:
-        return '/journalist/$h';
+        return '/role/journalist/$h';
       case _SpotlightType.analyst:
-        return '/analyst/$h';
+        return '/role/analyst/$h';
       case _SpotlightType.commentator:
-        return '/commentator/$h';
+        return '/role/commentator/$h';
       case _SpotlightType.creator:
-        return '/creator/$h';
+        return '/role/creator/$h';
       case _SpotlightType.moderator:
-        return '/moderator/$h';
+        return '/role/moderator/$h';
       case _SpotlightType.official:
-        return '/official/$h';
+        return '/role/official/$h';
       case _SpotlightType.organization:
-        return '/organization/$h';
+        return '/role/organization/$h';
       case _SpotlightType.league:
-        return '/league/$h';
+        return '/role/league/$h';
       case _SpotlightType.community:
-        return '/community/$h';
+        return '/role/community/$h';
       case _SpotlightType.business:
-        return '/business/$h';
+        return '/role/business/$h';
       case _SpotlightType.sponsor:
-        return '/sponsor/$h';
+        return '/role/sponsor/$h';
       case _SpotlightType.fan:
         return '/profile/$h';
       default:

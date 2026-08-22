@@ -90,7 +90,8 @@ class AuthRepository {
       followingCount = counts[2];
     } catch (_) {
       // Fall back to cached values if live query fails
-      postCount = response['post_count'] ?? 0;
+      // Note: profiles has follower_count/following_count but NOT post_count
+      postCount = 0;
       followerCount = response['follower_count'] ?? 0;
       followingCount = response['following_count'] ?? 0;
     }
@@ -142,10 +143,33 @@ class AuthRepository {
     if (session == null) return null;
 
     final userId = session.user.id;
+
+    // Update profiles table (snake_case columns)
     await _supabase
         .from('profiles')
         .update(data)
         .match({'id': userId});
+
+    // Also update User table (PascalCase columns) so they stay in sync
+    final userPatch = <String, dynamic>{
+      'updatedAt': DateTime.now().toIso8601String(),
+    };
+    if (data.containsKey('first_name')) userPatch['name'] =
+        '${data['first_name']} ${data['last_name'] ?? ''}'.trim();
+    if (data.containsKey('handle'))     userPatch['handle']     = data['handle'];
+    if (data.containsKey('bio'))        userPatch['bio']         = data['bio'];
+    if (data.containsKey('country'))    userPatch['currentCountry'] = data['country'];
+    if (data.containsKey('avatar_url')) userPatch['avatarUrl']   = data['avatar_url'];
+    if (data.containsKey('cover_url'))  userPatch['coverUrl']    = data['cover_url'];
+
+    try {
+      await _supabase
+          .from('User')
+          .update(userPatch)
+          .eq('id', userId);
+    } catch (e) {
+      debugPrint('[updateProfile] User table sync failed: $e');
+    }
 
     return hydrateProfile();
   }
@@ -203,7 +227,7 @@ class AuthRepository {
         themeColor: r['theme_color'] ?? '#168CFF',
         bio: r['bio'] ?? '',
         createdAt: DateTime.tryParse(r['created_at'] ?? ''),
-        postCount: r['post_count'] ?? 0,
+        postCount: 0, // live count fetched separately in hydrateProfile
         followerCount: r['follower_count'] ?? 0,
         followingCount: r['following_count'] ?? 0,
       );
