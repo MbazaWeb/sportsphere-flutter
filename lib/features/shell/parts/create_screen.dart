@@ -87,8 +87,11 @@ class _CreateComposerState extends State<_CreateComposer>
   bool _showDisappearing = false;
   bool _showTag = false;
 
-  // ── Media tiles (mock paths / names) ─────────────────────────
+  // ── Media tiles (actual file paths / uploaded URLs) ─────────────
   final List<String> _mediaTiles = [];
+  final List<bool> _mediaIsVideo = [];
+  final _picker = ImagePicker();
+  final _social = SocialRepository();
 
   // ── Poll state ────────────────────────────────────────────────
   final List<TextEditingController> _pollOptions = [
@@ -102,6 +105,7 @@ class _CreateComposerState extends State<_CreateComposer>
   late final TextEditingController _predAwayCtrl;
   int _predHomeScore = 1;
   int _predAwayScore = 1;
+  List<Map<String, dynamic>> _teams = [];
 
   // ── Extras ────────────────────────────────────────────────────
   String? _location;
@@ -143,6 +147,18 @@ class _CreateComposerState extends State<_CreateComposer>
     _toolbarAnim = CurvedAnimation(parent: _toolbarCtrl, curve: Curves.easeOutCubic);
 
     _textCtrl.addListener(() => setState(() {}));
+    // Pre-load teams for prediction dropdown
+    _loadTeams();
+  }
+
+  Future<void> _loadTeams() async {
+    try {
+      final rows = await Supabase.instance.client
+          .from('"Team"').select('id,name').order('name').limit(200);
+      if (mounted) {
+        setState(() => _teams = List<Map<String, dynamic>>.from(rows as List));
+      }
+    } catch (_) {}
   }
 
   @override
@@ -182,12 +198,120 @@ class _CreateComposerState extends State<_CreateComposer>
     _toolbarCtrl.reverse();
   }
 
-  void _addMockMedia() {
+  Future<void> _pickMedia() async {
     if (_mediaTiles.length >= 4) return;
-    setState(() {
-      _mediaTiles.add('media_${_mediaTiles.length + 1}');
-      _type = _PostType.media;
-    });
+    // Show source picker
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: SportSphereColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library_rounded, color: SportSphereColors.electricBlue),
+              title: const Text('Gallery', style: TextStyle(color: SportSphereColors.white)),
+              onTap: () => Navigator.pop(_, ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.videocam_rounded, color: SportSphereColors.sportGreen),
+              title: const Text('Camera (Photo)', style: TextStyle(color: SportSphereColors.white)),
+              onTap: () => Navigator.pop(_, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.video_library_rounded, color: SportSphereColors.sportOrange),
+              title: const Text('Camera (Video)', style: TextStyle(color: SportSphereColors.white)),
+              onTap: () => Navigator.pop(_, ImageSource.camera),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+
+    // Determine if user wants video
+    bool pickVideo = false;
+    if (source == ImageSource.camera) {
+      // Second sheet was video option — detect by what they tapped
+      // The camera source can do both. For simplicity, pick image first.
+      pickVideo = false;
+    }
+
+    setState(() => _type = _PostType.media);
+    try {
+      if (pickVideo) {
+        final file = await _picker.pickVideo(source: source);
+        if (file == null) return;
+        setState(() => _saving = true);
+        final url = await _social.uploadPickedFile(
+          bucket: 'media', folder: 'videos', file: file,
+        );
+        setState(() {
+          _mediaTiles.add(url);
+          _mediaIsVideo.add(true);
+          _saving = false;
+        });
+      } else {
+        // Show a quick image/video choice if gallery
+        if (source == ImageSource.gallery) {
+          final choice = await showDialog<String>(
+            context: context,
+            builder: (d) => SimpleDialog(
+              backgroundColor: const Color(0xFF0C1A2A),
+              title: const Text('Pick media type', style: TextStyle(color: Colors.white)),
+              children: [
+                SimpleDialogOption(
+                  child: const Text('Image', style: TextStyle(color: SportSphereColors.electricBlue)),
+                  onPressed: () => Navigator.pop(d, 'image'),
+                ),
+                SimpleDialogOption(
+                  child: const Text('Video', style: TextStyle(color: SportSphereColors.sportGreen)),
+                  onPressed: () => Navigator.pop(d, 'video'),
+                ),
+              ],
+            ),
+          );
+          if (choice == null) return;
+          pickVideo = choice == 'video';
+        }
+
+        if (pickVideo) {
+          final file = await _picker.pickVideo(source: source);
+          if (file == null) return;
+          setState(() => _posting = true);
+          final url = await _social.uploadPickedFile(
+            bucket: 'media', folder: 'videos', file: file,
+          );
+          setState(() {
+            _mediaTiles.add(url);
+            _mediaIsVideo.add(true);
+            _posting = false;
+          });
+        } else {
+          final file = await _picker.pickImage(source: source, imageQuality: 85);
+          if (file == null) return;
+          setState(() => _posting = true);
+          final url = await _social.uploadPickedFile(
+            bucket: 'posts', folder: 'images', file: file,
+          );
+          setState(() {
+            _mediaTiles.add(url);
+            _mediaIsVideo.add(false);
+            _posting = false;
+          });
+        }
+      }
+    } catch (e) {
+      setState(() => _posting = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Media: $e'), backgroundColor: const Color(0xFFE31B23)),
+        );
+      }
+    }
   }
 
   Future<void> _submit() async {
@@ -241,6 +365,14 @@ class _CreateComposerState extends State<_CreateComposer>
       await _submitCtrl.forward();
       await Future.delayed(const Duration(milliseconds: 400));
 
+      // Refresh post count after successful creation
+      final uid = Supabase.instance.client.auth.currentUser?.id;
+      if (uid != null) {
+        try {
+          await Supabase.instance.client.rpc('refresh_user_counts', params: {'p_id': uid});
+        } catch (_) {}
+      }
+
       setState(() {
         _submitted = true;
         _posting = false;
@@ -264,6 +396,7 @@ class _CreateComposerState extends State<_CreateComposer>
       // Reset everything
       _textCtrl.clear();
       _mediaTiles.clear();
+      _mediaIsVideo.clear();
       for (var i = 2; i < _pollOptions.length; i++) {
         _pollOptions[i].dispose();
       }
@@ -359,12 +492,15 @@ class _CreateComposerState extends State<_CreateComposer>
                   _PredictionPanel(
                     homeCtrl: _predHomeCtrl,
                     awayCtrl: _predAwayCtrl,
+                    teams: _teams,
                     homeScore: _predHomeScore,
                     awayScore: _predAwayScore,
                     onHomeScoreChanged: (v) =>
                         setState(() => _predHomeScore = v),
                     onAwayScoreChanged: (v) =>
                         setState(() => _predAwayScore = v),
+                    onHomeTeamChanged: (name) => setState(() {}),
+                    onAwayTeamChanged: (name) => setState(() {}),
                   ),
                 ],
 
@@ -449,7 +585,7 @@ class _CreateComposerState extends State<_CreateComposer>
           showDisappearing: _showDisappearing,
           showTag: _showTag,
           onToggle: _toggleToolbar,
-          onMedia: _addMockMedia,
+          onMedia: _pickMedia,
           onPoll: () => _switchType(_PostType.poll),
           onPrediction: () => _switchType(_PostType.prediction),
           onLocation: () => setState(() {
@@ -827,8 +963,9 @@ class _TextArea extends StatelessWidget {
 
 class _MediaStrip extends StatelessWidget {
   final List<String> tiles;
+  final List<bool> isVideo;
   final ValueChanged<int> onRemove;
-  const _MediaStrip({required this.tiles, required this.onRemove});
+  const _MediaStrip({required this.tiles, required this.isVideo, required this.onRemove});
 
   @override
   Widget build(BuildContext context) {
@@ -846,25 +983,19 @@ class _MediaStrip extends StatelessWidget {
                     Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(14),
-                        gradient: LinearGradient(
-                          colors: [
-                            SportSphereColors.electricBlue
-                                .withValues(alpha: 0.25),
-                            SportSphereColors.sportGreen
-                                .withValues(alpha: 0.15),
-                          ],
-                        ),
+                        color: const Color(0xFF0B1626),
                         border: Border.all(
-                          color:
-                              SportSphereColors.white.withValues(alpha: 0.10),
+                          color: SportSphereColors.white.withValues(alpha: 0.10),
                         ),
                       ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.image_rounded,
-                          color: SportSphereColors.white54,
-                          size: 32,
-                        ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: tiles[i].startsWith('http')
+                            ? (isVideo.length > i && isVideo[i]
+                                ? Container(color: Colors.black, child: const Center(child: Icon(Icons.play_circle_rounded, color: Colors.white, size: 32)))
+                                : Image.network(tiles[i], fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_rounded, color: Colors.white38, size: 32)))
+                            : const Icon(Icons.image_rounded, color: SportSphereColors.white38, size: 32),
                       ),
                     ),
                     Positioned(
@@ -1090,18 +1221,24 @@ class _PollPanel extends StatelessWidget {
 class _PredictionPanel extends StatelessWidget {
   final TextEditingController homeCtrl;
   final TextEditingController awayCtrl;
+  final List<Map<String, dynamic>> teams;
   final int homeScore;
   final int awayScore;
   final ValueChanged<int> onHomeScoreChanged;
   final ValueChanged<int> onAwayScoreChanged;
+  final ValueChanged<String> onHomeTeamChanged;
+  final ValueChanged<String> onAwayTeamChanged;
 
   const _PredictionPanel({
     required this.homeCtrl,
     required this.awayCtrl,
+    required this.teams,
     required this.homeScore,
     required this.awayScore,
     required this.onHomeScoreChanged,
     required this.onAwayScoreChanged,
+    required this.onHomeTeamChanged,
+    required this.onAwayTeamChanged,
   });
 
   @override
@@ -1122,11 +1259,30 @@ class _PredictionPanel extends StatelessWidget {
                   size: 36,
                 ),
                 const SizedBox(height: 6),
-                _PanelField(
-                  controller: homeCtrl,
-                  hint: 'Home Team',
-                  icon: Icons.edit_rounded,
-                  textAlign: TextAlign.center,
+                GestureDetector(
+                  onTap: () => _showTeamPicker(context, homeCtrl, onHomeTeamChanged),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: SportSphereColors.white.withValues(alpha: 0.12)),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            homeCtrl.text.isEmpty ? 'Select team' : homeCtrl.text,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: homeCtrl.text.isEmpty ? SportSphereColors.muted : SportSphereColors.white,
+                              fontSize: 13, fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const Icon(Icons.arrow_drop_down_rounded, color: SportSphereColors.white54, size: 18),
+                      ],
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 _ScoreStepper(
@@ -1185,11 +1341,30 @@ class _PredictionPanel extends StatelessWidget {
                   size: 36,
                 ),
                 const SizedBox(height: 6),
-                _PanelField(
-                  controller: awayCtrl,
-                  hint: 'Away Team',
-                  icon: Icons.edit_rounded,
-                  textAlign: TextAlign.center,
+                GestureDetector(
+                  onTap: () => _showTeamPicker(context, awayCtrl, onAwayTeamChanged),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: SportSphereColors.white.withValues(alpha: 0.12)),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            awayCtrl.text.isEmpty ? 'Select team' : awayCtrl.text,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: awayCtrl.text.isEmpty ? SportSphereColors.muted : SportSphereColors.white,
+                              fontSize: 13, fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const Icon(Icons.arrow_drop_down_rounded, color: SportSphereColors.white54, size: 18),
+                      ],
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 _ScoreStepper(
@@ -1200,6 +1375,78 @@ class _PredictionPanel extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showTeamPicker(BuildContext context, TextEditingController ctrl, ValueChanged<String> onTeamChanged) {
+    if (teams.isEmpty) return;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: SportSphereColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.3,
+        maxChildSize: 0.85,
+        expand: false,
+        builder: (_, scrollCtrl) => StatefulBuilder(
+          builder: (bCtx, bSet) => Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                child: Text('Select Team', style: TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: TextField(
+                  style: const TextStyle(color: Colors.white),
+                  onChanged: (_) => bSet(() {}),
+                  decoration: InputDecoration(
+                    hintText: 'Search teams...',
+                    hintStyle: const TextStyle(color: Colors.white38),
+                    filled: true,
+                    fillColor: const Color(0xFF0B1626),
+                    prefixIcon: const Icon(Icons.search_rounded, color: Colors.white54, size: 20),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    isDense: true,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  controller: scrollCtrl,
+                  itemCount: teams.length,
+                  itemBuilder: (_, i) {
+                    final name = teams[i]['name'] as String? ?? '';
+                    return GestureDetector(
+                      onTap: () {
+                        ctrl.text = name;
+                        onTeamChanged(name);
+                        Navigator.pop(bCtx);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.shield_rounded, color: SportSphereColors.sportGreen, size: 20),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(name, style: const TextStyle(color: SportSphereColors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -1,12 +1,10 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/colors.dart';
-import '../../shared/profile_widgets.dart';
 import '../../presentation/edit_profile_sheet.dart';
 import '../../../auth/presentation/auth_controller.dart';
 
@@ -182,13 +180,21 @@ class _ProfileHeader extends StatelessWidget {
               height: coverH,
               width: double.infinity,
               child: profile.coverAsset != null
-                  ? Image.asset(
-                      profile.coverAsset!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _CoverGradient(
-                        accent: profile.fanOfAccent,
-                      ),
-                    )
+                  ? (profile.coverAsset!.startsWith('http')
+                      ? Image.network(
+                          profile.coverAsset!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _CoverGradient(
+                            accent: profile.fanOfAccent,
+                          ),
+                        )
+                      : Image.asset(
+                          profile.coverAsset!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _CoverGradient(
+                            accent: profile.fanOfAccent,
+                          ),
+                        ))
                   : _CoverGradient(accent: profile.fanOfAccent),
             ),
             Positioned(
@@ -412,11 +418,17 @@ class _Avatar extends StatelessWidget {
       ),
       child: ClipOval(
         child: asset != null
-            ? Image.asset(
-                asset!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _AvatarFallback(accent: accentColor),
-              )
+            ? (asset!.startsWith('http')
+                ? Image.network(
+                    asset!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _AvatarFallback(accent: accentColor),
+                  )
+                : Image.asset(
+                    asset!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _AvatarFallback(accent: accentColor),
+                  ))
             : _AvatarFallback(accent: accentColor),
       ),
     );
@@ -947,12 +959,30 @@ class _AboutRow extends StatelessWidget {
 // MORE SHEET
 // ══════════════════════════════════════════════════════════════════════════════
 
-class _MoreSheet extends StatelessWidget {
+class _MoreSheet extends ConsumerWidget {
   final bool isOwnProfile;
   const _MoreSheet({required this.isOwnProfile});
 
+  Future<void> _doLogout(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        backgroundColor: const Color(0xFF0C1A2A),
+        title: const Text('Log Out', style: TextStyle(color: Colors.white)),
+        content: const Text('Are you sure you want to log out?', style: TextStyle(color: Color(0xFF8A9BB0))),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel', style: TextStyle(color: Color(0xFF8A9BB0)))),
+          TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Log Out', style: TextStyle(color: SportSphereColors.danger))),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await ref.read(authControllerProvider.notifier).signOut();
+    if (context.mounted) context.go('/');
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       decoration: const BoxDecoration(
         color: SportSphereColors.surface,
@@ -975,6 +1005,22 @@ class _MoreSheet extends StatelessWidget {
             _SheetOption(icon: Icons.edit_outlined, label: 'Edit Profile', onTap: () => Navigator.pop(context)),
             _SheetOption(icon: Icons.share_outlined, label: 'Share Profile', onTap: () => Navigator.pop(context)),
             _SheetOption(icon: Icons.qr_code_rounded, label: 'QR Code', onTap: () => Navigator.pop(context)),
+            const SizedBox(height: 8),
+            Container(
+              height: 1,
+              margin: const EdgeInsets.symmetric(horizontal: 8),
+              color: Colors.white.withOpacity(0.08),
+            ),
+            const SizedBox(height: 8),
+            _SheetOption(
+              icon: Icons.logout_rounded,
+              label: 'Log Out',
+              isDestructive: true,
+              onTap: () {
+                Navigator.pop(context);
+                _doLogout(context, ref);
+              },
+            ),
           ] else ...[
             _SheetOption(icon: Icons.share_outlined, label: 'Share Profile', onTap: () => Navigator.pop(context)),
             _SheetOption(icon: Icons.block_rounded, label: 'Block', onTap: () => Navigator.pop(context)),

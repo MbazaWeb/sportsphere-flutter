@@ -173,3 +173,12 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 .success { color: #86efac; font-size: 13px; }
 .muted { color: var(--muted); }
 .toolbar { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+.field-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.field-label span[style] { font-weight: 700; }
+.grid .stack { gap: 8px; }

@@ -23,8 +23,8 @@ class CommerceRepository {
     // Real PSP (M-Pesa STK / card) plugs in here via Edge Function.
     // Until STK credentials are set, we record a payable order as pending_confirm.
     final status = paymentMethod == 'demo' ? 'paid' : 'pending_confirm';
-    final ref = 'SS-${id.substring(4)}';
     await _sb.from('ShopOrder').insert({
+      'ref': 'SS-${id.substring(4)}',
       'id': id,
       'userId': uid,
       'sellerHandle': sellerHandle,

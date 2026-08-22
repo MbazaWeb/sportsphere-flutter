@@ -77,7 +77,7 @@ export function UsersPage() {
                 </td>
                 <td>
                   <select className="select" value={u.role ?? 'fan'} onChange={(e) => setRole(u, e.target.value)}>
-                    {['fan','player','team','coach','scout','agent','analyst','journalist','creator','official','organization','admin'].map((r) => (
+                    {['fan','player','team','coach','scout','agent','support_staff','analyst','journalist','creator','moderator','official','academy','league','competition','organization','media_broadcast','community','business','sponsor','commercial_partner','venue','admin'].map((r) => (
                       <option key={r} value={r}>{r}</option>
                     ))}
                   </select>
