@@ -41,12 +41,12 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF020A14),
+      backgroundColor: const Color(0xFF0A0E1C),
       body: FadeTransition(
         opacity: _opacity,
         child: Center(
           child: Image.asset(
-            'assets/images/playify_icon.png',
+            'assets/images/playify_sign.png',
             width: 220,
             errorBuilder: (_, __, ___) => const Text(
               'Playify',

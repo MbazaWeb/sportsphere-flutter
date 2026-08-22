@@ -621,8 +621,8 @@ class _MiniLogo extends StatelessWidget {
       children: [
         Image.asset(
           'assets/images/playify_sign.png',
-          height: 40,
-          errorBuilder: (_, __, ___) => const Text(
+          height: 110,
+          fit: BoxFit.contain,errorBuilder: (_, __, ___) => const Text(
             'Playify',
             style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 2),
           ),
