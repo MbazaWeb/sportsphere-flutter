@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../core/admin/app_admin.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +7,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/data/social_graph.dart';
 import '../../../core/data/social_repository.dart';
 import '../../../core/data/commerce_repository.dart';
+import '../../../core/theme/colors.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../../shell/media/media_tools.dart';
 import '../../shell/media/pdf_viewer_page.dart';
 import 'package:image_picker/image_picker.dart';
@@ -1342,15 +1345,15 @@ String _typeLabel(_SpotlightType type) {
 // ENGAGEMENT ROW
 // ============================================================
 
-class _EngagementRow extends StatefulWidget {
+class _EngagementRow extends ConsumerStatefulWidget {
   final _SpotlightItem item;
   const _EngagementRow({required this.item});
 
   @override
-  State<_EngagementRow> createState() => _EngagementRowState();
+  ConsumerState<_EngagementRow> createState() => _EngagementRowState();
 }
 
-class _EngagementRowState extends State<_EngagementRow> {
+class _EngagementRowState extends ConsumerState<_EngagementRow> {
   bool _liked = false;
   bool _shared = false;
   late int _likes;
@@ -1373,6 +1376,7 @@ class _EngagementRowState extends State<_EngagementRow> {
   }
 
   Future<void> _onShare() async {
+    if (_requireLogin()) return;
     final id = widget.item.postId;
     if (id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1406,6 +1410,7 @@ class _EngagementRowState extends State<_EngagementRow> {
   }
 
   Future<void> _onLike() async {
+    if (_requireLogin()) return;
     final next = !_liked;
     setState(() {
       _liked = next;
@@ -1426,7 +1431,26 @@ class _EngagementRowState extends State<_EngagementRow> {
     }
   }
 
+  /// Returns true if guest (action blocked), false if authenticated.
+  bool _requireLogin() {
+    final auth = ref.read(authControllerProvider);
+    if (auth.isAuthenticated) return false;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Sign in to like, comment and share'),
+        action: SnackBarAction(
+          label: 'Sign In',
+          onPressed: () => context.push('/login'),
+        ),
+        backgroundColor: SportSphereColors.surface,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+    return true;
+  }
+
   Future<void> _onComment() async {
+    if (_requireLogin()) return;
     final id = widget.item.postId;
     if (id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
