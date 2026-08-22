@@ -620,7 +620,7 @@ class _MiniLogo extends StatelessWidget {
     return Column(
       children: [
         Image.asset(
-          'assets/images/playify_icon.png',
+          'assets/images/playify_sign.png',
           height: 40,
           errorBuilder: (_, __, ___) => const Text(
             'Playify',
