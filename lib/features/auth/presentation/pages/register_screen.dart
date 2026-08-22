@@ -7,8 +7,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/colors.dart';
-import '../../../../core/widgets/grass_form.dart';
-import '../../../../core/utils/form_validators.dart';
 import '../auth_controller.dart';
 
 // ── Country list ───────────────────────────────────────────────────────────────
@@ -205,8 +203,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    if (_country == null || _country!.trim().isEmpty) {
-      _showSnack('Please select your country from the list.');
+    if (_country == null) {
+      _showSnack('Please select your country.');
       return;
     }
     if (_dob == null) {
@@ -637,7 +635,7 @@ class _MiniLogo extends StatelessWidget {
           ),
           child: ClipOval(
             child: Image.asset(
-              'assets/images/playify_icon.png',
+              'assets/images/Playify_logo.png',
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => Container(
                 color: SportSphereColors.surface,
@@ -711,13 +709,13 @@ class _Field extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         color: focused
-            ? GrassForm.greenBright.withValues(alpha: 0.10)
-            : GrassForm.fieldFill,
+            ? SportSphereColors.electricBlue.withValues(alpha: 0.06)
+            : Colors.white.withValues(alpha: 0.04),
         border: Border.all(
           color: focused
-              ? GrassForm.greenLine.withValues(alpha: 0.75)
-              : GrassForm.greenLine.withValues(alpha: 0.22),
-          width: focused ? 1.6 : 1,
+              ? SportSphereColors.electricBlue.withValues(alpha: 0.55)
+              : Colors.white.withValues(alpha: 0.10),
+          width: focused ? 1.5 : 1,
         ),
       ),
       child: Focus(
@@ -733,11 +731,13 @@ class _Field extends StatelessWidget {
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
-          cursorColor: GrassForm.greenLine,
+          cursorColor: SportSphereColors.electricBlue,
           decoration: InputDecoration(
             labelText: label,
             labelStyle: TextStyle(
-              color: focused ? GrassForm.greenLine : SportSphereColors.muted,
+              color: focused
+                  ? SportSphereColors.electricBlue
+                  : SportSphereColors.muted,
               fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
@@ -750,7 +750,9 @@ class _Field extends StatelessWidget {
               padding: const EdgeInsets.only(left: 12, right: 8),
               child: Icon(
                 icon,
-                color: focused ? GrassForm.greenLine : SportSphereColors.muted,
+                color: focused
+                    ? SportSphereColors.electricBlue
+                    : SportSphereColors.muted,
                 size: 18,
               ),
             ),
@@ -952,7 +954,7 @@ class _CountryPickerState extends State<_CountryPicker> {
                   color: SportSphereColors.white,
                   fontSize: 14,
                 ),
-                cursorColor: GrassForm.greenLine,
+                cursorColor: SportSphereColors.electricBlue,
                 decoration: InputDecoration(
                   border: InputBorder.none,
                   prefixIcon: const Icon(

@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/colors.dart';
-import '../../../../core/widgets/grass_form.dart';
 import '../auth_controller.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -82,7 +81,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             top: -size.height * 0.12,
             left: -80,
             child: _AmbientOrb(
-              color: GrassForm.greenLine,
+              color: SportSphereColors.electricBlue,
               size: size.width * 0.95,
             ),
           ),
@@ -242,7 +241,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                   child: Text(
                                     'Forgot password?',
                                     style: TextStyle(
-                                      color: GrassForm.greenLine,
+                                      color: SportSphereColors.electricBlue,
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -330,7 +329,7 @@ class _LogoSection extends StatelessWidget {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: GrassForm.greenLine.withValues(alpha: 0.35),
+                    color: SportSphereColors.electricBlue.withValues(alpha: 0.35),
                     blurRadius: 50,
                     spreadRadius: 8,
                   ),
@@ -349,7 +348,7 @@ class _LogoSection extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: GrassForm.greenLine.withValues(alpha: 0.25),
+                  color: SportSphereColors.electricBlue.withValues(alpha: 0.25),
                   width: 1.5,
                 ),
               ),
@@ -357,7 +356,7 @@ class _LogoSection extends StatelessWidget {
             // Icon
             ClipOval(
               child: Image.asset(
-                'assets/images/playify_icon.png',
+                'assets/images/Playify_logo.png',
                 width: 104,
                 height: 104,
                 fit: BoxFit.cover,
@@ -370,7 +369,7 @@ class _LogoSection extends StatelessWidget {
                   ),
                   child: const Icon(
                     Icons.sports_soccer,
-                    color: GrassForm.greenLine,
+                    color: SportSphereColors.electricBlue,
                     size: 52,
                   ),
                 ),
@@ -397,7 +396,7 @@ class _LogoSection extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _tagWord('Connect.', GrassForm.greenLine),
+                _tagWord('Connect.', SportSphereColors.electricBlue),
                 const SizedBox(width: 6),
                 _tagWord('Compete.', SportSphereColors.sportGreen),
                 const SizedBox(width: 6),
@@ -515,11 +514,11 @@ class _GlassFieldState extends State<_GlassField> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
         color: widget.focused
-            ? GrassForm.greenLine.withValues(alpha: 0.06)
+            ? SportSphereColors.electricBlue.withValues(alpha: 0.06)
             : Colors.white.withValues(alpha: 0.04),
         border: Border.all(
           color: widget.focused
-              ? GrassForm.greenLine.withValues(alpha: 0.55)
+              ? SportSphereColors.electricBlue.withValues(alpha: 0.55)
               : Colors.white.withValues(alpha: 0.10),
           width: widget.focused ? 1.5 : 1,
         ),
@@ -537,12 +536,12 @@ class _GlassFieldState extends State<_GlassField> {
             fontSize: 15,
             fontWeight: FontWeight.w500,
           ),
-          cursorColor: GrassForm.greenLine,
+          cursorColor: SportSphereColors.electricBlue,
           decoration: InputDecoration(
             labelText: widget.label,
             labelStyle: TextStyle(
               color: widget.focused
-                  ? GrassForm.greenLine
+                  ? SportSphereColors.electricBlue
                   : SportSphereColors.muted,
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -557,7 +556,7 @@ class _GlassFieldState extends State<_GlassField> {
               child: Icon(
                 widget.prefixIcon,
                 color: widget.focused
-                    ? GrassForm.greenLine
+                    ? SportSphereColors.electricBlue
                     : SportSphereColors.muted,
                 size: 20,
               ),
@@ -607,11 +606,11 @@ class _PrimaryButton extends StatelessWidget {
           gradient: LinearGradient(
             colors: loading
                 ? [
-                    GrassForm.greenLine.withValues(alpha: 0.6),
+                    SportSphereColors.electricBlue.withValues(alpha: 0.6),
                     const Color(0xFF0055BB).withValues(alpha: 0.6),
                   ]
                 : [
-                    GrassForm.greenLine,
+                    SportSphereColors.electricBlue,
                     const Color(0xFF0066DD),
                   ],
           ),
@@ -619,7 +618,7 @@ class _PrimaryButton extends StatelessWidget {
               ? []
               : [
                   BoxShadow(
-                    color: GrassForm.greenLine.withValues(alpha: 0.40),
+                    color: SportSphereColors.electricBlue.withValues(alpha: 0.40),
                     blurRadius: 22,
                     offset: const Offset(0, 8),
                   ),
@@ -811,7 +810,7 @@ class _TermsText extends StatelessWidget {
           TextSpan(
             text: 'Terms of Service',
             style: TextStyle(
-              color: GrassForm.greenLine,
+              color: SportSphereColors.electricBlue,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -819,7 +818,7 @@ class _TermsText extends StatelessWidget {
           TextSpan(
             text: 'Privacy Policy',
             style: TextStyle(
-              color: GrassForm.greenLine,
+              color: SportSphereColors.electricBlue,
               fontWeight: FontWeight.w600,
             ),
           ),

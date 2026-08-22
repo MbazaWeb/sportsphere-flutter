@@ -28,7 +28,10 @@ class AppAdmin {
         handle == 'playify' ||
         handle == 'playify_official' ||
         handle == 'playify_app') return true;
-    if (user.role.toLowerCase() == 'admin') return true;
+    final role = user.role.toLowerCase();
+    if (role == 'admin' || role == 'official' || role == 'organization' || role == 'moderator') {
+      return true;
+    }
     return false;
   }
 
@@ -45,7 +48,9 @@ class AppAdmin {
         handle == 'playify_official' ||
         handle == 'playify_app') return true;
     final role = '${meta['role'] ?? ''}'.toLowerCase();
-    if (role == 'admin') return true;
+    if (role == 'admin' || role == 'official' || role == 'organization' || role == 'moderator') {
+      return true;
+    }
     return false;
   }
 
@@ -69,7 +74,9 @@ class AppAdmin {
         handle == 'playify' ||
         handle == 'playify_official' ||
         handle == 'playify_app') return true;
-      if (role == 'admin') return true;
+      if (role == 'admin' || role == 'official' || role == 'organization' || role == 'moderator') {
+        return true;
+      }
     } catch (_) {}
     try {
       final row = await Supabase.instance.client
@@ -85,7 +92,9 @@ class AppAdmin {
         handle == 'playify' ||
         handle == 'playify_official' ||
         handle == 'playify_app') return true;
-      if (role == 'admin') return true;
+      if (role == 'admin' || role == 'official' || role == 'organization' || role == 'moderator') {
+        return true;
+      }
     } catch (_) {}
     return false;
   }

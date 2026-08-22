@@ -53,22 +53,50 @@ class AdminRepository {
 
   Future<List<Map<String, dynamic>>> listCompetitions() async {
     try {
-      final rows = await _sb.from('League').select().order('createdAt', ascending: false).limit(100);
+      final rows = await _sb.from('League').select().order('name').limit(100);
       return List<Map<String, dynamic>>.from(rows as List);
-    } catch (e) { return []; }
+    } catch (e) {
+      debugPrint('listCompetitions: $e');
+      try {
+        final rows = await _sb.from('Competition').select().order('name').limit(100);
+        return List<Map<String, dynamic>>.from(rows as List);
+      } catch (e2) {
+        debugPrint('listCompetitions Competition: $e2');
+        return [];
+      }
+    }
   }
 
   Future<String> createCompetition({required String name, required String country, String? season, String type = 'league'}) async {
     final slug = name.toLowerCase().replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), '');
     final id = 'league-${DateTime.now().millisecondsSinceEpoch}';
-    await _sb.from('League').insert({
-      'id': id, 'name': name, 'slug': '${slug}_$id',
-      'country': country, 'type': type,
-      if (season != null) 'season': season,
-      'source': 'admin', 'verified': true, 'isActive': true,
-      'createdAt': DateTime.now().toIso8601String(),
-      'updatedAt': DateTime.now().toIso8601String(),
-    });
+    try {
+      await _sb.from('League').insert({
+        'id': id, 'name': name, 'slug': '${slug}_$id',
+        'country': country, 'type': type,
+        if (season != null) 'season': season,
+        'source': 'admin', 'verified': true, 'isActive': true,
+        'createdAt': DateTime.now().toIso8601String(),
+        'updatedAt': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      debugPrint('createCompetition: $e');
+      rethrow;
+    }
+    // Mirror into Competition table when present (taxonomy layer).
+    try {
+      await _sb.from('Competition').upsert({
+        'id': id,
+        'name': name,
+        'slug': '${slug}_$id',
+        'country': country,
+        'season': season,
+        'competition_type': type,
+        'sport_slug': 'football',
+      });
+    } catch (e) {
+      debugPrint('createCompetition Competition mirror: $e');
+    }
     return id;
   }
 

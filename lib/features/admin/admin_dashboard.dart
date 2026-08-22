@@ -32,7 +32,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 6, vsync: this);
+    _tabs = TabController(length: 7, vsync: this);
     _loadStats();
   }
 
@@ -90,6 +90,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard>
             Tab(text: '⚽ Matches'),
             Tab(text: '📝 Content'),
             Tab(text: '📰 News'),
+            Tab(text: '⭐ PRO Queue'),
           ],
         ),
         Expanded(child: TabBarView(controller: _tabs, children: [
@@ -99,6 +100,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard>
           _MatchesTab(onRefresh: _loadStats, parentRef: ref),
           const _ContentTab(),
           _NewsTab(onRefresh: _loadStats),
+          const _ProQueueTab(),
         ])),
       ])),
     );
@@ -1635,4 +1637,208 @@ class _Empty extends StatelessWidget {
 class _Div extends StatelessWidget {
   const _Div();
   @override Widget build(BuildContext ctx)=>Divider(height:1,color:Colors.white.withValues(alpha:0.06));
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PRO QUEUE TAB
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _ProQueueTab extends StatefulWidget {
+  const _ProQueueTab();
+  @override
+  State<_ProQueueTab> createState() => _ProQueueTabState();
+}
+
+class _ProQueueTabState extends State<_ProQueueTab> {
+  List<Map<String, dynamic>> _requests = [];
+  bool _loading = false;
+
+  @override
+  void initState() { super.initState(); _load(); }
+
+  Future<void> _load() async {
+    if (!mounted) return;
+    setState(() => _loading = true);
+    final sb = Supabase.instance.client;
+    final results = <Map<String, dynamic>>[];
+
+    // RoleRequest table (PRO requests from Become Pro sheet)
+    try {
+      final rows = await sb.from('RoleRequest')
+          .select('id, userId, requestedRole, status, notes, createdAt')
+          .eq('status', 'pending')
+          .order('createdAt', ascending: false)
+          .limit(50);
+      results.addAll((rows as List).cast<Map<String, dynamic>>()
+          .map((r) => {...r, '_source': 'RoleRequest'}));
+    } catch (_) {}
+
+    // Claim table (entity claims)
+    try {
+      final rows = await sb.from('Claim')
+          .select('id, claimantId, profileType, profileName, status, evidenceNotes, createdAt')
+          .eq('status', 'pending')
+          .order('createdAt', ascending: false)
+          .limit(50);
+      results.addAll((rows as List).cast<Map<String, dynamic>>()
+          .map((r) => {...r, '_source': 'Claim'}));
+    } catch (_) {}
+
+    results.sort((a, b) {
+      final aD = DateTime.tryParse(a['createdAt']?.toString() ?? '') ?? DateTime(2000);
+      final bD = DateTime.tryParse(b['createdAt']?.toString() ?? '') ?? DateTime(2000);
+      return bD.compareTo(aD);
+    });
+
+    if (mounted) setState(() { _requests = results; _loading = false; });
+  }
+
+  Future<void> _decide(Map<String, dynamic> req, String status) async {
+    final sb = Supabase.instance.client;
+    final src = req['_source'] as String;
+    final id  = req['id']?.toString() ?? '';
+    try {
+      if (src == 'RoleRequest') {
+        await sb.from('RoleRequest').update({
+          'status': status,
+          'reviewedAt': DateTime.now().toIso8601String(),
+        }).eq('id', id);
+        if (status == 'approved') {
+          final uid  = req['userId']?.toString() ?? '';
+          final role = req['requestedRole']?.toString() ?? '';
+          if (uid.isNotEmpty && role.isNotEmpty) {
+            await sb.from('profiles').update({'role': role}).eq('id', uid);
+            try { await sb.from('User').update({'role': role}).eq('id', uid); } catch (_) {}
+          }
+        }
+      } else {
+        await sb.from('Claim').update({
+          'status': status,
+          'reviewedAt': DateTime.now().toIso8601String(),
+        }).eq('id', id);
+      }
+      await _load();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(status == 'approved' ? '✓ Approved and role activated' : 'Rejected')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+        child: Row(children: [
+          Text('${_requests.length} pending',
+              style: const TextStyle(color: SportSphereColors.muted, fontSize: 13)),
+          const Spacer(),
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: SportSphereColors.muted, size: 20),
+            onPressed: _load,
+          ),
+        ]),
+      ),
+      Expanded(
+        child: _loading
+            ? const _Loader()
+            : _requests.isEmpty
+                ? const Center(child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.verified_rounded, color: SportSphereColors.muted, size: 48),
+                      SizedBox(height: 12),
+                      Text('No pending PRO requests',
+                          style: TextStyle(color: SportSphereColors.muted)),
+                    ]))
+                : RefreshIndicator(
+                    onRefresh: _load,
+                    color: SportSphereColors.electricBlue,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
+                      itemCount: _requests.length,
+                      separatorBuilder: (_, __) => const _Div(),
+                      itemBuilder: (_, i) {
+                        final r   = _requests[i];
+                        final src = r['_source'] as String;
+                        final isRole = src == 'RoleRequest';
+                        final role   = isRole ? r['requestedRole'] ?? '' : r['profileType'] ?? '';
+                        final notes  = isRole ? r['notes'] ?? '' : r['evidenceNotes'] ?? '';
+                        final uid    = isRole ? r['userId'] ?? '' : r['claimantId'] ?? '';
+                        final created = DateTime.tryParse(r['createdAt']?.toString() ?? '');
+
+                        return Container(
+                          margin: const EdgeInsets.symmetric(vertical: 6),
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF071422),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+                          ),
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Row(children: [
+                              _Chip(role.toString().toUpperCase(), SportSphereColors.electricBlue),
+                              const SizedBox(width: 6),
+                              _Chip(src, SportSphereColors.muted),
+                              const Spacer(),
+                              if (created != null)
+                                Text('${created.day}/${created.month}/${created.year}',
+                                    style: const TextStyle(color: SportSphereColors.muted, fontSize: 11)),
+                            ]),
+                            const SizedBox(height: 8),
+                            Text('User: ${uid.toString().length > 24 ? '${uid.toString().substring(0, 24)}…' : uid}',
+                                style: const TextStyle(color: SportSphereColors.muted, fontSize: 12)),
+                            if (notes.toString().isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(notes.toString(),
+                                  style: const TextStyle(color: SportSphereColors.white, fontSize: 13, height: 1.4)),
+                            ],
+                            const SizedBox(height: 12),
+                            Row(children: [
+                              Expanded(child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: SportSphereColors.danger,
+                                  side: BorderSide(color: SportSphereColors.danger.withValues(alpha: 0.5)),
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                ),
+                                onPressed: () => _decide(r, 'rejected'),
+                                icon: const Icon(Icons.close_rounded, size: 16),
+                                label: const Text('Reject'),
+                              )),
+                              const SizedBox(width: 10),
+                              Expanded(child: FilledButton.icon(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: SportSphereColors.sportGreen,
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                ),
+                                onPressed: () => _decide(r, 'approved'),
+                                icon: const Icon(Icons.check_rounded, size: 16),
+                                label: const Text('Approve'),
+                              )),
+                            ]),
+                          ]),
+                        );
+                      },
+                    ),
+                  ),
+      ),
+    ]);
+  }
+}
+
+class _Chip extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _Chip(this.label, this.color);
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(6),
+      border: Border.all(color: color.withValues(alpha: 0.25)),
+    ),
+    child: Text(label, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w800)),
+  );
 }
