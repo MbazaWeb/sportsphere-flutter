@@ -539,7 +539,7 @@ class _MessageSheetState extends State<_MessageSheet> {
       // Realtime will append; optimistically if needed after short delay reload
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
       }
     }
   }

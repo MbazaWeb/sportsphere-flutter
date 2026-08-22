@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/colors.dart';
 import 'news_repository.dart';
+import '../../../core/utils/friendly_error.dart';
 
 class NewsTab extends StatefulWidget {
   const NewsTab({super.key});
@@ -253,7 +254,7 @@ class _NewsCardState extends State<_NewsCard> {
         );
       });
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
     }
   }
 

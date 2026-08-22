@@ -14,6 +14,7 @@ import '../../shell/media/pdf_viewer_page.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/branding.dart';
+import '../../../core/utils/friendly_error.dart';
 
 // ============================================================
 // ROLE CONFIGURATION
@@ -766,7 +767,7 @@ class _AuthorHeader extends StatelessWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
       }
     }
   }
@@ -1067,7 +1068,7 @@ class _PollContentState extends State<_PollContent> {
     } catch (e) {
       if (mounted) {
         setState(() => _busy = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
       }
     }
   }
@@ -1546,7 +1547,7 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
       }
     }
   }
@@ -1567,7 +1568,7 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
           _liked = !next;
           _likes += next ? -1 : 1;
         });
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
       }
     }
   }
@@ -1836,7 +1837,7 @@ class _CommentSheetState extends State<_CommentSheet> {
       await _load();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
       }
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -2293,7 +2294,7 @@ class _ActionRowState extends State<_ActionRow> {
                     if (mounted) setState(() => _joinedCommunity = false);
                   } catch (e) {
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
                     }
                   }
                 },
@@ -2310,7 +2311,7 @@ class _ActionRowState extends State<_ActionRow> {
                     if (mounted) setState(() => _joinedCommunity = true);
                   } catch (e) {
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
                     }
                   }
                 },

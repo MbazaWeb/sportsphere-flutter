@@ -8,6 +8,7 @@ import '../../../core/taxonomy/sport_catalog.dart';
 import '../../../core/theme/colors.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../../core/utils/friendly_error.dart';
 
 Future<void> showEditProfileSheet(BuildContext context, UserProfile user) {
   return showModalBottomSheet<void>(
@@ -112,7 +113,7 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
       }
     } finally {
       if (mounted) setState(() => _saving = false);

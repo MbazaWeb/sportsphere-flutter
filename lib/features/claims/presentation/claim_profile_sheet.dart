@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/colors.dart';
+import '../../../core/utils/friendly_error.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../data/claim_repository.dart';
 
@@ -114,9 +115,9 @@ class _ClaimProfileSheetState extends ConsumerState<ClaimProfileSheet> {
       );
     } catch (e) {
       if (!mounted) return;
-      final msg = e.toString().contains('duplicate')
+      final msg = e.toString().toLowerCase().contains('duplicate')
           ? 'You already have a pending claim for this profile.'
-          : e.toString().replaceFirst('Exception: ', '');
+          : friendlyError(e);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } finally {
       if (mounted) setState(() => _saving = false);

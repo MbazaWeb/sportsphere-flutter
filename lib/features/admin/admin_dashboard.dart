@@ -11,6 +11,7 @@ import '../../../core/widgets/team_color_picker.dart';
 import '../../../features/auth/presentation/auth_controller.dart';
 import '../scores/presentation/admin_live_control.dart';
 import 'admin_repository.dart';
+import '../../core/utils/friendly_error.dart';
 
 final _repo = AdminRepository();
 
@@ -504,7 +505,7 @@ Future<void> _showCreateCompetition(BuildContext ctx) {
               await _repo.createCompetition(name:name.text.trim(), country:country,
                 season:season.text.trim().isEmpty?null:season.text.trim(), type:type);
               if(c.mounted) Navigator.pop(c);
-            } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e'))); }
+            } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text(friendlyError(e)))); }
           },
           child:const Text('Create Competition', style:TextStyle(fontWeight:FontWeight.w800)))),
       ])))));
@@ -571,7 +572,7 @@ Future<void> _showCreateTeam(BuildContext ctx, List<Map<String,dynamic>>? preloa
                 logoUrl:logoUrl,
               );
               if(c.mounted) Navigator.pop(c);
-            } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e'))); }
+            } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text(friendlyError(e)))); }
           },
           child:const Text('Create Team', style:TextStyle(fontWeight:FontWeight.w800)))),
       ])))));
@@ -844,7 +845,7 @@ Future<void> _showCreatePlayer(BuildContext ctx, List<Map<String,dynamic>> teams
                       } catch (e) {
                         if (c.mounted) {
                           ScaffoldMessenger.of(c).showSnackBar(
-                              SnackBar(content: Text('$e')));
+                              SnackBar(content: Text(friendlyError(e))));
                         }
                       }
                     },
@@ -926,7 +927,7 @@ Future<void> _showCreateCoach(BuildContext ctx, List<Map<String,dynamic>> teams)
                 role:coachRole, teamId:teamId,
                 nationality:nationality);
               if(c.mounted) Navigator.pop(c);
-            } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e'))); }
+            } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text(friendlyError(e)))); }
           },
           child:const Text('Add Coach', style:TextStyle(fontWeight:FontWeight.w800)))),
       ])))));
@@ -1017,7 +1018,7 @@ Future<void> _showCreateMatch(BuildContext ctx) async {
                 awayBadge:awayTeam?['logoUrl']?.toString(),
                 season:seasonCtrl.text.trim().isEmpty?null:seasonCtrl.text.trim());
               if(c.mounted) Navigator.pop(c);
-            } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e'))); }
+            } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text(friendlyError(e)))); }
           },
           child:const Text('Schedule Match', style:TextStyle(fontWeight:FontWeight.w800)))),
       ])))));
@@ -1091,7 +1092,7 @@ Future<void> _showNewsCompose(BuildContext ctx) {
                 source:sourceCtrl.text.trim(), isBreaking:isBreaking,
                 imageUrl:images.isNotEmpty?images.first:null);
               if(c.mounted) Navigator.pop(c);
-            } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e'))); }
+            } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text(friendlyError(e)))); }
           },
           child:const Text('Publish Article', style:TextStyle(fontWeight:FontWeight.w800)))),
       ])))));
@@ -1151,7 +1152,7 @@ Future<void> _showCreatePost(BuildContext ctx) {
               await SocialRepository().createPost(
                 content:textCtrl.text.trim(), postType:postType, mediaUrls:mediaUrls);
               if(c.mounted) Navigator.pop(c);
-            } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e'))); }
+            } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text(friendlyError(e)))); }
           },
           child:const Text('Post', style:TextStyle(fontWeight:FontWeight.w800)))),
       ])))));

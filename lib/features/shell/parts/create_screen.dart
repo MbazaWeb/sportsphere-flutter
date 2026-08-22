@@ -331,7 +331,7 @@ class _CreateComposerState extends State<_CreateComposer>
       if (mounted) {
         setState(() => _posting = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Media: $e'), backgroundColor: const Color(0xFFE31B23)),
+          SnackBar(content: Text(friendlyError(e)), backgroundColor: const Color(0xFFE31B23)),
         );
       }
     }

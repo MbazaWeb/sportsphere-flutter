@@ -25,6 +25,7 @@ import '../scores/presentation/pages/scores_page.dart';
 import '../shop/models/shop_models.dart';
 import '../shop/presentation/shop_tab.dart';
 import 'media/media_tools.dart';
+import '../../core/utils/friendly_error.dart';
 
 part 'parts/home_screen.dart';
 part 'parts/search_fullscreen.dart';

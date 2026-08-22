@@ -5,6 +5,7 @@ import '../../../core/data/commerce_repository.dart';
 import '../../../core/theme/colors.dart';
 import '../data/scores_repository.dart';
 import 'providers/scores_provider.dart';
+import '../../../core/utils/friendly_error.dart';
 
 Future<void> openAdminLiveControl(BuildContext context, WidgetRef ref) {
   return showModalBottomSheet<void>(
@@ -187,7 +188,7 @@ class _AdminLiveControlSheetState extends ConsumerState<_AdminLiveControlSheet>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
       }
     }
   }
@@ -339,7 +340,7 @@ class _AdminLiveControlSheetState extends ConsumerState<_AdminLiveControlSheet>
                       } catch (e) {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('$e')),
+                            SnackBar(content: Text(friendlyError(e))),
                           );
                         }
                       }
