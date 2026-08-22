@@ -359,21 +359,25 @@ class _CreateComposerState extends State<_CreateComposer>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 40, height: 4,
+                  width: 40,
+                  height: 4,
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
                     color: Colors.white24,
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
-                Text(isVideo ? 'Edit video' : 'Edit photo',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16)),
+                Text(
+                  isVideo ? 'Preview video' : 'Preview photo',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 Container(
-                  height: 280,
+                  height: 320,
                   width: double.infinity,
                   decoration: BoxDecoration(
                     color: Colors.black,
@@ -381,19 +385,7 @@ class _CreateComposerState extends State<_CreateComposer>
                     border: Border.all(color: Colors.white12),
                   ),
                   clipBehavior: Clip.antiAlias,
-                  child: isVideo
-                      ? const Center(
-                          child: Icon(Icons.play_circle_filled_rounded,
-                              color: Colors.white, size: 64))
-                      : (file.path.startsWith('http')
-                          ? Image.network(file.path, fit: BoxFit.contain,
-                              errorBuilder: (_, __, ___) => const Icon(
-                                  Icons.image_rounded,
-                                  color: Colors.white38,
-                                  size: 48))
-                          : const Center(
-                              child: Icon(Icons.image_rounded,
-                                  color: Colors.white70, size: 64))),
+                  child: _LocalMediaPreview(file: file, isVideo: isVideo),
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -1211,6 +1203,169 @@ class _TextArea extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 // MEDIA STRIP
 // ══════════════════════════════════════════════════════════════════════════════
+
+
+/// Renders a picked [XFile] photo or video so the user sees the real media.
+class _LocalMediaPreview extends StatefulWidget {
+  final XFile file;
+  final bool isVideo;
+  const _LocalMediaPreview({required this.file, required this.isVideo});
+
+  @override
+  State<_LocalMediaPreview> createState() => _LocalMediaPreviewState();
+}
+
+class _LocalMediaPreviewState extends State<_LocalMediaPreview> {
+  VideoPlayerController? _video;
+  Uint8List? _bytes;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      if (widget.isVideo) {
+        final path = widget.file.path;
+        if (!kIsWeb && path.isNotEmpty) {
+          final c = VideoPlayerController.file(File(path));
+          await c.initialize();
+          await c.setLooping(true);
+          await c.play();
+          if (!mounted) return;
+          setState(() {
+            _video = c;
+            _loading = false;
+          });
+          return;
+        }
+        // Web / no path: no inline video
+        if (!mounted) return;
+        setState(() {
+          _loading = false;
+          _error = 'Video ready — tap Use media';
+        });
+        return;
+      }
+
+      // Photo
+      final path = widget.file.path;
+      if (path.startsWith('http')) {
+        if (!mounted) return;
+        setState(() => _loading = false);
+        return;
+      }
+      if (!kIsWeb && path.isNotEmpty) {
+        // Image.file will read from disk — mark ready
+        if (!mounted) return;
+        setState(() => _loading = false);
+        return;
+      }
+      // Fallback: bytes (web / content URIs)
+      final bytes = await widget.file.readAsBytes();
+      if (!mounted) return;
+      setState(() {
+        _bytes = bytes;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'Could not load preview';
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _video?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF76D42B)),
+      );
+    }
+    if (_error != null && _video == null && _bytes == null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              widget.isVideo
+                  ? Icons.videocam_rounded
+                  : Icons.image_rounded,
+              color: Colors.white70,
+              size: 48,
+            ),
+            const SizedBox(height: 8),
+            Text(_error!,
+                style: const TextStyle(color: Colors.white70, fontSize: 13)),
+          ],
+        ),
+      );
+    }
+
+    if (widget.isVideo) {
+      if (_video != null && _video!.value.isInitialized) {
+        return FittedBox(
+          fit: BoxFit.contain,
+          child: SizedBox(
+            width: _video!.value.size.width,
+            height: _video!.value.size.height,
+            child: VideoPlayer(_video!),
+          ),
+        );
+      }
+      return const Center(
+        child: Icon(Icons.play_circle_filled_rounded,
+            color: Colors.white, size: 64),
+      );
+    }
+
+    // Photo
+    final path = widget.file.path;
+    if (path.startsWith('http')) {
+      return Image.network(
+        path,
+        fit: BoxFit.contain,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_rounded,
+            color: Colors.white38, size: 48),
+      );
+    }
+    if (_bytes != null) {
+      return Image.memory(
+        _bytes!,
+        fit: BoxFit.contain,
+        width: double.infinity,
+        height: double.infinity,
+      );
+    }
+    if (!kIsWeb && path.isNotEmpty) {
+      return Image.file(
+        File(path),
+        fit: BoxFit.contain,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_rounded,
+            color: Colors.white38, size: 48),
+      );
+    }
+    return const Center(
+      child: Icon(Icons.image_rounded, color: Colors.white70, size: 64),
+    );
+  }
+}
 
 class _MediaStrip extends StatelessWidget {
   final List<String> tiles;
