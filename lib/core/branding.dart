@@ -1,5 +1,24 @@
+/// Playify brand constants
+const kAppName = 'Playify';
+const kAppTagline = 'Your world of sport';
 
-const kOfficialHandle = 'sportsphere';
-const kOfficialAvatarUrl =
-    'https://fffqjbrethogesgghjsn.supabase.co/storage/v1/object/public/avatars/official/sportsphere.png';
-const kOfficialAvatarAsset = 'assets/images/Playify_logo.png';
+const kOfficialHandle = 'playify';
+const kOfficialLegacyHandles = {
+  'playify',
+  'playify_official',
+  'playify_app',
+  'sportsphere',
+  'sportsphere_official',
+  'sportsphere_app',
+};
+
+const kOfficialAvatarUrl = ''; // prefer local asset
+const kOfficialAvatarAsset = 'assets/images/playify_icon.png';
+const kAppBallAsset = 'assets/images/playify_ball.png';
+const kAppLogoAsset = 'assets/images/playify_logo.png';
+const kAppHeaderLogoAsset = 'assets/images/playify_header_logo.png';
+
+bool isOfficialHandle(String? handle) {
+  final h = (handle ?? '').replaceAll('@', '').trim().toLowerCase();
+  return kOfficialLegacyHandles.contains(h);
+}

@@ -319,7 +319,7 @@ class _LogoSection extends StatelessWidget {
       children: [
         // Single logo — Playify header logo centered
         Image.asset(
-          'assets/images/playify_header_logo.png',
+          'assets/images/playify_icon.png',
           height: 80,
           errorBuilder: (_, __, ___) => const Text(
             'Playify',

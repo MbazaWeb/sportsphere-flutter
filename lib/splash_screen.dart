@@ -46,7 +46,7 @@ class _SplashScreenState extends State<SplashScreen>
         opacity: _opacity,
         child: Center(
           child: Image.asset(
-            'assets/images/playify_header_logo.png',
+            'assets/images/playify_icon.png',
             width: 220,
             errorBuilder: (_, __, ___) => const Text(
               'Playify',

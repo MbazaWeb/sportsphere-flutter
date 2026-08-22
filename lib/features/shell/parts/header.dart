@@ -17,22 +17,27 @@ class _Header extends ConsumerWidget {
           // Logo
           Expanded(
             child: SizedBox(
-              height: 52,
-              child: Image.asset(
-                'assets/images/playify_header_logo.png',
-                alignment: Alignment.centerLeft,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) {
-                  return const Text(
-                    'SPORT SPHERE',
+              height: 40,
+              child: Row(
+                children: [
+                  Image.asset(
+                    'assets/images/playify_icon.png',
+                    height: 36,
+                    width: 36,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Playify',
                     style: TextStyle(
                       color: SportSphereColors.white,
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
-                      letterSpacing: 1,
+                      letterSpacing: 0.2,
                     ),
-                  );
-                },
+                  ),
+                ],
               ),
             ),
           ),
