@@ -652,13 +652,12 @@ class _MiniLogo extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'SPORT SPHERE',
-              style: TextStyle(
-                color: SportSphereColors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 2,
+            Image.asset(
+              'assets/images/playify_header_logo.png',
+              height: 28,
+              errorBuilder: (_, __, ___) => const Text(
+                'Playify',
+                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 2),
               ),
             ),
             Text(

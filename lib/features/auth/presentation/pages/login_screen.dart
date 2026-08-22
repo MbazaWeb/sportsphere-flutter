@@ -380,29 +380,30 @@ class _LogoSection extends StatelessWidget {
 
         const SizedBox(height: 20),
 
-        // SPORT SPHERE wordmark
-        Column(
+        // Playify wordmark — use header logo image
+        Image.asset(
+          'assets/images/playify_header_logo.png',
+          height: 52,
+          errorBuilder: (_, __, ___) => const Text(
+            'Playify',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Tagline
+        Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _wordmark('SPORT', Colors.white, 28, 2.0),
-                const SizedBox(width: 7),
-                _wordmark('SPHERE', SportSphereColors.sportGreen, 18, 3.5),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // Tagline — 3 coloured words
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _tagWord('Connect.', SportSphereColors.electricBlue),
-                const SizedBox(width: 6),
-                _tagWord('Compete.', SportSphereColors.sportGreen),
-                const SizedBox(width: 6),
-                _tagWord('Celebrate.', SportSphereColors.sportOrange),
-              ],
-            ),
+            _tagWord('Connect.', SportSphereColors.electricBlue),
+            const SizedBox(width: 6),
+            _tagWord('Compete.', SportSphereColors.sportGreen),
+            const SizedBox(width: 6),
+            _tagWord('Celebrate.', SportSphereColors.sportOrange),
           ],
         ),
       ],

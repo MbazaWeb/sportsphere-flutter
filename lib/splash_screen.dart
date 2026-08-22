@@ -316,30 +316,20 @@ class _SplashTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            _titleText('SP'),
-            // Inline ball icon replacing the 'O'
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 1),
-              child: ClipOval(
-                child: Image.asset(
-                  'assets/images/Playify_logo.png',
-                  width: 36,
-                  height: 36,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const _CircleFallback(size: 36),
-                ),
-              ),
+        Image.asset(
+          'assets/images/playify_header_logo.png',
+          height: 60,
+          errorBuilder: (_, __, ___) => const Text(
+            'Playify',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 50,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 4,
+              height: 1.0,
             ),
-            _titleText('RT'),
-          ],
+          ),
         ),
-        const SizedBox(height: 2),
-        _titleText('SPHERE', size: 34, spacing: 14),
         const SizedBox(height: 8),
         const Text(
           'YOUR WORLD OF SPORTS',
@@ -351,25 +341,6 @@ class _SplashTitle extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _titleText(String t, {double size = 50, double spacing = 4}) {
-    return Text(
-      t,
-      style: TextStyle(
-        color: Colors.white,
-        fontSize: size,
-        fontWeight: FontWeight.w900,
-        letterSpacing: spacing,
-        height: 1.0,
-        shadows: [
-          Shadow(
-            color: const Color(0xFF00A8FF).withValues(alpha: 0.4),
-            blurRadius: 18,
-          ),
-        ],
-      ),
     );
   }
 }
