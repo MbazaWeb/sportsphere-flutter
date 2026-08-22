@@ -1514,7 +1514,7 @@ class _PredictionPanel extends StatelessWidget {
       backgroundColor: SportSphereColors.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
-      builder: (_) => DraggableScrollableSheet(
+      builder: (sheetCtx) => DraggableScrollableSheet(
         initialChildSize: 0.6, minChildSize: 0.3, maxChildSize: 0.85, expand: false,
         builder: (_, sc) => Column(children: [
           const Padding(
@@ -1524,7 +1524,7 @@ class _PredictionPanel extends StatelessWidget {
           ),
           if (selectedMatch != null)
             TextButton(
-              onPressed: () { onMatchSelected(null); Navigator.pop(_); },
+              onPressed: () { onMatchSelected(null); Navigator.pop(sheetCtx); },
               child: const Text('Clear selection', style: TextStyle(color: SportSphereColors.muted)),
             ),
           Expanded(child: ListView.builder(
@@ -1546,7 +1546,7 @@ class _PredictionPanel extends StatelessWidget {
                         fontWeight: FontWeight.w700, fontSize: 13)),
                 subtitle: Text('${m["league"] ?? ""}  ·  $dateStr',
                     style: const TextStyle(color: SportSphereColors.muted, fontSize: 11)),
-                onTap: () { onMatchSelected(m); Navigator.pop(_); },
+                onTap: () { onMatchSelected(m); Navigator.pop(sheetCtx); },
               );
             },
           )),
