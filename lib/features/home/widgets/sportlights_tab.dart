@@ -242,6 +242,8 @@ class SportlightsTab extends StatefulWidget {
 
 class _SportlightsTabState extends State<SportlightsTab> {
   bool _isAdmin = false;
+  bool _loading = true;
+  String? _loadError;
   final ScrollController _scrollController = ScrollController();
   List<_SpotlightItem> _live = const [];
   RealtimeChannel? _channel;
@@ -249,7 +251,9 @@ class _SportlightsTabState extends State<SportlightsTab> {
   @override
   void initState() {
     super.initState();
-    AppAdmin.resolveIsAdmin().then((v) { if (mounted) setState(() => _isAdmin = v); });
+    AppAdmin.resolveIsAdmin().then((v) {
+      if (mounted) setState(() => _isAdmin = v);
+    });
     _loadPosts();
     _channel = Supabase.instance.client
         .channel('public-post')
@@ -257,88 +261,141 @@ class _SportlightsTabState extends State<SportlightsTab> {
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'Post',
-          callback: (_) => _loadPosts(),
+          callback: (_) => _loadPosts(silent: true),
         )
         .subscribe();
   }
 
-  Future<void> _loadPosts() async {
+  /// Batch-load profiles for all author IDs in one query (avoids N+1 delay).
+  Future<Map<String, Map<String, dynamic>>> _batchProfiles(
+      List<String> uids) async {
+    final out = <String, Map<String, dynamic>>{};
+    if (uids.isEmpty) return out;
+    final unique = uids.toSet().toList();
+    try {
+      final rows = await Supabase.instance.client
+          .from('profiles')
+          .select('id, handle, first_name, last_name, role')
+          .inFilter('id', unique);
+      for (final r in rows as List) {
+        final m = Map<String, dynamic>.from(r as Map);
+        final id = m['id']?.toString();
+        if (id != null) out[id] = m;
+      }
+    } catch (e) {
+      debugPrint('batch profiles: $e');
+      try {
+        final rows = await Supabase.instance.client
+            .from('User')
+            .select('id, handle, first_name, last_name, role, name')
+            .inFilter('id', unique);
+        for (final r in rows as List) {
+          final m = Map<String, dynamic>.from(r as Map);
+          final id = m['id']?.toString();
+          if (id != null) out[id] = m;
+        }
+      } catch (e2) {
+        debugPrint('batch User profiles: $e2');
+      }
+    }
+    return out;
+  }
+
+  Future<void> _loadPosts({bool silent = false}) async {
+    if (!silent && mounted) {
+      setState(() {
+        _loading = true;
+        _loadError = null;
+      });
+    }
     try {
       final rows = await SocialRepository().feedForUser();
+      debugPrint('sportlights feed rows: ${rows.length}');
+
+      // Collect author ids for one batched lookup
+      final uids = <String>[];
+      for (final raw in rows) {
+        final r = Map<String, dynamic>.from(raw);
+        final uid = (r['userId'] ?? r['authorId'] ?? r['user_id'])?.toString();
+        if (uid != null && uid.isNotEmpty) uids.add(uid);
+      }
+      final profiles = await _batchProfiles(uids);
+
       final items = <_SpotlightItem>[];
       for (final raw in rows) {
         final r = Map<String, dynamic>.from(raw);
-        final media = r['mediaUrls'];
+        final media = r['mediaUrls'] ?? r['media_urls'];
         String? asset;
         if (media is List && media.isNotEmpty) {
           asset = media.first.toString();
+        } else if (media is String && media.isNotEmpty) {
+          asset = media;
         }
-        final uid = r['userId']?.toString();
+
+        final uid =
+            (r['userId'] ?? r['authorId'] ?? r['user_id'])?.toString();
         String author = 'SportSphere Official';
         String handle = 'sportsphere';
-        String roleLabel = (r['postType'] as String?) ?? 'Official';
+        String roleLabel = (r['postType'] as String?) ??
+            (r['post_type'] as String?) ??
+            'Official';
         var type = _SpotlightType.official;
-        if (uid != null) {
-          try {
-            final p = await Supabase.instance.client
-                .from('profiles')
-                .select('handle, first_name, last_name, role')
-                .eq('id', uid)
-                .maybeSingle();
-            if (p != null) {
-              handle = (p['handle'] as String?) ?? handle;
-              final fn = p['first_name'] as String? ?? '';
-              final ln = p['last_name'] as String? ?? '';
-              final name = '$fn $ln'.trim();
-              if (name.isNotEmpty) author = name;
-              roleLabel = (p['role'] as String?) ?? roleLabel;
-              type = _typeForRole(roleLabel);
-            }
-          } catch (_) {}
+
+        if (uid != null && profiles.containsKey(uid)) {
+          final p = profiles[uid]!;
+          handle = (p['handle'] as String?) ?? handle;
+          final fn = p['first_name'] as String? ?? '';
+          final ln = p['last_name'] as String? ?? '';
+          final name = '$fn $ln'.trim();
+          final full = (p['name'] as String?)?.trim();
+          if (name.isNotEmpty) {
+            author = name;
+          } else if (full != null && full.isNotEmpty) {
+            author = full;
+          } else if (handle.isNotEmpty) {
+            author = handle;
+          }
+          roleLabel = (p['role'] as String?) ?? roleLabel;
+          type = _typeForRole(roleLabel);
         }
-        final postType = (r['postType'] as String?) ?? '';
-        final teamTag = r['teamTag']?.toString();
-        String? targetUserId;
+
+        final postType = (r['postType'] as String?) ??
+            (r['post_type'] as String?) ??
+            '';
+        final teamTag = r['teamTag']?.toString() ?? r['team_tag']?.toString();
+        String? targetUserId = uid;
+
         if (postType == 'live_coverage') {
           type = _SpotlightType.liveCoverage;
           roleLabel = 'LIVE';
-        } else if (postType == 'welcome' || (teamTag != null && teamTag.isNotEmpty && !teamTag.startsWith('match:'))) {
+        } else if (postType == 'welcome' ||
+            (teamTag != null &&
+                teamTag.isNotEmpty &&
+                !teamTag.startsWith('match:'))) {
           type = _SpotlightType.team;
           roleLabel = 'Team';
           handle = _handleFromTeamTag(teamTag);
-          try {
-            final team = await Supabase.instance.client
-                .from('Team')
-                .select('id,name,logoUrl,accountUserId,slug')
-                .eq('id', teamTag ?? '')
-                .maybeSingle();
-            if (team != null) {
-              author = (team['name'] as String?) ?? author;
-              handle = _handleFromTeamTag(team['id'] as String?);
-              try {
-                final acc = team['accountUserId']?.toString();
-                if (acc != null) {
-                  final u = await Supabase.instance.client
-                      .from('User')
-                      .select('handle')
-                      .eq('id', acc)
-                      .maybeSingle();
-                  if (u != null && (u['handle'] as String?)?.isNotEmpty == true) {
-                    handle = u['handle'] as String;
-                  }
-                }
-              } catch (_) {}
-              asset = (team['logoUrl'] as String?) ?? asset;
-              targetUserId = team['accountUserId']?.toString();
-            }
-          } catch (_) {}
+        } else if (postType == 'poll') {
+          type = _SpotlightType.poll;
+        } else if (postType == 'prediction') {
+          type = _SpotlightType.prediction;
+        } else if (postType == 'video' || postType == 'media') {
+          type = _SpotlightType.video;
         }
+
+        final contentText = (r['content'] as String?) ?? '';
+
+        // Poll / prediction enrichment (best-effort, non-blocking failures)
         String? pollId;
-        var pollOptions = <String>[];
+        List<String>? pollOptions;
         int? pollVotes;
         int? myVote;
-        var pollCountsMap = <int, int>{};
-        final contentText = (r['content'] as String?) ?? '';
+        Map<int, int>? pollCountsMap;
+        String? predHome;
+        String? predAway;
+        int? predHs;
+        int? predAs;
+
         if (postType == 'poll' || type == _SpotlightType.poll) {
           type = _SpotlightType.poll;
           try {
@@ -351,21 +408,24 @@ class _SportlightsTabState extends State<SportlightsTab> {
               pollId = poll['id']?.toString();
               final opts = poll['options'];
               if (opts is List) {
-                pollOptions = [for (final o in opts) '$o'];
+                pollOptions = opts.map((e) => e.toString()).toList();
               }
               pollVotes = poll['totalVotes'] as int?;
-              final uid = Supabase.instance.client.auth.currentUser?.id;
-              if (uid != null && pollId != null) {
+              final me = Supabase.instance.client.auth.currentUser?.id;
+              if (me != null && pollId != null) {
                 final v = await Supabase.instance.client
                     .from('PollVote')
                     .select()
                     .eq('pollId', pollId)
-                    .eq('userId', uid)
+                    .eq('userId', me)
                     .maybeSingle();
                 myVote = v?['optionIdx'] as int?;
               }
               try {
-                pollCountsMap = await SocialRepository().pollOptionCounts(pollId!);
+                if (pollId != null) {
+                  pollCountsMap =
+                      await SocialRepository().pollOptionCounts(pollId);
+                }
               } catch (e) {
                 debugPrint('poll counts: $e');
               }
@@ -374,10 +434,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
             debugPrint('poll load: $e');
           }
         }
-        String? predHome;
-        String? predAway;
-        int? predHs;
-        int? predAs;
+
         if (postType == 'prediction' || type == _SpotlightType.prediction) {
           type = _SpotlightType.prediction;
           try {
@@ -396,6 +453,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
             debugPrint('prediction load: $e');
           }
         }
+
         items.add(_SpotlightItem(
           type: type,
           author: author,
@@ -403,11 +461,13 @@ class _SportlightsTabState extends State<SportlightsTab> {
           targetUserId: targetUserId,
           postId: r['id']?.toString(),
           role: roleLabel,
-          age: 'Live',
+          age: _ageLabel(r['createdAt'] ?? r['created_at']),
           asset: asset,
-          likes: (r['likeCount'] as int?) ?? 0,
-          comments: (r['commentCount'] as int?) ?? 0,
-          shares: (r['shareCount'] as int?) ?? 0,
+          likes: (r['likeCount'] as int?) ?? (r['like_count'] as int?) ?? 0,
+          comments:
+              (r['commentCount'] as int?) ?? (r['comment_count'] as int?) ?? 0,
+          shares:
+              (r['shareCount'] as int?) ?? (r['share_count'] as int?) ?? 0,
           accent: const Color(0xFF168CFF),
           content: contentText,
           pollId: pollId,
@@ -421,10 +481,35 @@ class _SportlightsTabState extends State<SportlightsTab> {
           predAwayScore: predAs,
         ));
       }
-      if (mounted) setState(() => _live = items);
+
+      if (mounted) {
+        setState(() {
+          _live = items;
+          _loading = false;
+          _loadError = null;
+        });
+      }
     } catch (e) {
       debugPrint('feed load: $e');
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadError = e.toString();
+        });
+      }
     }
+  }
+
+  String _ageLabel(dynamic raw) {
+    if (raw == null) return '';
+    final dt = DateTime.tryParse(raw.toString())?.toLocal();
+    if (dt == null) return '';
+    final d = DateTime.now().difference(dt);
+    if (d.inMinutes < 1) return 'now';
+    if (d.inMinutes < 60) return '${d.inMinutes}m';
+    if (d.inHours < 24) return '${d.inHours}h';
+    if (d.inDays < 7) return '${d.inDays}d';
+    return '${dt.day}/${dt.month}';
   }
 
   @override
@@ -441,7 +526,61 @@ class _SportlightsTabState extends State<SportlightsTab> {
 
   @override
   Widget build(BuildContext context) {
+    if (_loading && _live.isEmpty) {
+      return const Center(
+        child: CircularProgressIndicator(
+          color: Color(0xFF168CFF),
+          strokeWidth: 2.5,
+        ),
+      );
+    }
+
     final items = _items;
+
+    if (!_loading && items.isEmpty) {
+      return RefreshIndicator(
+        color: const Color(0xFF168CFF),
+        backgroundColor: const Color(0xFF091522),
+        onRefresh: _loadPosts,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(24, 80, 24, 40),
+          children: [
+            const Icon(Icons.bolt_rounded, size: 48, color: Color(0xFF8FA3B8)),
+            const SizedBox(height: 16),
+            Text(
+              _loadError != null ? 'Could not load Sportlights' : 'No Sportlights yet',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFFF7FAFF),
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _loadError ??
+                  'Posts from the community will appear here. Pull to refresh, or create the first post.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFF8FA3B8), fontSize: 13),
+            ),
+            if (_loadError != null) ...[
+              const SizedBox(height: 20),
+              Center(
+                child: FilledButton(
+                  onPressed: _loadPosts,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF168CFF),
+                  ),
+                  child: const Text('Retry'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
     return RefreshIndicator(
       color: const Color(0xFF168CFF),
       backgroundColor: const Color(0xFF091522),
@@ -456,7 +595,11 @@ class _SportlightsTabState extends State<SportlightsTab> {
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 110),
           itemCount: items.length,
           itemBuilder: (context, index) {
-            return _SpotlightCard(item: items[index], isAdmin: _isAdmin, onDeleted: () => _loadPosts());
+            return _SpotlightCard(
+              item: items[index],
+              isAdmin: _isAdmin,
+              onDeleted: () => _loadPosts(silent: true),
+            );
           },
         ),
       ),
