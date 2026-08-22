@@ -219,7 +219,16 @@ class _FullScreenSearchState extends State<_FullScreenSearch> {
                                       size: 20),
                                   onTap: () {
                                     Navigator.pop(context);
-                                    context.push('/profile/$handle');
+                                    final r = role.toLowerCase();
+                                    if (r == 'team') {
+                                      context.push('/team/$handle');
+                                    } else if (r == 'player') {
+                                      context.push('/player/$handle');
+                                    } else if (r == 'fan' || r == '') {
+                                      context.push('/profile/$handle');
+                                    } else {
+                                      context.push('/role/$r/$handle');
+                                    }
                                   },
                                 );
                               },

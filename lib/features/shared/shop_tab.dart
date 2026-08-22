@@ -1,1 +1,1 @@
-export '../profile/shared/shop_tab.dart';
+export '../../shop/presentation/shop_tab.dart';

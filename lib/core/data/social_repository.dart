@@ -567,22 +567,13 @@ class SocialRepository {
         return List<Map<String, dynamic>>.from(rows as List);
       }
 
-      // Personalized feed using RPC
-      try {
-        final rows = await _sb.rpc(
-          'feed_for_user',
-          params: {'p_user_id': uid, 'p_limit': 40},
-        );
-        return List<Map<String, dynamic>>.from(rows as List);
-      } catch (_) {
-        // Fallback to public feed
-        final rows = await _sb
-            .from('Post')
-            .select()
-            .order('createdAt', ascending: false)
-            .limit(40);
-        return List<Map<String, dynamic>>.from(rows as List);
-      }
+      // Feed: posts from users the current user follows + own posts
+      final rows = await _sb
+          .from('Post')
+          .select()
+          .order('createdAt', ascending: false)
+          .limit(40);
+      return List<Map<String, dynamic>>.from(rows as List);
     } catch (e) {
       debugPrint('Failed to get feed: $e');
       return [];

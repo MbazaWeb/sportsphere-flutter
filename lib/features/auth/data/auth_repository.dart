@@ -18,8 +18,22 @@ class AuthRepository {
     required String identifier,
     required String password,
   }) async {
+    // Resolve handle to email: only use identifier as-is if it contains @
+    // Otherwise treat as handle and resolve via profiles table
+    String email = identifier.trim().toLowerCase();
+    if (!email.contains('@')) {
+      // It's a handle — look up the email
+      final handle = email.replaceAll('@', '');
+      try {
+        final row = await _supabase.from('profiles')
+            .select('email').eq('handle', handle).maybeSingle();
+        if (row != null && (row['email'] as String?)?.isNotEmpty == true) {
+          email = row['email'] as String;
+        }
+      } catch (_) {}
+    }
     final response = await _supabase.auth.signInWithPassword(
-      email: identifier,
+      email: email,
       password: password,
     );
 

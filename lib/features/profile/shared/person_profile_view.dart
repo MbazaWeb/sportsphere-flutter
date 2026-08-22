@@ -1,139 +1,151 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/theme/colors.dart';
 
-class PersonProfileView extends StatelessWidget {
-  final dynamic profile;
-  final List<Widget>? additionalFields;
-  
-  const PersonProfileView({
-    super.key,
-    required this.profile,
-    this.additionalFields,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A1628),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            CircleAvatar(
-              radius: 50,
-              backgroundImage: profile['avatarUrl'] != null 
-                  ? NetworkImage(profile['avatarUrl']) 
-                  : null,
-              child: profile['avatarUrl'] == null 
-                  ? const Icon(Icons.person, size: 40) 
-                  : null,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              profile['displayName'] ?? profile['name'] ?? 'Unknown',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              profile['bio'] ?? '',
-              style: const TextStyle(
-                color: Color(0xFF8A9BB0),
-                fontSize: 16,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            if (additionalFields != null) ...additionalFields!,
-          ],
-        ),
-      ),
-    );
-  }
-}
+// ── PersonProfileModel ─────────────────────────────────────────────────────────
 
 class PersonProfileModel {
-  final String id;
-  final String name;
-  final String? bio;
-  final String? avatarUrl;
-  final Map<String, dynamic>? extraData;
-  final String? handle;
-  final String? roleName;
-  final Color? roleColor;
-  final Color? accentColor;
-  final int? postCount;
-  final int? followerCount;
-  final int? followingCount;
-  final bool? hasFanOption;
-  final String? location;
-  final DateTime? joinedDate;
-  final bool? isVerified;
-  final List<PersonAboutField>? aboutFields;
-
-  PersonProfileModel({
+  const PersonProfileModel({
     this.id = '',
     required this.name,
-    this.bio,
+    required this.handle,
+    this.roleName = '',
+    this.roleColor = const Color(0xFF009DFF),
+    this.accentColor = const Color(0xFF009DFF),
+    this.bio = '',
     this.avatarUrl,
-    this.extraData,
-    this.handle,
-    this.roleName,
-    this.roleColor,
-    this.accentColor,
-    this.postCount,
-    this.followerCount,
-    this.followingCount,
-    this.hasFanOption,
-    this.location,
+    this.location = '',
     this.joinedDate,
-    this.isVerified,
-    this.aboutFields,
+    this.isVerified = false,
+    this.hasFanOption = false,
+    this.postCount = 0,
+    this.followerCount = 0,
+    this.followingCount = 0,
+    this.aboutFields = const [],
   });
+
+  final String id;
+  final String name;
+  final String handle;
+  final String roleName;
+  final Color roleColor;
+  final Color accentColor;
+  final String bio;
+  final String? avatarUrl;
+  final String location;
+  final DateTime? joinedDate;
+  final bool isVerified;
+  final bool hasFanOption;
+  final int postCount;
+  final int followerCount;
+  final int followingCount;
+  final List<PersonAboutField> aboutFields;
 }
 
-class PersonAboutField extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color? iconColor;
+// ── PersonAboutField ───────────────────────────────────────────────────────────
 
+class PersonAboutField {
   const PersonAboutField({
-    super.key,
     required this.icon,
+    required this.iconColor,
     required this.label,
     required this.value,
-    this.iconColor,
   });
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String value;
+}
+
+// ── PersonProfileView ──────────────────────────────────────────────────────────
+
+class PersonProfileView extends StatefulWidget {
+  final PersonProfileModel profile;
+  const PersonProfileView({super.key, required this.profile});
+  @override
+  State<PersonProfileView> createState() => _PersonProfileViewState();
+}
+
+class _PersonProfileViewState extends State<PersonProfileView> {
+  List<Map<String, dynamic>> _posts = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPosts();
+  }
+
+  Future<void> _fetchPosts() async {
+    try {
+      final row = await Supabase.instance.client
+          .from('User').select('id')
+          .eq('handle', widget.profile.handle).maybeSingle();
+      if (row == null) { if (mounted) setState(() => _loading = false); return; }
+      final rows = await Supabase.instance.client
+          .from('Post').select()
+          .eq('userId', row['id'].toString())
+          .order('createdAt', ascending: false).limit(30);
+      if (mounted) setState(() {
+        _posts = List<Map<String, dynamic>>.from(rows as List);
+        _loading = false;
+      });
+    } catch (_) { if (mounted) setState(() => _loading = false); }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Icon(icon, color: iconColor ?? const Color(0xFF168CFF), size: 20),
-          const SizedBox(width: 12),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Color(0xFF8A9BB0),
-              fontSize: 14,
+    final p = widget.profile;
+    return Scaffold(
+      backgroundColor: SportSphereColors.background,
+      body: SafeArea(child: Column(children: [
+        // Header
+        Container(
+          padding: const EdgeInsets.all(16),
+          child: Row(children: [
+            IconButton(
+              icon: const Icon(Icons.arrow_back_rounded, color: SportSphereColors.white),
+              onPressed: () => Navigator.of(context).maybePop(),
             ),
-          ),
-          const Spacer(),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+            CircleAvatar(
+              radius: 28,
+              backgroundColor: p.accentColor.withValues(alpha: 0.15),
+              backgroundImage: p.avatarUrl != null ? NetworkImage(p.avatarUrl!) : null,
+              child: p.avatarUrl == null ? Icon(Icons.person_rounded, color: p.accentColor) : null,
             ),
-          ),
-        ],
-      ),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Text(p.name, style: const TextStyle(color: SportSphereColors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+                if (p.isVerified) ...[const SizedBox(width: 4), const Icon(Icons.verified_rounded, color: Color(0xFFFFD700), size: 16)],
+              ]),
+              Text('@${p.handle}  ·  ${p.roleName}', style: const TextStyle(color: SportSphereColors.muted, fontSize: 12)),
+            ])),
+          ]),
+        ),
+        // Posts
+        Expanded(child: _loading
+            ? const Center(child: CircularProgressIndicator(color: SportSphereColors.electricBlue, strokeWidth: 2))
+            : _posts.isEmpty
+                ? Center(child: Text('No posts yet', style: const TextStyle(color: SportSphereColors.muted)))
+                : RefreshIndicator(
+                    onRefresh: _fetchPosts,
+                    color: SportSphereColors.electricBlue,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+                      itemCount: _posts.length,
+                      separatorBuilder: (_, __) => Divider(height: 1, color: Colors.white.withValues(alpha: 0.06)),
+                      itemBuilder: (_, i) {
+                        final post = _posts[i];
+                        final content = (post['content'] as String?) ?? '';
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Text(content, style: const TextStyle(color: SportSphereColors.white, fontSize: 14)),
+                        );
+                      },
+                    ),
+                  )),
+      ])),
     );
   }
 }

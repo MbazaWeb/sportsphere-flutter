@@ -88,7 +88,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard>
           ],
         ),
         Expanded(child: TabBarView(controller: _tabs, children: [
-          _OverviewTab(stats: _stats, loading: _statsLoading, onRefresh: _loadStats, tabCtrl: _tabs, ref: ref),
+          _OverviewTab(stats: _stats, loading: _statsLoading, onRefresh: _loadStats, tabCtrl: _tabs),
           const _UsersTab(),
           const _CompetitionsTab(),
           _MatchesTab(onRefresh: _loadStats, parentRef: ref),
@@ -101,12 +101,12 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard>
 }
 
 // ══ OVERVIEW ═══════════════════════════════════════════════════════════════════
-class _OverviewTab extends StatelessWidget {
+class _OverviewTab extends ConsumerWidget {
   final Map<String,int> stats; final bool loading;
-  final VoidCallback onRefresh; final TabController tabCtrl; final WidgetRef ref;
-  const _OverviewTab({required this.stats,required this.loading,required this.onRefresh,required this.tabCtrl,required this.ref});
+  final VoidCallback onRefresh; final TabController tabCtrl;
+  const _OverviewTab({required this.stats,required this.loading,required this.onRefresh,required this.tabCtrl});
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return RefreshIndicator(onRefresh:()async=>onRefresh(),color:SportSphereColors.electricBlue,
       child:ListView(padding:const EdgeInsets.all(16),children:[
         _Label('PLATFORM STATISTICS'), const SizedBox(height:10),
@@ -432,29 +432,16 @@ class _NewsTabState extends State<_NewsTab> {
 // ══ SHARED DIALOGS ══════════════════════════════════════════════════════════════
 
 Future<void> _showCreateUser(BuildContext ctx) {
-  final email=TextEditingController(),password=TextEditingController(text:'SportSphere2024!'),
-      handle=TextEditingController(),fn=TextEditingController(),ln=TextEditingController();
-  String role='fan';
-  return showDialog<void>(context:ctx,builder:(_)=>StatefulBuilder(builder:(c,setL)=>AlertDialog(
+  // Note: Creating users requires the Supabase service role key which is not
+  // available in the mobile app. Use Supabase Dashboard > Authentication > Users.
+  return showDialog<void>(context:ctx,builder:(_)=>AlertDialog(
     backgroundColor:SportSphereColors.surface,
     title:const Text('Create User',style:TextStyle(color:SportSphereColors.white)),
-    content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
-      _AdminField(controller:fn,label:'First Name'),_AdminField(controller:ln,label:'Last Name'),
-      _AdminField(controller:handle,label:'Handle'),_AdminField(controller:email,label:'Email',keyboardType:TextInputType.emailAddress),
-      _AdminField(controller:password,label:'Password'),
-      DropdownButtonFormField<String>(value:role,dropdownColor:SportSphereColors.surface,
-        decoration:const InputDecoration(labelText:'Role',labelStyle:TextStyle(color:SportSphereColors.muted)),
-        items:['fan','player','coach','team','journalist','admin'].map((r)=>DropdownMenuItem(value:r,
-            child:Text(r[0].toUpperCase()+r.substring(1),style:const TextStyle(color:SportSphereColors.white)))).toList(),
-        onChanged:(v)=>setL(()=>role=v??role)),
-    ])),
-    actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('Cancel')),
-      TextButton(onPressed:() async {if(email.text.trim().isEmpty)return;try{
-        await _repo.createUser(email:email.text.trim(),password:password.text.trim(),handle:handle.text.trim().replaceAll('@',''),firstName:fn.text.trim(),lastName:ln.text.trim(),role:role);
-        if(c.mounted)Navigator.pop(c);
-      }catch(e){if(c.mounted)ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e')));}},child:const Text('Create')),
-    ],
-  )));
+    content:const Text(
+      'To create users, go to:\n\nSupabase Dashboard → Authentication → Users → Add User\n\nThis requires the service role key which is not available in the app for security reasons.',
+      style:TextStyle(color:SportSphereColors.muted,fontSize:13)),
+    actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('OK'))],
+  ));
 }
 
 Future<void> _showCreateCompetition(BuildContext ctx) {
