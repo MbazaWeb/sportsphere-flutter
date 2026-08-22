@@ -431,244 +431,539 @@ class _NewsTabState extends State<_NewsTab> {
 
 // ══ SHARED DIALOGS ══════════════════════════════════════════════════════════════
 
+// ══ ADMIN FORMS ════════════════════════════════════════════════════════════════
+
+// ── Image upload helper ────────────────────────────────────────────────────────
+Future<String?> _pickAndUpload(BuildContext ctx, {String folder='admin'}) async {
+  final picker = ImagePicker();
+  final xf = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+  if (xf == null) return null;
+  try {
+    return await SocialRepository().uploadPickedFile(bucket:'media', folder:folder, file:xf);
+  } catch (e) {
+    if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content:Text('Upload failed: $e')));
+    return null;
+  }
+}
+
+// ── Create User ────────────────────────────────────────────────────────────────
 Future<void> _showCreateUser(BuildContext ctx) {
-  // Note: Creating users requires the Supabase service role key which is not
-  // available in the mobile app. Use Supabase Dashboard > Authentication > Users.
-  return showDialog<void>(context:ctx,builder:(_)=>AlertDialog(
+  return showDialog<void>(context:ctx, builder:(_)=>AlertDialog(
     backgroundColor:SportSphereColors.surface,
-    title:const Text('Create User',style:TextStyle(color:SportSphereColors.white)),
+    title:const Text('Create User', style:TextStyle(color:SportSphereColors.white)),
     content:const Text(
-      'To create users, go to:\n\nSupabase Dashboard → Authentication → Users → Add User\n\nThis requires the service role key which is not available in the app for security reasons.',
-      style:TextStyle(color:SportSphereColors.muted,fontSize:13)),
-    actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('OK'))],
+      'To create users:\n\nSupabase Dashboard → Authentication → Users → Add User\n\nRequires service role key (not available in app for security).',
+      style:TextStyle(color:SportSphereColors.muted, fontSize:13)),
+    actions:[TextButton(onPressed:()=>Navigator.pop(ctx), child:const Text('OK'))],
   ));
 }
 
+// ── Create Competition ─────────────────────────────────────────────────────────
 Future<void> _showCreateCompetition(BuildContext ctx) {
-  final name=TextEditingController(),country=TextEditingController(text:'Tanzania'),season=TextEditingController(text:'2026/27');
+  final name=TextEditingController(), country=TextEditingController(text:'Tanzania'),
+        season=TextEditingController(text:'2026/27'), description=TextEditingController(),
+        website=TextEditingController();
   String type='league';
-  return showDialog<void>(context:ctx,builder:(_)=>StatefulBuilder(builder:(c,setL)=>AlertDialog(
-    backgroundColor:SportSphereColors.surface,
-    title:const Text('Create Competition',style:TextStyle(color:SportSphereColors.white)),
-    content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
-      _AdminField(controller:name,label:'Name *'),_AdminField(controller:country,label:'Country'),_AdminField(controller:season,label:'Season'),
-      DropdownButtonFormField<String>(value:type,dropdownColor:SportSphereColors.surface,
-        decoration:const InputDecoration(labelText:'Type',labelStyle:TextStyle(color:SportSphereColors.muted)),
-        items:['league','cup','friendly','international'].map((t)=>DropdownMenuItem(value:t,child:Text(t[0].toUpperCase()+t.substring(1),style:const TextStyle(color:SportSphereColors.white)))).toList(),
-        onChanged:(v)=>setL(()=>type=v??type)),
-    ])),
-    actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('Cancel')),
-      TextButton(onPressed:() async {if(name.text.trim().isEmpty)return;try{
-        await _repo.createCompetition(name:name.text.trim(),country:country.text.trim(),season:season.text.trim().isEmpty?null:season.text.trim(),type:type);
-        if(c.mounted)Navigator.pop(c);
-      }catch(e){if(c.mounted)ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e')));}},child:const Text('Create')),
-    ],
-  )));
-}
+  String? logoUrl;
+  bool uploading=false;
 
-Future<void> _showCreateTeam(BuildContext ctx, List<Map<String,dynamic>>? preloaded) async {
-  final comps=preloaded??await _repo.listCompetitions();
-  if(!ctx.mounted)return;
-  final name=TextEditingController(),country=TextEditingController(text:'Tanzania'),city=TextEditingController(),venue=TextEditingController(),founded=TextEditingController();
-  String? leagueId;
-  return showDialog<void>(context:ctx,builder:(_)=>StatefulBuilder(builder:(c,setL)=>AlertDialog(
+  return showModalBottomSheet<void>(context:ctx, isScrollControlled:true,
     backgroundColor:SportSphereColors.surface,
-    title:const Text('Create Team',style:TextStyle(color:SportSphereColors.white)),
-    content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
-      _AdminField(controller:name,label:'Team Name *'),_AdminField(controller:country,label:'Country'),
-      _AdminField(controller:city,label:'City'),_AdminField(controller:venue,label:'Stadium / Venue'),
-      _AdminField(controller:founded,label:'Founded Year',keyboardType:TextInputType.number),
-      if(comps.isNotEmpty) DropdownButtonFormField<String?>(value:leagueId,dropdownColor:SportSphereColors.surface,
-        decoration:const InputDecoration(labelText:'Competition (optional)',labelStyle:TextStyle(color:SportSphereColors.muted)),
-        items:[const DropdownMenuItem(value:null,child:Text('None',style:TextStyle(color:SportSphereColors.muted))),
-          ...comps.map((c)=>DropdownMenuItem(value:c['id'].toString(),child:Text(c['name'].toString(),style:const TextStyle(color:SportSphereColors.white))))],
-        onChanged:(v)=>setL(()=>leagueId=v)),
-    ])),
-    actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('Cancel')),
-      TextButton(onPressed:() async {if(name.text.trim().isEmpty)return;try{
-        await _repo.createTeam(name:name.text.trim(),country:country.text.trim(),city:city.text.trim().isEmpty?null:city.text.trim(),leagueId:leagueId,venue:venue.text.trim().isEmpty?null:venue.text.trim(),foundedYear:int.tryParse(founded.text.trim()));
-        if(c.mounted)Navigator.pop(c);
-      }catch(e){if(c.mounted)ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e')));}},child:const Text('Create')),
-    ],
-  )));
-}
-
-Future<void> _showCreatePlayer(BuildContext ctx, List<Map<String,dynamic>> teams) {
-  final name=TextEditingController(),nat=TextEditingController(),shirt=TextEditingController();
-  String position='Forward'; String? teamId;
-  return showDialog<void>(context:ctx,builder:(_)=>StatefulBuilder(builder:(c,setL)=>AlertDialog(
-    backgroundColor:SportSphereColors.surface,
-    title:const Text('Add Player',style:TextStyle(color:SportSphereColors.white)),
-    content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
-      _AdminField(controller:name,label:'Full Name *'),_AdminField(controller:nat,label:'Nationality'),
-      _AdminField(controller:shirt,label:'Shirt Number',keyboardType:TextInputType.number),
-      DropdownButtonFormField<String>(value:position,dropdownColor:SportSphereColors.surface,
-        decoration:const InputDecoration(labelText:'Position',labelStyle:TextStyle(color:SportSphereColors.muted)),
-        items:['Goalkeeper','Defender','Midfielder','Forward'].map((p)=>DropdownMenuItem(value:p,child:Text(p,style:const TextStyle(color:SportSphereColors.white)))).toList(),
-        onChanged:(v)=>setL(()=>position=v??position)),
-      if(teams.isNotEmpty) DropdownButtonFormField<String?>(value:teamId,dropdownColor:SportSphereColors.surface,
-        decoration:const InputDecoration(labelText:'Team',labelStyle:TextStyle(color:SportSphereColors.muted)),
-        items:[const DropdownMenuItem(value:null,child:Text('None',style:TextStyle(color:SportSphereColors.muted))),
-          ...teams.map((t)=>DropdownMenuItem(value:t['id'].toString(),child:Text(t['name'].toString(),style:const TextStyle(color:SportSphereColors.white))))],
-        onChanged:(v)=>setL(()=>teamId=v)),
-    ])),
-    actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('Cancel')),
-      TextButton(onPressed:() async {if(name.text.trim().isEmpty)return;try{
-        await _repo.createPlayer(name:name.text.trim(),position:position,teamId:teamId,nationality:nat.text.trim().isEmpty?null:nat.text.trim(),shirtNumber:int.tryParse(shirt.text.trim()));
-        if(c.mounted)Navigator.pop(c);
-      }catch(e){if(c.mounted)ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e')));}},child:const Text('Add')),
-    ],
-  )));
-}
-
-Future<void> _showCreateCoach(BuildContext ctx, List<Map<String,dynamic>> teams) {
-  final name=TextEditingController(),nat=TextEditingController();
-  String role='head_coach'; String? teamId;
-  return showDialog<void>(context:ctx,builder:(_)=>StatefulBuilder(builder:(c,setL)=>AlertDialog(
-    backgroundColor:SportSphereColors.surface,
-    title:const Text('Add Coach',style:TextStyle(color:SportSphereColors.white)),
-    content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
-      _AdminField(controller:name,label:'Full Name *'),_AdminField(controller:nat,label:'Nationality'),
-      DropdownButtonFormField<String>(value:role,dropdownColor:SportSphereColors.surface,
-        decoration:const InputDecoration(labelText:'Role',labelStyle:TextStyle(color:SportSphereColors.muted)),
-        items:['head_coach','assistant_coach','goalkeeper_coach','fitness_coach'].map((r)=>DropdownMenuItem(value:r,child:Text(r.replaceAll('_',' '),style:const TextStyle(color:SportSphereColors.white)))).toList(),
-        onChanged:(v)=>setL(()=>role=v??role)),
-      if(teams.isNotEmpty) DropdownButtonFormField<String?>(value:teamId,dropdownColor:SportSphereColors.surface,
-        decoration:const InputDecoration(labelText:'Team',labelStyle:TextStyle(color:SportSphereColors.muted)),
-        items:[const DropdownMenuItem(value:null,child:Text('None',style:TextStyle(color:SportSphereColors.muted))),
-          ...teams.map((t)=>DropdownMenuItem(value:t['id'].toString(),child:Text(t['name'].toString(),style:const TextStyle(color:SportSphereColors.white))))],
-        onChanged:(v)=>setL(()=>teamId=v)),
-    ])),
-    actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('Cancel')),
-      TextButton(onPressed:() async {if(name.text.trim().isEmpty)return;try{
-        await _repo.createCoach(name:name.text.trim(),role:role,teamId:teamId,nationality:nat.text.trim().isEmpty?null:nat.text.trim());
-        if(c.mounted)Navigator.pop(c);
-      }catch(e){if(c.mounted)ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e')));}},child:const Text('Add')),
-    ],
-  )));
-}
-
-Future<void> _showCreateMatch(BuildContext ctx) {
-  final home=TextEditingController(),away=TextEditingController(),
-      league=TextEditingController(text:'Tanzania Premier League'),
-      venue=TextEditingController(),season=TextEditingController(text:'2026/27');
-  DateTime kickoff=DateTime.now().add(const Duration(days:1));
-  return showDialog<void>(context:ctx,builder:(_)=>StatefulBuilder(builder:(c,setL)=>AlertDialog(
-    backgroundColor:SportSphereColors.surface,
-    title:const Text('Schedule Fixture',style:TextStyle(color:SportSphereColors.white)),
-    content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
-      _AdminField(controller:home,label:'Home Team *'),_AdminField(controller:away,label:'Away Team *'),
-      _AdminField(controller:league,label:'Competition / League'),_AdminField(controller:venue,label:'Venue (optional)'),
-      _AdminField(controller:season,label:'Season'),
-      ListTile(contentPadding:EdgeInsets.zero,
-        title:Text('Kickoff: ${kickoff.day}/${kickoff.month}/${kickoff.year} ${kickoff.hour}:${kickoff.minute.toString().padLeft(2,'0')}',
-            style:const TextStyle(color:SportSphereColors.white,fontSize:13)),
-        trailing:const Icon(Icons.calendar_today_rounded,color:SportSphereColors.electricBlue),
-        onTap:() async {
-          final d=await showDatePicker(context:c,initialDate:kickoff,firstDate:DateTime.now().subtract(const Duration(days:30)),lastDate:DateTime.now().add(const Duration(days:365)));
-          if(d==null)return;
-          final t=await showTimePicker(context:c,initialTime:TimeOfDay.fromDateTime(kickoff));
-          if(t==null)return;
-          setL(()=>kickoff=DateTime(d.year,d.month,d.day,t.hour,t.minute));
-        }),
-    ])),
-    actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('Cancel')),
-      TextButton(onPressed:() async {if(home.text.trim().isEmpty||away.text.trim().isEmpty)return;try{
-        await _repo.createMatch(homeTeam:home.text.trim(),awayTeam:away.text.trim(),league:league.text.trim(),kickoffAt:kickoff,venue:venue.text.trim().isEmpty?null:venue.text.trim(),season:season.text.trim().isEmpty?null:season.text.trim());
-        if(c.mounted)Navigator.pop(c);
-      }catch(e){if(c.mounted)ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e')));}},child:const Text('Schedule')),
-    ],
-  )));
-}
-
-Future<void> _showNewsCompose(BuildContext ctx) {
-  final title=TextEditingController(),summary=TextEditingController(),body=TextEditingController(),source=TextEditingController(text:'SportSphere');
-  String category='updates'; bool isBreaking=false; String? imageUrl; bool uploading=false;
-  final picker=ImagePicker();
-  return showModalBottomSheet<void>(context:ctx,isScrollControlled:true,backgroundColor:SportSphereColors.surface,
     shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(24))),
     builder:(_)=>StatefulBuilder(builder:(c,setL)=>Padding(
       padding:EdgeInsets.fromLTRB(20,20,20,MediaQuery.of(c).viewInsets.bottom+20),
       child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-        const Text('Publish News Article',style:TextStyle(color:SportSphereColors.white,fontSize:18,fontWeight:FontWeight.w800)),
+        const Text('Create Competition', style:TextStyle(color:SportSphereColors.white, fontSize:18, fontWeight:FontWeight.w800)),
         const SizedBox(height:16),
-        _AdminField(controller:title,label:'Title *'),_AdminField(controller:summary,label:'Summary'),
-        _AdminField(controller:body,label:'Body / Full Article',maxLines:6),_AdminField(controller:source,label:'Source'),
-        DropdownButtonFormField<String>(value:category,dropdownColor:SportSphereColors.surface,style:const TextStyle(color:SportSphereColors.white),
-          decoration:const InputDecoration(labelText:'Category',labelStyle:TextStyle(color:SportSphereColors.muted)),
-          items:const[DropdownMenuItem(value:'updates',child:Text('Updates')),DropdownMenuItem(value:'rumors',child:Text('Rumors')),DropdownMenuItem(value:'breaking',child:Text('Breaking'))],
-          onChanged:(v)=>setL(()=>category=v??category)),
-        SwitchListTile(value:isBreaking,onChanged:(v)=>setL(()=>isBreaking=v),
-          title:const Text('Breaking News',style:TextStyle(color:SportSphereColors.white)),
-          activeColor:SportSphereColors.danger,contentPadding:EdgeInsets.zero),
-        if(imageUrl!=null) Padding(padding:const EdgeInsets.only(bottom:8),
-          child:Row(children:[const Icon(Icons.image_rounded,color:SportSphereColors.sportGreen,size:16),
-            const SizedBox(width:6),const Text('Image attached',style:TextStyle(color:SportSphereColors.sportGreen,fontSize:12)),
-            const Spacer(),GestureDetector(onTap:()=>setL(()=>imageUrl=null),
-                child:const Icon(Icons.close_rounded,color:SportSphereColors.danger,size:16))])),
-        OutlinedButton.icon(style:OutlinedButton.styleFrom(foregroundColor:SportSphereColors.muted),
-          icon:const Icon(Icons.photo_rounded,size:16),
-          label:uploading?const SizedBox(width:14,height:14,child:CircularProgressIndicator(strokeWidth:2)):const Text('Add Image',style:TextStyle(fontSize:12)),
-          onPressed:uploading?null:() async {
-            final xf=await picker.pickImage(source:ImageSource.gallery);if(xf==null)return;
+        _AdminField(controller:name, label:'Competition Name *'),
+        _AdminField(controller:country, label:'Country'),
+        _AdminField(controller:season, label:'Season (e.g. 2026/27)'),
+        _AdminField(controller:description, label:'Description', maxLines:3),
+        _AdminField(controller:website, label:'Website (optional)', keyboardType:TextInputType.url),
+        DropdownButtonFormField<String>(value:type, dropdownColor:SportSphereColors.surface,
+          decoration:const InputDecoration(labelText:'Type', labelStyle:TextStyle(color:SportSphereColors.muted)),
+          items:['league','cup','friendly','international'].map((t)=>DropdownMenuItem(value:t,
+              child:Text(t[0].toUpperCase()+t.substring(1), style:const TextStyle(color:SportSphereColors.white)))).toList(),
+          onChanged:(v)=>setL(()=>type=v??type)),
+        const SizedBox(height:12),
+        _UploadButton(url:logoUrl, uploading:uploading, label:'Upload Logo',
+          onTap:() async {
             setL(()=>uploading=true);
-            try{final url=await SocialRepository().uploadPickedFile(bucket:'media',folder:'news',file:xf);setL(() { imageUrl=url; uploading=false; });}
-            catch(e){setL(()=>uploading=false);}
+            final url=await _pickAndUpload(c, folder:'logos');
+            setL((){logoUrl=url;uploading=false;});
           }),
         const SizedBox(height:16),
-        SizedBox(width:double.infinity,child:FilledButton(
-          style:FilledButton.styleFrom(backgroundColor:SportSphereColors.electricBlue,padding:const EdgeInsets.symmetric(vertical:14)),
-          onPressed:() async {if(title.text.trim().isEmpty)return;try{
-            await _repo.createNews(title:title.text.trim(),summary:summary.text.trim(),body:body.text.trim(),category:category,source:source.text.trim(),isBreaking:isBreaking,imageUrl:imageUrl);
-            if(c.mounted)Navigator.pop(c);
-          }catch(e){if(c.mounted)ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e')));}},
-          child:const Text('Publish',style:TextStyle(fontWeight:FontWeight.w800)))),
-      ])),
-    )));
+        SizedBox(width:double.infinity, child:FilledButton(
+          style:FilledButton.styleFrom(backgroundColor:SportSphereColors.electricBlue, padding:const EdgeInsets.symmetric(vertical:14)),
+          onPressed:() async {
+            if(name.text.trim().isEmpty) return;
+            try {
+              await _repo.createCompetition(name:name.text.trim(), country:country.text.trim(),
+                season:season.text.trim().isEmpty?null:season.text.trim(), type:type);
+              if(c.mounted) Navigator.pop(c);
+            } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e'))); }
+          },
+          child:const Text('Create Competition', style:TextStyle(fontWeight:FontWeight.w800)))),
+      ])))));
 }
 
-Future<void> _showCreatePost(BuildContext ctx) {
-  final text=TextEditingController(); String postType='text'; bool uploading=false; List<String> mediaUrls=[];
-  final picker=ImagePicker();
-  return showModalBottomSheet<void>(context:ctx,isScrollControlled:true,backgroundColor:SportSphereColors.surface,
+// ── Create Team ────────────────────────────────────────────────────────────────
+Future<void> _showCreateTeam(BuildContext ctx, List<Map<String,dynamic>>? preloaded) async {
+  final comps = preloaded ?? await _repo.listCompetitions();
+  if (!ctx.mounted) return;
+  final name=TextEditingController(), country=TextEditingController(text:'Tanzania'),
+        city=TextEditingController(), venue=TextEditingController(),
+        founded=TextEditingController(), shortName=TextEditingController(),
+        description=TextEditingController();
+  String? leagueId, logoUrl;
+  bool uploading=false;
+
+  showModalBottomSheet<void>(context:ctx, isScrollControlled:true,
+    backgroundColor:SportSphereColors.surface,
     shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(24))),
     builder:(_)=>StatefulBuilder(builder:(c,setL)=>Padding(
       padding:EdgeInsets.fromLTRB(20,20,20,MediaQuery.of(c).viewInsets.bottom+20),
       child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-        const Text('Create Post',style:TextStyle(color:SportSphereColors.white,fontSize:18,fontWeight:FontWeight.w800)),
+        const Text('Create Team', style:TextStyle(color:SportSphereColors.white, fontSize:18, fontWeight:FontWeight.w800)),
+        const SizedBox(height:16),
+        _AdminField(controller:name, label:'Full Club Name *'),
+        _AdminField(controller:shortName, label:'Short Name (e.g. SIM, YAN)'),
+        _AdminField(controller:country, label:'Country'),
+        _AdminField(controller:city, label:'City'),
+        _AdminField(controller:venue, label:'Stadium / Venue'),
+        _AdminField(controller:founded, label:'Founded Year', keyboardType:TextInputType.number),
+        _AdminField(controller:description, label:'Club Description', maxLines:3),
+        if(comps.isNotEmpty) DropdownButtonFormField<String?>(value:leagueId,
+          dropdownColor:SportSphereColors.surface,
+          decoration:const InputDecoration(labelText:'Competition (optional)', labelStyle:TextStyle(color:SportSphereColors.muted)),
+          items:[const DropdownMenuItem(value:null,child:Text('None',style:TextStyle(color:SportSphereColors.muted))),
+            ...comps.map((comp)=>DropdownMenuItem(value:comp['id'].toString(),child:Text(comp['name'].toString(),style:const TextStyle(color:SportSphereColors.white))))],
+          onChanged:(v)=>setL(()=>leagueId=v)),
         const SizedBox(height:12),
-        DropdownButtonFormField<String>(value:postType,dropdownColor:SportSphereColors.surface,style:const TextStyle(color:SportSphereColors.white),
-          decoration:const InputDecoration(labelText:'Post Type',labelStyle:TextStyle(color:SportSphereColors.muted)),
-          items:const[DropdownMenuItem(value:'text',child:Text('Text')),DropdownMenuItem(value:'media',child:Text('Photo / Video'))],
-          onChanged:(v)=>setL(()=>postType=v??postType)),
+        _UploadButton(url:logoUrl, uploading:uploading, label:'Upload Team Logo / Badge',
+          onTap:() async {
+            setL(()=>uploading=true);
+            final url=await _pickAndUpload(c, folder:'logos');
+            setL((){logoUrl=url;uploading=false;});
+          }),
+        const SizedBox(height:16),
+        SizedBox(width:double.infinity, child:FilledButton(
+          style:FilledButton.styleFrom(backgroundColor:SportSphereColors.electricBlue, padding:const EdgeInsets.symmetric(vertical:14)),
+          onPressed:() async {
+            if(name.text.trim().isEmpty) return;
+            try {
+              await _repo.createTeam(name:name.text.trim(), country:country.text.trim(),
+                city:city.text.trim().isEmpty?null:city.text.trim(),
+                leagueId:leagueId,
+                venue:venue.text.trim().isEmpty?null:venue.text.trim(),
+                foundedYear:int.tryParse(founded.text.trim()));
+              if(c.mounted) Navigator.pop(c);
+            } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e'))); }
+          },
+          child:const Text('Create Team', style:TextStyle(fontWeight:FontWeight.w800)))),
+      ])))));
+}
+
+// ── Add Player ─────────────────────────────────────────────────────────────────
+Future<void> _showCreatePlayer(BuildContext ctx, List<Map<String,dynamic>> teams) {
+  final name=TextEditingController(), nat=TextEditingController(),
+        shirt=TextEditingController(), height=TextEditingController(),
+        weight=TextEditingController(), firstName=TextEditingController(),
+        lastName=TextEditingController();
+  String position='Forward';
+  String? teamId, photoUrl, dob;
+  bool uploading=false;
+
+  return showModalBottomSheet<void>(context:ctx, isScrollControlled:true,
+    backgroundColor:SportSphereColors.surface,
+    shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(24))),
+    builder:(_)=>StatefulBuilder(builder:(c,setL)=>Padding(
+      padding:EdgeInsets.fromLTRB(20,20,20,MediaQuery.of(c).viewInsets.bottom+20),
+      child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
+        const Text('Add Player', style:TextStyle(color:SportSphereColors.white, fontSize:18, fontWeight:FontWeight.w800)),
+        const SizedBox(height:16),
+        Row(children:[
+          Expanded(child:_AdminField(controller:firstName, label:'First Name *')),
+          const SizedBox(width:10),
+          Expanded(child:_AdminField(controller:lastName, label:'Last Name *')),
+        ]),
+        _AdminField(controller:name, label:'Full Name (display)'),
+        _AdminField(controller:nat, label:'Nationality'),
+        Row(children:[
+          Expanded(child:_AdminField(controller:shirt, label:'Shirt #', keyboardType:TextInputType.number)),
+          const SizedBox(width:10),
+          Expanded(child:DropdownButtonFormField<String>(value:position,
+            dropdownColor:SportSphereColors.surface,
+            decoration:const InputDecoration(labelText:'Position', labelStyle:TextStyle(color:SportSphereColors.muted)),
+            items:['Goalkeeper','Defender','Midfielder','Forward','Winger','Striker']
+                .map((p)=>DropdownMenuItem(value:p,child:Text(p,style:const TextStyle(color:SportSphereColors.white)))).toList(),
+            onChanged:(v)=>setL(()=>position=v??position))),
+        ]),
+        Row(children:[
+          Expanded(child:_AdminField(controller:height, label:'Height (cm)', keyboardType:TextInputType.number)),
+          const SizedBox(width:10),
+          Expanded(child:_AdminField(controller:weight, label:'Weight (kg)', keyboardType:TextInputType.number)),
+        ]),
+        ListTile(contentPadding:EdgeInsets.zero,
+          title:Text(dob==null?'Date of Birth (optional)':'DOB: $dob',
+              style:TextStyle(color:dob==null?SportSphereColors.muted:SportSphereColors.white, fontSize:13)),
+          trailing:const Icon(Icons.calendar_today_rounded, color:SportSphereColors.electricBlue, size:18),
+          onTap:() async {
+            final d=await showDatePicker(context:c,
+              initialDate:DateTime(1998,1,1), firstDate:DateTime(1950), lastDate:DateTime.now());
+            if(d!=null) setL(()=>dob='${d.year}-${d.month.toString().padLeft(2,'0')}-${d.day.toString().padLeft(2,'0')}');
+          }),
+        if(teams.isNotEmpty) DropdownButtonFormField<String?>(value:teamId,
+          dropdownColor:SportSphereColors.surface,
+          decoration:const InputDecoration(labelText:'Team', labelStyle:TextStyle(color:SportSphereColors.muted)),
+          items:[const DropdownMenuItem(value:null,child:Text('None',style:TextStyle(color:SportSphereColors.muted))),
+            ...teams.map((t)=>DropdownMenuItem(value:t['id'].toString(),child:Text(t['name'].toString(),style:const TextStyle(color:SportSphereColors.white))))],
+          onChanged:(v)=>setL(()=>teamId=v)),
         const SizedBox(height:12),
-        _AdminField(controller:text,label:'Content',maxLines:5),
-        if(mediaUrls.isNotEmpty) Wrap(spacing:8,children:mediaUrls.map((u)=>Chip(
-          label:const Text('Media',style:TextStyle(fontSize:11)),
+        _UploadButton(url:photoUrl, uploading:uploading, label:'Upload Player Photo',
+          onTap:() async {
+            setL(()=>uploading=true);
+            final url=await _pickAndUpload(c, folder:'players');
+            setL((){photoUrl=url;uploading=false;});
+          }),
+        const SizedBox(height:16),
+        SizedBox(width:double.infinity, child:FilledButton(
+          style:FilledButton.styleFrom(backgroundColor:SportSphereColors.electricBlue, padding:const EdgeInsets.symmetric(vertical:14)),
+          onPressed:() async {
+            final fullName = '${firstName.text.trim()} ${lastName.text.trim()}'.trim();
+            if(fullName.isEmpty && name.text.trim().isEmpty) return;
+            try {
+              await _repo.createPlayer(
+                name:name.text.trim().isNotEmpty?name.text.trim():fullName,
+                position:position, teamId:teamId,
+                nationality:nat.text.trim().isEmpty?null:nat.text.trim(),
+                shirtNumber:int.tryParse(shirt.text.trim()));
+              if(c.mounted) Navigator.pop(c);
+            } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e'))); }
+          },
+          child:const Text('Add Player', style:TextStyle(fontWeight:FontWeight.w800)))),
+      ])))));
+}
+
+// ── Add Coach ──────────────────────────────────────────────────────────────────
+Future<void> _showCreateCoach(BuildContext ctx, List<Map<String,dynamic>> teams) {
+  final name=TextEditingController(), nat=TextEditingController(),
+        firstName=TextEditingController(), lastName=TextEditingController();
+  String coachRole='head_coach';
+  String? teamId, photoUrl, dob;
+  bool uploading=false;
+
+  return showModalBottomSheet<void>(context:ctx, isScrollControlled:true,
+    backgroundColor:SportSphereColors.surface,
+    shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(24))),
+    builder:(_)=>StatefulBuilder(builder:(c,setL)=>Padding(
+      padding:EdgeInsets.fromLTRB(20,20,20,MediaQuery.of(c).viewInsets.bottom+20),
+      child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
+        const Text('Add Coach / Staff', style:TextStyle(color:SportSphereColors.white, fontSize:18, fontWeight:FontWeight.w800)),
+        const SizedBox(height:16),
+        Row(children:[
+          Expanded(child:_AdminField(controller:firstName, label:'First Name *')),
+          const SizedBox(width:10),
+          Expanded(child:_AdminField(controller:lastName, label:'Last Name *')),
+        ]),
+        _AdminField(controller:name, label:'Display Name'),
+        _AdminField(controller:nat, label:'Nationality'),
+        DropdownButtonFormField<String>(value:coachRole, dropdownColor:SportSphereColors.surface,
+          decoration:const InputDecoration(labelText:'Role', labelStyle:TextStyle(color:SportSphereColors.muted)),
+          items:['head_coach','assistant_coach','goalkeeper_coach','fitness_coach',
+                 'analyst','scout','physio','technical_director']
+              .map((r)=>DropdownMenuItem(value:r, child:Text(r.replaceAll('_',' ').split(' ')
+                  .map((w)=>w[0].toUpperCase()+w.substring(1)).join(' '),
+                  style:const TextStyle(color:SportSphereColors.white)))).toList(),
+          onChanged:(v)=>setL(()=>coachRole=v??coachRole)),
+        ListTile(contentPadding:EdgeInsets.zero,
+          title:Text(dob==null?'Date of Birth (optional)':'DOB: $dob',
+              style:TextStyle(color:dob==null?SportSphereColors.muted:SportSphereColors.white, fontSize:13)),
+          trailing:const Icon(Icons.calendar_today_rounded, color:SportSphereColors.electricBlue, size:18),
+          onTap:() async {
+            final d=await showDatePicker(context:c,
+              initialDate:DateTime(1975,1,1), firstDate:DateTime(1940), lastDate:DateTime.now());
+            if(d!=null) setL(()=>dob='${d.year}-${d.month.toString().padLeft(2,'0')}-${d.day.toString().padLeft(2,'0')}');
+          }),
+        if(teams.isNotEmpty) DropdownButtonFormField<String?>(value:teamId,
+          dropdownColor:SportSphereColors.surface,
+          decoration:const InputDecoration(labelText:'Team', labelStyle:TextStyle(color:SportSphereColors.muted)),
+          items:[const DropdownMenuItem(value:null,child:Text('None',style:TextStyle(color:SportSphereColors.muted))),
+            ...teams.map((t)=>DropdownMenuItem(value:t['id'].toString(),child:Text(t['name'].toString(),style:const TextStyle(color:SportSphereColors.white))))],
+          onChanged:(v)=>setL(()=>teamId=v)),
+        const SizedBox(height:12),
+        _UploadButton(url:photoUrl, uploading:uploading, label:'Upload Photo',
+          onTap:() async {
+            setL(()=>uploading=true);
+            final url=await _pickAndUpload(c, folder:'coaches');
+            setL((){photoUrl=url;uploading=false;});
+          }),
+        const SizedBox(height:16),
+        SizedBox(width:double.infinity, child:FilledButton(
+          style:FilledButton.styleFrom(backgroundColor:SportSphereColors.electricBlue, padding:const EdgeInsets.symmetric(vertical:14)),
+          onPressed:() async {
+            final fullName = '${firstName.text.trim()} ${lastName.text.trim()}'.trim();
+            if(fullName.isEmpty && name.text.trim().isEmpty) return;
+            try {
+              await _repo.createCoach(
+                name:name.text.trim().isNotEmpty?name.text.trim():fullName,
+                role:coachRole, teamId:teamId,
+                nationality:nat.text.trim().isEmpty?null:nat.text.trim());
+              if(c.mounted) Navigator.pop(c);
+            } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e'))); }
+          },
+          child:const Text('Add Coach', style:TextStyle(fontWeight:FontWeight.w800)))),
+      ])))));
+}
+
+// ── Schedule Match ─────────────────────────────────────────────────────────────
+Future<void> _showCreateMatch(BuildContext ctx) async {
+  final teams = await _repo.listTeams();
+  if (!ctx.mounted) return;
+
+  final leagueCtrl=TextEditingController(text:'Tanzania Premier League'),
+        venueCtrl=TextEditingController(), seasonCtrl=TextEditingController(text:'2026/27'),
+        refCtrl=TextEditingController(), roundCtrl=TextEditingController();
+  DateTime kickoff=DateTime.now().add(const Duration(days:1));
+  Map<String,dynamic>? homeTeam, awayTeam;
+
+  showModalBottomSheet<void>(context:ctx, isScrollControlled:true,
+    backgroundColor:SportSphereColors.surface,
+    shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(24))),
+    builder:(_)=>StatefulBuilder(builder:(c,setL)=>Padding(
+      padding:EdgeInsets.fromLTRB(20,20,20,MediaQuery.of(c).viewInsets.bottom+20),
+      child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
+        const Text('Schedule Fixture', style:TextStyle(color:SportSphereColors.white, fontSize:18, fontWeight:FontWeight.w800)),
+        const SizedBox(height:16),
+
+        // Team selectors
+        if(teams.isNotEmpty) ...[
+          DropdownButtonFormField<Map<String,dynamic>?>(value:homeTeam,
+            dropdownColor:SportSphereColors.surface,
+            decoration:const InputDecoration(labelText:'Home Team *', labelStyle:TextStyle(color:SportSphereColors.muted)),
+            items:[const DropdownMenuItem(value:null,child:Text('Select home team',style:TextStyle(color:SportSphereColors.muted))),
+              ...teams.map((t)=>DropdownMenuItem(value:t,child:Text(t['name'].toString(),style:const TextStyle(color:SportSphereColors.white))))],
+            onChanged:(v)=>setL(()=>homeTeam=v)),
+          const SizedBox(height:4),
+          DropdownButtonFormField<Map<String,dynamic>?>(value:awayTeam,
+            dropdownColor:SportSphereColors.surface,
+            decoration:const InputDecoration(labelText:'Away Team *', labelStyle:TextStyle(color:SportSphereColors.muted)),
+            items:[const DropdownMenuItem(value:null,child:Text('Select away team',style:TextStyle(color:SportSphereColors.muted))),
+              ...teams.map((t)=>DropdownMenuItem(value:t,child:Text(t['name'].toString(),style:const TextStyle(color:SportSphereColors.white))))],
+            onChanged:(v)=>setL(()=>awayTeam=v)),
+        ] else ...[
+          const Text('No teams yet — create teams first in Competitions tab.',
+              style:TextStyle(color:SportSphereColors.danger, fontSize:13)),
+          const SizedBox(height:8),
+        ],
+
+        _AdminField(controller:leagueCtrl, label:'Competition / League'),
+        _AdminField(controller:venueCtrl, label:'Venue'),
+        Row(children:[
+          Expanded(child:_AdminField(controller:seasonCtrl, label:'Season')),
+          const SizedBox(width:10),
+          Expanded(child:_AdminField(controller:roundCtrl, label:'Round / Matchday', keyboardType:TextInputType.number)),
+        ]),
+        _AdminField(controller:refCtrl, label:'Referee (optional)'),
+
+        // Kickoff date/time
+        ListTile(contentPadding:EdgeInsets.zero,
+          title:Text('Kickoff: ${kickoff.day}/${kickoff.month}/${kickoff.year}  ${kickoff.hour}:${kickoff.minute.toString().padLeft(2,"0")}',
+              style:const TextStyle(color:SportSphereColors.white, fontSize:13)),
+          trailing:const Icon(Icons.calendar_today_rounded, color:SportSphereColors.electricBlue),
+          onTap:() async {
+            final d=await showDatePicker(context:c,
+              initialDate:kickoff,
+              firstDate:DateTime.now().subtract(const Duration(days:7)),
+              lastDate:DateTime.now().add(const Duration(days:365)));
+            if(d==null) return;
+            final t=await showTimePicker(context:c, initialTime:TimeOfDay.fromDateTime(kickoff));
+            if(t==null) return;
+            setL(()=>kickoff=DateTime(d.year,d.month,d.day,t.hour,t.minute));
+          }),
+        const SizedBox(height:16),
+        SizedBox(width:double.infinity, child:FilledButton(
+          style:FilledButton.styleFrom(backgroundColor:SportSphereColors.sportGreen, padding:const EdgeInsets.symmetric(vertical:14)),
+          onPressed:() async {
+            final home = homeTeam?['name']?.toString() ?? '';
+            final away = awayTeam?['name']?.toString() ?? '';
+            if(home.isEmpty || away.isEmpty) {
+              ScaffoldMessenger.of(c).showSnackBar(const SnackBar(content:Text('Select both teams')));
+              return;
+            }
+            try {
+              await _repo.createMatch(
+                homeTeam:home, awayTeam:away,
+                league:leagueCtrl.text.trim(),
+                kickoffAt:kickoff,
+                venue:venueCtrl.text.trim().isEmpty?null:venueCtrl.text.trim(),
+                homeBadge:homeTeam?['logoUrl']?.toString(),
+                awayBadge:awayTeam?['logoUrl']?.toString(),
+                season:seasonCtrl.text.trim().isEmpty?null:seasonCtrl.text.trim());
+              if(c.mounted) Navigator.pop(c);
+            } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e'))); }
+          },
+          child:const Text('Schedule Match', style:TextStyle(fontWeight:FontWeight.w800)))),
+      ])))));
+}
+
+// ── Publish News ───────────────────────────────────────────────────────────────
+Future<void> _showNewsCompose(BuildContext ctx) {
+  final titleCtrl=TextEditingController(), summaryCtrl=TextEditingController(),
+        bodyCtrl=TextEditingController(), sourceCtrl=TextEditingController(text:'SportSphere');
+  String category='updates';
+  bool isBreaking=false;
+  List<String> images=[];
+  bool uploading=false;
+
+  return showModalBottomSheet<void>(context:ctx, isScrollControlled:true,
+    backgroundColor:SportSphereColors.surface,
+    shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(24))),
+    builder:(_)=>StatefulBuilder(builder:(c,setL)=>Padding(
+      padding:EdgeInsets.fromLTRB(20,20,20,MediaQuery.of(c).viewInsets.bottom+20),
+      child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
+        const Text('Publish News Article', style:TextStyle(color:SportSphereColors.white, fontSize:18, fontWeight:FontWeight.w800)),
+        const SizedBox(height:16),
+        _AdminField(controller:titleCtrl, label:'Headline *'),
+        _AdminField(controller:summaryCtrl, label:'Summary / Subtitle'),
+        _AdminField(controller:bodyCtrl, label:'Full Article Body', maxLines:8),
+        _AdminField(controller:sourceCtrl, label:'Source'),
+        DropdownButtonFormField<String>(value:category, dropdownColor:SportSphereColors.surface,
+          style:const TextStyle(color:SportSphereColors.white),
+          decoration:const InputDecoration(labelText:'Category', labelStyle:TextStyle(color:SportSphereColors.muted)),
+          items:const[
+            DropdownMenuItem(value:'updates', child:Text('Updates')),
+            DropdownMenuItem(value:'breaking', child:Text('Breaking News')),
+            DropdownMenuItem(value:'rumors', child:Text('Rumors / Transfer')),
+            DropdownMenuItem(value:'results', child:Text('Match Results')),
+            DropdownMenuItem(value:'preview', child:Text('Match Preview')),
+            DropdownMenuItem(value:'interview', child:Text('Interview')),
+          ],
+          onChanged:(v)=>setL(()=>category=v??category)),
+        SwitchListTile(value:isBreaking, onChanged:(v)=>setL(()=>isBreaking=v),
+          title:const Text('Breaking News', style:TextStyle(color:SportSphereColors.white)),
+          activeColor:SportSphereColors.danger, contentPadding:EdgeInsets.zero),
+
+        // Images
+        if(images.isNotEmpty) Wrap(spacing:8, children:images.map((u)=>Chip(
+          label:const Text('Image', style:TextStyle(fontSize:11)),
           backgroundColor:SportSphereColors.sportGreen.withValues(alpha:0.15),
           labelStyle:const TextStyle(color:SportSphereColors.sportGreen),
-          deleteIcon:const Icon(Icons.close,size:14,color:SportSphereColors.danger),
-          onDeleted:()=>setL(()=>mediaUrls.remove(u)))).toList()),
-        if(postType=='media') OutlinedButton.icon(style:OutlinedButton.styleFrom(foregroundColor:SportSphereColors.muted),
-          icon:const Icon(Icons.add_photo_alternate_rounded,size:16),
-          label:uploading?const SizedBox(width:14,height:14,child:CircularProgressIndicator(strokeWidth:2)):const Text('Add Photo/Video',style:TextStyle(fontSize:12)),
+          deleteIcon:const Icon(Icons.close, size:14, color:SportSphereColors.danger),
+          onDeleted:()=>setL(()=>images.remove(u)))).toList()),
+
+        OutlinedButton.icon(
+          style:OutlinedButton.styleFrom(foregroundColor:SportSphereColors.muted),
+          icon: uploading ? const SizedBox(width:14,height:14,child:CircularProgressIndicator(strokeWidth:2))
+                         : const Icon(Icons.photo_rounded, size:16),
+          label:Text(uploading?'Uploading...':'Add Image / Photo', style:const TextStyle(fontSize:12)),
           onPressed:uploading?null:() async {
-            final xf=await picker.pickImage(source:ImageSource.gallery);if(xf==null)return;
             setL(()=>uploading=true);
-            try{final url=await SocialRepository().uploadPickedFile(bucket:'media',folder:'posts',file:xf);setL(() { mediaUrls.add(url); uploading=false; });}
-            catch(e){setL(()=>uploading=false);}
+            final url=await _pickAndUpload(c, folder:'news');
+            if(url!=null) setL((){images.add(url);uploading=false;})
+            else setL(()=>uploading=false);
           }),
         const SizedBox(height:16),
-        SizedBox(width:double.infinity,child:FilledButton(
-          style:FilledButton.styleFrom(backgroundColor:SportSphereColors.electricBlue,padding:const EdgeInsets.symmetric(vertical:14)),
-          onPressed:() async {if(text.text.trim().isEmpty&&mediaUrls.isEmpty)return;try{
-            await SocialRepository().createPost(content:text.text.trim(),postType:postType,mediaUrls:mediaUrls);
-            if(c.mounted)Navigator.pop(c);
-          }catch(e){if(c.mounted)ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e')));}},
-          child:const Text('Post',style:TextStyle(fontWeight:FontWeight.w800)))),
-      ])),
-    )));
+        SizedBox(width:double.infinity, child:FilledButton(
+          style:FilledButton.styleFrom(backgroundColor:SportSphereColors.electricBlue, padding:const EdgeInsets.symmetric(vertical:14)),
+          onPressed:() async {
+            if(titleCtrl.text.trim().isEmpty) return;
+            try {
+              await _repo.createNews(
+                title:titleCtrl.text.trim(), summary:summaryCtrl.text.trim(),
+                body:bodyCtrl.text.trim(), category:category,
+                source:sourceCtrl.text.trim(), isBreaking:isBreaking,
+                imageUrl:images.isNotEmpty?images.first:null);
+              if(c.mounted) Navigator.pop(c);
+            } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e'))); }
+          },
+          child:const Text('Publish Article', style:TextStyle(fontWeight:FontWeight.w800)))),
+      ])))));
 }
+
+// ── Create Post ────────────────────────────────────────────────────────────────
+Future<void> _showCreatePost(BuildContext ctx) {
+  final textCtrl=TextEditingController();
+  String postType='text';
+  bool uploading=false;
+  List<String> mediaUrls=[];
+
+  return showModalBottomSheet<void>(context:ctx, isScrollControlled:true,
+    backgroundColor:SportSphereColors.surface,
+    shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(24))),
+    builder:(_)=>StatefulBuilder(builder:(c,setL)=>Padding(
+      padding:EdgeInsets.fromLTRB(20,20,20,MediaQuery.of(c).viewInsets.bottom+20),
+      child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
+        const Text('Create Post', style:TextStyle(color:SportSphereColors.white, fontSize:18, fontWeight:FontWeight.w800)),
+        const SizedBox(height:12),
+        DropdownButtonFormField<String>(value:postType, dropdownColor:SportSphereColors.surface,
+          style:const TextStyle(color:SportSphereColors.white),
+          decoration:const InputDecoration(labelText:'Post Type', labelStyle:TextStyle(color:SportSphereColors.muted)),
+          items:const[
+            DropdownMenuItem(value:'text', child:Text('Text / Announcement')),
+            DropdownMenuItem(value:'media', child:Text('Photo / Video')),
+          ],
+          onChanged:(v)=>setL(()=>postType=v??postType)),
+        const SizedBox(height:12),
+        _AdminField(controller:textCtrl, label:'Content *', maxLines:6),
+
+        // Media preview + upload
+        if(mediaUrls.isNotEmpty) Wrap(spacing:8, children:mediaUrls.map((u)=>Chip(
+          label:const Text('Media', style:TextStyle(fontSize:11)),
+          backgroundColor:SportSphereColors.sportGreen.withValues(alpha:0.15),
+          labelStyle:const TextStyle(color:SportSphereColors.sportGreen),
+          deleteIcon:const Icon(Icons.close, size:14, color:SportSphereColors.danger),
+          onDeleted:()=>setL(()=>mediaUrls.remove(u)))).toList()),
+
+        if(mediaUrls.length < 4) OutlinedButton.icon(
+          style:OutlinedButton.styleFrom(foregroundColor:SportSphereColors.muted),
+          icon:uploading?const SizedBox(width:14,height:14,child:CircularProgressIndicator(strokeWidth:2))
+                       :const Icon(Icons.add_photo_alternate_rounded, size:16),
+          label:Text(uploading?'Uploading...':'Add Photo / Video', style:const TextStyle(fontSize:12)),
+          onPressed:uploading?null:() async {
+            setL(()=>uploading=true);
+            final url=await _pickAndUpload(c, folder:'posts');
+            if(url!=null) { setL((){mediaUrls.add(url);uploading=false;postType='media';}) }
+            else setL(()=>uploading=false);
+          }),
+        const SizedBox(height:16),
+        SizedBox(width:double.infinity, child:FilledButton(
+          style:FilledButton.styleFrom(backgroundColor:SportSphereColors.electricBlue, padding:const EdgeInsets.symmetric(vertical:14)),
+          onPressed:() async {
+            if(textCtrl.text.trim().isEmpty && mediaUrls.isEmpty) return;
+            try {
+              await SocialRepository().createPost(
+                content:textCtrl.text.trim(), postType:postType, mediaUrls:mediaUrls);
+              if(c.mounted) Navigator.pop(c);
+            } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e'))); }
+          },
+          child:const Text('Post', style:TextStyle(fontWeight:FontWeight.w800)))),
+      ])))));
+}
+
+// ── Upload Button widget ───────────────────────────────────────────────────────
+class _UploadButton extends StatelessWidget {
+  final String? url;
+  final bool uploading;
+  final String label;
+  final VoidCallback onTap;
+  const _UploadButton({required this.url, required this.uploading,
+      required this.label, required this.onTap});
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      style:OutlinedButton.styleFrom(foregroundColor:SportSphereColors.muted),
+      icon:uploading
+          ? const SizedBox(width:14,height:14,child:CircularProgressIndicator(strokeWidth:2))
+          : Icon(url!=null?Icons.check_circle_rounded:Icons.upload_rounded,
+              size:16, color:url!=null?SportSphereColors.sportGreen:null),
+      label:Text(uploading?'Uploading...':(url!=null?'Uploaded ✓':label),
+          style:TextStyle(fontSize:12,
+              color:url!=null?SportSphereColors.sportGreen:null)),
+      onPressed:uploading?null:onTap);
+  }
+}
+
 
 // ══ SHARED WIDGETS ══════════════════════════════════════════════════════════════
 
