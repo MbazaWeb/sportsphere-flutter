@@ -51,6 +51,11 @@ class SportSphereShell extends ConsumerStatefulWidget {
 class _SportSphereShellState extends ConsumerState<SportSphereShell> {
   int _index = 0;
 
+  void goHome() {
+    if (!mounted) return;
+    setState(() => _index = 0);
+  }
+
   // FIX #10: Not static const — _CreateScreen owns AnimationControllers
   // and must not be const-constructed in a static list.
   final _guestScreens = const <Widget>[

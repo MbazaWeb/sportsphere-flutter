@@ -69,13 +69,13 @@ class _CreateScreen extends StatelessWidget {
 // COMPOSER
 // ══════════════════════════════════════════════════════════════════════════════
 
-class _CreateComposer extends StatefulWidget {
+class _CreateComposer extends ConsumerStatefulWidget {
   const _CreateComposer();
   @override
-  State<_CreateComposer> createState() => _CreateComposerState();
+  ConsumerState<_CreateComposer> createState() => _CreateComposerState();
 }
 
-class _CreateComposerState extends State<_CreateComposer>
+class _CreateComposerState extends ConsumerState<_CreateComposer>
     with TickerProviderStateMixin {
   // ── Text ─────────────────────────────────────────────────────
   final _textCtrl = TextEditingController();
@@ -212,6 +212,41 @@ class _CreateComposerState extends State<_CreateComposer>
   }
 
   // ── Helpers ───────────────────────────────────────────────────
+
+  String _composerRoleLabel() {
+    final user = ref.read(authControllerProvider).user;
+    final role = (user?.role ?? 'fan').toLowerCase();
+    final email = (user?.email ?? '').toLowerCase();
+    final handle = (user?.handle ?? '').toLowerCase().replaceAll('@', '');
+    if (email == 'sportsphere.app@sportsphere.com' ||
+        handle == 'sportsphere' ||
+        handle == 'sportsphere_official' ||
+        role == 'admin' ||
+        role == 'official') {
+      return 'Official';
+    }
+    if (role.isEmpty) return 'Fan';
+    return role[0].toUpperCase() + role.substring(1);
+  }
+
+  String _composerDisplayName() {
+    final user = ref.read(authControllerProvider).user;
+    final handle = (user?.handle ?? '').toLowerCase().replaceAll('@', '');
+    final role = (user?.role ?? '').toLowerCase();
+    final email = (user?.email ?? '').toLowerCase();
+    if (email == 'sportsphere.app@sportsphere.com' ||
+        handle == 'sportsphere' ||
+        handle == 'sportsphere_official' ||
+        role == 'admin' ||
+        role == 'official') {
+      return 'SportSphere';
+    }
+    final name = '${user?.firstName ?? ''} ${user?.lastName ?? ''}'.trim();
+    if (name.isNotEmpty) return name;
+    if ((user?.handle ?? '').isNotEmpty) return user!.handle;
+    return 'You';
+  }
+
   int get _charsLeft => _maxChars - _textCtrl.text.length;
   bool get _canPost =>
       _textCtrl.text.trim().isNotEmpty ||
@@ -597,13 +632,13 @@ class _CreateComposerState extends State<_CreateComposer>
         _posting = false;
       });
 
-      await Future.delayed(const Duration(milliseconds: 900));
+      await Future.delayed(const Duration(milliseconds: 450));
     } catch (e) {
       setState(() => _posting = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to post: $e'),
+            content: Text(friendlyError(e, fallback: 'Failed to post. Try again.')),
             backgroundColor: const Color(0xFFE31B23),
           ),
         );
@@ -612,7 +647,7 @@ class _CreateComposerState extends State<_CreateComposer>
     }
 
     if (mounted) {
-      // Reset everything
+      // Reset composer
       _textCtrl.clear();
       _mediaTiles.clear();
       _mediaIsVideo.clear();
@@ -632,7 +667,22 @@ class _CreateComposerState extends State<_CreateComposer>
         _disappearsIn = null;
         _tags.clear();
         _toolbarExpanded = false;
+        _showLocation = false;
+        _showDisappearing = false;
+        _showTag = false;
       });
+
+      // Return to Home tab after successful post
+      final shell = context.findAncestorStateOfType<_SportSphereShellState>();
+      shell?.goHome();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Posted to SportLights'),
+          backgroundColor: Color(0xFF2E7D32),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
     }
   }
 
@@ -645,13 +695,15 @@ class _CreateComposerState extends State<_CreateComposer>
         _ComposerHeader(
           audience: _audience,
           onAudienceChanged: (v) => setState(() => _audience = v),
+          roleLabel: _composerRoleLabel(),
+          displayName: _composerDisplayName(),
         ),
 
         // ── Scrollable body ───────────────────────────────────────
         Expanded(
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -686,8 +738,8 @@ class _CreateComposerState extends State<_CreateComposer>
                     onEdit: (i) => _openMediaEditor(i),
                     onAddMore: _mediaTiles.length < 4 ? _pickMedia : null,
                   ),
-                ] else if (_type == _PostType.media) ...[
-                  const SizedBox(height: 14),
+                ] else ...[
+                  const SizedBox(height: 10),
                   _GrassAddMediaTile(onTap: _pickMedia),
                 ],
 
@@ -813,7 +865,7 @@ class _CreateComposerState extends State<_CreateComposer>
                   ),
                 ],
 
-                const SizedBox(height: 80),
+                const SizedBox(height: 12),
               ],
             ),
           ),
@@ -866,15 +918,24 @@ class _CreateComposerState extends State<_CreateComposer>
 class _ComposerHeader extends StatelessWidget {
   final String audience;
   final ValueChanged<String> onAudienceChanged;
+  final String roleLabel;
+  final String displayName;
   const _ComposerHeader({
     required this.audience,
     required this.onAudienceChanged,
+    this.roleLabel = 'Fan',
+    this.displayName = 'You',
   });
 
   @override
   Widget build(BuildContext context) {
+    final isOfficial = roleLabel.toLowerCase() == 'official' ||
+        roleLabel.toLowerCase() == 'admin';
+    final badgeColor = isOfficial
+        ? const Color(0xFFFFD700)
+        : SportSphereColors.sportGreen;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
       child: Row(
         children: [
           // Avatar
@@ -918,36 +979,34 @@ class _ComposerHeader extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Text(
-                      'You',
-                      style: TextStyle(
+                    Text(
+                      displayName,
+                      style: const TextStyle(
                         color: SportSphereColors.white,
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(width: 6),
-                    // Fan badge
+                    // Role badge (Official for admin)
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: SportSphereColors.sportGreen
-                            .withValues(alpha: 0.12),
+                        color: badgeColor.withValues(alpha: 0.14),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: SportSphereColors.sportGreen
-                              .withValues(alpha: 0.35),
+                          color: badgeColor.withValues(alpha: 0.45),
                         ),
                       ),
                       child: Text(
-                        'Fan',
+                        roleLabel,
                         style: TextStyle(
-                          color: SportSphereColors.sportGreen,
+                          color: badgeColor,
                           fontSize: 10,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
