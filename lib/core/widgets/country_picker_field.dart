@@ -1,0 +1,202 @@
+import 'package:flutter/material.dart';
+
+import '../data/world_countries.dart';
+import '../theme/colors.dart';
+
+/// Searchable world-country selector (ISO list from [kWorldCountries]).
+Future<String?> showCountryPicker(
+  BuildContext context, {
+  String? selected,
+}) {
+  return showModalBottomSheet<String>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: SportSphereColors.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) => _CountryPickerSheet(selected: selected),
+  );
+}
+
+class _CountryPickerSheet extends StatefulWidget {
+  final String? selected;
+  const _CountryPickerSheet({this.selected});
+
+  @override
+  State<_CountryPickerSheet> createState() => _CountryPickerSheetState();
+}
+
+class _CountryPickerSheetState extends State<_CountryPickerSheet> {
+  final _search = TextEditingController();
+  late List<WorldCountry> _filtered;
+
+  @override
+  void initState() {
+    super.initState();
+    _filtered = kWorldCountries;
+    _search.addListener(_onSearch);
+  }
+
+  @override
+  void dispose() {
+    _search.removeListener(_onSearch);
+    _search.dispose();
+    super.dispose();
+  }
+
+  void _onSearch() {
+    final q = _search.text.trim().toLowerCase();
+    setState(() {
+      _filtered = q.isEmpty
+          ? kWorldCountries
+          : kWorldCountries
+              .where((c) =>
+                  c.name.toLowerCase().contains(q) ||
+                  c.code.toLowerCase().contains(q))
+              .toList();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final h = MediaQuery.of(context).size.height * 0.75;
+    return SizedBox(
+      height: h,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Select country',
+                    style: TextStyle(
+                      color: SportSphereColors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close_rounded,
+                      color: SportSphereColors.muted),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: TextField(
+              controller: _search,
+              autofocus: true,
+              style: const TextStyle(color: SportSphereColors.white),
+              decoration: InputDecoration(
+                hintText: 'Search country…',
+                hintStyle: const TextStyle(color: SportSphereColors.muted),
+                prefixIcon: const Icon(Icons.search_rounded,
+                    color: SportSphereColors.muted, size: 20),
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.05),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _filtered.length,
+              itemBuilder: (_, i) {
+                final c = _filtered[i];
+                final sel = widget.selected != null &&
+                    (widget.selected!.toLowerCase() == c.name.toLowerCase() ||
+                        widget.selected!.toLowerCase() ==
+                            c.code.toLowerCase());
+                return ListTile(
+                  title: Text(
+                    c.name,
+                    style: TextStyle(
+                      color: sel
+                          ? SportSphereColors.electricBlue
+                          : SportSphereColors.white,
+                      fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                  subtitle: Text(c.code,
+                      style: const TextStyle(
+                          color: SportSphereColors.muted, fontSize: 11)),
+                  trailing: sel
+                      ? const Icon(Icons.check_rounded,
+                          color: SportSphereColors.electricBlue, size: 20)
+                      : null,
+                  onTap: () => Navigator.pop(context, c.name),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tappable field that opens [showCountryPicker].
+class CountryPickerField extends StatelessWidget {
+  final String label;
+  final String? value;
+  final ValueChanged<String> onChanged;
+  final String placeholder;
+
+  const CountryPickerField({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    this.placeholder = 'Select country',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () async {
+          final picked = await showCountryPicker(context, selected: value);
+          if (picked != null) onChanged(picked);
+        },
+        child: InputDecorator(
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: const TextStyle(color: SportSphereColors.muted),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide:
+                  BorderSide(color: Colors.white.withValues(alpha: 0.12)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide:
+                  const BorderSide(color: SportSphereColors.electricBlue),
+            ),
+            suffixIcon: const Icon(Icons.arrow_drop_down_rounded,
+                color: SportSphereColors.muted),
+          ),
+          child: Text(
+            (value == null || value!.isEmpty) ? placeholder : value!,
+            style: TextStyle(
+              color: (value == null || value!.isEmpty)
+                  ? SportSphereColors.muted
+                  : SportSphereColors.white,
+              fontSize: 15,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

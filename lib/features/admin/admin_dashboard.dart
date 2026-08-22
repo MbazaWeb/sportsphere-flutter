@@ -6,6 +6,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/admin/app_admin.dart';
 import '../../../core/data/social_repository.dart';
 import '../../../core/theme/colors.dart';
+import '../../../core/widgets/country_picker_field.dart';
+import '../../../core/widgets/team_color_picker.dart';
 import '../../../features/auth/presentation/auth_controller.dart';
 import '../scores/presentation/admin_live_control.dart';
 import 'admin_repository.dart';
@@ -460,10 +462,11 @@ Future<void> _showCreateUser(BuildContext ctx) {
 
 // ── Create Competition ─────────────────────────────────────────────────────────
 Future<void> _showCreateCompetition(BuildContext ctx) {
-  final name=TextEditingController(), country=TextEditingController(text:'Tanzania'),
+  final name=TextEditingController(),
         season=TextEditingController(text:'2026/27'), description=TextEditingController(),
         website=TextEditingController();
   String type='league';
+  String country='Tanzania';
   String? logoUrl;
   bool uploading=false;
 
@@ -476,7 +479,7 @@ Future<void> _showCreateCompetition(BuildContext ctx) {
         const Text('Create Competition', style:TextStyle(color:SportSphereColors.white, fontSize:18, fontWeight:FontWeight.w800)),
         const SizedBox(height:16),
         _AdminField(controller:name, label:'Competition Name *'),
-        _AdminField(controller:country, label:'Country'),
+        CountryPickerField(label:'Country', value:country, onChanged:(v)=>setL(()=>country=v)),
         _AdminField(controller:season, label:'Season (e.g. 2026/27)'),
         _AdminField(controller:description, label:'Description', maxLines:3),
         _AdminField(controller:website, label:'Website (optional)', keyboardType:TextInputType.url),
@@ -498,7 +501,7 @@ Future<void> _showCreateCompetition(BuildContext ctx) {
           onPressed:() async {
             if(name.text.trim().isEmpty) return;
             try {
-              await _repo.createCompetition(name:name.text.trim(), country:country.text.trim(),
+              await _repo.createCompetition(name:name.text.trim(), country:country,
                 season:season.text.trim().isEmpty?null:season.text.trim(), type:type);
               if(c.mounted) Navigator.pop(c);
             } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e'))); }
@@ -511,10 +514,12 @@ Future<void> _showCreateCompetition(BuildContext ctx) {
 Future<void> _showCreateTeam(BuildContext ctx, List<Map<String,dynamic>>? preloaded) async {
   final comps = preloaded ?? await _repo.listCompetitions();
   if (!ctx.mounted) return;
-  final name=TextEditingController(), country=TextEditingController(text:'Tanzania'),
+  final name=TextEditingController(),
         city=TextEditingController(), venue=TextEditingController(),
         founded=TextEditingController(), shortName=TextEditingController(),
         description=TextEditingController();
+  String country = 'Tanzania';
+  String primaryColor = '#E31B23';
   String? leagueId, logoUrl;
   bool uploading=false;
 
@@ -528,7 +533,8 @@ Future<void> _showCreateTeam(BuildContext ctx, List<Map<String,dynamic>>? preloa
         const SizedBox(height:16),
         _AdminField(controller:name, label:'Full Club Name *'),
         _AdminField(controller:shortName, label:'Short Name (e.g. SIM, YAN)'),
-        _AdminField(controller:country, label:'Country'),
+        CountryPickerField(label:'Country', value:country, onChanged:(v)=>setL(()=>country=v)),
+        TeamColorPicker(valueHex:primaryColor, onChanged:(v)=>setL(()=>primaryColor=v)),
         _AdminField(controller:city, label:'City'),
         _AdminField(controller:venue, label:'Stadium / Venue'),
         _AdminField(controller:founded, label:'Founded Year', keyboardType:TextInputType.number),
@@ -548,15 +554,22 @@ Future<void> _showCreateTeam(BuildContext ctx, List<Map<String,dynamic>>? preloa
           }),
         const SizedBox(height:16),
         SizedBox(width:double.infinity, child:FilledButton(
-          style:FilledButton.styleFrom(backgroundColor:SportSphereColors.electricBlue, padding:const EdgeInsets.symmetric(vertical:14)),
+          style:FilledButton.styleFrom(
+            backgroundColor: parseHexColor(primaryColor) ?? SportSphereColors.electricBlue,
+            padding:const EdgeInsets.symmetric(vertical:14)),
           onPressed:() async {
             if(name.text.trim().isEmpty) return;
             try {
-              await _repo.createTeam(name:name.text.trim(), country:country.text.trim(),
+              await _repo.createTeam(
+                name:name.text.trim(),
+                country:country,
                 city:city.text.trim().isEmpty?null:city.text.trim(),
                 leagueId:leagueId,
                 venue:venue.text.trim().isEmpty?null:venue.text.trim(),
-                foundedYear:int.tryParse(founded.text.trim()));
+                foundedYear:int.tryParse(founded.text.trim()),
+                primaryColor:primaryColor,
+                logoUrl:logoUrl,
+              );
               if(c.mounted) Navigator.pop(c);
             } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e'))); }
           },
@@ -564,13 +577,13 @@ Future<void> _showCreateTeam(BuildContext ctx, List<Map<String,dynamic>>? preloa
       ])))));
 }
 
-// ── Add Player ─────────────────────────────────────────────────────────────────
 Future<void> _showCreatePlayer(BuildContext ctx, List<Map<String,dynamic>> teams) {
-  final name=TextEditingController(), nat=TextEditingController(),
+  final name=TextEditingController(),
         shirt=TextEditingController(), height=TextEditingController(),
         weight=TextEditingController(), firstName=TextEditingController(),
         lastName=TextEditingController();
   String position='Forward';
+  String nationality='Tanzania';
   String? teamId, photoUrl, dob;
   bool uploading=false;
 
@@ -588,7 +601,7 @@ Future<void> _showCreatePlayer(BuildContext ctx, List<Map<String,dynamic>> teams
           Expanded(child:_AdminField(controller:lastName, label:'Last Name *')),
         ]),
         _AdminField(controller:name, label:'Full Name (display)'),
-        _AdminField(controller:nat, label:'Nationality'),
+        CountryPickerField(label:'Nationality', value:nationality, onChanged:(v)=>setL(()=>nationality=v)),
         Row(children:[
           Expanded(child:_AdminField(controller:shirt, label:'Shirt #', keyboardType:TextInputType.number)),
           const SizedBox(width:10),
@@ -636,7 +649,7 @@ Future<void> _showCreatePlayer(BuildContext ctx, List<Map<String,dynamic>> teams
               await _repo.createPlayer(
                 name:name.text.trim().isNotEmpty?name.text.trim():fullName,
                 position:position, teamId:teamId,
-                nationality:nat.text.trim().isEmpty?null:nat.text.trim(),
+                nationality:nationality,
                 shirtNumber:int.tryParse(shirt.text.trim()));
               if(c.mounted) Navigator.pop(c);
             } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e'))); }
@@ -647,9 +660,10 @@ Future<void> _showCreatePlayer(BuildContext ctx, List<Map<String,dynamic>> teams
 
 // ── Add Coach ──────────────────────────────────────────────────────────────────
 Future<void> _showCreateCoach(BuildContext ctx, List<Map<String,dynamic>> teams) {
-  final name=TextEditingController(), nat=TextEditingController(),
+  final name=TextEditingController(),
         firstName=TextEditingController(), lastName=TextEditingController();
   String coachRole='head_coach';
+  String nationality='Tanzania';
   String? teamId, photoUrl, dob;
   bool uploading=false;
 
@@ -667,7 +681,7 @@ Future<void> _showCreateCoach(BuildContext ctx, List<Map<String,dynamic>> teams)
           Expanded(child:_AdminField(controller:lastName, label:'Last Name *')),
         ]),
         _AdminField(controller:name, label:'Display Name'),
-        _AdminField(controller:nat, label:'Nationality'),
+        CountryPickerField(label:'Nationality', value:nationality, onChanged:(v)=>setL(()=>nationality=v)),
         DropdownButtonFormField<String>(value:coachRole, dropdownColor:SportSphereColors.surface,
           decoration:const InputDecoration(labelText:'Role', labelStyle:TextStyle(color:SportSphereColors.muted)),
           items:['head_coach','assistant_coach','goalkeeper_coach','fitness_coach',
@@ -708,7 +722,7 @@ Future<void> _showCreateCoach(BuildContext ctx, List<Map<String,dynamic>> teams)
               await _repo.createCoach(
                 name:name.text.trim().isNotEmpty?name.text.trim():fullName,
                 role:coachRole, teamId:teamId,
-                nationality:nat.text.trim().isEmpty?null:nat.text.trim());
+                nationality:nationality);
               if(c.mounted) Navigator.pop(c);
             } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e'))); }
           },

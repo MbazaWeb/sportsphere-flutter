@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/team_color_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/data/nbc_club_badges.dart';
@@ -78,7 +79,9 @@ Future<TeamProfileModel> lookupTeamProfile(String handle) async {
     founded: (team?['foundedYear'] as int?) ?? 2000,
     coach: coachName ?? '',
     description: (team?['description'] as String?) ?? '',
-    accentColor: const Color(0xFFE31B23),
+    accentColor: parseHexColor(team?['primaryColor']?.toString()) ??
+        parseHexColor((team?['metadata'] is Map ? (team!['metadata'] as Map)['primaryColor'] : null)?.toString()) ??
+        const Color(0xFFE31B23),
     postCount: (user?['postCount'] as int?) ?? 0,
     fanCount: (user?['fanCount'] as int?) ?? 0,
     followingCount: (user?['followingCount'] as int?) ?? 0,

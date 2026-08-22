@@ -88,7 +88,16 @@ class AdminRepository {
     } catch (e) { return []; }
   }
 
-  Future<String> createTeam({required String name, required String country, String? city, String? leagueId, String? venue, int? foundedYear}) async {
+  Future<String> createTeam({
+    required String name,
+    required String country,
+    String? city,
+    String? leagueId,
+    String? venue,
+    int? foundedYear,
+    String? primaryColor,
+    String? logoUrl,
+  }) async {
     final slug = name.toLowerCase().replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), '');
     final id = 'team-${DateTime.now().millisecondsSinceEpoch}';
     await _sb.from('Team').insert({
@@ -98,6 +107,8 @@ class AdminRepository {
       if (leagueId != null) 'leagueId': leagueId,
       if (venue != null) 'venue': venue,
       if (foundedYear != null) 'foundedYear': foundedYear,
+      if (primaryColor != null && primaryColor.isNotEmpty) 'primaryColor': primaryColor,
+      if (logoUrl != null && logoUrl.isNotEmpty) 'logoUrl': logoUrl,
       'source': 'admin', 'verified': true, 'isActive': true,
       'createdAt': DateTime.now().toIso8601String(),
       'updatedAt': DateTime.now().toIso8601String(),
