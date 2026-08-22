@@ -75,13 +75,25 @@ class _ScoresPageState extends ConsumerState<ScoresPage>
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text(
-          'Scores',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w900,
-            fontSize: 24,
-          ),
+        title: Row(
+          children: [
+            Image.asset(
+              'assets/images/playify_icon.png',
+              height: 28,
+              width: 28,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'Scores',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: 22,
+              ),
+            ),
+          ],
         ),
         bottom: TabBar(
           controller: _mainTabController,

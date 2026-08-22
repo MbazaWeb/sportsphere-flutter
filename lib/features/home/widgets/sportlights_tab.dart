@@ -134,7 +134,7 @@ class _SpotlightItem {
     required this.type,
     required this.author,
     required this.role,
-    this.handle = 'sportsphere',
+    this.handle = 'playify',
     this.targetUserId,
     this.postId,
     required this.age,
@@ -337,7 +337,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
         final uid =
             (r['userId'] ?? r['authorId'] ?? r['user_id'])?.toString();
         String author = 'Playify Official';
-        String handle = 'sportsphere';
+        String handle = 'playify';
         String roleLabel = (r['postType'] as String?) ??
             (r['post_type'] as String?) ??
             'Official';
@@ -812,29 +812,28 @@ class _AuthorHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text(
+                item.author,
+                softWrap: true,
+                maxLines: 3,
+                overflow: TextOverflow.visible,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  height: 1.25,
+                ),
+              ),
+              const SizedBox(height: 4),
               Row(
                 children: [
-                  Flexible(
-                    child: Text(
-                      item.author,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 5),
                   const Icon(
                     Icons.verified_rounded,
                     color: Color(0xFF168CFF),
-                    size: 16,
+                    size: 15,
                   ),
                   const SizedBox(width: 6),
-                  Flexible(
-                    child: _RoleBadge(label: item.role),
-                  ),
+                  Flexible(child: _RoleBadge(label: item.role)),
                 ],
               ),
               const SizedBox(height: 3),
@@ -1538,7 +1537,7 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
       if (nowShared) {
         final text = widget.item.content?.trim().isNotEmpty == true
             ? widget.item.content!
-            : '${widget.item.author} on SportSphere';
+            : '${widget.item.author} on Playify';
         try {
           await Share.share(text, subject: 'SportSphere');
         } catch (e) {

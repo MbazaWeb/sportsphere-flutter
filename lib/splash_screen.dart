@@ -47,7 +47,9 @@ class _SplashScreenState extends State<SplashScreen>
         child: Center(
           child: Image.asset(
             'assets/images/playify_sign.png',
-            width: 220,
+            width: 200,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
             errorBuilder: (_, __, ___) => const Text(
               'Playify',
               style: TextStyle(

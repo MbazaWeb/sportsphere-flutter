@@ -724,7 +724,7 @@ class _ComposerHeader extends StatelessWidget {
                 ),
                 child: ClipOval(
                   child: Image.asset(
-                    'assets/images/Playify_logo.png',
+                    'assets/images/playify_icon.png',
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => const Icon(
                       Icons.person_rounded,

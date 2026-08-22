@@ -19,7 +19,8 @@ class AppAdmin {
   static bool isAdminUser(UserProfile? user) {
     if (user == null) return false;
     // Check by email first (most reliable without an id field)
-    if (user.email == 'sportsphere.app@sportsphere.com') return true;
+    if (user.email == 'sportsphere.app@sportsphere.com' ||
+        user.email == 'playify@playify.com') return true;
     final handle = user.handle.replaceAll('@', '').toLowerCase();
     if (handle == kOfficialHandle ||
         handle == 'sportsphere' ||
@@ -39,6 +40,9 @@ class AppAdmin {
     final u = Supabase.instance.client.auth.currentUser;
     if (u == null) return false;
     if (_adminUids.contains(u.id)) return true;
+    final em = (u.email ?? '').toLowerCase();
+    if (em == 'playify@playify.com' ||
+        em == 'sportsphere.app@sportsphere.com') return true;
     final meta = u.userMetadata ?? {};
     final handle = '${meta['handle'] ?? ''}'.toLowerCase().replaceAll('@', '');
     if (handle == kOfficialHandle ||
