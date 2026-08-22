@@ -617,57 +617,23 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
 class _MiniLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
       children: [
-        Container(
-          width: 40,
+        Image.asset(
+          'assets/images/playify_header_logo.png',
           height: 40,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: SportSphereColors.electricBlue.withValues(alpha: 0.4),
-                blurRadius: 20,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-          child: ClipOval(
-            child: Image.asset(
-              'assets/images/Playify_logo.png',
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
-                color: SportSphereColors.surface,
-                child: const Icon(
-                  Icons.sports_soccer,
-                  color: SportSphereColors.electricBlue,
-                  size: 22,
-                ),
-              ),
-            ),
+          errorBuilder: (_, __, ___) => const Text(
+            'Playify',
+            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 2),
           ),
         ),
-        const SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Image.asset(
-              'assets/images/playify_header_logo.png',
-              height: 28,
-              errorBuilder: (_, __, ___) => const Text(
-                'Playify',
-                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 2),
-              ),
-            ),
-            Text(
-              'Join the sports community',
-              style: TextStyle(
-                color: SportSphereColors.muted.withValues(alpha: 0.8),
-                fontSize: 11,
-              ),
-            ),
-          ],
+        const SizedBox(height: 4),
+        Text(
+          'Join the sports community',
+          style: TextStyle(
+            color: SportSphereColors.muted.withValues(alpha: 0.8),
+            fontSize: 11,
+          ),
         ),
       ],
     );

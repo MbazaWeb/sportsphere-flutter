@@ -317,78 +317,15 @@ class _LogoSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Ball with glow ring
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            // Glow ring
-            Container(
-              width: 130,
-              height: 130,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: SportSphereColors.electricBlue.withValues(alpha: 0.35),
-                    blurRadius: 50,
-                    spreadRadius: 8,
-                  ),
-                  BoxShadow(
-                    color: SportSphereColors.sportGreen.withValues(alpha: 0.15),
-                    blurRadius: 80,
-                    spreadRadius: 20,
-                  ),
-                ],
-              ),
-            ),
-            // Outer ring
-            Container(
-              width: 118,
-              height: 118,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: SportSphereColors.electricBlue.withValues(alpha: 0.25),
-                  width: 1.5,
-                ),
-              ),
-            ),
-            // Icon
-            ClipOval(
-              child: Image.asset(
-                'assets/images/Playify_logo.png',
-                width: 104,
-                height: 104,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  width: 104,
-                  height: 104,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: SportSphereColors.surface,
-                  ),
-                  child: const Icon(
-                    Icons.sports_soccer,
-                    color: SportSphereColors.electricBlue,
-                    size: 52,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 20),
-
-        // Playify wordmark — use header logo image
+        // Single logo — Playify header logo centered
         Image.asset(
           'assets/images/playify_header_logo.png',
-          height: 52,
+          height: 80,
           errorBuilder: (_, __, ___) => const Text(
             'Playify',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 28,
+              fontSize: 32,
               fontWeight: FontWeight.w900,
               letterSpacing: 2,
             ),
