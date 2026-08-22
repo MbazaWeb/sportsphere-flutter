@@ -16,27 +16,58 @@ class ProfileLoader {
 
   static SupabaseClient get _sb => Supabase.instance.client;
 
-  static Future<int> _countPostsForIds(Iterable<String> ids) async {
-    final unique = ids.where((e) => e.isNotEmpty).toSet().toList();
-    if (unique.isEmpty) return 0;
-    var total = 0;
-    for (final id in unique) {
-      try {
-        final n = await _sb.rpc('count_posts_for_user', params: {'p_id': id});
-        if (n is int && n > total) total = n;
-        if (n is num && n.toInt() > total) total = n.toInt();
-      } catch (_) {}
-      for (final col in ['userId', 'authorId', 'user_id', 'author_id']) {
-        try {
-          final rows = await _sb.from('Post').select('id').eq(col, id);
-          final c = (rows as List).length;
-          if (c > total) total = c;
-        } catch (_) {}
-      }
+  /// Live social counts for any profile id (all roles).
+  static Future<({int posts, int followers, int following})> _liveCounts(
+      String profileId) async {
+    if (profileId.isEmpty) {
+      return (posts: 0, followers: 0, following: 0);
     }
-    return total;
-  }
 
+    Future<int> rpcOr(String name, Future<int> Function() fb) async {
+      try {
+        final n = await _sb.rpc(name, params: {'p_id': profileId});
+        if (n is int) return n;
+        if (n is num) return n.toInt();
+      } catch (_) {}
+      return fb();
+    }
+
+    final posts = await rpcOr('count_posts_for_user', () async {
+      try {
+        final rows =
+            await _sb.from('Post').select('id').eq('userId', profileId);
+        return (rows as List).length;
+      } catch (_) {
+        return 0;
+      }
+    });
+
+    final followers = await rpcOr('count_followers', () async {
+      try {
+        final rows = await _sb
+            .from('Follow')
+            .select('followerId')
+            .eq('followingId', profileId);
+        return (rows as List).length;
+      } catch (_) {
+        return 0;
+      }
+    });
+
+    final following = await rpcOr('count_following', () async {
+      try {
+        final rows = await _sb
+            .from('Follow')
+            .select('followingId')
+            .eq('followerId', profileId);
+        return (rows as List).length;
+      } catch (_) {
+        return 0;
+      }
+    });
+
+    return (posts: posts, followers: followers, following: following);
+  }
 
   static Future<FanProfileModel> loadFanProfile(String handle) async {
     final key = handle.replaceAll('@', '').trim().toLowerCase();
@@ -58,32 +89,54 @@ class ProfileLoader {
         role == 'admin' ||
         role == 'official';
 
-    // Admin / Official special treatment
-    if (isOfficial) {
-      // Fetch live counts from real tables
-      final profileId = row?['id']?.toString() ?? '';
-      int postCount = 0, followerCount = 0, followingCount = 0;
-      try {
-        final counts = await Future.wait([
-          _countPostsForIds([profileId, _sb.auth.currentUser?.id ?? '']).then((n) => n),
-          _sb.from('Follow').select('id').eq('"followingId"', profileId).then((r) => (r as List).length),
-          _sb.from('Follow').select('id').eq('"followerId"', profileId).then((r) => (r as List).length),
-        ]);
-        postCount = counts[0]; followerCount = counts[1]; followingCount = counts[2];
-      } catch (_) {}
+    final profileId = row?['id']?.toString() ?? '';
+    final authId = _sb.auth.currentUser?.id?.toString() ?? '';
 
-      final currentUid = _sb.auth.currentUser?.id?.toString() ?? '';
+    // Live counts for every role (not only admin)
+    var counts = await _liveCounts(profileId);
+    if (authId.isNotEmpty && authId != profileId) {
+      final extra = await _liveCounts(authId);
+      if (extra.posts > counts.posts) {
+        counts = (
+          posts: extra.posts,
+          followers: counts.followers > extra.followers
+              ? counts.followers
+              : extra.followers,
+          following: counts.following > extra.following
+              ? counts.following
+              : extra.following,
+        );
+      }
+    }
+
+    final postCount = counts.posts > 0
+        ? counts.posts
+        : ((row?['postCount'] as int?) ?? (row?['post_count'] as int?) ?? 0);
+    final followerCount = counts.followers > 0
+        ? counts.followers
+        : ((row?['followerCount'] as int?) ??
+            (row?['follower_count'] as int?) ??
+            0);
+    final followingCount = counts.following > 0
+        ? counts.following
+        : ((row?['followingCount'] as int?) ??
+            (row?['following_count'] as int?) ??
+            0);
+
+    if (isOfficial) {
       return FanProfileModel(
-        firstName: 'SportSphere',
+        firstName: 'Playify',
         lastName: '',
         handle: (row?['handle'] as String?) ?? key,
         fanOf: '',
         fanOfAccent: const Color(0xFFFFD700),
         bio: (row?['bio'] as String?) ??
-            'Official SportSphere account. Platform news, live scores and verified content.',
-        sport: '',      // no sport shown for official/admin
-        location: '',   // no country shown
-        joinedDate: DateTime.tryParse((row?['created_at'] as String?) ?? '') ??
+            'Official Playify account. Platform news, live scores and verified content.',
+        sport: '',
+        location: '',
+        joinedDate: DateTime.tryParse((row?['created_at'] as String?) ??
+                (row?['createdAt'] as String?) ??
+                '') ??
             DateTime(2024, 1, 1),
         postCount: postCount,
         followerCount: followerCount,
@@ -93,17 +146,16 @@ class ProfileLoader {
         coverAsset:
             (row?['cover_url'] as String?) ?? (row?['coverUrl'] as String?),
         isVerified: true,
-        isOwnProfile: currentUid.isNotEmpty &&
-            (profileId == currentUid || AppAdmin.isSessionAdmin),
+        isOwnProfile: authId.isNotEmpty &&
+            (profileId == authId || AppAdmin.isSessionAdmin),
       );
     }
 
     var fanOf = 'Playify Fan';
     try {
-      final id = row?['id']?.toString();
-      if (id != null) {
+      if (profileId.isNotEmpty) {
         final fans =
-            await _sb.from('fans').select('target_id').eq('fan_id', id);
+            await _sb.from('fans').select('target_id').eq('fan_id', profileId);
         final tids = [
           for (final r in fans as List) (r as Map)['target_id']?.toString()
         ].whereType<String>().toList();
@@ -127,6 +179,7 @@ class ProfileLoader {
         key;
     final last = (row?['last_name'] as String?) ??
         ((row?['name'] as String?)?.split(' ').skip(1).join(' ') ?? '');
+
     return FanProfileModel(
       firstName: first,
       lastName: last,
@@ -136,19 +189,20 @@ class ProfileLoader {
       bio: (row?['bio'] as String?) ?? '',
       sport: 'Football',
       location: (row?['country'] as String?) ?? '',
-      joinedDate: DateTime.tryParse((row?['created_at'] as String?) ?? '') ??
+      joinedDate: DateTime.tryParse((row?['created_at'] as String?) ??
+              (row?['createdAt'] as String?) ??
+              '') ??
           DateTime.now(),
-      postCount: (row?['postCount'] as int?) ?? 0,
-      followerCount: (row?['followerCount'] as int?) ?? 0,
-      followingCount: (row?['followingCount'] as int?) ?? 0,
+      postCount: postCount,
+      followerCount: followerCount,
+      followingCount: followingCount,
       avatarAsset:
           (row?['avatar_url'] as String?) ?? (row?['avatarUrl'] as String?),
       coverAsset:
           (row?['cover_url'] as String?) ?? (row?['coverUrl'] as String?),
       isVerified: (row?['is_verified'] as bool?) == true ||
           (row?['isVerified'] as bool?) == true,
-      isOwnProfile: _sb.auth.currentUser?.id != null &&
-          row?['id']?.toString() == _sb.auth.currentUser?.id,
+      isOwnProfile: authId.isNotEmpty && profileId == authId,
     );
   }
 

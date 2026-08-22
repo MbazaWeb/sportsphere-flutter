@@ -96,7 +96,7 @@ class AuthRepository {
     int followingCount = 0;
     try {
       final counts = await Future.wait([
-        _supabase.from('Post').select('id').eq('authorId', userId).then((r) => (r as List).length),
+        _supabase.from('Post').select('id').eq('userId', userId).then((r) => (r as List).length),
         _supabase.from('Follow').select('id').eq('followingId', userId).then((r) => (r as List).length),
         _supabase.from('Follow').select('id').eq('followerId', userId).then((r) => (r as List).length),
       ]);
