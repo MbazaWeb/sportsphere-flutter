@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/data/social_repository.dart';
+import '../../../core/data/world_countries.dart';
 import '../../../core/taxonomy/sport_catalog.dart';
 import '../../../core/theme/colors.dart';
 import '../../auth/domain/auth_state.dart';
@@ -33,6 +34,7 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
   late final TextEditingController _last;
   late final TextEditingController _handle;
   late final TextEditingController _country;
+  String? _selectedCountryName;
   late final TextEditingController _bio;
   late DateTime _dob;
   late String _theme;
@@ -60,6 +62,17 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
     _last = TextEditingController(text: u.lastName);
     _handle = TextEditingController(text: u.handle);
     _country = TextEditingController(text: u.country);
+    // Match stored country to the seeded list
+    if (u.country.isNotEmpty) {
+      final match = kWorldCountries.where(
+        (c) => c.name.toLowerCase() == u.country.toLowerCase() || c.code.toLowerCase() == u.country.toLowerCase(),
+      );
+      if (match.isNotEmpty) {
+        _selectedCountryName = match.first.name;
+      } else {
+        _selectedCountryName = u.country;
+      }
+    }
     _bio = TextEditingController(text: u.bio);
     _dob = u.dob;
     _theme = u.themeColor;
@@ -112,8 +125,8 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
           'first_name': _first.text.trim(),
           'last_name': _last.text.trim(),
           'handle': _handle.text.trim(),
-          'country': _country.text.trim(),
-          'dob': _dob?.toIso8601String(),
+          'country': _selectedCountryName ?? _country.text.trim(),
+          'dob': _dob.toIso8601String(),
           'bio': _bio.text.trim(),
           'avatar_url': _avatarUrl,
           'cover_url': _coverUrl,
@@ -237,7 +250,7 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
             _field('First name', _first),
             _field('Last name', _last),
             _field('Handle', _handle),
-            _field('Country', _country),
+            _countryField(context),
             _field('Bio', _bio, maxLines: 3),
             const SizedBox(height: 8),
             ListTile(
@@ -277,6 +290,117 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _countryField(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GestureDetector(
+        onTap: () => _showCountryPicker(context),
+        child: InputDecorator(
+          decoration: InputDecoration(
+            labelText: 'Country',
+            labelStyle: const TextStyle(color: Colors.white54),
+            filled: true,
+            fillColor: const Color(0xFF0B1626),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            suffixIcon: const Icon(Icons.arrow_drop_down_rounded, color: Colors.white54),
+          ),
+          child: Text(
+            _selectedCountryName ?? 'Select country',
+            style: TextStyle(
+              color: _selectedCountryName != null ? Colors.white : Colors.white54,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showCountryPicker(BuildContext context) {
+    final searchCtrl = TextEditingController();
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF071422),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setLocal) => DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          minChildSize: 0.4,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (_, scrollCtrl) => Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                child: TextField(
+                  controller: searchCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  onChanged: (_) => setLocal(() {}),
+                  decoration: InputDecoration(
+                    hintText: 'Search countries...',
+                    hintStyle: const TextStyle(color: Colors.white38),
+                    filled: true,
+                    fillColor: const Color(0xFF0B1626),
+                    prefixIcon: const Icon(Icons.search_rounded, color: Colors.white54, size: 20),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    isDense: true,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  controller: scrollCtrl,
+                  itemCount: searchCountries(searchCtrl.text).length,
+                  itemBuilder: (_, i) {
+                    final c = searchCountries(searchCtrl.text)[i];
+                    final selected = _selectedCountryName == c.name;
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedCountryName = c.name;
+                          _country.text = c.name;
+                        });
+                        Navigator.pop(ctx);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+                        decoration: BoxDecoration(
+                          color: selected ? SportSphereColors.electricBlue.withValues(alpha: 0.12) : Colors.transparent,
+                        ),
+                        child: Row(
+                          children: [
+                            Text(
+                              '${c.name}  ',
+                              style: TextStyle(
+                                color: selected ? SportSphereColors.electricBlue : Colors.white,
+                                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                                fontSize: 14,
+                              ),
+                            ),
+                            Text(
+                              c.code,
+                              style: const TextStyle(color: Colors.white38, fontSize: 12),
+                            ),
+                            if (selected) ...[
+                              const Spacer(),
+                              const Icon(Icons.check_circle_rounded, color: SportSphereColors.electricBlue, size: 18),
+                            ],
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -5,11 +5,13 @@ import type { ReactNode } from 'react'
 const links = [
   { to: '/', label: 'Dashboard' },
   { to: '/users', label: 'User Management' },
-  { to: '/sportsphere', label: 'SportSphere' },
-  { to: '/entities', label: 'League · Team · Player' },
+  { to: '/create-user', label: 'Create User (Role-Based)' },
+  { to: '/entities', label: 'League · Team · Player · Coach' },
   { to: '/matches', label: 'Match Updates' },
+  { to: '/news', label: 'News Management' },
+  { to: '/sportsphere', label: 'SportSphere Posts' },
+  { to: '/moderation', label: 'Posts & Content Moderation' },
   { to: '/ai', label: 'AI Assistant' },
-  { to: '/moderation', label: 'Posts & News' },
   { to: '/sync', label: 'Data Sync & APIs' },
 ]
 

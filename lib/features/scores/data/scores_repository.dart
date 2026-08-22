@@ -190,7 +190,7 @@ class ScoresRepository {
           goalsFor: e.value.gf,
           goalsAgainst: e.value.ga,
           points: e.value.pts,
-          logoUrl: logos[e.key] ?? NbcClubBadges.forName(e.key) ?? '',
+          logoUrl: logos[e.key] ?? NbcClubBadges.forName(e.key),
         ),
     ];
     list.sort((a, b) {
@@ -252,10 +252,10 @@ class ScoresRepository {
       awayTeamName: away,
       homeTeamLogo: (homeLogo != null && homeLogo.isNotEmpty)
           ? homeLogo
-          : (NbcClubBadges.forName(home) ?? ''),
+          : NbcClubBadges.forName(home),
       awayTeamLogo: (awayLogo != null && awayLogo.isNotEmpty)
           ? awayLogo
-          : (NbcClubBadges.forName(away) ?? ''),
+          : NbcClubBadges.forName(away),
       leagueName: league,
       leagueLogo: NbcClubBadges.ligiKuuBara,
       score: score,

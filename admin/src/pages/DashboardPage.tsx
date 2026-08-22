@@ -4,7 +4,7 @@ import { fetchDashboardStats, healthCheck } from '../lib/api'
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts'
 
 export function DashboardPage() {
-  const [stats, setStats] = useState({ users: 0, teams: 0, matches: 0, posts: 0, pendingClaims: 0, errors: [] as string[] })
+  const [stats, setStats] = useState({ users: 0, teams: 0, matches: 0, posts: 0, pendingClaims: 0, news: 0, errors: [] as string[] })
   const [health, setHealth] = useState<{ ok: boolean; latencyMs: number; error: string | null } | null>(null)
 
   const refresh = useCallback(() => {
@@ -22,6 +22,7 @@ export function DashboardPage() {
     { name: 'Teams', value: stats.teams },
     { name: 'Matches', value: stats.matches },
     { name: 'Posts', value: stats.posts },
+    { name: 'News', value: stats.news },
     { name: 'Claims', value: stats.pendingClaims },
   ]
 
@@ -34,7 +35,11 @@ export function DashboardPage() {
         <div className="card"><h3>Users</h3><div className="value">{stats.users}</div><div className="hint">profiles table</div></div>
         <div className="card"><h3>Teams</h3><div className="value">{stats.teams}</div><div className="hint">seeded + claimed</div></div>
         <div className="card"><h3>Fixtures</h3><div className="value">{stats.matches}</div><div className="hint">Ligi Kuu Bara & more</div></div>
-        <div className="card"><h3>Pending claims</h3><div className="value">{stats.pendingClaims}</div><div className="hint">need review</div></div>
+        <div className="card"><h3>News</h3><div className="value">{stats.news}</div><div className="hint">published articles</div></div>
+      </div>
+      <div className="grid grid-2" style={{ marginBottom: 16 }}>
+        <div className="card"><h3>Posts</h3><div className="value">{stats.posts}</div><div className="hint">user + official posts</div></div>
+        <div className="card"><h3>Pending Claims</h3><div className="value">{stats.pendingClaims}</div><div className="hint">need review</div></div>
       </div>
 
       <div className="grid grid-2">

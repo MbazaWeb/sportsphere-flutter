@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../shared/org_profile_view.dart';
-import '../../../shared/shop_tab.dart';
 import '../../../../core/theme/colors.dart';
 
 // Business profile — same Sportlights/About tabs as Org,

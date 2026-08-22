@@ -1,20 +1,39 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTableRealtime } from '../lib/realtime'
-import { listMatches, updateMatchResult, postponeMatch, createMatch } from '../lib/api'
-import type { MatchRow } from '../lib/supabase'
+import { listMatches, updateMatchResult, postponeMatch, createMatch, listLeagues, listTeams } from '../lib/api'
+import type { MatchRow, LeagueRow, TeamRow } from '../lib/supabase'
 
 export function MatchesPage() {
   const [matches, setMatches] = useState<MatchRow[]>([])
+  const [leagues, setLeagues] = useState<LeagueRow[]>([])
+  const [teams, setTeams] = useState<TeamRow[]>([])
   const [filter, setFilter] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
+
+  // Create form
   const [home, setHome] = useState('')
   const [away, setAway] = useState('')
+  const [homeId, setHomeId] = useState('')
+  const [awayId, setAwayId] = useState('')
   const [kickoff, setKickoff] = useState('')
+  const [league, setLeague] = useState('Ligi Kuu Bara')
+  const [leagueId, setLeagueId] = useState('')
+  const [season, setSeason] = useState('2026/2027')
+  const [venue, setVenue] = useState('')
+  const [continent, setContinent] = useState('Africa')
+  const [country, setCountry] = useState('Tanzania')
 
   const load = useCallback(async () => {
     try {
-      setMatches(await listMatches(300))
+      const [m, l, t] = await Promise.all([
+        listMatches(300),
+        listLeagues(),
+        listTeams(),
+      ])
+      setMatches(m)
+      setLeagues(l)
+      setTeams(t)
       setErr(null)
     } catch (e: any) {
       setErr(e.message)
@@ -53,22 +72,44 @@ export function MatchesPage() {
     if (!home || !away || !kickoff) return
     try {
       const id = `adm-${Date.now()}`
+      const selectedLeague = leagues.find((l) => l.id === leagueId)
       await createMatch({
         id,
-        homeTeam: home,
-        awayTeam: away,
+        homeTeam: homeId ? teams.find((t) => t.id === homeId)?.name || home : home,
+        awayTeam: awayId ? teams.find((t) => t.id === awayId)?.name || away : away,
         kickoffAt: new Date(kickoff).toISOString(),
-        league: 'Ligi Kuu Bara',
-        season: '2026/2027',
+        league: selectedLeague?.name || league,
+        season,
+        venue: venue || undefined,
+        continent: continent || undefined,
+        country: country || undefined,
         status: 'scheduled',
       })
       setMsg('Match created')
-      setHome('')
-      setAway('')
+      setHome(''); setAway(''); setKickoff(''); setVenue('')
+      setHomeId(''); setAwayId(''); setLeagueId('')
       load()
     } catch (e: any) {
       setErr(e.message)
     }
+  }
+
+  function selectHomeTeam(teamId: string) {
+    setHomeId(teamId)
+    const t = teams.find((tm) => tm.id === teamId)
+    if (t) setHome(t.name)
+  }
+
+  function selectAwayTeam(teamId: string) {
+    setAwayId(teamId)
+    const t = teams.find((tm) => tm.id === teamId)
+    if (t) setAway(t.name)
+  }
+
+  function selectLeague(leagueIdVal: string) {
+    setLeagueId(leagueIdVal)
+    const l = leagues.find((lg) => lg.id === leagueIdVal)
+    if (l) setLeague(l.name)
   }
 
   return (
@@ -78,14 +119,35 @@ export function MatchesPage() {
       {msg && <p className="success">{msg}</p>}
       {err && <p className="error">{err}</p>}
 
-      <div className="card stack" style={{ marginBottom: 16, maxWidth: 720 }}>
+      <div className="card stack" style={{ marginBottom: 16, maxWidth: '100%' }}>
         <h3>Create match</h3>
-        <div className="row">
-          <input className="input" placeholder="Home team" value={home} onChange={(e) => setHome(e.target.value)} />
-          <input className="input" placeholder="Away team" value={away} onChange={(e) => setAway(e.target.value)} />
+        <div className="grid grid-3" style={{ gap: 10 }}>
+          <select className="select" value={homeId} onChange={(e) => selectHomeTeam(e.target.value)}>
+            <option value="">Select home team</option>
+            {teams.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+          <input className="input" placeholder="Or type home team name" value={home} onChange={(e) => { setHome(e.target.value); if (!homeId) {} }} />
+          <select className="select" value={awayId} onChange={(e) => selectAwayTeam(e.target.value)}>
+            <option value="">Select away team</option>
+            {teams.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+          <input className="input" placeholder="Or type away team name" value={away} onChange={(e) => { setAway(e.target.value); if (!awayId) {} }} />
           <input className="input" type="datetime-local" value={kickoff} onChange={(e) => setKickoff(e.target.value)} />
-          <button className="btn btn-primary" onClick={create}>Create</button>
+          <select className="select" value={leagueId} onChange={(e) => selectLeague(e.target.value)}>
+            <option value="">Select league</option>
+            {leagues.map((l) => (
+              <option key={l.id} value={l.id}>{l.name}</option>
+            ))}
+          </select>
+          <input className="input" placeholder="Season" value={season} onChange={(e) => setSeason(e.target.value)} />
+          <input className="input" placeholder="Venue / Stadium" value={venue} onChange={(e) => setVenue(e.target.value)} />
+          <input className="input" placeholder="Country" value={country} onChange={(e) => setCountry(e.target.value)} />
         </div>
+        <button className="btn btn-primary" onClick={create} style={{ alignSelf: 'flex-end' }}>Create Match</button>
       </div>
 
       <div className="toolbar">
@@ -99,6 +161,7 @@ export function MatchesPage() {
             <tr>
               <th>Kickoff</th>
               <th>Fixture</th>
+              <th>League</th>
               <th>Status</th>
               <th>Score</th>
               <th>Actions</th>
@@ -128,7 +191,7 @@ function MatchRowEditor({
   const [ascore, setAscore] = useState(String(m.awayScore ?? 0))
   return (
     <tr>
-      <td className="muted">{m.kickoffAt ? new Date(m.kickoffAt).toLocaleString() : '—'}</td>
+      <td className="muted" style={{ fontSize: 11 }}>{m.kickoffAt ? new Date(m.kickoffAt).toLocaleString() : '—'}</td>
       <td>
         <div className="row">
           {m.homeBadge && <img src={m.homeBadge} width={20} height={20} alt="" />}
@@ -136,7 +199,8 @@ function MatchRowEditor({
           {m.awayBadge && <img src={m.awayBadge} width={20} height={20} alt="" />}
         </div>
       </td>
-      <td><span className={`badge ${m.status === 'FT' ? 'ok' : m.status === 'postponed' ? 'warn' : ''}`}>{m.status}</span></td>
+      <td className="muted" style={{ fontSize: 11 }}>{m.league ?? '—'}</td>
+      <td><span className={`badge ${m.status === 'FT' || m.status === 'finished' ? 'ok' : m.status === 'postponed' ? 'warn' : ''}`}>{m.status}</span></td>
       <td className="row">
         <input className="input" style={{ width: 56 }} value={hs} onChange={(e) => setHs(e.target.value)} />
         <span>-</span>
