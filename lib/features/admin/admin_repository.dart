@@ -53,22 +53,50 @@ class AdminRepository {
 
   Future<List<Map<String, dynamic>>> listCompetitions() async {
     try {
-      final rows = await _sb.from('League').select().order('createdAt', ascending: false).limit(100);
+      final rows = await _sb.from('League').select().order('name').limit(100);
       return List<Map<String, dynamic>>.from(rows as List);
-    } catch (e) { return []; }
+    } catch (e) {
+      debugPrint('listCompetitions: $e');
+      try {
+        final rows = await _sb.from('Competition').select().order('name').limit(100);
+        return List<Map<String, dynamic>>.from(rows as List);
+      } catch (e2) {
+        debugPrint('listCompetitions Competition: $e2');
+        return [];
+      }
+    }
   }
 
   Future<String> createCompetition({required String name, required String country, String? season, String type = 'league'}) async {
     final slug = name.toLowerCase().replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), '');
     final id = 'league-${DateTime.now().millisecondsSinceEpoch}';
-    await _sb.from('League').insert({
-      'id': id, 'name': name, 'slug': '${slug}_$id',
-      'country': country, 'type': type,
-      if (season != null) 'season': season,
-      'source': 'admin', 'verified': true, 'isActive': true,
-      'createdAt': DateTime.now().toIso8601String(),
-      'updatedAt': DateTime.now().toIso8601String(),
-    });
+    try {
+      await _sb.from('League').insert({
+        'id': id, 'name': name, 'slug': '${slug}_$id',
+        'country': country, 'type': type,
+        if (season != null) 'season': season,
+        'source': 'admin', 'verified': true, 'isActive': true,
+        'createdAt': DateTime.now().toIso8601String(),
+        'updatedAt': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      debugPrint('createCompetition: $e');
+      rethrow;
+    }
+    // Mirror into Competition table when present (taxonomy layer).
+    try {
+      await _sb.from('Competition').upsert({
+        'id': id,
+        'name': name,
+        'slug': '${slug}_$id',
+        'country': country,
+        'season': season,
+        'competition_type': type,
+        'sport_slug': 'football',
+      });
+    } catch (e) {
+      debugPrint('createCompetition Competition mirror: $e');
+    }
     return id;
   }
 
@@ -80,7 +108,7 @@ class AdminRepository {
 
   Future<List<Map<String, dynamic>>> listTeams({String? leagueId}) async {
     try {
-      final q = _sb.from('Team').select('id, name, slug, city, country, leagueId, verified, logoUrl');
+      final q = _sb.from('Team').select('id, name, slug, city, country, venue, leagueId, verified, logoUrl, primaryColor');
       final rows = leagueId != null
           ? await q.eq('leagueId', leagueId).order('name').limit(100)
           : await q.order('name').limit(100);
@@ -88,7 +116,16 @@ class AdminRepository {
     } catch (e) { return []; }
   }
 
-  Future<String> createTeam({required String name, required String country, String? city, String? leagueId, String? venue, int? foundedYear}) async {
+  Future<String> createTeam({
+    required String name,
+    required String country,
+    String? city,
+    String? leagueId,
+    String? venue,
+    int? foundedYear,
+    String? primaryColor,
+    String? logoUrl,
+  }) async {
     final slug = name.toLowerCase().replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), '');
     final id = 'team-${DateTime.now().millisecondsSinceEpoch}';
     await _sb.from('Team').insert({
@@ -98,6 +135,8 @@ class AdminRepository {
       if (leagueId != null) 'leagueId': leagueId,
       if (venue != null) 'venue': venue,
       if (foundedYear != null) 'foundedYear': foundedYear,
+      if (primaryColor != null && primaryColor.isNotEmpty) 'primaryColor': primaryColor,
+      if (logoUrl != null && logoUrl.isNotEmpty) 'logoUrl': logoUrl,
       'source': 'admin', 'verified': true, 'isActive': true,
       'createdAt': DateTime.now().toIso8601String(),
       'updatedAt': DateTime.now().toIso8601String(),
@@ -125,12 +164,15 @@ class AdminRepository {
     } catch (e) { return []; }
   }
 
-  Future<void> createPlayer({required String name, required String position, String? teamId, String? nationality, int? shirtNumber}) async {
+  Future<void> createPlayer({required String name, required String position, required String teamId, String? nationality, int? shirtNumber}) async {
+    if (teamId.trim().isEmpty) {
+      throw StateError('Player must belong to an existing club/team');
+    }
     final slug = '${name.toLowerCase().replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}';
     final id = 'player-${DateTime.now().millisecondsSinceEpoch}';
     await _sb.from('Player').insert({
       'id': id, 'name': name, 'slug': slug, 'position': position,
-      if (teamId != null) 'teamId': teamId,
+      'teamId': teamId,
       if (nationality != null) 'nationality': nationality,
       if (shirtNumber != null) 'shirtNumber': shirtNumber,
       'goals': 0, 'assists': 0,
@@ -265,21 +307,43 @@ class AdminRepository {
 
   // ── Stats counts ───────────────────────────────────────────────────────────
 
+  Future<int> _safeCount(String table, {String? role}) async {
+    try {
+      var q = _sb.from(table).select('id');
+      if (role != null) {
+        final rows = await q.ilike('role', role);
+        return (rows as List).length;
+      }
+      final rows = await q;
+      return (rows as List).length;
+    } catch (e) {
+      debugPrint('count $table: $e');
+      return 0;
+    }
+  }
+
   Future<Map<String, int>> platformStats() async {
-    final results = await Future.wait([
-      _sb.from('User').select('id').then((r) => (r as List).length),
-      _sb.from('Post').select('id').then((r) => (r as List).length),
-      _sb.from('Match').select('id').then((r) => (r as List).length),
-      _sb.from('Team').select('id').then((r) => (r as List).length),
-      _sb.from('NewsItem').select('id').then((r) => (r as List).length),
-      _sb.from('Player').select('id').then((r) => (r as List).length),
-      _sb.from('Coach').select('id').then((r) => (r as List).length),
-      _sb.from('League').select('id').then((r) => (r as List).length),
-    ]);
+    // Count each table independently so one missing table does not zero the rest.
+    final usersProfiles = await _safeCount('profiles');
+    final usersLegacy = await _safeCount('User');
+    final posts = await _safeCount('Post');
+    final matches = await _safeCount('Match');
+    final teams = await _safeCount('Team');
+    final news = await _safeCount('NewsItem');
+    final players = await _safeCount('Player');
+    final coaches = await _safeCount('Coach');
+    final competitions = await _safeCount('League');
+    // Prefer profiles count when present (matches Users tab).
+    final users = usersProfiles > 0 ? usersProfiles : usersLegacy;
     return {
-      'users': results[0], 'posts': results[1], 'matches': results[2],
-      'teams': results[3], 'news': results[4], 'players': results[5],
-      'coaches': results[6], 'competitions': results[7],
+      'users': users,
+      'posts': posts,
+      'matches': matches,
+      'teams': teams,
+      'news': news,
+      'players': players,
+      'coaches': coaches,
+      'competitions': competitions,
     };
   }
 }

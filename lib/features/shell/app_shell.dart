@@ -1,10 +1,14 @@
+import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui';
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:video_player/video_player.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/theme/colors.dart';
@@ -25,6 +29,7 @@ import '../scores/presentation/pages/scores_page.dart';
 import '../shop/models/shop_models.dart';
 import '../shop/presentation/shop_tab.dart';
 import 'media/media_tools.dart';
+import '../../core/utils/friendly_error.dart';
 
 part 'parts/home_screen.dart';
 part 'parts/search_fullscreen.dart';
@@ -45,6 +50,11 @@ class SportSphereShell extends ConsumerStatefulWidget {
 
 class _SportSphereShellState extends ConsumerState<SportSphereShell> {
   int _index = 0;
+
+  void goHome() {
+    if (!mounted) return;
+    setState(() => _index = 0);
+  }
 
   // FIX #10: Not static const — _CreateScreen owns AnimationControllers
   // and must not be const-constructed in a static list.

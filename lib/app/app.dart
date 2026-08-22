@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../features/auth/domain/auth_state.dart';
 import '../../features/auth/presentation/auth_controller.dart';
@@ -21,7 +22,7 @@ class SportSphereApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
-      title: 'SportSphere',
+      title: 'Playify',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF020A14),
@@ -29,6 +30,7 @@ class SportSphereApp extends ConsumerWidget {
           primary: Color(0xFF009DFF),
           surface: Color(0xFF0B1628),
         ),
+        textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
       ),
       routerConfig: ref.watch(routerProvider),
     );

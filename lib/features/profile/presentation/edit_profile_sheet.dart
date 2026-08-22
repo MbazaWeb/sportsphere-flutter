@@ -6,14 +6,18 @@ import '../../../core/data/social_repository.dart';
 import '../../../core/data/world_countries.dart';
 import '../../../core/taxonomy/sport_catalog.dart';
 import '../../../core/theme/colors.dart';
+import '../../../core/widgets/grass_form.dart';
+import '../../../core/widgets/country_picker_field.dart';
+import '../../../core/utils/form_validators.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../../core/utils/friendly_error.dart';
 
 Future<void> showEditProfileSheet(BuildContext context, UserProfile user) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: const Color(0xFF071422),
+    backgroundColor: GrassForm.sheetBg,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
     ),
@@ -112,7 +116,7 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -120,6 +124,21 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
   }
 
   Future<void> _save() async {
+    final fn = FormValidators.required(_first.text, field: 'First name');
+    final ln = FormValidators.required(_last.text, field: 'Last name');
+    final h = FormValidators.handle(_handle.text);
+    if (fn != null || ln != null || h != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(fn ?? ln ?? h ?? 'Check the form')),
+      );
+      return;
+    }
+    if (_selectedCountryName == null || _selectedCountryName!.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select your country')),
+      );
+      return;
+    }
     setState(() => _saving = true);
     final ok = await ref.read(authControllerProvider.notifier).updateProfile({
           'first_name': _first.text.trim(),
@@ -176,8 +195,11 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
               ),
             ),
             const SizedBox(height: 16),
-            const Text('Edit profile',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            const GrassFormHeader(
+              title: 'Edit profile',
+              subtitle: 'Update your details on the SportSphere pitch',
+              icon: Icons.person_rounded,
+            ),
             const SizedBox(height: 14),
             Row(
               children: [
@@ -247,11 +269,34 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
               ],
             ),
             const SizedBox(height: 14),
-            _field('First name', _first),
-            _field('Last name', _last),
-            _field('Handle', _handle),
-            _countryField(context),
-            _field('Bio', _bio, maxLines: 3),
+            GrassTextField(
+              controller: _first,
+              label: 'First name *',
+              validator: (v) => FormValidators.required(v, field: 'First name'),
+            ),
+            GrassTextField(
+              controller: _last,
+              label: 'Last name *',
+              validator: (v) => FormValidators.required(v, field: 'Last name'),
+            ),
+            GrassTextField(
+              controller: _handle,
+              label: 'Handle *',
+              validator: FormValidators.handle,
+            ),
+            CountryPickerField(
+              label: 'Country *',
+              value: _selectedCountryName,
+              onChanged: (v) => setState(() {
+                _selectedCountryName = v;
+                _country.text = v;
+              }),
+            ),
+            GrassTextField(
+              controller: _bio,
+              label: 'Bio',
+              maxLines: 3,
+            ),
             const SizedBox(height: 8),
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -281,7 +326,7 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
                   FilledButton(
                     onPressed: _saving ? null : _save,
                     style: FilledButton.styleFrom(
-                      backgroundColor: SportSphereColors.electricBlue,
+                      backgroundColor: GrassForm.greenBright,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                     child: Text(_saving ? 'Saving…' : 'Save'),
@@ -325,7 +370,7 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF071422),
+      backgroundColor: GrassForm.sheetBg,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),

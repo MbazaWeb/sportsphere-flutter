@@ -243,8 +243,8 @@ class _StandingsView extends StatefulWidget {
 
 class _StandingsViewState extends State<_StandingsView> {
   String _sport = 'Football';
-  String _league = 'NBC Premier League';
-  List<String> _leagues = const ['NBC Premier League', 'Ligi Kuu Bara', 'CRDB Federation Cup'];
+  String _league = '';
+  List<String> _leagues = const [];
   bool _loadingLeagues = true;
 
   @override
@@ -263,8 +263,12 @@ class _StandingsViewState extends State<_StandingsView> {
       final names = await const ScoresRepository().listLeagues(sportSlug: slug);
       if (!mounted) return;
       setState(() {
-        _leagues = names.isNotEmpty ? names : _leagues;
-        if (!_leagues.contains(_league)) _league = _leagues.first;
+        _leagues = names;
+        if (_leagues.isEmpty) {
+          _league = '';
+        } else if (!_leagues.contains(_league)) {
+          _league = _leagues.first;
+        }
         _loadingLeagues = false;
       });
     } catch (_) {
@@ -297,12 +301,27 @@ class _StandingsViewState extends State<_StandingsView> {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _Dropdown(
-                  label: 'League',
-                  value: _leagues.contains(_league) ? _league : _leagues.first,
-                  items: _loadingLeagues ? [_league] : _leagues,
-                  onChanged: (v) => setState(() => _league = v!),
-                ),
+                child: _leagues.isEmpty && !_loadingLeagues
+                    ? const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Text(
+                          'No leagues yet — create one in Admin',
+                          style: TextStyle(color: Color(0xFF8FA3B8), fontSize: 12),
+                        ),
+                      )
+                    : _Dropdown(
+                        label: 'League',
+                        value: _leagues.contains(_league)
+                            ? _league
+                            : (_leagues.isNotEmpty ? _leagues.first : ''),
+                        items: _loadingLeagues
+                            ? (_league.isEmpty ? const ['Loading…'] : [_league])
+                            : _leagues,
+                        onChanged: (v) {
+                          if (v == null || v == 'Loading…') return;
+                          setState(() => _league = v);
+                        },
+                      ),
               ),
             ],
           ),

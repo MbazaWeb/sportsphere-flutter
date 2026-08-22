@@ -3,7 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../features/auth/domain/auth_state.dart';
 import '../branding.dart';
 
-/// In-app admin: SportSphere Official account + explicit admin role.
+/// In-app admin: Playify Official account + explicit admin role.
 class AppAdmin {
   AppAdmin._();
 
@@ -24,8 +24,14 @@ class AppAdmin {
     if (handle == kOfficialHandle ||
         handle == 'sportsphere' ||
         handle == 'sportsphere_official' ||
-        handle == 'sportsphere_app') return true;
-    if (user.role.toLowerCase() == 'admin') return true;
+        handle == 'sportsphere_app' ||
+        handle == 'playify' ||
+        handle == 'playify_official' ||
+        handle == 'playify_app') return true;
+    final role = user.role.toLowerCase();
+    if (role == 'admin' || role == 'official' || role == 'organization' || role == 'moderator') {
+      return true;
+    }
     return false;
   }
 
@@ -37,9 +43,14 @@ class AppAdmin {
     final handle = '${meta['handle'] ?? ''}'.toLowerCase().replaceAll('@', '');
     if (handle == kOfficialHandle ||
         handle == 'sportsphere' ||
-        handle == 'sportsphere_app') return true;
+        handle == 'sportsphere_app' ||
+        handle == 'playify' ||
+        handle == 'playify_official' ||
+        handle == 'playify_app') return true;
     final role = '${meta['role'] ?? ''}'.toLowerCase();
-    if (role == 'admin') return true;
+    if (role == 'admin' || role == 'official' || role == 'organization' || role == 'moderator') {
+      return true;
+    }
     return false;
   }
 
@@ -59,8 +70,13 @@ class AppAdmin {
       final role = '${row?['role'] ?? ''}'.toLowerCase();
       if (handle == kOfficialHandle ||
           handle == 'sportsphere' ||
-          handle == 'sportsphere_app') return true;
-      if (role == 'admin') return true;
+          handle == 'sportsphere_app' ||
+        handle == 'playify' ||
+        handle == 'playify_official' ||
+        handle == 'playify_app') return true;
+      if (role == 'admin' || role == 'official' || role == 'organization' || role == 'moderator') {
+        return true;
+      }
     } catch (_) {}
     try {
       final row = await Supabase.instance.client
@@ -72,8 +88,13 @@ class AppAdmin {
       final role = '${row?['role'] ?? ''}'.toLowerCase();
       if (handle == kOfficialHandle ||
           handle == 'sportsphere' ||
-          handle == 'sportsphere_app') return true;
-      if (role == 'admin') return true;
+          handle == 'sportsphere_app' ||
+        handle == 'playify' ||
+        handle == 'playify_official' ||
+        handle == 'playify_app') return true;
+      if (role == 'admin' || role == 'official' || role == 'organization' || role == 'moderator') {
+        return true;
+      }
     } catch (_) {}
     return false;
   }

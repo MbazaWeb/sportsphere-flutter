@@ -762,7 +762,7 @@ class _AboutTab extends StatelessWidget {
         if (profile.joinedDate != null) ...[
           const SizedBox(height: 14),
           AboutSection(
-            title: 'SportSphere',
+            title: 'Playify',
             child: AboutRow(
               icon: Icons.calendar_today_rounded,
               iconColor: SportSphereColors.electricBlue,

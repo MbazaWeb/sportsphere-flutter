@@ -25,7 +25,7 @@ MatchModel matchFromRow(Map<String, dynamic> row) {
     awayTeamName: away,
     homeTeamLogo: (row['homeBadge'] as String?) ?? NbcClubBadges.forName(home),
     awayTeamLogo: (row['awayBadge'] as String?) ?? NbcClubBadges.forName(away),
-    leagueName: row['league'] as String? ?? 'Ligi Kuu Bara',
+    leagueName: row['league'] as String? ?? '',
     leagueLogo: NbcClubBadges.forName(row['league'] as String? ?? ''),
     score: status == 'scheduled' ? '-' : score,
     status: status,

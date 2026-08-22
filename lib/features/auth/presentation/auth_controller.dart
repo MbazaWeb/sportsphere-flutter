@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/auth_repository.dart';
 import '../domain/auth_state.dart';
+import '../../../core/utils/friendly_error.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // PROVIDERS
@@ -84,7 +85,7 @@ class AuthController extends Notifier<AuthState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: e.toString().replaceFirst('Exception: ', ''),
+        errorMessage: friendlyError(e),
       );
       return false;
     }
@@ -121,7 +122,7 @@ class AuthController extends Notifier<AuthState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: e.toString().replaceFirst('Exception: ', ''),
+        errorMessage: friendlyError(e),
       );
       return false;
     }
@@ -159,7 +160,7 @@ class AuthController extends Notifier<AuthState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: e.toString().replaceFirst('Exception: ', ''),
+        errorMessage: friendlyError(e),
       );
       return false;
     }
@@ -175,7 +176,7 @@ class AuthController extends Notifier<AuthState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: e.toString().replaceFirst('Exception: ', ''),
+        errorMessage: friendlyError(e),
       );
       return false;
     }
@@ -217,7 +218,7 @@ class AuthController extends Notifier<AuthState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: e.toString().replaceFirst('Exception: ', ''),
+        errorMessage: friendlyError(e),
       );
       return false;
     }
@@ -233,7 +234,7 @@ class AuthController extends Notifier<AuthState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: e.toString().replaceFirst('Exception: ', ''),
+        errorMessage: friendlyError(e),
       );
       return false;
     }

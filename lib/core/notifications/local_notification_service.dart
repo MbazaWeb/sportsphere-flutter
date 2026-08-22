@@ -41,7 +41,7 @@ class LocalNotificationService {
 
     const android = AndroidNotificationDetails(
       'sportsphere_realtime',
-      'SportSphere',
+      'Playify',
       channelDescription: 'Likes, comments, follows, and official updates',
       importance: Importance.high,
       priority: Priority.high,

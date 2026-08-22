@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/colors.dart';
+import '../../../core/widgets/grass_form.dart';
+import '../../../core/utils/form_validators.dart';
+import '../../../core/utils/friendly_error.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../data/claim_repository.dart';
 
@@ -65,6 +68,7 @@ class _ClaimProfileSheetState extends ConsumerState<ClaimProfileSheet> {
   final _phone = TextEditingController();
   final _notes = TextEditingController();
   bool _saving = false;
+  final _formKey = GlobalKey<FormState>();
 
   @override
   void initState() {
@@ -91,6 +95,22 @@ class _ClaimProfileSheetState extends ConsumerState<ClaimProfileSheet> {
       );
       return;
     }
+    final emailErr = FormValidators.email(_email.text);
+    if (emailErr != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(emailErr)));
+      return;
+    }
+    final phoneErr = FormValidators.phone(_phone.text, required: true);
+    if (phoneErr != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(phoneErr)));
+      return;
+    }
+    if (_notes.text.trim().length < 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add a short note (at least 10 characters)')),
+      );
+      return;
+    }
     setState(() => _saving = true);
     try {
       await ref.read(claimRepositoryProvider).submitClaim(
@@ -114,9 +134,9 @@ class _ClaimProfileSheetState extends ConsumerState<ClaimProfileSheet> {
       );
     } catch (e) {
       if (!mounted) return;
-      final msg = e.toString().contains('duplicate')
+      final msg = e.toString().toLowerCase().contains('duplicate')
           ? 'You already have a pending claim for this profile.'
-          : e.toString().replaceFirst('Exception: ', '');
+          : friendlyError(e);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -147,34 +167,49 @@ class _ClaimProfileSheetState extends ConsumerState<ClaimProfileSheet> {
               ),
             ),
             const SizedBox(height: 16),
-            Text(
-              'Claim ${widget.profileName}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 20,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'This ${widget.profileType} profile was created by SportSphere. '
-              'Submit a claim if you represent this account. An admin will review your request.',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.65), height: 1.35),
+            GrassFormHeader(
+              title: 'Claim ${widget.profileName}',
+              subtitle:
+                  'This ${widget.profileType} profile was created by SportSphere. '
+                  'Submit a claim if you represent this account.',
+              icon: Icons.flag_rounded,
             ),
             const SizedBox(height: 16),
-            _field('Contact email', _email, TextInputType.emailAddress),
-            _field('Phone / WhatsApp', _phone, TextInputType.phone),
-            _field('Evidence / notes', _notes, TextInputType.multiline, maxLines: 4),
+            GrassTextField(
+              controller: _email,
+              label: 'Contact email *',
+              keyboardType: TextInputType.emailAddress,
+              icon: Icons.email_outlined,
+              validator: FormValidators.email,
+            ),
+            GrassTextField(
+              controller: _phone,
+              label: 'Phone / WhatsApp *',
+              keyboardType: TextInputType.phone,
+              icon: Icons.phone_outlined,
+              validator: (v) => FormValidators.phone(v, required: true),
+            ),
+            GrassTextField(
+              controller: _notes,
+              label: 'Evidence / notes *',
+              maxLines: 4,
+              icon: Icons.notes_rounded,
+              validator: (v) {
+                if (v == null || v.trim().length < 10) {
+                  return 'Add a short note (at least 10 characters)';
+                }
+                return null;
+              },
+            ),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               height: 48,
-              child: FilledButton(
+              child: GrassSubmitButton(
+                label: _saving ? 'Submitting…' : 'Submit claim request',
+                loading: _saving,
                 onPressed: _saving ? null : _submit,
-                style: FilledButton.styleFrom(
-                  backgroundColor: SportSphereColors.electricBlue,
-                ),
-                child: Text(_saving ? 'Submitting…' : 'Submit claim request'),
+                icon: Icons.verified_user_rounded,
               ),
             ),
           ],
@@ -189,24 +224,11 @@ class _ClaimProfileSheetState extends ConsumerState<ClaimProfileSheet> {
     TextInputType type, {
     int maxLines = 1,
   }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: TextField(
-        controller: c,
-        keyboardType: type,
-        maxLines: maxLines,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(color: SportSphereColors.muted),
-          filled: true,
-          fillColor: Colors.white.withValues(alpha: 0.05),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide.none,
-          ),
-        ),
-      ),
+    return GrassTextField(
+      controller: c,
+      label: label,
+      maxLines: maxLines,
+      keyboardType: type,
     );
   }
 }
@@ -225,18 +247,18 @@ class ClaimProfileButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: SportSphereColors.electricBlue.withValues(alpha: 0.6)),
-          color: SportSphereColors.electricBlue.withValues(alpha: 0.12),
+          border: Border.all(color: GrassForm.greenLine.withValues(alpha: 0.7)),
+          color: GrassForm.greenBright.withValues(alpha: 0.15),
         ),
         child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.verified_user_outlined, size: 16, color: SportSphereColors.electricBlue),
+            Icon(Icons.verified_user_outlined, size: 16, color: GrassForm.greenLine),
             SizedBox(width: 6),
             Text(
               'Claim profile',
               style: TextStyle(
-                color: SportSphereColors.electricBlue,
+                color: GrassForm.greenLine,
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
               ),

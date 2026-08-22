@@ -552,27 +552,35 @@ class SocialRepository {
   // FEED
   // ============================================================
 
-  /// Get the user's feed
+  /// Get the user's feed (newest first). Falls back across column naming.
   Future<List<Map<String, dynamic>>> feedForUser() async {
-    final uid = _uid;
-
     try {
-      if (uid == null) {
-        // Public feed for unauthenticated users
+      // Prefer camelCase schema used by createPost
+      try {
         final rows = await _sb
             .from('Post')
             .select()
             .order('createdAt', ascending: false)
-            .limit(40);
+            .limit(50);
         return List<Map<String, dynamic>>.from(rows as List);
+      } catch (e1) {
+        debugPrint('feed createdAt order failed: $e1');
       }
 
-      // Feed: posts from users the current user follows + own posts
-      final rows = await _sb
-          .from('Post')
-          .select()
-          .order('createdAt', ascending: false)
-          .limit(40);
+      // snake_case fallback
+      try {
+        final rows = await _sb
+            .from('Post')
+            .select()
+            .order('created_at', ascending: false)
+            .limit(50);
+        return List<Map<String, dynamic>>.from(rows as List);
+      } catch (e2) {
+        debugPrint('feed created_at order failed: $e2');
+      }
+
+      // Last resort: unordered
+      final rows = await _sb.from('Post').select().limit(50);
       return List<Map<String, dynamic>>.from(rows as List);
     } catch (e) {
       debugPrint('Failed to get feed: $e');

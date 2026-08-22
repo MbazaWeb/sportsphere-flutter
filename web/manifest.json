@@ -1,11 +1,11 @@
 {
-    "name": "SportSphere",
-    "short_name": "SportSphere",
+    "name": "Playify",
+    "short_name": "Playify",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0A0E1C",
     "theme_color": "#0A0E1C",
-    "description": "SportSphere — sports network for fans, players, teams and the business of sport.",
+    "description": "Playify — sports network for fans, players, teams and the business of sport.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

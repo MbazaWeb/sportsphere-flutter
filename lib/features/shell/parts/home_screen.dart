@@ -263,7 +263,7 @@ class _CommunityContentState extends State<_CommunityContent> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
       }
     }
   }
@@ -338,81 +338,6 @@ class _CommunityContentState extends State<_CommunityContent> {
   }
 }
 
-// ── Coming-soon placeholder ────────────────────────────────
-
-class _ComingSoonPlaceholder extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String subtitle;
-  final Color accent;
-
-  const _ComingSoonPlaceholder({
-    required this.icon,
-    required this.label,
-    required this.subtitle,
-    required this.accent,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: accent.withValues(alpha: 0.10),
-                border: Border.all(color: accent.withValues(alpha: 0.25)),
-              ),
-              child: Icon(icon, color: accent, size: 38),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              label,
-              style: const TextStyle(
-                color: SportSphereColors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: SportSphereColors.muted.withValues(alpha: 0.85),
-                fontSize: 14,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-              decoration: BoxDecoration(
-                border: Border.all(color: accent.withValues(alpha: 0.35)),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                'Coming Soon',
-                style: TextStyle(
-                  color: accent,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.8,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 
 class _SimpleCard extends StatelessWidget {

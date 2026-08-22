@@ -230,6 +230,9 @@ class SocialGraph {
   Future<void> follow(String targetId, {required bool on}) async {
     final uid = _uid;
     if (uid == null) throw StateError('Please sign in to follow');
+    if (targetId == uid) {
+      throw StateError('You cannot follow yourself');
+    }
 
     try {
       if (on) {
@@ -259,6 +262,9 @@ class SocialGraph {
   Future<void> fan(String targetId, {required bool on}) async {
     final uid = _uid;
     if (uid == null) throw StateError('Please sign in to fan');
+    if (targetId == uid) {
+      throw StateError('You cannot fan yourself');
+    }
 
     try {
       if (on) {
