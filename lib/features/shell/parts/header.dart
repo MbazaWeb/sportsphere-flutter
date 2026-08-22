@@ -6,9 +6,9 @@ class _Header extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Live unread count from provider — no hardcoded values
     final unread = ref.watch(notificationsProvider).unreadCount;
     final badgeText = unread > 0 ? (unread > 99 ? '99+' : '$unread') : null;
+    final isAuthenticated = ref.watch(authControllerProvider).isAuthenticated;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
@@ -46,29 +46,29 @@ class _Header extends ConsumerWidget {
             ),
           ),
 
-          const SizedBox(width: 8),
-
-          Semantics(
-            label: 'Notifications${unread > 0 ? ', $unread unread' : ''}',
-            button: true,
-            child: _HeaderButton(
-              icon: Icons.notifications_none_rounded,
-              badge: badgeText,         // live from provider
-              onTap: () => _showNotifications(context),
+          // Notifications — hidden for guests
+          if (isAuthenticated) ...[
+            const SizedBox(width: 8),
+            Semantics(
+              label: 'Notifications${unread > 0 ? ', $unread unread' : ''}',
+              button: true,
+              child: _HeaderButton(
+                icon: Icons.notifications_none_rounded,
+                badge: badgeText,
+                onTap: () => _showNotifications(context),
+              ),
             ),
-          ),
-
-          const SizedBox(width: 8),
-
-          Semantics(
-            label: 'Messages',
-            button: true,
-            child: _HeaderButton(
-              icon: Icons.mail_outline_rounded,
-              badge: null,              // no fake count — hidden until messages provider exists
-              onTap: () => _showMessages(context),
+            const SizedBox(width: 8),
+            Semantics(
+              label: 'Messages',
+              button: true,
+              child: _HeaderButton(
+                icon: Icons.mail_outline_rounded,
+                badge: null,
+                onTap: () => _showMessages(context),
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
