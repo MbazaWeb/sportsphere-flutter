@@ -128,19 +128,32 @@ class AdminRepository {
   }) async {
     final slug = name.toLowerCase().replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), '');
     final id = 'team-${DateTime.now().millisecondsSinceEpoch}';
-    await _sb.from('Team').insert({
-      'id': id, 'name': name, 'slug': '${slug}_$id',
+    final base = <String, dynamic>{
+      'id': id,
+      'name': name,
+      'slug': '${slug}_$id',
       'country': country,
       if (city != null) 'city': city,
       if (leagueId != null) 'leagueId': leagueId,
       if (venue != null) 'venue': venue,
       if (foundedYear != null) 'foundedYear': foundedYear,
-      if (primaryColor != null && primaryColor.isNotEmpty) 'primaryColor': primaryColor,
       if (logoUrl != null && logoUrl.isNotEmpty) 'logoUrl': logoUrl,
-      'source': 'admin', 'verified': true, 'isActive': true,
+      'source': 'admin',
+      'verified': true,
+      'isActive': true,
       'createdAt': DateTime.now().toIso8601String(),
       'updatedAt': DateTime.now().toIso8601String(),
-    });
+    };
+    // Try with primaryColor first; column may be missing if migration not applied
+    try {
+      await _sb.from('Team').insert({
+        ...base,
+        if (primaryColor != null && primaryColor.isNotEmpty)
+          'primaryColor': primaryColor,
+      });
+    } catch (e) {
+      await _sb.from('Team').insert(base);
+    }
     return id;
   }
 

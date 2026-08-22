@@ -2105,6 +2105,14 @@ class _ActionRowState extends State<_ActionRow> {
       }
       return;
     }
+    if (target == uid) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("You can't follow yourself")),
+        );
+      }
+      return;
+    }
     setState(() => _following = next);
     try {
       final graph = SocialGraph();

@@ -22,6 +22,7 @@ import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/notifications/notifications_provider.dart';
 import '../../features/profile/Profile/fan/fan_profile_view.dart';
 import '../../features/profile/presentation/edit_profile_sheet.dart';
+import '../../features/profile/presentation/profile_loader.dart';
 import '../../features/admin/admin_dashboard.dart';
 import '../home/widgets/sportlights_tab.dart';
 import '../home/news/news_tab.dart';

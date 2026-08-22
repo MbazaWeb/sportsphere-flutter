@@ -1,3 +1,4 @@
+import '../../../core/admin/app_admin.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -15,6 +16,28 @@ class ProfileLoader {
 
   static SupabaseClient get _sb => Supabase.instance.client;
 
+  static Future<int> _countPostsForIds(Iterable<String> ids) async {
+    final unique = ids.where((e) => e.isNotEmpty).toSet().toList();
+    if (unique.isEmpty) return 0;
+    var total = 0;
+    for (final id in unique) {
+      try {
+        final n = await _sb.rpc('count_posts_for_user', params: {'p_id': id});
+        if (n is int && n > total) total = n;
+        if (n is num && n.toInt() > total) total = n.toInt();
+      } catch (_) {}
+      for (final col in ['userId', 'authorId', 'user_id', 'author_id']) {
+        try {
+          final rows = await _sb.from('Post').select('id').eq(col, id);
+          final c = (rows as List).length;
+          if (c > total) total = c;
+        } catch (_) {}
+      }
+    }
+    return total;
+  }
+
+
   static Future<FanProfileModel> loadFanProfile(String handle) async {
     final key = handle.replaceAll('@', '').trim().toLowerCase();
     Map<String, dynamic>? row;
@@ -29,6 +52,9 @@ class ProfileLoader {
     final isOfficial = key == 'sportsphere' ||
         key == 'sportsphere_official' ||
         key == 'sportsphere_app' ||
+        key == 'playify' ||
+        key == 'playify_official' ||
+        key == 'playify_app' ||
         role == 'admin' ||
         role == 'official';
 
@@ -39,7 +65,7 @@ class ProfileLoader {
       int postCount = 0, followerCount = 0, followingCount = 0;
       try {
         final counts = await Future.wait([
-          _sb.from('Post').select('id').eq('userId', profileId).then((r) => (r as List).length),
+          _countPostsForIds([profileId, _sb.auth.currentUser?.id ?? '']).then((n) => n),
           _sb.from('Follow').select('id').eq('"followingId"', profileId).then((r) => (r as List).length),
           _sb.from('Follow').select('id').eq('"followerId"', profileId).then((r) => (r as List).length),
         ]);
@@ -67,11 +93,12 @@ class ProfileLoader {
         coverAsset:
             (row?['cover_url'] as String?) ?? (row?['coverUrl'] as String?),
         isVerified: true,
-        isOwnProfile: currentUid.isNotEmpty && profileId == currentUid,
+        isOwnProfile: currentUid.isNotEmpty &&
+            (profileId == currentUid || AppAdmin.isSessionAdmin),
       );
     }
 
-    var fanOf = 'SportSphere Fan';
+    var fanOf = 'Playify Fan';
     try {
       final id = row?['id']?.toString();
       if (id != null) {

@@ -11,68 +11,120 @@ class _ProfileScreen extends ConsumerWidget {
     if (user == null) {
       return const Scaffold(
         backgroundColor: SportSphereColors.background,
-        body: Center(child: CircularProgressIndicator(
-            color: SportSphereColors.electricBlue, strokeWidth: 2)),
+        body: Center(
+            child: CircularProgressIndicator(
+                color: SportSphereColors.electricBlue, strokeWidth: 2)),
       );
     }
 
     final isAdmin = AppAdmin.isAdminUser(user);
+    final handle = isAdmin
+        ? 'playify'
+        : user.handle.replaceAll('@', '').trim();
 
-    // Admin profile: show as "Playify Official" with no country, no fanOf
-    final profile = FanProfileModel(
-      firstName: isAdmin ? 'SportSphere' : user.firstName,
-      lastName: isAdmin ? '' : user.lastName,
-      handle: isAdmin ? 'sportsphere_app' : user.handle,
-      email: user.email,
-      fanOf: '',
-      fanOfAccent: SportSphereColors.electricBlue,
-      bio: isAdmin ? 'Official SportSphere platform account.' : user.bio,
-      sport: 'Football',
-      location: isAdmin ? '' : user.country,   // no country for admin
-      joinedDate: user.joinedDate,
-      postCount: user.postCount,
-      followerCount: user.followerCount,
-      followingCount: user.followingCount,
-      avatarAsset: user.avatarUrl,
-      coverAsset: user.coverUrl,
-      isVerified: true,           // always verified for admin
-      isOwnProfile: true,
-    );
+    return FutureBuilder(
+      future: ProfileLoader.loadFanProfile(
+          handle.isEmpty ? user.handle : handle),
+      builder: (context, snap) {
+        FanProfileModel profile;
+        if (snap.hasData) {
+          profile = snap.data!;
+          // Force own profile chrome on this tab
+          profile = FanProfileModel(
+            firstName: isAdmin ? 'Playify' : profile.firstName,
+            lastName: isAdmin ? '' : profile.lastName,
+            handle: isAdmin ? 'playify' : profile.handle,
+            email: user.email,
+            fanOf: isAdmin ? '' : profile.fanOf,
+            fanOfAccent: profile.fanOfAccent,
+            bio: isAdmin
+                ? 'Official Playify platform account.'
+                : profile.bio,
+            sport: isAdmin ? '' : profile.sport,
+            location: isAdmin ? '' : profile.location,
+            joinedDate: profile.joinedDate,
+            postCount: profile.postCount > 0
+                ? profile.postCount
+                : user.postCount,
+            followerCount: profile.followerCount,
+            followingCount: profile.followingCount,
+            avatarAsset: profile.avatarAsset ?? user.avatarUrl,
+            coverAsset: profile.coverAsset ?? user.coverUrl,
+            isVerified: true,
+            isOwnProfile: true,
+          );
+        } else {
+          profile = FanProfileModel(
+            firstName: isAdmin ? 'Playify' : user.firstName,
+            lastName: isAdmin ? '' : user.lastName,
+            handle: isAdmin ? 'playify' : user.handle,
+            email: user.email,
+            fanOf: '',
+            fanOfAccent: SportSphereColors.electricBlue,
+            bio: isAdmin
+                ? 'Official Playify platform account.'
+                : user.bio,
+            sport: isAdmin ? '' : 'Football',
+            location: isAdmin ? '' : user.country,
+            joinedDate: user.joinedDate,
+            postCount: user.postCount,
+            followerCount: user.followerCount,
+            followingCount: user.followingCount,
+            avatarAsset: user.avatarUrl,
+            coverAsset: user.coverUrl,
+            isVerified: true,
+            isOwnProfile: true,
+          );
+        }
 
-    return Stack(
-      children: [
-        FanProfileView(profile: profile),
-        if (isAdmin)
-          Positioned(
-            bottom: 120,
-            right: 16,
-            child: GestureDetector(
-              onTap: () => context.push('/admin'),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFD700).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.6)),
-                  boxShadow: [BoxShadow(
-                    color: const Color(0xFFFFD700).withValues(alpha: 0.2),
-                    blurRadius: 12, offset: const Offset(0, 4),
-                  )],
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.admin_panel_settings_rounded,
-                        color: Color(0xFFFFD700), size: 18),
-                    SizedBox(width: 6),
-                    Text('Admin', style: TextStyle(
-                      color: Color(0xFFFFD700), fontSize: 13, fontWeight: FontWeight.w800)),
-                  ],
+        return Stack(
+          children: [
+            FanProfileView(profile: profile),
+            if (snap.connectionState == ConnectionState.waiting)
+              const Positioned(
+                top: 8,
+                right: 8,
+                child: SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               ),
-            ),
-          ),
-      ],
+            if (isAdmin)
+              Positioned(
+                bottom: 120,
+                right: 16,
+                child: GestureDetector(
+                  onTap: () => context.push('/admin'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFD700).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                          color: const Color(0xFFFFD700)
+                              .withValues(alpha: 0.6)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.admin_panel_settings_rounded,
+                            color: Color(0xFFFFD700), size: 18),
+                        SizedBox(width: 6),
+                        Text('Admin',
+                            style: TextStyle(
+                                color: Color(0xFFFFD700),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

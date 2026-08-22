@@ -31,7 +31,7 @@ class FormValidators {
     final h = v.trim().replaceAll('@', '');
     if (h.length < 3) return 'Username must be at least 3 characters';
     if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(h)) {
-      return 'Only letters, numbers and underscore';
+      return 'Letters, numbers and underscore only (numbers optional)';
     }
     return null;
   }

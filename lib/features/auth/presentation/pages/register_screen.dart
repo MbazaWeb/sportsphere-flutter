@@ -478,7 +478,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                         }
                                         if (!RegExp(r'^[a-zA-Z0-9_]+$')
                                             .hasMatch(h)) {
-                                          return 'Letters, numbers & _ only';
+                                          return 'Letters, numbers & _ only (numbers optional)';
                                         }
                                         return null;
                                       },

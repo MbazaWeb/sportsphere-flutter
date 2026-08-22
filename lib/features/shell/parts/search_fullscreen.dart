@@ -38,20 +38,93 @@ class _FullScreenSearchState extends State<_FullScreenSearch> {
   Future<void> _search(String q) async {
     if (!mounted) return;
     setState(() => _loading = true);
+    final sb = Supabase.instance.client;
+    final pattern = '%$q%';
+    final merged = <Map<String, dynamic>>[];
     try {
-      final rows = await Supabase.instance.client
+      final profiles = await sb
           .from('profiles')
           .select('id, handle, first_name, last_name, role, avatar_url')
-          .or('handle.ilike.%$q%,first_name.ilike.%$q%,last_name.ilike.%$q%')
-          .limit(25);
-      if (mounted) {
-        setState(() {
-          _results = List<Map<String, dynamic>>.from(rows as List);
-          _loading = false;
+          .or('handle.ilike.$pattern,first_name.ilike.$pattern,last_name.ilike.$pattern')
+          .limit(20);
+      for (final r in profiles as List) {
+        final m = Map<String, dynamic>.from(r as Map);
+        m['_kind'] = 'user';
+        merged.add(m);
+      }
+    } catch (_) {}
+    try {
+      final leagues = await sb
+          .from('League')
+          .select('id, name, country, type, season')
+          .or('name.ilike.$pattern,country.ilike.$pattern,season.ilike.$pattern')
+          .limit(15);
+      for (final r in leagues as List) {
+        final m = Map<String, dynamic>.from(r as Map);
+        merged.add({
+          'id': m['id'],
+          'handle': (m['name'] as String? ?? 'league')
+              .toLowerCase()
+              .replaceAll(' ', '_'),
+          'first_name': m['name'],
+          'last_name': '',
+          'role': 'league',
+          'avatar_url': null,
+          '_kind': 'league',
+          '_subtitle':
+              '${m['country'] ?? ''} · ${m['type'] ?? ''} · ${m['season'] ?? ''}',
         });
       }
-    } catch (e) {
-      if (mounted) setState(() => _loading = false);
+    } catch (_) {}
+    try {
+      final teams = await sb
+          .from('Team')
+          .select('id, name, country, city, logoUrl')
+          .or('name.ilike.$pattern,country.ilike.$pattern,city.ilike.$pattern')
+          .limit(15);
+      for (final r in teams as List) {
+        final m = Map<String, dynamic>.from(r as Map);
+        merged.add({
+          'id': m['id'],
+          'handle': (m['name'] as String? ?? 'team')
+              .toLowerCase()
+              .replaceAll(' ', '_'),
+          'first_name': m['name'],
+          'last_name': '',
+          'role': 'team',
+          'avatar_url': m['logoUrl'],
+          '_kind': 'team',
+          '_subtitle': '${m['city'] ?? ''} · ${m['country'] ?? ''}',
+        });
+      }
+    } catch (_) {}
+    try {
+      final players = await sb
+          .from('Player')
+          .select('id, name, position, nationality, teamId')
+          .or('name.ilike.$pattern,position.ilike.$pattern,nationality.ilike.$pattern')
+          .limit(15);
+      for (final r in players as List) {
+        final m = Map<String, dynamic>.from(r as Map);
+        merged.add({
+          'id': m['id'],
+          'handle': (m['name'] as String? ?? 'player')
+              .toLowerCase()
+              .replaceAll(' ', '_'),
+          'first_name': m['name'],
+          'last_name': '',
+          'role': 'player',
+          'avatar_url': null,
+          '_kind': 'player',
+          '_subtitle': '${m['position'] ?? ''} · ${m['nationality'] ?? ''}',
+        });
+      }
+    } catch (_) {}
+    if (mounted) {
+      setState(() {
+        _results = merged;
+        _loading = false;
+      });
     }
   }
 
