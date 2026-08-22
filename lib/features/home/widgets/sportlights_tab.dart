@@ -2105,14 +2105,31 @@ class _ActionRowState extends State<_ActionRow> {
           label: 'Predict',
           icon: Icons.analytics_outlined,
           color: accent,
-          onTap: () {},
+          onTap: () {
+            // Navigate to create screen pre-filled with prediction tab
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Tap ＋ to create your own prediction'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          },
         ),
         secondary: _Btn(
           label: 'View Match',
           icon: Icons.sports_soccer_outlined,
           color: accent,
           outlined: true,
-          onTap: () {},
+          onTap: () {
+            // Navigate to scores tab
+            context.go('/home');
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Check Scores tab for match details'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          },
         ),
       );
     }

@@ -100,12 +100,18 @@ class _CreateComposerState extends State<_CreateComposer>
   ];
   Duration _pollDuration = const Duration(days: 1);
 
-  // ── Prediction state (controllers owned here, not created in build) ──────────
+  // ── Prediction state ─────────────────────────────────────────────────────────
   late final TextEditingController _predHomeCtrl;
   late final TextEditingController _predAwayCtrl;
   int _predHomeScore = 1;
   int _predAwayScore = 1;
   List<Map<String, dynamic>> _teams = [];
+  List<Map<String, dynamic>> _matches = [];
+  List<Map<String, dynamic>> _players = [];
+  String? _selectedMatchId;
+  Map<String, dynamic>? _selectedMatch;  // full match row
+  Map<String, dynamic>? _selectedPlayer; // for player prediction
+  String _predType = 'match'; // 'match' or 'player'
 
   // ── Extras ────────────────────────────────────────────────────
   String? _location;
@@ -147,16 +153,42 @@ class _CreateComposerState extends State<_CreateComposer>
     _toolbarAnim = CurvedAnimation(parent: _toolbarCtrl, curve: Curves.easeOutCubic);
 
     _textCtrl.addListener(() => setState(() {}));
-    // Pre-load teams for prediction dropdown
+    // Pre-load teams, matches, players for prediction/poll dropdowns
     _loadTeams();
+    _loadMatches();
+    _loadPlayers();
   }
 
   Future<void> _loadTeams() async {
     try {
       final rows = await Supabase.instance.client
-          .from('"Team"').select('id,name').order('name').limit(200);
+          .from('Team').select('id,name').order('name').limit(200);
       if (mounted) {
         setState(() => _teams = List<Map<String, dynamic>>.from(rows as List));
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _loadMatches() async {
+    try {
+      final rows = await Supabase.instance.client
+          .from('Match')
+          .select('id,homeTeam,awayTeam,kickoffAt,league,status')
+          .inFilter('status', ['upcoming', 'live', 'scheduled'])
+          .order('kickoffAt')
+          .limit(50);
+      if (mounted) {
+        setState(() => _matches = List<Map<String, dynamic>>.from(rows as List));
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _loadPlayers() async {
+    try {
+      final rows = await Supabase.instance.client
+          .from('Player').select('id,name,position,teamId').order('name').limit(300);
+      if (mounted) {
+        setState(() => _players = List<Map<String, dynamic>>.from(rows as List));
       }
     } catch (_) {}
   }
@@ -345,13 +377,30 @@ class _CreateComposerState extends State<_CreateComposer>
           );
 
         case _PostType.prediction:
-          await repo.createPrediction(
-            homeTeam: _predHomeCtrl.text.trim(),
-            awayTeam: _predAwayCtrl.text.trim(),
-            predictedHome: _predHomeScore,
-            predictedAway: _predAwayScore,
-            note: text.isNotEmpty ? text : null,
-          );
+          if (_predType == 'player' && _selectedPlayer != null) {
+            // Player prediction: notify via post content
+            final playerName = _selectedPlayer!['name'] ?? '';
+            final playerNote = text.isNotEmpty ? text : 'I predict $playerName scores!';
+            await repo.createPrediction(
+              homeTeam: _selectedPlayer!['name'] ?? '',
+              awayTeam: '',
+              predictedHome: _predHomeScore,
+              predictedAway: 0,
+              matchId: _selectedMatchId,
+              note: playerNote,
+            );
+          } else {
+            final home = _selectedMatch?['homeTeam'] ?? _predHomeCtrl.text.trim();
+            final away = _selectedMatch?['awayTeam'] ?? _predAwayCtrl.text.trim();
+            await repo.createPrediction(
+              homeTeam: home,
+              awayTeam: away,
+              predictedHome: _predHomeScore,
+              predictedAway: _predAwayScore,
+              matchId: _selectedMatchId,
+              note: text.isNotEmpty ? text : null,
+            );
+          }
 
         default:
           await repo.createPost(
@@ -498,15 +547,28 @@ class _CreateComposerState extends State<_CreateComposer>
                   _PredictionPanel(
                     homeCtrl: _predHomeCtrl,
                     awayCtrl: _predAwayCtrl,
-                    teams: _teams,
                     homeScore: _predHomeScore,
                     awayScore: _predAwayScore,
-                    onHomeScoreChanged: (v) =>
-                        setState(() => _predHomeScore = v),
-                    onAwayScoreChanged: (v) =>
-                        setState(() => _predAwayScore = v),
-                    onHomeTeamChanged: (name) => setState(() {}),
-                    onAwayTeamChanged: (name) => setState(() {}),
+                    predType: _predType,
+                    matches: _matches,
+                    players: _players,
+                    selectedMatch: _selectedMatch,
+                    selectedPlayer: _selectedPlayer,
+                    onPredTypeChanged: (v) => setState(() {
+                      _predType = v;
+                      _selectedPlayer = null;
+                    }),
+                    onMatchSelected: (m) => setState(() {
+                      _selectedMatch = m;
+                      _selectedMatchId = m?['id']?.toString();
+                      if (m != null) {
+                        _predHomeCtrl.text = m['homeTeam'] ?? '';
+                        _predAwayCtrl.text = m['awayTeam'] ?? '';
+                      }
+                    }),
+                    onPlayerSelected: (p) => setState(() => _selectedPlayer = p),
+                    onHomeScoreChanged: (v) => setState(() => _predHomeScore = v),
+                    onAwayScoreChanged: (v) => setState(() => _predAwayScore = v),
                   ),
                 ],
 
@@ -1227,24 +1289,34 @@ class _PollPanel extends StatelessWidget {
 class _PredictionPanel extends StatelessWidget {
   final TextEditingController homeCtrl;
   final TextEditingController awayCtrl;
-  final List<Map<String, dynamic>> teams;
   final int homeScore;
   final int awayScore;
+  final String predType;
+  final List<Map<String,dynamic>> matches;
+  final List<Map<String,dynamic>> players;
+  final Map<String,dynamic>? selectedMatch;
+  final Map<String,dynamic>? selectedPlayer;
+  final ValueChanged<String> onPredTypeChanged;
+  final ValueChanged<Map<String,dynamic>?> onMatchSelected;
+  final ValueChanged<Map<String,dynamic>?> onPlayerSelected;
   final ValueChanged<int> onHomeScoreChanged;
   final ValueChanged<int> onAwayScoreChanged;
-  final ValueChanged<String> onHomeTeamChanged;
-  final ValueChanged<String> onAwayTeamChanged;
 
   const _PredictionPanel({
     required this.homeCtrl,
     required this.awayCtrl,
-    required this.teams,
     required this.homeScore,
     required this.awayScore,
+    required this.predType,
+    required this.matches,
+    required this.players,
+    required this.selectedMatch,
+    required this.selectedPlayer,
+    required this.onPredTypeChanged,
+    required this.onMatchSelected,
+    required this.onPlayerSelected,
     required this.onHomeScoreChanged,
     required this.onAwayScoreChanged,
-    required this.onHomeTeamChanged,
-    required this.onAwayTeamChanged,
   });
 
   @override
@@ -1253,209 +1325,360 @@ class _PredictionPanel extends StatelessWidget {
       label: 'PREDICTION',
       color: SportSphereColors.sportGreen,
       icon: Icons.insights_rounded,
-      child: Row(
-        children: [
-          // Home team
-          Expanded(
-            child: Column(
-              children: [
-                const Icon(
-                  Icons.shield_rounded,
-                  color: SportSphereColors.white70,
-                  size: 36,
-                ),
-                const SizedBox(height: 6),
-                GestureDetector(
-                  onTap: () => _showTeamPicker(context, homeCtrl, onHomeTeamChanged),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: SportSphereColors.white.withValues(alpha: 0.12)),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            homeCtrl.text.isEmpty ? 'Select team' : homeCtrl.text,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: homeCtrl.text.isEmpty ? SportSphereColors.muted : SportSphereColors.white,
-                              fontSize: 13, fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        const Icon(Icons.arrow_drop_down_rounded, color: SportSphereColors.white54, size: 18),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                _ScoreStepper(
-                  value: homeScore,
-                  onChanged: onHomeScoreChanged,
-                ),
-              ],
-            ),
-          ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-          // VS
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Column(
-              children: [
-                const Text(
-                  'VS',
-                  style: TextStyle(
-                    color: SportSphereColors.white38,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 13,
-                    letterSpacing: 1,
-                  ),
+        // ── Type selector ─────────────────────────────────────────────────
+        Row(children: [
+          _PredTypeChip(
+            label: 'Match Score',
+            icon: Icons.sports_soccer_rounded,
+            selected: predType == 'match',
+            onTap: () => onPredTypeChanged('match'),
+          ),
+          const SizedBox(width: 8),
+          _PredTypeChip(
+            label: 'Player Event',
+            icon: Icons.person_rounded,
+            selected: predType == 'player',
+            onTap: () => onPredTypeChanged('player'),
+          ),
+        ]),
+
+        const SizedBox(height: 14),
+
+        // ── Match selector (shown for both types) ─────────────────────────
+        GestureDetector(
+          onTap: () => _showMatchPicker(context),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: SportSphereColors.black.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: selectedMatch != null
+                    ? SportSphereColors.sportGreen.withValues(alpha: 0.5)
+                    : SportSphereColors.white.withValues(alpha: 0.10),
+              ),
+            ),
+            child: Row(children: [
+              Icon(Icons.stadium_rounded,
+                  color: selectedMatch != null
+                      ? SportSphereColors.sportGreen
+                      : SportSphereColors.muted,
+                  size: 18),
+              const SizedBox(width: 10),
+              Expanded(child: Text(
+                selectedMatch != null
+                    ? '${selectedMatch!["homeTeam"]} vs ${selectedMatch!["awayTeam"]}'
+                    : matches.isEmpty
+                        ? 'No upcoming matches'
+                        : 'Select a match (optional)',
+                style: TextStyle(
+                  color: selectedMatch != null ? SportSphereColors.white : SportSphereColors.muted,
+                  fontSize: 13, fontWeight: FontWeight.w600,
                 ),
-                const SizedBox(height: 10),
+              )),
+              Icon(Icons.arrow_drop_down_rounded,
+                  color: SportSphereColors.white54, size: 20),
+            ]),
+          ),
+        ),
+
+        const SizedBox(height: 14),
+
+        // ── Match score prediction ─────────────────────────────────────────
+        if (predType == 'match') ...[
+          Row(children: [
+            Expanded(child: Column(children: [
+              Icon(Icons.shield_rounded, color: SportSphereColors.white70, size: 32),
+              const SizedBox(height: 6),
+              Text(
+                homeCtrl.text.isEmpty ? 'Home' : homeCtrl.text,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: SportSphereColors.white,
+                    fontSize: 12, fontWeight: FontWeight.w700),
+                maxLines: 2, overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 8),
+              _ScoreStepper(value: homeScore, onChanged: onHomeScoreChanged),
+            ])),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Column(children: [
+                Text('VS', style: TextStyle(
+                    color: SportSphereColors.white38,
+                    fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1)),
+                const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
                     color: SportSphereColors.black.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text(
-                    '$homeScore - $awayScore',
-                    style: const TextStyle(
-                      color: SportSphereColors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 2,
-                    ),
-                  ),
+                  child: Text('$homeScore - $awayScore',
+                    style: const TextStyle(color: SportSphereColors.white,
+                        fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 2)),
                 ),
-              ],
+              ]),
             ),
-          ),
-
-          // Away team
-          Expanded(
-            child: Column(
-              children: [
-                const Icon(
-                  Icons.shield_outlined,
-                  color: SportSphereColors.white70,
-                  size: 36,
-                ),
-                const SizedBox(height: 6),
-                GestureDetector(
-                  onTap: () => _showTeamPicker(context, awayCtrl, onAwayTeamChanged),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: SportSphereColors.white.withValues(alpha: 0.12)),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            awayCtrl.text.isEmpty ? 'Select team' : awayCtrl.text,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: awayCtrl.text.isEmpty ? SportSphereColors.muted : SportSphereColors.white,
-                              fontSize: 13, fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        const Icon(Icons.arrow_drop_down_rounded, color: SportSphereColors.white54, size: 18),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                _ScoreStepper(
-                  value: awayScore,
-                  onChanged: onAwayScoreChanged,
-                ),
-              ],
-            ),
-          ),
+            Expanded(child: Column(children: [
+              Icon(Icons.shield_outlined, color: SportSphereColors.white70, size: 32),
+              const SizedBox(height: 6),
+              Text(
+                awayCtrl.text.isEmpty ? 'Away' : awayCtrl.text,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: SportSphereColors.white,
+                    fontSize: 12, fontWeight: FontWeight.w700),
+                maxLines: 2, overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 8),
+              _ScoreStepper(value: awayScore, onChanged: onAwayScoreChanged),
+            ])),
+          ]),
         ],
-      ),
+
+        // ── Player event prediction ────────────────────────────────────────
+        if (predType == 'player') ...[
+          GestureDetector(
+            onTap: () => _showPlayerPicker(context),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: SportSphereColors.black.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: selectedPlayer != null
+                      ? SportSphereColors.electricBlue.withValues(alpha: 0.5)
+                      : SportSphereColors.white.withValues(alpha: 0.10),
+                ),
+              ),
+              child: Row(children: [
+                Icon(Icons.person_rounded,
+                    color: selectedPlayer != null
+                        ? SportSphereColors.electricBlue
+                        : SportSphereColors.muted,
+                    size: 18),
+                const SizedBox(width: 10),
+                Expanded(child: Text(
+                  selectedPlayer != null
+                      ? '${selectedPlayer!["name"]}  ·  ${selectedPlayer!["position"] ?? ""}'
+                      : players.isEmpty ? 'No players available' : 'Select a player',
+                  style: TextStyle(
+                    color: selectedPlayer != null ? SportSphereColors.white : SportSphereColors.muted,
+                    fontSize: 13, fontWeight: FontWeight.w600,
+                  ),
+                )),
+                Icon(Icons.arrow_drop_down_rounded,
+                    color: SportSphereColors.white54, size: 20),
+              ]),
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Event type chips
+          const Text('Predict event:', style: TextStyle(
+              color: SportSphereColors.muted, fontSize: 12)),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 6, children: [
+            _EventChip(label: 'Goal', icon: Icons.sports_soccer_rounded, color: SportSphereColors.sportGreen,
+                onTap: () => onHomeScoreChanged(1)),
+            _EventChip(label: 'Assist', icon: Icons.handshake_rounded, color: SportSphereColors.electricBlue,
+                onTap: () {}),
+            _EventChip(label: 'Red Card', icon: Icons.rectangle_rounded, color: SportSphereColors.danger,
+                onTap: () {}),
+            _EventChip(label: 'Yellow Card', icon: Icons.rectangle_rounded, color: const Color(0xFFFFD700),
+                onTap: () {}),
+            _EventChip(label: 'MOTM', icon: Icons.star_rounded, color: const Color(0xFFFFB900),
+                onTap: () {}),
+          ]),
+          const SizedBox(height: 8),
+          Text('Goals predicted: $homeScore',
+              style: const TextStyle(color: SportSphereColors.muted, fontSize: 12)),
+          Row(children: [
+            const Text('Goals: ', style: TextStyle(color: SportSphereColors.white, fontSize: 13)),
+            _ScoreStepper(value: homeScore, onChanged: onHomeScoreChanged),
+          ]),
+        ],
+      ]),
     );
   }
 
-  void _showTeamPicker(BuildContext context, TextEditingController ctrl, ValueChanged<String> onTeamChanged) {
-    if (teams.isEmpty) return;
+  void _showMatchPicker(BuildContext context) {
+    if (matches.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('No upcoming matches. Admin must add fixtures first.')));
+      return;
+    }
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: SportSphereColors.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
       builder: (_) => DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        minChildSize: 0.3,
-        maxChildSize: 0.85,
-        expand: false,
-        builder: (_, scrollCtrl) => StatefulBuilder(
-          builder: (bCtx, bSet) => Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                child: Text('Select Team', style: TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700, fontSize: 16)),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                child: TextField(
-                  style: const TextStyle(color: Colors.white),
-                  onChanged: (_) => bSet(() {}),
-                  decoration: InputDecoration(
-                    hintText: 'Search teams...',
-                    hintStyle: const TextStyle(color: Colors.white38),
-                    filled: true,
-                    fillColor: const Color(0xFF0B1626),
-                    prefixIcon: const Icon(Icons.search_rounded, color: Colors.white54, size: 20),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    isDense: true,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  controller: scrollCtrl,
-                  itemCount: teams.length,
-                  itemBuilder: (_, i) {
-                    final name = teams[i]['name'] as String? ?? '';
-                    return GestureDetector(
-                      onTap: () {
-                        ctrl.text = name;
-                        onTeamChanged(name);
-                        Navigator.pop(bCtx);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.shield_rounded, color: SportSphereColors.sportGreen, size: 20),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(name, style: const TextStyle(color: SportSphereColors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
+        initialChildSize: 0.6, minChildSize: 0.3, maxChildSize: 0.85, expand: false,
+        builder: (_, sc) => Column(children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 16, 20, 12),
+            child: Text('Select Match', style: TextStyle(
+                color: SportSphereColors.white, fontWeight: FontWeight.w700, fontSize: 16)),
           ),
-        ),
+          if (selectedMatch != null)
+            TextButton(
+              onPressed: () { onMatchSelected(null); Navigator.pop(_); },
+              child: const Text('Clear selection', style: TextStyle(color: SportSphereColors.muted)),
+            ),
+          Expanded(child: ListView.builder(
+            controller: sc,
+            itemCount: matches.length,
+            itemBuilder: (_, i) {
+              final m = matches[i];
+              final date = DateTime.tryParse(m['kickoffAt'] ?? '');
+              final dateStr = date == null ? '' :
+                  '${date.day}/${date.month} ${date.hour}:${date.minute.toString().padLeft(2, "0")}';
+              final isSelected = selectedMatch?['id'] == m['id'];
+              return ListTile(
+                selected: isSelected,
+                selectedTileColor: SportSphereColors.sportGreen.withValues(alpha: 0.08),
+                leading: Icon(Icons.sports_soccer_rounded,
+                    color: isSelected ? SportSphereColors.sportGreen : SportSphereColors.muted),
+                title: Text('${m["homeTeam"]} vs ${m["awayTeam"]}',
+                    style: const TextStyle(color: SportSphereColors.white,
+                        fontWeight: FontWeight.w700, fontSize: 13)),
+                subtitle: Text('${m["league"] ?? ""}  ·  $dateStr',
+                    style: const TextStyle(color: SportSphereColors.muted, fontSize: 11)),
+                onTap: () { onMatchSelected(m); Navigator.pop(_); },
+              );
+            },
+          )),
+        ]),
       ),
     );
   }
+
+  void _showPlayerPicker(BuildContext context) {
+    if (players.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('No players in DB. Admin must add players first.')));
+      return;
+    }
+    final searchCtrl = TextEditingController();
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: SportSphereColors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (_) => StatefulBuilder(builder: (bCtx, bSet) {
+        final query = searchCtrl.text.toLowerCase();
+        final filtered = players.where((p) =>
+            (p['name'] as String? ?? '').toLowerCase().contains(query)).toList();
+        return DraggableScrollableSheet(
+          initialChildSize: 0.7, minChildSize: 0.3, maxChildSize: 0.9, expand: false,
+          builder: (_, sc) => Column(children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Text('Select Player', style: TextStyle(
+                  color: SportSphereColors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: TextField(
+                controller: searchCtrl,
+                style: const TextStyle(color: SportSphereColors.white),
+                onChanged: (_) => bSet(() {}),
+                decoration: InputDecoration(
+                  hintText: 'Search players...',
+                  hintStyle: const TextStyle(color: SportSphereColors.muted),
+                  prefixIcon: const Icon(Icons.search_rounded, color: SportSphereColors.muted, size: 20),
+                  filled: true, fillColor: const Color(0xFF0B1626),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  isDense: true,
+                ),
+              ),
+            ),
+            Expanded(child: ListView.builder(
+              controller: sc,
+              itemCount: filtered.length,
+              itemBuilder: (_, i) {
+                final p = filtered[i];
+                final isSelected = selectedPlayer?['id'] == p['id'];
+                return ListTile(
+                  selected: isSelected,
+                  selectedTileColor: SportSphereColors.electricBlue.withValues(alpha: 0.08),
+                  leading: Icon(Icons.person_rounded,
+                      color: isSelected ? SportSphereColors.electricBlue : SportSphereColors.muted),
+                  title: Text(p['name'] as String? ?? '',
+                      style: const TextStyle(color: SportSphereColors.white,
+                          fontWeight: FontWeight.w700, fontSize: 13)),
+                  subtitle: Text('${p["position"] ?? ""}',
+                      style: const TextStyle(color: SportSphereColors.muted, fontSize: 11)),
+                  onTap: () { onPlayerSelected(p); Navigator.pop(bCtx); },
+                );
+              },
+            )),
+          ]),
+        );
+      }),
+    );
+  }
+}
+
+class _PredTypeChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+  const _PredTypeChip({required this.label, required this.icon,
+      required this.selected, required this.onTap});
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: selected ? SportSphereColors.sportGreen.withValues(alpha: 0.15) : Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+            color: selected ? SportSphereColors.sportGreen : SportSphereColors.white.withValues(alpha: 0.12)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 14,
+            color: selected ? SportSphereColors.sportGreen : SportSphereColors.muted),
+        const SizedBox(width: 6),
+        Text(label, style: TextStyle(
+          fontSize: 12, fontWeight: FontWeight.w600,
+          color: selected ? SportSphereColors.sportGreen : SportSphereColors.muted,
+        )),
+      ]),
+    ),
+  );
+}
+
+class _EventChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  const _EventChip({required this.label, required this.icon,
+      required this.color, required this.onTap});
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.30)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 13, color: color),
+        const SizedBox(width: 5),
+        Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+      ]),
+    ),
+  );
 }
 
 class _ScoreStepper extends StatelessWidget {
