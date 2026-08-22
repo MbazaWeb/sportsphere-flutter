@@ -80,7 +80,7 @@ class AdminRepository {
 
   Future<List<Map<String, dynamic>>> listTeams({String? leagueId}) async {
     try {
-      final q = _sb.from('Team').select('id, name, slug, city, country, leagueId, verified, logoUrl');
+      final q = _sb.from('Team').select('id, name, slug, city, country, venue, leagueId, verified, logoUrl, primaryColor');
       final rows = leagueId != null
           ? await q.eq('leagueId', leagueId).order('name').limit(100)
           : await q.order('name').limit(100);
@@ -136,12 +136,15 @@ class AdminRepository {
     } catch (e) { return []; }
   }
 
-  Future<void> createPlayer({required String name, required String position, String? teamId, String? nationality, int? shirtNumber}) async {
+  Future<void> createPlayer({required String name, required String position, required String teamId, String? nationality, int? shirtNumber}) async {
+    if (teamId.trim().isEmpty) {
+      throw StateError('Player must belong to an existing club/team');
+    }
     final slug = '${name.toLowerCase().replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}';
     final id = 'player-${DateTime.now().millisecondsSinceEpoch}';
     await _sb.from('Player').insert({
       'id': id, 'name': name, 'slug': slug, 'position': position,
-      if (teamId != null) 'teamId': teamId,
+      'teamId': teamId,
       if (nationality != null) 'nationality': nationality,
       if (shirtNumber != null) 'shirtNumber': shirtNumber,
       'goals': 0, 'assists': 0,

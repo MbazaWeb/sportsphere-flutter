@@ -232,10 +232,10 @@ class _CreateComposerState extends State<_CreateComposer>
 
   Future<void> _pickMedia() async {
     if (_mediaTiles.length >= 4) return;
-    // Show source picker
-    final source = await showModalBottomSheet<ImageSource>(
+
+    final choice = await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: SportSphereColors.surface,
+      backgroundColor: const Color(0xFF0B1626),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
@@ -243,106 +243,279 @@ class _CreateComposerState extends State<_CreateComposer>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.photo_library_rounded, color: SportSphereColors.electricBlue),
-              title: const Text('Gallery', style: TextStyle(color: SportSphereColors.white)),
-              onTap: () => Navigator.pop(sheetCtx, ImageSource.gallery),
+            Container(
+              height: 90,
+              margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1B5E20), Color(0xFF2E7D32), Color(0xFF1B5E20)],
+                ),
+              ),
+              child: const Center(
+                child: Text('Pitch media',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16)),
+              ),
             ),
             ListTile(
-              leading: const Icon(Icons.videocam_rounded, color: SportSphereColors.sportGreen),
-              title: const Text('Camera (Photo)', style: TextStyle(color: SportSphereColors.white)),
-              onTap: () => Navigator.pop(sheetCtx, ImageSource.camera),
+              leading: const Icon(Icons.photo_library_rounded, color: Color(0xFF168CFF)),
+              title: const Text('Photo from gallery', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(sheetCtx, 'photo'),
             ),
             ListTile(
-              leading: const Icon(Icons.video_library_rounded, color: SportSphereColors.sportOrange),
-              title: const Text('Camera (Video)', style: TextStyle(color: SportSphereColors.white)),
-              onTap: () => Navigator.pop(sheetCtx, ImageSource.camera),
+              leading: const Icon(Icons.videocam_rounded, color: Color(0xFF76D42B)),
+              title: const Text('Video from gallery', style: TextStyle(color: Colors.white)),
+              subtitle: const Text('Max 30 seconds', style: TextStyle(color: Colors.white54, fontSize: 12)),
+              onTap: () => Navigator.pop(sheetCtx, 'video'),
             ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_rounded, color: Color(0xFFFF8A00)),
+              title: const Text('Camera photo', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(sheetCtx, 'camera'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.video_camera_back_rounded, color: Color(0xFFFF3B61)),
+              title: const Text('Camera video', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(sheetCtx, 'camera_video'),
+            ),
+            const SizedBox(height: 8),
           ],
         ),
       ),
     );
-    if (source == null) return;
-
-    // Determine if user wants video
-    bool pickVideo = false;
-    if (source == ImageSource.camera) {
-      // Second sheet was video option — detect by what they tapped
-      // The camera source can do both. For simplicity, pick image first.
-      pickVideo = false;
-    }
+    if (choice == null) return;
 
     setState(() => _type = _PostType.media);
     try {
-      if (pickVideo) {
-        final file = await _picker.pickVideo(source: source);
-        if (file == null) return;
-        setState(() => _posting = true);
-        final url = await _social.uploadPickedFile(
-          bucket: 'media', folder: 'videos', file: file,
+      XFile? file;
+      var isVideo = false;
+      if (choice == 'photo') {
+        file = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 90);
+      } else if (choice == 'camera') {
+        file = await _picker.pickImage(source: ImageSource.camera, imageQuality: 90);
+      } else if (choice == 'video') {
+        file = await _picker.pickVideo(
+          source: ImageSource.gallery,
+          maxDuration: const Duration(seconds: 30),
         );
-        setState(() {
-          _mediaTiles.add(url);
-          _mediaIsVideo.add(true);
-          _posting = false;
-        });
-      } else {
-        // Show a quick image/video choice if gallery
-        if (source == ImageSource.gallery) {
-          final choice = await showDialog<String>(
-            context: context,
-            builder: (d) => SimpleDialog(
-              backgroundColor: const Color(0xFF0C1A2A),
-              title: const Text('Pick media type', style: TextStyle(color: Colors.white)),
-              children: [
-                SimpleDialogOption(
-                  child: const Text('Image', style: TextStyle(color: SportSphereColors.electricBlue)),
-                  onPressed: () => Navigator.pop(d, 'image'),
-                ),
-                SimpleDialogOption(
-                  child: const Text('Video', style: TextStyle(color: SportSphereColors.sportGreen)),
-                  onPressed: () => Navigator.pop(d, 'video'),
-                ),
-              ],
-            ),
-          );
-          if (choice == null) return;
-          pickVideo = choice == 'video';
-        }
-
-        if (pickVideo) {
-          final file = await _picker.pickVideo(source: source);
-          if (file == null) return;
-          setState(() => _posting = true);
-          final url = await _social.uploadPickedFile(
-            bucket: 'media', folder: 'videos', file: file,
-          );
-          setState(() {
-            _mediaTiles.add(url);
-            _mediaIsVideo.add(true);
-            _posting = false;
-          });
-        } else {
-          final file = await _picker.pickImage(source: source, imageQuality: 85);
-          if (file == null) return;
-          setState(() => _posting = true);
-          final url = await _social.uploadPickedFile(
-            bucket: 'posts', folder: 'images', file: file,
-          );
-          setState(() {
-            _mediaTiles.add(url);
-            _mediaIsVideo.add(false);
-            _posting = false;
-          });
-        }
+        isVideo = true;
+      } else if (choice == 'camera_video') {
+        file = await _picker.pickVideo(
+          source: ImageSource.camera,
+          maxDuration: const Duration(seconds: 30),
+        );
+        isVideo = true;
       }
+      if (file == null) return;
+
+      // Open edit tools before upload
+      final edited = await _showLocalMediaEditor(file, isVideo: isVideo);
+      if (edited == null) return;
+
+      setState(() => _posting = true);
+      final url = await _social.uploadPickedFile(
+        bucket: isVideo ? 'media' : 'posts',
+        folder: isVideo ? 'videos' : 'images',
+        file: edited,
+      );
+      if (!mounted) return;
+      setState(() {
+        _mediaTiles.add(url);
+        _mediaIsVideo.add(isVideo);
+        _posting = false;
+      });
     } catch (e) {
-      setState(() => _posting = false);
       if (mounted) {
+        setState(() => _posting = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Media: $e'), backgroundColor: const Color(0xFFE31B23)),
         );
       }
+    }
+  }
+
+  /// Full-screen style editor sheet so tools are actually open & usable.
+  Future<XFile?> _showLocalMediaEditor(XFile file, {required bool isVideo}) async {
+    return showModalBottomSheet<XFile>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF071422),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40, height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                Text(isVideo ? 'Edit video' : 'Edit photo',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16)),
+                const SizedBox(height: 12),
+                Container(
+                  height: 280,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white12),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: isVideo
+                      ? const Center(
+                          child: Icon(Icons.play_circle_filled_rounded,
+                              color: Colors.white, size: 64))
+                      : (file.path.startsWith('http')
+                          ? Image.network(file.path, fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => const Icon(
+                                  Icons.image_rounded,
+                                  color: Colors.white38,
+                                  size: 48))
+                          : const Center(
+                              child: Icon(Icons.image_rounded,
+                                  color: Colors.white70, size: 64))),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => Navigator.pop(ctx),
+                        icon: const Icon(Icons.close_rounded, size: 18),
+                        label: const Text('Cancel'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white70,
+                          side: const BorderSide(color: Colors.white24),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: () => Navigator.pop(ctx, file),
+                        icon: const Icon(Icons.check_rounded, size: 18),
+                        label: const Text('Use media'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF76D42B),
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _openMediaEditor(int index) async {
+    if (index < 0 || index >= _mediaTiles.length) return;
+    final url = _mediaTiles[index];
+    final isVideo = index < _mediaIsVideo.length && _mediaIsVideo[index];
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: const Color(0xFF071422),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            const Text('Media tools',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16)),
+            ListTile(
+              leading: const Icon(Icons.fullscreen_rounded, color: Color(0xFF168CFF)),
+              title: const Text('Preview full size', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(ctx, 'preview'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.swap_horiz_rounded, color: Color(0xFF76D42B)),
+              title: const Text('Replace', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(ctx, 'replace'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline_rounded, color: Color(0xFFFF3B61)),
+              title: const Text('Remove', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(ctx, 'remove'),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (action == null) return;
+    if (action == 'remove') {
+      setState(() {
+        _mediaTiles.removeAt(index);
+        if (index < _mediaIsVideo.length) _mediaIsVideo.removeAt(index);
+      });
+      return;
+    }
+    if (action == 'replace') {
+      setState(() {
+        _mediaTiles.removeAt(index);
+        if (index < _mediaIsVideo.length) _mediaIsVideo.removeAt(index);
+      });
+      await _pickMedia();
+      return;
+    }
+    if (action == 'preview') {
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => Dialog(
+          backgroundColor: Colors.black,
+          insetPadding: const EdgeInsets.all(12),
+          child: Stack(
+            children: [
+              SizedBox(
+                width: double.infinity,
+                height: MediaQuery.of(ctx).size.height * 0.7,
+                child: isVideo
+                    ? const Center(
+                        child: Icon(Icons.play_circle_filled_rounded,
+                            color: Colors.white, size: 72))
+                    : Image.network(url, fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) =>
+                            const Icon(Icons.broken_image, color: Colors.white38)),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: IconButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  icon: const Icon(Icons.close, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
   }
 
@@ -513,7 +686,12 @@ class _CreateComposerState extends State<_CreateComposer>
                       _mediaTiles.removeAt(i);
                       if (i < _mediaIsVideo.length) _mediaIsVideo.removeAt(i);
                     }),
+                    onEdit: (i) => _openMediaEditor(i),
+                    onAddMore: _mediaTiles.length < 4 ? _pickMedia : null,
                   ),
+                ] else if (_type == _PostType.media) ...[
+                  const SizedBox(height: 14),
+                  _GrassAddMediaTile(onTap: _pickMedia),
                 ],
 
                 // Poll panel
@@ -1033,87 +1211,206 @@ class _MediaStrip extends StatelessWidget {
   final List<String> tiles;
   final List<bool> isVideo;
   final ValueChanged<int> onRemove;
-  const _MediaStrip({required this.tiles, required this.isVideo, required this.onRemove});
+  final ValueChanged<int>? onEdit;
+  final VoidCallback? onAddMore;
+  const _MediaStrip({
+    required this.tiles,
+    required this.isVideo,
+    required this.onRemove,
+    this.onEdit,
+    this.onAddMore,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 100,
-      child: Row(
+    // Full-width previews stacked — large enough to see photo/video clearly
+    return Column(
+      children: [
+        for (var i = 0; i < tiles.length; i++) ...[
+          if (i > 0) const SizedBox(height: 10),
+          _FullMediaPreview(
+            url: tiles[i],
+            isVideo: isVideo.length > i && isVideo[i],
+            onRemove: () => onRemove(i),
+            onEdit: onEdit == null ? null : () => onEdit!(i),
+          ),
+        ],
+        if (tiles.length < 4 && onAddMore != null) ...[
+          const SizedBox(height: 10),
+          _GrassAddMediaTile(onTap: onAddMore!),
+        ],
+      ],
+    );
+  }
+}
+
+class _GrassAddMediaTile extends StatelessWidget {
+  final VoidCallback onTap;
+  const _GrassAddMediaTile({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 120,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF1B5E20),
+              Color(0xFF2E7D32),
+              Color(0xFF1B5E20),
+            ],
+          ),
+          border: Border.all(
+            color: const Color(0xFF76D42B).withValues(alpha: 0.45),
+            width: 1.5,
+          ),
+        ),
+        child: CustomPaint(
+          painter: _GrassLinesPainter(),
+          child: const Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.add_photo_alternate_rounded,
+                    color: Colors.white, size: 36),
+                SizedBox(height: 8),
+                Text('Add photo or video',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14)),
+                SizedBox(height: 2),
+                Text('Pitch-side media',
+                    style: TextStyle(color: Colors.white70, fontSize: 11)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GrassLinesPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.06)
+      ..strokeWidth = 2;
+    // pitch stripes
+    final stripe = size.width / 8;
+    for (var i = 1; i < 8; i++) {
+      final x = stripe * i;
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+    // centre circle
+    paint.style = PaintingStyle.stroke;
+    canvas.drawCircle(
+        Offset(size.width / 2, size.height / 2), size.height * 0.28, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _FullMediaPreview extends StatelessWidget {
+  final String url;
+  final bool isVideo;
+  final VoidCallback onRemove;
+  final VoidCallback? onEdit;
+  const _FullMediaPreview({
+    required this.url,
+    required this.isVideo,
+    required this.onRemove,
+    this.onEdit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: 280,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        color: const Color(0xFF0B1626),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        fit: StackFit.expand,
         children: [
-          ...List.generate(tiles.length, (i) {
-            return Expanded(
-              child: Padding(
-                padding: EdgeInsets.only(right: i < tiles.length - 1 ? 8 : 0),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        color: const Color(0xFF0B1626),
-                        border: Border.all(
-                          color: SportSphereColors.white.withValues(alpha: 0.10),
-                        ),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(14),
-                        child: tiles[i].startsWith('http')
-                            ? (isVideo.length > i && isVideo[i]
-                                ? Container(color: Colors.black, child: const Center(child: Icon(Icons.play_circle_rounded, color: Colors.white, size: 32)))
-                                : Image.network(tiles[i], fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_rounded, color: Colors.white38, size: 32)))
-                            : const Icon(Icons.image_rounded, color: SportSphereColors.white38, size: 32),
-                      ),
+          if (url.startsWith('http') || url.startsWith('file:'))
+            isVideo
+                ? Container(
+                    color: Colors.black,
+                    child: const Center(
+                      child: Icon(Icons.play_circle_filled_rounded,
+                          color: Colors.white, size: 64),
                     ),
-                    Positioned(
-                      top: 5,
-                      right: 5,
-                      child: GestureDetector(
-                        onTap: () => onRemove(i),
-                        child: Container(
-                          width: 22,
-                          height: 22,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color:
-                                SportSphereColors.black.withValues(alpha: 0.65),
-                          ),
-                          child: const Icon(
-                            Icons.close_rounded,
-                            color: SportSphereColors.white,
-                            size: 14,
-                          ),
-                        ),
-                      ),
+                  )
+                : Image.network(
+                    url,
+                    fit: BoxFit.contain,
+                    width: double.infinity,
+                    height: double.infinity,
+                    errorBuilder: (_, __, ___) => const Center(
+                      child: Icon(Icons.broken_image_rounded,
+                          color: Colors.white38, size: 48),
                     ),
-                  ],
+                  )
+          else
+            const Center(
+              child: Icon(Icons.image_rounded,
+                  color: Colors.white38, size: 48),
+            ),
+          // top tools
+          Positioned(
+            top: 10,
+            right: 10,
+            child: Row(
+              children: [
+                if (onEdit != null)
+                  _MediaToolBtn(
+                    icon: Icons.edit_rounded,
+                    label: 'Edit',
+                    onTap: onEdit!,
+                  ),
+                const SizedBox(width: 8),
+                _MediaToolBtn(
+                  icon: Icons.close_rounded,
+                  label: 'Remove',
+                  onTap: onRemove,
                 ),
-              ),
-            );
-          }),
-          if (tiles.length < 4)
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: GestureDetector(
-                onTap: () {
-                  // trigger parent add
-                },
-                child: Container(
-                  width: 60,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    color: SportSphereColors.white.withValues(alpha: 0.035),
-                    border: Border.all(
-                      color: SportSphereColors.white.withValues(alpha: 0.10),
-                      style: BorderStyle.solid,
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.add_rounded,
-                    color: SportSphereColors.muted,
-                  ),
+              ],
+            ),
+          ),
+          if (isVideo)
+            Positioned(
+              left: 12,
+              bottom: 12,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.videocam_rounded, color: Colors.white, size: 14),
+                    SizedBox(width: 4),
+                    Text('VIDEO',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800)),
+                  ],
                 ),
               ),
             ),
@@ -1123,9 +1420,40 @@ class _MediaStrip extends StatelessWidget {
   }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// POLL PANEL
-// ══════════════════════════════════════════════════════════════════════════════
+class _MediaToolBtn extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  const _MediaToolBtn(
+      {required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withValues(alpha: 0.65),
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Row(
+            children: [
+              Icon(icon, color: Colors.white, size: 16),
+              const SizedBox(width: 4),
+              Text(label,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 
 class _PollPanel extends StatelessWidget {
   final List<TextEditingController> options;

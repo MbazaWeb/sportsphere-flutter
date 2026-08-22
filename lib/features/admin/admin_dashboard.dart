@@ -586,79 +586,281 @@ Future<void> _showCreatePlayer(BuildContext ctx, List<Map<String,dynamic>> teams
   String nationality='Tanzania';
   String? teamId, photoUrl, dob;
   bool uploading=false;
+  String? teamError;
 
-  return showModalBottomSheet<void>(context:ctx, isScrollControlled:true,
-    backgroundColor:SportSphereColors.surface,
-    shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(24))),
-    builder:(_)=>StatefulBuilder(builder:(c,setL)=>Padding(
-      padding:EdgeInsets.fromLTRB(20,20,20,MediaQuery.of(c).viewInsets.bottom+20),
-      child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-        const Text('Add Player', style:TextStyle(color:SportSphereColors.white, fontSize:18, fontWeight:FontWeight.w800)),
-        const SizedBox(height:16),
-        Row(children:[
-          Expanded(child:_AdminField(controller:firstName, label:'First Name *')),
-          const SizedBox(width:10),
-          Expanded(child:_AdminField(controller:lastName, label:'Last Name *')),
-        ]),
-        _AdminField(controller:name, label:'Full Name (display)'),
-        CountryPickerField(label:'Nationality', value:nationality, onChanged:(v)=>setL(()=>nationality=v)),
-        Row(children:[
-          Expanded(child:_AdminField(controller:shirt, label:'Shirt #', keyboardType:TextInputType.number)),
-          const SizedBox(width:10),
-          Expanded(child:DropdownButtonFormField<String>(value:position,
-            dropdownColor:SportSphereColors.surface,
-            decoration:const InputDecoration(labelText:'Position', labelStyle:TextStyle(color:SportSphereColors.muted)),
-            items:['Goalkeeper','Defender','Midfielder','Forward','Winger','Striker']
-                .map((p)=>DropdownMenuItem(value:p,child:Text(p,style:const TextStyle(color:SportSphereColors.white)))).toList(),
-            onChanged:(v)=>setL(()=>position=v??position))),
-        ]),
-        Row(children:[
-          Expanded(child:_AdminField(controller:height, label:'Height (cm)', keyboardType:TextInputType.number)),
-          const SizedBox(width:10),
-          Expanded(child:_AdminField(controller:weight, label:'Weight (kg)', keyboardType:TextInputType.number)),
-        ]),
-        ListTile(contentPadding:EdgeInsets.zero,
-          title:Text(dob==null?'Date of Birth (optional)':'DOB: $dob',
-              style:TextStyle(color:dob==null?SportSphereColors.muted:SportSphereColors.white, fontSize:13)),
-          trailing:const Icon(Icons.calendar_today_rounded, color:SportSphereColors.electricBlue, size:18),
-          onTap:() async {
-            final d=await showDatePicker(context:c,
-              initialDate:DateTime(1998,1,1), firstDate:DateTime(1950), lastDate:DateTime.now());
-            if(d!=null) setL(()=>dob='${d.year}-${d.month.toString().padLeft(2,'0')}-${d.day.toString().padLeft(2,'0')}');
-          }),
-        if(teams.isNotEmpty) DropdownButtonFormField<String?>(value:teamId,
-          dropdownColor:SportSphereColors.surface,
-          decoration:const InputDecoration(labelText:'Team', labelStyle:TextStyle(color:SportSphereColors.muted)),
-          items:[const DropdownMenuItem(value:null,child:Text('None',style:TextStyle(color:SportSphereColors.muted))),
-            ...teams.map((t)=>DropdownMenuItem(value:t['id'].toString(),child:Text(t['name'].toString(),style:const TextStyle(color:SportSphereColors.white))))],
-          onChanged:(v)=>setL(()=>teamId=v)),
-        const SizedBox(height:12),
-        _UploadButton(url:photoUrl, uploading:uploading, label:'Upload Player Photo',
-          onTap:() async {
-            setL(()=>uploading=true);
-            final url=await _pickAndUpload(c, folder:'players');
-            setL((){photoUrl=url;uploading=false;});
-          }),
-        const SizedBox(height:16),
-        SizedBox(width:double.infinity, child:FilledButton(
-          style:FilledButton.styleFrom(backgroundColor:SportSphereColors.electricBlue, padding:const EdgeInsets.symmetric(vertical:14)),
-          onPressed:() async {
-            final fullName = '${firstName.text.trim()} ${lastName.text.trim()}'.trim();
-            if(fullName.isEmpty && name.text.trim().isEmpty) return;
-            try {
-              await _repo.createPlayer(
-                name:name.text.trim().isNotEmpty?name.text.trim():fullName,
-                position:position, teamId:teamId,
-                nationality:nationality,
-                shirtNumber:int.tryParse(shirt.text.trim()));
-              if(c.mounted) Navigator.pop(c);
-            } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text('$e'))); }
-          },
-          child:const Text('Add Player', style:TextStyle(fontWeight:FontWeight.w800)))),
-      ])))));
+  if (teams.isEmpty) {
+    return showDialog<void>(
+      context: ctx,
+      builder: (_) => AlertDialog(
+        backgroundColor: SportSphereColors.surface,
+        title: const Text('No clubs yet', style: TextStyle(color: SportSphereColors.white)),
+        content: const Text(
+          'Create a club/team first under Matches → Teams, then add the player and select their current club.',
+          style: TextStyle(color: SportSphereColors.muted),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+        ],
+      ),
+    );
+  }
+
+  Map<String, dynamic>? selectedTeam() {
+    if (teamId == null) return null;
+    for (final t in teams) {
+      if (t['id']?.toString() == teamId) return t;
+    }
+    return null;
+  }
+
+  return showModalBottomSheet<void>(
+    context: ctx,
+    isScrollControlled: true,
+    backgroundColor: SportSphereColors.surface,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: (_) => StatefulBuilder(
+      builder: (c, setL) {
+        final team = selectedTeam();
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+              20, 20, 20, MediaQuery.of(c).viewInsets.bottom + 20),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Add Player',
+                    style: TextStyle(
+                        color: SportSphereColors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800)),
+                const SizedBox(height: 16),
+                // Required: current club
+                const Text('Current club / team *',
+                    style: TextStyle(
+                        color: SportSphereColors.muted, fontSize: 12)),
+                const SizedBox(height: 6),
+                DropdownButtonFormField<String>(
+                  value: teamId,
+                  dropdownColor: SportSphereColors.surface,
+                  decoration: InputDecoration(
+                    labelText: 'Select existing club',
+                    labelStyle: const TextStyle(color: SportSphereColors.muted),
+                    errorText: teamError,
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.12)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(
+                          color: SportSphereColors.electricBlue),
+                    ),
+                  ),
+                  items: teams
+                      .map((t) => DropdownMenuItem(
+                            value: t['id'].toString(),
+                            child: Text(
+                              '${t['name'] ?? 'Team'}'
+                              '${(t['city'] != null && '${t['city']}'.isNotEmpty) ? ' · ${t['city']}' : ''}',
+                              style: const TextStyle(
+                                  color: SportSphereColors.white, fontSize: 14),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ))
+                      .toList(),
+                  onChanged: (v) => setL(() {
+                    teamId = v;
+                    teamError = null;
+                  }),
+                ),
+                if (team != null) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0B1626),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.08)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${team['name'] ?? ''}',
+                            style: const TextStyle(
+                                color: SportSphereColors.white,
+                                fontWeight: FontWeight.w800)),
+                        const SizedBox(height: 4),
+                        Text(
+                          [
+                            if ((team['country'] ?? '').toString().isNotEmpty)
+                              team['country'],
+                            if ((team['city'] ?? '').toString().isNotEmpty)
+                              team['city'],
+                            if ((team['venue'] ?? '').toString().isNotEmpty)
+                              'Stadium: ${team['venue']}',
+                          ].whereType<Object>().join(' · '),
+                          style: const TextStyle(
+                              color: SportSphereColors.muted, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 14),
+                Row(children: [
+                  Expanded(
+                      child: _AdminField(
+                          controller: firstName, label: 'First Name *')),
+                  const SizedBox(width: 10),
+                  Expanded(
+                      child: _AdminField(
+                          controller: lastName, label: 'Last Name *')),
+                ]),
+                _AdminField(controller: name, label: 'Full Name (display)'),
+                CountryPickerField(
+                    label: 'Nationality',
+                    value: nationality,
+                    onChanged: (v) => setL(() => nationality = v)),
+                Row(children: [
+                  Expanded(
+                      child: _AdminField(
+                          controller: shirt,
+                          label: 'Shirt #',
+                          keyboardType: TextInputType.number)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                      child: DropdownButtonFormField<String>(
+                    value: position,
+                    dropdownColor: SportSphereColors.surface,
+                    decoration: const InputDecoration(
+                        labelText: 'Position',
+                        labelStyle: TextStyle(color: SportSphereColors.muted)),
+                    items: [
+                      'Goalkeeper',
+                      'Defender',
+                      'Midfielder',
+                      'Forward',
+                      'Winger',
+                      'Striker'
+                    ]
+                        .map((p) => DropdownMenuItem(
+                            value: p,
+                            child: Text(p,
+                                style: const TextStyle(
+                                    color: SportSphereColors.white))))
+                        .toList(),
+                    onChanged: (v) =>
+                        setL(() => position = v ?? position),
+                  )),
+                ]),
+                Row(children: [
+                  Expanded(
+                      child: _AdminField(
+                          controller: height,
+                          label: 'Height (cm)',
+                          keyboardType: TextInputType.number)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                      child: _AdminField(
+                          controller: weight,
+                          label: 'Weight (kg)',
+                          keyboardType: TextInputType.number)),
+                ]),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                      dob == null
+                          ? 'Date of Birth (optional)'
+                          : 'DOB: $dob',
+                      style: TextStyle(
+                          color: dob == null
+                              ? SportSphereColors.muted
+                              : SportSphereColors.white,
+                          fontSize: 13)),
+                  trailing: const Icon(Icons.calendar_today_rounded,
+                      color: SportSphereColors.electricBlue, size: 18),
+                  onTap: () async {
+                    final d = await showDatePicker(
+                        context: c,
+                        initialDate: DateTime(1998, 1, 1),
+                        firstDate: DateTime(1950),
+                        lastDate: DateTime.now());
+                    if (d != null) {
+                      setL(() => dob =
+                          '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}');
+                    }
+                  },
+                ),
+                const SizedBox(height: 8),
+                _UploadButton(
+                    url: photoUrl,
+                    uploading: uploading,
+                    label: 'Upload Player Photo',
+                    onTap: () async {
+                      setL(() => uploading = true);
+                      final url =
+                          await _pickAndUpload(c, folder: 'players');
+                      setL(() {
+                        photoUrl = url;
+                        uploading = false;
+                      });
+                    }),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                        backgroundColor: SportSphereColors.electricBlue,
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 14)),
+                    onPressed: () async {
+                      if (teamId == null) {
+                        setL(() => teamError =
+                            'Select the player’s current club');
+                        return;
+                      }
+                      final fullName =
+                          '${firstName.text.trim()} ${lastName.text.trim()}'
+                              .trim();
+                      if (fullName.isEmpty && name.text.trim().isEmpty) {
+                        return;
+                      }
+                      try {
+                        await _repo.createPlayer(
+                          name: name.text.trim().isNotEmpty
+                              ? name.text.trim()
+                              : fullName,
+                          position: position,
+                          teamId: teamId,
+                          nationality: nationality,
+                          shirtNumber: int.tryParse(shirt.text.trim()),
+                        );
+                        if (c.mounted) Navigator.pop(c);
+                      } catch (e) {
+                        if (c.mounted) {
+                          ScaffoldMessenger.of(c).showSnackBar(
+                              SnackBar(content: Text('$e')));
+                        }
+                      }
+                    },
+                    child: const Text('Add Player',
+                        style: TextStyle(fontWeight: FontWeight.w800)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    ),
+  );
 }
 
-// ── Add Coach ──────────────────────────────────────────────────────────────────
 Future<void> _showCreateCoach(BuildContext ctx, List<Map<String,dynamic>> teams) {
   final name=TextEditingController(),
         firstName=TextEditingController(), lastName=TextEditingController();
