@@ -16,6 +16,26 @@ class ProfileLoader {
   static SupabaseClient get _sb => Supabase.instance.client;
 
   /// Live post count for a user id (does not rely on denormalized postCount).
+
+  static bool _isOwnProfile(Map<String, dynamic>? row) {
+    final auth = _sb.auth.currentUser;
+    if (auth == null) return false;
+    final rid = row?['id']?.toString();
+    if (rid != null && rid == auth.id) return true;
+    final email = (auth.email ?? '').toLowerCase();
+    if (email == 'sportsphere.app@sportsphere.com') {
+      final h = (row?['handle'] as String? ?? '').toLowerCase().replaceAll('@', '');
+      if (h == 'sportsphere' ||
+          h == 'sportsphere_official' ||
+          h == 'sportsphere_app') {
+        return true;
+      }
+      final role = (row?['role'] as String? ?? '').toLowerCase();
+      if (role == 'admin' || role == 'official') return true;
+    }
+    return false;
+  }
+
   static Future<int> _countPostsFor(String? uid) async {
     if (uid == null || uid.isEmpty) return 0;
     try {
