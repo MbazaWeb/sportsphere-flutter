@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../../presentation/edit_profile_sheet.dart';
+import '../../presentation/become_pro_sheet.dart';
 import '../../shared/profile_widgets.dart';
 import '../../../auth/presentation/auth_controller.dart';
 
@@ -357,6 +358,11 @@ class _ProfileHeader extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
             child: _EditProfileButton(),
           ),
+        if (profile.isOwnProfile)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+            child: _BecomeProButton(),
+          ),
         const SizedBox(height: 4),
       ],
     );
@@ -673,6 +679,36 @@ class _EditProfileButton extends ConsumerWidget {
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BecomeProButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => showBecomeProSheet(context),
+      child: Container(
+        width: double.infinity,
+        height: 38,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF009DFF), Color(0xFF7B4FFF)],
+          ),
+        ),
+        child: const Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.star_rounded, color: Colors.white, size: 16),
+              SizedBox(width: 6),
+              Text('Become PRO', style: TextStyle(
+                  color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800)),
+            ],
           ),
         ),
       ),

@@ -24,21 +24,56 @@ const _disappearOptions = [
   (label: '7 days', icon: Icons.calendar_today_outlined),
 ];
 
-// ── Mock tag suggestions ───────────────────────────────────────────────────────
-const _tagSuggestions = [
-  (name: 'Simba SC', handle: '@simbasc', icon: Icons.groups_rounded),
-  (name: 'Young Africans', handle: '@yanga', icon: Icons.groups_rounded),
-  (name: 'Clatous Chama', handle: '@chama', icon: Icons.person_rounded),
-  (name: 'Ali Kingu', handle: '@alikingu', icon: Icons.analytics_rounded),
-  (name: 'TFF', handle: '@tff_tz', icon: Icons.emoji_events_rounded),
-];
+// ── Live tag suggestions from Supabase ────────────────────────────────────────
+typedef _TagSuggestion = ({String name, String handle, IconData icon});
 
-// ── Mock location suggestions ──────────────────────────────────────────────────
-const _locationSuggestions = [
+Future<List<_TagSuggestion>> _fetchTagSuggestions(String query) async {
+  final sb = Supabase.instance.client;
+  final results = <_TagSuggestion>[];
+  try {
+    final q = query.trim().toLowerCase();
+    final teamQ = q.isEmpty
+        ? sb.from('Team').select('name,handle').limit(4)
+        : sb.from('Team').select('name,handle').ilike('name', '%$q%').limit(4);
+    final teams = await teamQ;
+    for (final t in teams as List) {
+      final handle = (t['handle'] as String?) ?? '';
+      if (handle.isEmpty) continue;
+      results.add((
+        name: (t['name'] as String?) ?? handle,
+        handle: handle.startsWith('@') ? handle : '@$handle',
+        icon: Icons.groups_rounded,
+      ));
+    }
+    final userQ = q.isEmpty
+        ? sb.from('profiles').select('first_name,last_name,handle,role').limit(4)
+        : sb.from('profiles').select('first_name,last_name,handle,role')
+            .or('handle.ilike.%$q%,first_name.ilike.%$q%').limit(4);
+    final users = await userQ;
+    for (final u in users as List) {
+      final handle = (u['handle'] as String?) ?? '';
+      if (handle.isEmpty) continue;
+      final role = (u['role'] as String?) ?? 'fan';
+      final icon = role == 'player' ? Icons.sports_soccer_rounded
+          : role == 'coach' ? Icons.sports_rounded
+          : role == 'analyst' ? Icons.analytics_rounded
+          : Icons.person_rounded;
+      final name = '${u['first_name'] ?? ''} ${u['last_name'] ?? ''}'.trim();
+      results.add((
+        name: name.isNotEmpty ? name : handle,
+        handle: handle.startsWith('@') ? handle : '@$handle',
+        icon: icon,
+      ));
+    }
+  } catch (_) {}
+  return results;
+}
+
+// ── Live location suggestions ─────────────────────────────────────────────────
+const _defaultLocations = [
   'Dar es Salaam, Tanzania',
   'National Stadium, DSM',
   'Benjamin Mkapa Stadium',
-  'Mkapa Stadium, DSM',
   'Amaan Stadium, Zanzibar',
   'Nairobi, Kenya',
   'Kampala, Uganda',
@@ -46,6 +81,28 @@ const _locationSuggestions = [
   'Johannesburg, South Africa',
   'Lagos, Nigeria',
 ];
+
+Future<List<String>> _fetchLocationSuggestions(String query) async {
+  final sb = Supabase.instance.client;
+  try {
+    final q = query.trim();
+    final rows = q.isEmpty
+        ? await sb.from('Venue').select('name,city').limit(8)
+        : await sb.from('Venue').select('name,city').ilike('name', '%$q%').limit(8);
+    final venues = (rows as List).map((r) {
+      final name = (r['name'] as String?) ?? '';
+      final city = (r['city'] as String?) ?? '';
+      return city.isNotEmpty ? '$name, $city' : name;
+    }).where((s) => s.isNotEmpty).toList();
+    if (venues.isNotEmpty) return venues;
+  } catch (_) {}
+  if (query.isEmpty) return _defaultLocations;
+  return _defaultLocations
+      .where((l) => l.toLowerCase().contains(query.toLowerCase()))
+      .toList();
+}
+
+
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ENTRY WIDGET  (replaces old stub, lives in IndexedStack at index 2)
@@ -2312,7 +2369,7 @@ class _StepBtn extends StatelessWidget {
 // LOCATION PANEL
 // ══════════════════════════════════════════════════════════════════════════════
 
-class _LocationPanel extends StatelessWidget {
+class _LocationPanel extends StatefulWidget {
   final String? selected;
   final ValueChanged<String> onSelect;
   final VoidCallback onClear;
@@ -2321,6 +2378,22 @@ class _LocationPanel extends StatelessWidget {
     required this.onSelect,
     required this.onClear,
   });
+  @override
+  State<_LocationPanel> createState() => _LocationPanelState();
+}
+
+class _LocationPanelState extends State<_LocationPanel> {
+  List<String> _suggestions = _defaultLocations;
+  bool _loading = false;
+
+  @override
+  void initState() { super.initState(); _load(''); }
+
+  Future<void> _load(String q) async {
+    if (mounted) setState(() => _loading = true);
+    final r = await _fetchLocationSuggestions(q);
+    if (mounted) setState(() { _suggestions = r; _loading = false; });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2328,39 +2401,50 @@ class _LocationPanel extends StatelessWidget {
       label: 'LOCATION',
       color: SportSphereColors.sportOrange,
       icon: Icons.location_on_rounded,
-      child: Column(
-        children: _locationSuggestions.map((l) {
-          final active = selected == l;
+      child: _loading
+          ? const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Center(child: CircularProgressIndicator(
+                  color: SportSphereColors.sportOrange, strokeWidth: 2)),
+            )
+          : Column(
+        children: _suggestions.map((l) {
+          final active = widget.selected == l;
           return GestureDetector(
-            onTap: () => onSelect(l),
+            onTap: () => widget.onSelect(l),
             child: Container(
               margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 11,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 color: active
-                    ? SportSphereColors.sportOrange
-                        .withValues(alpha: 0.12)
+                    ? SportSphereColors.sportOrange.withValues(alpha: 0.12)
                     : SportSphereColors.white.withValues(alpha: 0.04),
                 border: Border.all(
                   color: active
-                      ? SportSphereColors.sportOrange
-                          .withValues(alpha: 0.4)
+                      ? SportSphereColors.sportOrange.withValues(alpha: 0.4)
                       : SportSphereColors.white.withValues(alpha: 0.07),
                 ),
               ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.place_rounded,
-                    color: active
-                        ? SportSphereColors.sportOrange
-                        : SportSphereColors.muted,
-                    size: 18,
-                  ),
+              child: Row(children: [
+                Icon(Icons.place_rounded,
+                    color: active ? SportSphereColors.sportOrange : SportSphereColors.muted,
+                    size: 18),
+                const SizedBox(width: 10),
+                Expanded(child: Text(l, style: TextStyle(
+                    color: active ? SportSphereColors.white : SportSphereColors.muted,
+                    fontSize: 13,
+                    fontWeight: active ? FontWeight.w600 : FontWeight.w400))),
+                if (active)
+                  Icon(Icons.check_rounded, color: SportSphereColors.sportOrange, size: 18),
+              ]),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -2379,18 +2463,6 @@ class _LocationPanel extends StatelessWidget {
                   if (active)
                     Icon(
                       Icons.check_rounded,
-                      color: SportSphereColors.sportOrange,
-                      size: 18,
-                    ),
-                ],
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // DISAPPEARING PANEL
