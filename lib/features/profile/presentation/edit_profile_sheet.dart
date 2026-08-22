@@ -197,7 +197,7 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
             const SizedBox(height: 16),
             const GrassFormHeader(
               title: 'Edit profile',
-              subtitle: 'Update your details on the SportSphere pitch',
+              subtitle: 'Update your profile on Playify',
               icon: Icons.person_rounded,
             ),
             const SizedBox(height: 14),
@@ -210,7 +210,12 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
                     backgroundColor: const Color(0xFF102033),
                     backgroundImage: _avatarUrl != null ? NetworkImage(_avatarUrl!) : null,
                     child: _avatarUrl == null
-                        ? const Icon(Icons.camera_alt_outlined, color: Colors.white70)
+                        ? ClipOval(child: Image.asset(
+                            'assets/images/Playify_logo.png',
+                            width: 68, height: 68, fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Icon(
+                                Icons.camera_alt_outlined, color: Colors.white70),
+                          ))
                         : null,
                   ),
                 ),
@@ -269,29 +274,32 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
               ],
             ),
             const SizedBox(height: 14),
-            GrassTextField(
-              controller: _first,
-              label: 'First name *',
-              validator: (v) => FormValidators.required(v, field: 'First name'),
-            ),
-            GrassTextField(
-              controller: _last,
-              label: 'Last name *',
-              validator: (v) => FormValidators.required(v, field: 'Last name'),
-            ),
-            GrassTextField(
-              controller: _handle,
-              label: 'Handle *',
-              validator: FormValidators.handle,
-            ),
-            CountryPickerField(
-              label: 'Country *',
-              value: _selectedCountryName,
-              onChanged: (v) => setState(() {
-                _selectedCountryName = v;
-                _country.text = v;
-              }),
-            ),
+            // Admin: lock name and handle fields
+            if (widget.user.email != 'sportsphere.app@sportsphere.com') ...[
+              GrassTextField(
+                controller: _first,
+                label: 'First name *',
+                validator: (v) => FormValidators.required(v, field: 'First name'),
+              ),
+              GrassTextField(
+                controller: _last,
+                label: 'Last name *',
+                validator: (v) => FormValidators.required(v, field: 'Last name'),
+              ),
+              GrassTextField(
+                controller: _handle,
+                label: 'Handle *',
+                validator: FormValidators.handle,
+              ),
+              CountryPickerField(
+                label: 'Country *',
+                value: _selectedCountryName,
+                onChanged: (v) => setState(() {
+                  _selectedCountryName = v;
+                  _country.text = v;
+                }),
+              ),
+            ],
             GrassTextField(
               controller: _bio,
               label: 'Bio',
