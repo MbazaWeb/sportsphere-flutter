@@ -1376,7 +1376,6 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
   }
 
   Future<void> _onShare() async {
-    if (_requireLogin()) return;
     final id = widget.item.postId;
     if (id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1410,7 +1409,6 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
   }
 
   Future<void> _onLike() async {
-    if (_requireLogin()) return;
     final next = !_liked;
     setState(() {
       _liked = next;
