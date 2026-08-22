@@ -34,6 +34,7 @@ class _ProfileScreen extends ConsumerWidget {
       followerCount: user.followerCount,
       followingCount: user.followingCount,
       avatarAsset: user.avatarUrl,
+      coverAsset: user.coverUrl,
       isVerified: true,           // always verified for admin
       isOwnProfile: true,
     );

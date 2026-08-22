@@ -75,6 +75,26 @@ class AuthRepository {
         .eq('id', userId)
         .single();
 
+    // Read live counts from the real tables instead of stale cached columns
+    int postCount = 0;
+    int followerCount = 0;
+    int followingCount = 0;
+    try {
+      final counts = await Future.wait([
+        _supabase.from('Post').select('id').eq('authorId', userId).then((r) => (r as List).length),
+        _supabase.from('Follow').select('id').eq('followingId', userId).then((r) => (r as List).length),
+        _supabase.from('Follow').select('id').eq('followerId', userId).then((r) => (r as List).length),
+      ]);
+      postCount = counts[0];
+      followerCount = counts[1];
+      followingCount = counts[2];
+    } catch (_) {
+      // Fall back to cached values if live query fails
+      postCount = response['post_count'] ?? 0;
+      followerCount = response['follower_count'] ?? 0;
+      followingCount = response['following_count'] ?? 0;
+    }
+
     return UserProfile(
       firstName: response['first_name'] ?? '',
       lastName: response['last_name'] ?? '',
@@ -90,9 +110,9 @@ class AuthRepository {
       themeColor: response['theme_color'] ?? '#168CFF',
       bio: response['bio'] ?? '',
       createdAt: DateTime.tryParse(response['created_at']),
-      postCount: response['post_count'] ?? 0,
-      followerCount: response['follower_count'] ?? 0,
-      followingCount: response['following_count'] ?? 0,
+      postCount: postCount,
+      followerCount: followerCount,
+      followingCount: followingCount,
     );
   }
 
