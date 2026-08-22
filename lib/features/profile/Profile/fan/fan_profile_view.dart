@@ -3,9 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../../presentation/edit_profile_sheet.dart';
+import '../../shared/profile_widgets.dart';
 import '../../../auth/presentation/auth_controller.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -644,9 +646,13 @@ class _EditProfileButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authControllerProvider).user;
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
         if (user != null) {
-          showEditProfileSheet(context, user);
+          await showEditProfileSheet(context, user);
+          // Refresh profile from DB so avatar/cover/bio/counts update immediately
+          if (context.mounted) {
+            await ref.read(authControllerProvider.notifier).refreshProfile();
+          }
         }
       },
       child: Container(
@@ -737,45 +743,139 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
 // SPOTLIGHTS FEED TAB
 // ══════════════════════════════════════════════════════════════════════════════
 
-class _SportlightsFeed extends StatelessWidget {
+class _SportlightsFeed extends StatefulWidget {
   final FanProfileModel profile;
   const _SportlightsFeed({required this.profile});
+  @override
+  State<_SportlightsFeed> createState() => _SportlightsFeedState();
+}
+
+class _SportlightsFeedState extends State<_SportlightsFeed> {
+  List<Map<String, dynamic>> _posts = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPosts();
+  }
+
+  Future<void> _fetchPosts() async {
+    setState(() => _loading = true);
+    try {
+      // Find the user's id from profiles by handle
+      final profileRow = await Supabase.instance.client
+          .from('profiles')
+          .select('id')
+          .eq('handle', widget.profile.handle)
+          .maybeSingle();
+
+      if (profileRow == null) {
+        if (mounted) setState(() => _loading = false);
+        return;
+      }
+
+      final uid = profileRow['id'].toString();
+      final rows = await Supabase.instance.client
+          .from('Post')
+          .select()
+          .eq('authorId', uid)
+          .order('createdAt', ascending: false)
+          .limit(30);
+
+      if (mounted) {
+        setState(() {
+          _posts = List<Map<String, dynamic>>.from(rows as List);
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.bolt_rounded,
-              size: 48,
-              color: profile.fanOfAccent.withOpacity(0.35),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'No posts yet',
-              style: TextStyle(
-                color: SportSphereColors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Posts from ${profile.displayName} will appear here.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: SportSphereColors.muted,
-                fontSize: 14,
-              ),
-            ),
-          ],
+    if (_loading) {
+      return const Center(
+        child: CircularProgressIndicator(
+            color: SportSphereColors.electricBlue, strokeWidth: 2),
+      );
+    }
+
+    if (_posts.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.bolt_rounded, size: 48,
+                  color: widget.profile.fanOfAccent.withValues(alpha: 0.35)),
+              const SizedBox(height: 16),
+              const Text('No posts yet',
+                  style: TextStyle(color: SportSphereColors.white,
+                      fontSize: 18, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              Text('Posts from ${widget.profile.displayName} will appear here.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      color: SportSphereColors.muted, fontSize: 14)),
+            ],
+          ),
         ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _fetchPosts,
+      color: SportSphereColors.electricBlue,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(0, 8, 0, 120),
+        itemCount: _posts.length,
+        itemBuilder: (_, i) {
+          final p = _posts[i];
+          final content = (p['content'] as String?) ?? '';
+          final type = (p['postType'] as String?) ?? 'text';
+          final likes = (p['likeCount'] as int?) ?? 0;
+          final comments = (p['commentCount'] as int?) ?? 0;
+          final createdAt = DateTime.tryParse(p['createdAt'] ?? '');
+          final timeAgo = createdAt != null
+              ? _formatAgo(createdAt)
+              : '';
+          final mediaUrls = (p['mediaUrls'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ?? [];
+
+          return ProfilePostCard(
+            post: ProfilePost(
+              text: content,
+              hashtags: const [],
+              timeAgo: timeAgo,
+              likes: likes,
+              comments: comments,
+              shares: (p['shareCount'] as int?) ?? 0,
+              hasImage: mediaUrls.isNotEmpty || type == 'media',
+              imageCount: mediaUrls.length,
+            ),
+            authorName: widget.profile.displayName,
+            authorHandle: widget.profile.atHandle,
+            authorAvatarAsset: widget.profile.avatarAsset,
+            isVerified: widget.profile.isVerified,
+            accentColor: widget.profile.fanOfAccent,
+          );
+        },
       ),
     );
+  }
+
+  String _formatAgo(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
+    if (diff.inHours < 24) return '${diff.inHours}h';
+    if (diff.inDays < 7) return '${diff.inDays}d';
+    return '${(diff.inDays / 7).floor()}w';
   }
 }
 
