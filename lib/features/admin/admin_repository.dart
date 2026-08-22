@@ -265,21 +265,43 @@ class AdminRepository {
 
   // ── Stats counts ───────────────────────────────────────────────────────────
 
+  Future<int> _safeCount(String table, {String? role}) async {
+    try {
+      var q = _sb.from(table).select('id');
+      if (role != null) {
+        final rows = await q.ilike('role', role);
+        return (rows as List).length;
+      }
+      final rows = await q;
+      return (rows as List).length;
+    } catch (e) {
+      debugPrint('count $table: $e');
+      return 0;
+    }
+  }
+
   Future<Map<String, int>> platformStats() async {
-    final results = await Future.wait([
-      _sb.from('User').select('id').then((r) => (r as List).length),
-      _sb.from('Post').select('id').then((r) => (r as List).length),
-      _sb.from('Match').select('id').then((r) => (r as List).length),
-      _sb.from('Team').select('id').then((r) => (r as List).length),
-      _sb.from('NewsItem').select('id').then((r) => (r as List).length),
-      _sb.from('Player').select('id').then((r) => (r as List).length),
-      _sb.from('Coach').select('id').then((r) => (r as List).length),
-      _sb.from('League').select('id').then((r) => (r as List).length),
-    ]);
+    // Count each table independently so one missing table does not zero the rest.
+    final usersProfiles = await _safeCount('profiles');
+    final usersLegacy = await _safeCount('User');
+    final posts = await _safeCount('Post');
+    final matches = await _safeCount('Match');
+    final teams = await _safeCount('Team');
+    final news = await _safeCount('NewsItem');
+    final players = await _safeCount('Player');
+    final coaches = await _safeCount('Coach');
+    final competitions = await _safeCount('League');
+    // Prefer profiles count when present (matches Users tab).
+    final users = usersProfiles > 0 ? usersProfiles : usersLegacy;
     return {
-      'users': results[0], 'posts': results[1], 'matches': results[2],
-      'teams': results[3], 'news': results[4], 'players': results[5],
-      'coaches': results[6], 'competitions': results[7],
+      'users': users,
+      'posts': posts,
+      'matches': matches,
+      'teams': teams,
+      'news': news,
+      'players': players,
+      'coaches': coaches,
+      'competitions': competitions,
     };
   }
 }

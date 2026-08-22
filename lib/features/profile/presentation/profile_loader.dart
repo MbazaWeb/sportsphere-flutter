@@ -15,6 +15,23 @@ class ProfileLoader {
 
   static SupabaseClient get _sb => Supabase.instance.client;
 
+  /// Live post count for a user id (does not rely on denormalized postCount).
+  static Future<int> _countPostsFor(String? uid) async {
+    if (uid == null || uid.isEmpty) return 0;
+    try {
+      final rows = await _sb.from('Post').select('id').eq('userId', uid);
+      return (rows as List).length;
+    } catch (_) {
+      try {
+        final rows = await _sb.from('Post').select('id').eq('user_id', uid);
+        return (rows as List).length;
+      } catch (_) {
+        return 0;
+      }
+    }
+  }
+
+
   static Future<FanProfileModel> loadFanProfile(String handle) async {
     final key = handle.replaceAll('@', '').trim().toLowerCase();
     Map<String, dynamic>? row;
@@ -32,6 +49,15 @@ class ProfileLoader {
         role == 'admin' ||
         role == 'official';
 
+    final rowId = row?['id']?.toString();
+    final authId = _sb.auth.currentUser?.id;
+    // Count posts against both profile/User id and auth uid (admin posts use auth uid).
+    var livePosts = await _countPostsFor(rowId);
+    if (authId != null && authId != rowId) {
+      final authPosts = await _countPostsFor(authId);
+      if (authPosts > livePosts) livePosts = authPosts;
+    }
+
     // Admin / Official special treatment
     if (isOfficial) {
       return FanProfileModel(
@@ -46,7 +72,7 @@ class ProfileLoader {
         location: '', // no country shown
         joinedDate: DateTime.tryParse((row?['created_at'] as String?) ?? '') ??
             DateTime(2024, 1, 1),
-        postCount: (row?['postCount'] as int?) ?? 0,
+        postCount: livePosts,
         followerCount: (row?['followerCount'] as int?) ?? 0,
         followingCount: (row?['followingCount'] as int?) ?? 0,
         avatarAsset:
@@ -54,8 +80,7 @@ class ProfileLoader {
         coverAsset:
             (row?['cover_url'] as String?) ?? (row?['coverUrl'] as String?),
         isVerified: true, // always gold tick
-        isOwnProfile: _sb.auth.currentUser?.id != null &&
-            row?['id']?.toString() == _sb.auth.currentUser?.id,
+        isOwnProfile: _isOwnProfile(row),
       );
     }
 
@@ -99,7 +124,7 @@ class ProfileLoader {
       location: (row?['country'] as String?) ?? '',
       joinedDate: DateTime.tryParse((row?['created_at'] as String?) ?? '') ??
           DateTime.now(),
-      postCount: (row?['postCount'] as int?) ?? 0,
+      postCount: livePosts,
       followerCount: (row?['followerCount'] as int?) ?? 0,
       followingCount: (row?['followingCount'] as int?) ?? 0,
       avatarAsset:
@@ -108,8 +133,7 @@ class ProfileLoader {
           (row?['cover_url'] as String?) ?? (row?['coverUrl'] as String?),
       isVerified: (row?['is_verified'] as bool?) == true ||
           (row?['isVerified'] as bool?) == true,
-      isOwnProfile: _sb.auth.currentUser?.id != null &&
-          row?['id']?.toString() == _sb.auth.currentUser?.id,
+      isOwnProfile: _isOwnProfile(row),
     );
   }
 

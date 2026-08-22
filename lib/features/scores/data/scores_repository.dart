@@ -257,7 +257,7 @@ class ScoresRepository {
           ? awayLogo
           : NbcClubBadges.forName(away),
       leagueName: league,
-      leagueLogo: NbcClubBadges.ligiKuuBara,
+      leagueLogo: '',
       score: score,
       status: status,
       startTime: kick,

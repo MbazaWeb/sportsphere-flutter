@@ -763,52 +763,87 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
   Future<void> _fetchPosts() async {
     setState(() => _loading = true);
     try {
-      // Post.userId is text referencing User.id (text).
-      // User.handle matches the profile handle.
-      final userRow = await Supabase.instance.client
-          .from('User')
-          .select('id')
-          .eq('handle', widget.profile.handle)
-          .maybeSingle();
+      final handle = widget.profile.handle.replaceAll('@', '').trim();
+      final ids = <String>{};
 
-      if (userRow == null) {
-        // Try profiles table as fallback (uuid — cast to text for Post query)
+      // Resolve every possible author id for this handle
+      try {
+        final userRow = await Supabase.instance.client
+            .from('User')
+            .select('id')
+            .eq('handle', handle)
+            .maybeSingle();
+        final id = userRow?['id']?.toString();
+        if (id != null && id.isNotEmpty) ids.add(id);
+      } catch (_) {}
+
+      try {
         final profileRow = await Supabase.instance.client
             .from('profiles')
             .select('id')
-            .eq('handle', widget.profile.handle)
+            .eq('handle', handle)
             .maybeSingle();
+        final id = profileRow?['id']?.toString();
+        if (id != null && id.isNotEmpty) ids.add(id);
+      } catch (_) {}
 
-        if (profileRow == null) {
-          if (mounted) setState(() => _loading = false);
-          return;
-        }
-        // profiles.id is uuid; Post.userId is text — cast it
-        final uid = profileRow['id'].toString();
-        final rows = await Supabase.instance.client
-            .from('Post')
-            .select()
-            .eq('userId', uid)
-            .order('createdAt', ascending: false)
-            .limit(30);
-        if (mounted) setState(() {
-          _posts = List<Map<String, dynamic>>.from(rows as List);
-          _loading = false;
-        });
+      // Own profile: also include auth uid (createPost uses auth.currentUser.id)
+      if (widget.profile.isOwnProfile) {
+        final authId = Supabase.instance.client.auth.currentUser?.id;
+        if (authId != null) ids.add(authId);
+      }
+
+      // Official SportSphere account: try known handles + current admin session
+      final h = handle.toLowerCase();
+      if (h == 'sportsphere' ||
+          h == 'sportsphere_official' ||
+          h == 'sportsphere_app') {
+        final authId = Supabase.instance.client.auth.currentUser?.id;
+        if (authId != null) ids.add(authId);
+      }
+
+      if (ids.isEmpty) {
+        if (mounted) setState(() => _loading = false);
         return;
       }
 
-      final uid = userRow['id'].toString();
-      final rows = await Supabase.instance.client
-          .from('Post')
-          .select()
-          .eq('userId', uid)
-          .order('createdAt', ascending: false)
-          .limit(30);
+      // Fetch posts for any matching author id
+      final idList = ids.toList();
+      List rows;
+      try {
+        rows = await Supabase.instance.client
+            .from('Post')
+            .select()
+            .inFilter('userId', idList)
+            .order('createdAt', ascending: false)
+            .limit(40) as List;
+      } catch (e) {
+        debugPrint('[SportlightsFeed] inFilter userId failed: $e');
+        // Fallback: sequential queries
+        final collected = <Map<String, dynamic>>[];
+        for (final id in idList) {
+          try {
+            final part = await Supabase.instance.client
+                .from('Post')
+                .select()
+                .eq('userId', id)
+                .order('createdAt', ascending: false)
+                .limit(40);
+            collected.addAll(List<Map<String, dynamic>>.from(part as List));
+          } catch (_) {}
+        }
+        // Dedupe by id
+        final seen = <String>{};
+        rows = [];
+        for (final r in collected) {
+          final pid = r['id']?.toString() ?? '';
+          if (seen.add(pid)) rows.add(r);
+        }
+      }
 
       if (mounted) {
         setState(() {
-          _posts = List<Map<String, dynamic>>.from(rows as List);
+          _posts = List<Map<String, dynamic>>.from(rows);
           _loading = false;
         });
       }
