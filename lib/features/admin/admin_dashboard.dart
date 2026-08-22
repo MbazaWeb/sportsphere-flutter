@@ -860,7 +860,7 @@ Future<void> _showNewsCompose(BuildContext ctx) {
           onPressed:uploading?null:() async {
             setL(()=>uploading=true);
             final url=await _pickAndUpload(c, folder:'news');
-            if(url!=null) setL((){images.add(url);uploading=false;})
+            if(url!=null) setL((){images.add(url);uploading=false;});
             else setL(()=>uploading=false);
           }),
         const SizedBox(height:16),
@@ -923,7 +923,7 @@ Future<void> _showCreatePost(BuildContext ctx) {
           onPressed:uploading?null:() async {
             setL(()=>uploading=true);
             final url=await _pickAndUpload(c, folder:'posts');
-            if(url!=null) { setL((){mediaUrls.add(url);uploading=false;postType='media';}) }
+            if(url!=null) { setL((){mediaUrls.add(url);uploading=false;postType='media';}); }
             else setL(()=>uploading=false);
           }),
         const SizedBox(height:16),
