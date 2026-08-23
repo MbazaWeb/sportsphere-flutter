@@ -5,6 +5,7 @@
 /// as an authentication/session failure. Only Supabase Auth itself can
 /// establish that authentication is invalid.
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException, AuthException;
 
 String friendlyError(Object? error, {String fallback = 'Something went wrong. Please try again.'}) {
@@ -21,7 +22,8 @@ String friendlyError(Object? error, {String fallback = 'Something went wrong. Pl
   // These must NEVER say "session expired" — they are DATA errors.
   // ═══════════════════════════════════════════════════════════════════════
   if (error is PostgrestException) {
-    final status = error.statusCode;
+    // postgrest 2.x: code is a String (e.g. '401', 'PGRST116'), no statusCode getter.
+    final status = int.tryParse(error.code) ?? -1;
     final code = error.code;
     final msg = (error.message ?? '').toLowerCase();
 
@@ -209,5 +211,3 @@ void debugPrintFriendly(String tag, Object error, int? status, String? code) {
   }());
 }
 
-// Re-export for convenience
-import 'package:flutter/foundation.dart' show debugPrint;
