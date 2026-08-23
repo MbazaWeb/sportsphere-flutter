@@ -12,7 +12,7 @@ import '../../presentation/edit_profile_sheet.dart';
 import '../../presentation/become_pro_sheet.dart';
 import '../../shared/profile_widgets.dart';
 import '../../../auth/presentation/auth_controller.dart';
-
+import '../../../home/widgets/sportlights_tab.dart';
 // ══════════════════════════════════════════════════════════════════════════════
 // MODEL
 // ══════════════════════════════════════════════════════════════════════════════
@@ -867,14 +867,11 @@ class _SportlightsFeed extends StatefulWidget {
 }
 
 class _SportlightsFeedState extends State<_SportlightsFeed> {
-  List<Map<String, dynamic>> _posts = [];
+  List<SpotlightItem> _items = [];
   bool _loading = true;
 
   @override
-  void initState() {
-    super.initState();
-    _fetchPosts();
-  }
+  void initState() { super.initState(); _fetchPosts(); }
 
   Future<void> _fetchPosts() async {
     setState(() => _loading = true);
@@ -882,45 +879,26 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
       final handle = widget.profile.handle.replaceAll('@', '').trim();
       final ids = <String>{};
 
-      // Resolve every possible author id for this handle.
-      //
-      // For the official Playify account (#4.4) we additionally gather the
-      // user ids behind ALL legacy handles in `kOfficialLegacyHandles` —
-      // posts were reassigned to the canonical uid by migration
-      // 20260824010000_fix_all_remaining_db_issues.sql, but legacy rows in
-      // `User` may still exist on stale environments, and viewing e.g.
-      // @sportsphere_official should still show the unified feed.
-      final isOfficialView = isOfficialHandle(handle);
-      final handlesToLookup = <String>{handle};
-      if (isOfficialView) {
-        handlesToLookup.addAll(kOfficialLegacyHandles);
-      }
+      // Resolve user id from User table by handle
+      try {
+        final rows = await Supabase.instance.client
+            .from('User').select('id').ilike('handle', handle);
+        for (final r in rows as List) {
+          final id = (r as Map)['id']?.toString();
+          if (id != null) ids.add(id);
+        }
+      } catch (_) {}
+      try {
+        final rows = await Supabase.instance.client
+            .from('profiles').select('id').ilike('handle', handle);
+        for (final r in rows as List) {
+          final id = (r as Map)['id']?.toString();
+          if (id != null) ids.add(id);
+        }
+      } catch (_) {}
 
-      for (final h in handlesToLookup) {
-        try {
-          final userRows = await Supabase.instance.client
-              .from('User')
-              .select('id')
-              .ilike('handle', h);
-          for (final r in userRows as List) {
-            final id = (r as Map)['id']?.toString();
-            if (id != null && id.isNotEmpty) ids.add(id);
-          }
-        } catch (_) {}
-        try {
-          final profileRows = await Supabase.instance.client
-              .from('profiles')
-              .select('id')
-              .ilike('handle', h);
-          for (final r in profileRows as List) {
-            final id = (r as Map)['id']?.toString();
-            if (id != null && id.isNotEmpty) ids.add(id);
-          }
-        } catch (_) {}
-      }
-
-      // Own profile: also include auth uid (createPost uses auth.currentUser.id)
-      if (widget.profile.isOwnProfile || isOfficialView) {
+      // Always include auth uid for own profile
+      if (widget.profile.isOwnProfile) {
         final authId = Supabase.instance.client.auth.currentUser?.id;
         if (authId != null) ids.add(authId);
       }
@@ -930,48 +908,141 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
         return;
       }
 
-      // Fetch posts for any matching author id
       final idList = ids.toList();
       List rows;
       try {
         rows = await Supabase.instance.client
-            .from('Post')
-            .select()
+            .from('Post').select()
             .inFilter('userId', idList)
             .order('createdAt', ascending: false)
             .limit(40) as List;
-      } catch (e) {
-        debugPrint('[SportlightsFeed] inFilter userId failed: $e');
-        // Fallback: sequential queries
-        final collected = <Map<String, dynamic>>[];
+      } catch (_) {
+        rows = [];
         for (final id in idList) {
           try {
             final part = await Supabase.instance.client
-                .from('Post')
-                .select()
-                .eq('userId', id)
-                .order('createdAt', ascending: false)
-                .limit(40);
-            collected.addAll(List<Map<String, dynamic>>.from(part as List));
+                .from('Post').select().eq('userId', id)
+                .order('createdAt', ascending: false).limit(40);
+            rows.addAll(List<Map<String,dynamic>>.from(part as List));
           } catch (_) {}
         }
-        // Dedupe by id
         final seen = <String>{};
-        rows = [];
-        for (final r in collected) {
-          final pid = r['id']?.toString() ?? '';
-          if (seen.add(pid)) rows.add(r);
+        final deduped = <Map<String,dynamic>>[];
+        for (final r in rows) {
+          final pid = (r as Map)['id']?.toString() ?? '';
+          if (seen.add(pid)) deduped.add(Map<String,dynamic>.from(r));
         }
+        rows = deduped;
       }
 
-      if (mounted) {
-        setState(() {
-          _posts = List<Map<String, dynamic>>.from(rows);
-          _loading = false;
-        });
+      // Build SpotlightItems — reuse the same model as the home feed
+      final items = <SpotlightItem>[];
+      for (final raw in rows) {
+        final r = Map<String,dynamic>.from(raw as Map);
+        final postType = (r['postType'] as String?) ?? 'text';
+        final media = r['mediaUrls'] ?? r['media_urls'];
+        String? asset;
+        if (media is List && media.isNotEmpty) asset = media.first.toString();
+        else if (media is String && media.isNotEmpty) asset = media;
+
+        String? pollId;
+        List<String> pollOptions = [];
+        int? pollVotes, myVote;
+        Map<int,int> pollCounts = {};
+        String? predHome, predAway;
+        int? predHs, predAs;
+
+        if (postType == 'poll') {
+          try {
+            final poll = await Supabase.instance.client
+                .from('Poll').select().eq('postId', r['id']).maybeSingle();
+            if (poll != null) {
+              pollId = poll['id']?.toString();
+              final opts = poll['options'];
+              if (opts is List) pollOptions = opts.map((e) => e.toString()).toList();
+              pollVotes = poll['totalVotes'] as int?;
+              final me = Supabase.instance.client.auth.currentUser?.id;
+              if (me != null && pollId != null) {
+                final v = await Supabase.instance.client.from('PollVote')
+                    .select().eq('pollId', pollId).eq('userId', me).maybeSingle();
+                myVote = v?['optionIdx'] as int?;
+                final allVotes = await Supabase.instance.client
+                    .from('PollVote').select('optionIdx').eq('pollId', pollId);
+                for (final vr in allVotes as List) {
+                  final idx = (vr as Map)['optionIdx'] as int?;
+                  if (idx != null) pollCounts[idx] = (pollCounts[idx] ?? 0) + 1;
+                }
+              }
+            }
+          } catch (_) {}
+        }
+
+        if (postType == 'prediction') {
+          try {
+            final pred = await Supabase.instance.client
+                .from('Prediction').select().eq('postId', r['id']).maybeSingle();
+            if (pred != null) {
+              predHome = pred['homeTeam'] as String?;
+              predAway = pred['awayTeam'] as String?;
+              predHs = pred['predictedHome'] as int?;
+              predAs = pred['predictedAway'] as int?;
+            }
+          } catch (_) {}
+        }
+
+        // Determine SpotlightType
+        _SpotlightType type;
+        switch (postType) {
+          case 'poll': type = _SpotlightType.poll; break;
+          case 'prediction': type = _SpotlightType.prediction; break;
+          case 'video': type = _SpotlightType.video; break;
+          case 'media':
+            type = (asset != null && isVideoMediaUrl(asset))
+                ? _SpotlightType.video : _SpotlightType.official; break;
+          default: type = _SpotlightType.official;
+        }
+
+        final createdAt = r['createdAt'] ?? r['created_at'];
+        final dt = DateTime.tryParse(createdAt?.toString() ?? '')?.toLocal();
+        String age = '';
+        if (dt != null) {
+          final d = DateTime.now().difference(dt);
+          if (d.inMinutes < 1) age = 'now';
+          else if (d.inMinutes < 60) age = '${d.inMinutes}m';
+          else if (d.inHours < 24) age = '${d.inHours}h';
+          else if (d.inDays < 7) age = '${d.inDays}d';
+          else age = '${dt.day}/${dt.month}';
+        }
+
+        items.add(SpotlightItem(
+          type: type,
+          author: widget.profile.displayName,
+          role: widget.profile.role,
+          handle: widget.profile.handle,
+          postId: r['id']?.toString(),
+          age: age,
+          asset: asset,
+          likes: (r['likeCount'] as int?) ?? 0,
+          comments: (r['commentCount'] as int?) ?? 0,
+          shares: (r['shareCount'] as int?) ?? 0,
+          accent: widget.profile.fanOfAccent,
+          content: (r['content'] as String?) ?? '',
+          pollId: pollId,
+          pollOptions: pollOptions,
+          pollTotalVotes: pollVotes,
+          myPollVote: myVote,
+          pollCounts: pollCounts,
+          predHome: predHome,
+          predAway: predAway,
+          predHomeScore: predHs,
+          predAwayScore: predAs,
+          myPrediction: (predHs != null && predAs != null) ? '$predHs-$predAs' : null,
+        ));
       }
+
+      if (mounted) setState(() { _items = items; _loading = false; });
     } catch (e) {
-      debugPrint('[SportlightsFeed] fetchPosts error: $e');
+      debugPrint('[SportlightsFeed] error: $e');
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -979,34 +1050,25 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(
-        child: CircularProgressIndicator(
-            color: SportSphereColors.electricBlue, strokeWidth: 2),
-      );
+      return const Center(child: CircularProgressIndicator(
+          color: SportSphereColors.electricBlue, strokeWidth: 2));
     }
-
-    if (_posts.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(40),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.bolt_rounded, size: 48,
-                  color: widget.profile.fanOfAccent.withValues(alpha: 0.35)),
-              const SizedBox(height: 16),
-              const Text('No posts yet',
-                  style: TextStyle(color: SportSphereColors.white,
-                      fontSize: 18, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 8),
-              Text('Posts from ${widget.profile.displayName} will appear here.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      color: SportSphereColors.muted, fontSize: 14)),
-            ],
-          ),
-        ),
-      );
+    if (_items.isEmpty) {
+      return Center(child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(Icons.bolt_rounded, size: 48,
+              color: widget.profile.fanOfAccent.withValues(alpha: 0.35)),
+          const SizedBox(height: 16),
+          const Text('No posts yet',
+              style: TextStyle(color: SportSphereColors.white,
+                  fontSize: 18, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          Text('Posts from ${widget.profile.displayName} will appear here.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: SportSphereColors.muted, fontSize: 14)),
+        ]),
+      ));
     }
 
     return RefreshIndicator(
@@ -1014,165 +1076,16 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
       color: SportSphereColors.electricBlue,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(0, 8, 0, 120),
-        itemCount: _posts.length,
-        itemBuilder: (_, i) {
-          final p = _posts[i];
-          final content = (p['content'] as String?) ?? '';
-          final type = (p['postType'] as String?) ?? 'post';
-          final likes = (p['likeCount'] as int?) ?? 0;
-          final comments = (p['commentCount'] as int?) ?? 0;
-          final createdAt = DateTime.tryParse(p['createdAt'] ?? '');
-          final timeAgo = createdAt != null ? _formatAgo(createdAt) : '';
-          // mediaUrls is stored as jsonb array in Post table.
-          // (#2.1) We pass the FULL list of URLs through to ProfilePostCard
-          // instead of just `hasImage` / `imageCount` flags — the previous
-          // implementation dropped the URLs and ProfilePostCard could never
-          // actually render the user's media.
-          List<String> mediaUrls = [];
-          try {
-            final raw = p['mediaUrls'];
-            if (raw is List) {
-              mediaUrls = raw
-                  .map((e) => e.toString())
-                  .where((s) => s.isNotEmpty)
-                  .toList();
-            } else if (raw is String && raw.isNotEmpty) {
-              // Some legacy rows store a comma-separated string.
-              mediaUrls = raw
-                  .split(',')
-                  .map((s) => s.trim())
-                  .where((s) => s.isNotEmpty)
-                  .toList();
-            }
-          } catch (_) {}
-
-          // Older rows may carry a single `imageUrl` / `videoUrl` column
-          // instead of the array — fold those in.
-          try {
-            final singleImage = p['imageUrl']?.toString();
-            if (singleImage != null &&
-                singleImage.isNotEmpty &&
-                !mediaUrls.contains(singleImage)) {
-              mediaUrls.insert(0, singleImage);
-            }
-            final singleVideo = p['videoUrl']?.toString();
-            if (singleVideo != null &&
-                singleVideo.isNotEmpty &&
-                !mediaUrls.contains(singleVideo)) {
-              mediaUrls.add(singleVideo);
-            }
-          } catch (_) {}
-
-          // If row has no media URLs, force text-only (skip media section).
-          // If the post is explicitly typed 'video' or 'media' with URLs,
-          // surface that as a hint; otherwise leave null and let
-          // ProfilePost.effectiveMediaType infer from URL extensions.
-          final ProfileMediaType? mediaType;
-          if (mediaUrls.isEmpty) {
-            mediaType = ProfileMediaType.text;
-          } else if (type == 'video') {
-            mediaType = ProfileMediaType.video;
-          } else {
-            mediaType = null;
-          }
-
-          // Fetch poll data if needed
-          String? pollId;
-          List<String> pollOptions = [];
-          int? pollTotalVotes;
-          int? myPollVote;
-          Map<int, int> pollCounts = {};
-          if (type == 'poll') {
-            try {
-              final poll = await Supabase.instance.client
-                  .from('Poll').select().eq('postId', p['id']).maybeSingle();
-              if (poll != null) {
-                pollId = poll['id']?.toString();
-                final opts = poll['options'];
-                if (opts is List) pollOptions = opts.map((e) => e.toString()).toList();
-                pollTotalVotes = poll['totalVotes'] as int?;
-                final me = Supabase.instance.client.auth.currentUser?.id;
-                if (me != null && pollId != null) {
-                  final v = await Supabase.instance.client.from('PollVote')
-                      .select().eq('pollId', pollId).eq('userId', me).maybeSingle();
-                  myPollVote = v?['optionIdx'] as int?;
-                  // Get per-option counts
-                  final votes = await Supabase.instance.client.from('PollVote')
-                      .select('optionIdx').eq('pollId', pollId);
-                  for (final vr in votes as List) {
-                    final idx = vr['optionIdx'] as int?;
-                    if (idx != null) pollCounts[idx] = (pollCounts[idx] ?? 0) + 1;
-                  }
-                }
-              }
-            } catch (_) {}
-          }
-
-          // Fetch prediction data if needed
-          String? predHome, predAway, myPrediction;
-          int? predHomeScore, predAwayScore;
-          if (type == 'prediction') {
-            try {
-              final pred = await Supabase.instance.client
-                  .from('Prediction').select().eq('postId', p['id']).maybeSingle();
-              if (pred != null) {
-                predHome = pred['homeTeam'] as String?;
-                predAway = pred['awayTeam'] as String?;
-                predHomeScore = pred['predictedHome'] as int?;
-                predAwayScore = pred['predictedAway'] as int?;
-                if (predHomeScore != null && predAwayScore != null) {
-                  myPrediction = '$predHomeScore-$predAwayScore';
-                }
-              }
-            } catch (_) {}
-          }
-
-          return ProfilePostCard(
-            post: ProfilePost(
-              text: content,
-              hashtags: const [],
-              timeAgo: timeAgo,
-              likes: likes,
-              comments: comments,
-              shares: (p['shareCount'] as int?) ?? 0,
-              mediaUrls: mediaUrls,
-              mediaType: mediaType,
-              postType: type,
-              pollId: pollId,
-              pollOptions: pollOptions,
-              pollTotalVotes: pollTotalVotes,
-              myPollVote: myPollVote,
-              pollCounts: pollCounts,
-              predHome: predHome,
-              predAway: predAway,
-              predHomeScore: predHomeScore,
-              predAwayScore: predAwayScore,
-              myPrediction: myPrediction,
-            ),
-            authorName: widget.profile.displayName,
-            authorHandle: widget.profile.atHandle,
-            authorAvatarAsset: widget.profile.avatarAsset,
-            isVerified: widget.profile.isVerified,
-            accentColor: widget.profile.fanOfAccent,
-          );
-        },
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 120),
+        itemCount: _items.length,
+        itemBuilder: (_, i) => SpotlightCard(
+          item: _items[i],
+          isAdmin: widget.profile.isAdmin,
+        ),
       ),
     );
   }
-
-  String _formatAgo(DateTime dt) {
-    final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
-    if (diff.inHours < 24) return '${diff.inHours}h';
-    if (diff.inDays < 7) return '${diff.inDays}d';
-    return '${(diff.inDays / 7).floor()}w';
-  }
 }
-
-// ══════════════════════════════════════════════════════════════════════════════
-// ABOUT TAB
-// ══════════════════════════════════════════════════════════════════════════════
 
 class _AboutTab extends StatelessWidget {
   final FanProfileModel profile;

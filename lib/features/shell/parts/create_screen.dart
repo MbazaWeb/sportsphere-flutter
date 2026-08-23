@@ -1,4 +1,5 @@
 part of '../app_shell.dart';
+// ignore: unused_import
 
 // ══════════════════════════════════════════════════════════════════════════════
 // CREATE SCREEN  — full compose experience
@@ -133,8 +134,8 @@ class _CreateComposerState extends State<_CreateComposer>
   @override
   void initState() {
     super.initState();
-    _predHomeCtrl = TextEditingController(text: 'Simba SC');
-    _predAwayCtrl = TextEditingController(text: 'Young Africans');
+    _predHomeCtrl = TextEditingController();
+    _predAwayCtrl = TextEditingController();
     _submitCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
@@ -328,7 +329,7 @@ class _CreateComposerState extends State<_CreateComposer>
       setState(() => _posting = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Media: $e'), backgroundColor: const Color(0xFFE31B23)),
+          SnackBar(content: Text(friendlyError(e)), backgroundColor: const Color(0xFFE31B23)),
         );
       }
     }
@@ -420,10 +421,7 @@ class _CreateComposerState extends State<_CreateComposer>
       setState(() => _posting = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to post: $e'),
-            backgroundColor: const Color(0xFFE31B23),
-          ),
+          SnackBar(content: Text(friendlyError(e)), backgroundColor: const Color(0xFFE31B23)),
         );
       }
       return;

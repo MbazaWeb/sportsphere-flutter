@@ -107,7 +107,7 @@ const _commerceRoles = {
 // MODEL
 // ============================================================
 
-class _SpotlightItem {
+class SpotlightItem {
   final _SpotlightType type;
   final String author;
   final String role;
@@ -132,7 +132,7 @@ class _SpotlightItem {
   final int? predAwayScore;
   final String? myPrediction;  // "homeScore-awayScore" if current user already predicted
 
-  const _SpotlightItem({
+  const SpotlightItem({
     required this.type,
     required this.author,
     required this.role,
@@ -202,7 +202,7 @@ class _SpotlightItem {
 }
 
 // ============================================================
-final _feedItems = <_SpotlightItem>[];
+final _feedItems = <SpotlightItem>[];
 
 // ============================================================
 // MAIN WIDGET
@@ -250,7 +250,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
   bool _loading = true;
   String? _loadError;
   final ScrollController _scrollController = ScrollController();
-  List<_SpotlightItem> _live = const [];
+  List<SpotlightItem> _live = const [];
   RealtimeChannel? _channel;
 
   @override
@@ -326,7 +326,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
       }
       final profiles = await _batchProfiles(uids);
 
-      final items = <_SpotlightItem>[];
+      final items = <SpotlightItem>[];
       for (final raw in rows) {
         final r = Map<String, dynamic>.from(raw);
         final media = r['mediaUrls'] ?? r['media_urls'];
@@ -482,7 +482,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
           }
         }
 
-        items.add(_SpotlightItem(
+        items.add(SpotlightItem(
           type: type,
           author: author,
           handle: handle,
@@ -552,7 +552,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
     super.dispose();
   }
 
-  List<_SpotlightItem> get _items =>
+  List<SpotlightItem> get _items =>
       _live.isEmpty ? _feedItems : [..._live, ..._feedItems];
 
   @override
@@ -626,7 +626,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 110),
           itemCount: items.length,
           itemBuilder: (context, index) {
-            return _SpotlightCard(
+            return SpotlightCard(
               item: items[index],
               isAdmin: _isAdmin,
               onDeleted: () => _loadPosts(silent: true),
@@ -642,11 +642,11 @@ class _SportlightsTabState extends State<SportlightsTab> {
 // CARD
 // ============================================================
 
-class _SpotlightCard extends StatelessWidget {
-  final _SpotlightItem item;
+class SpotlightCard extends StatelessWidget {
+  final SpotlightItem item;
   final bool isAdmin;
   final VoidCallback? onDeleted;
-  const _SpotlightCard({required this.item, this.isAdmin = false, this.onDeleted});
+  const SpotlightCard({required this.item, this.isAdmin = false, this.onDeleted});
 
   @override
   Widget build(BuildContext context) {
@@ -689,7 +689,7 @@ class _SpotlightCard extends StatelessWidget {
 // ============================================================
 
 class _AuthorHeader extends StatelessWidget {
-  final _SpotlightItem item;
+  final SpotlightItem item;
   final bool isAdmin;
   final VoidCallback? onDeleted;
   const _AuthorHeader({
@@ -927,7 +927,7 @@ class _RoleBadge extends StatelessWidget {
 // ============================================================
 
 class _MediaArea extends StatelessWidget {
-  final _SpotlightItem item;
+  final SpotlightItem item;
   const _MediaArea({required this.item});
 
   @override
@@ -946,7 +946,7 @@ class _MediaArea extends StatelessWidget {
 }
 
 class _ImageContent extends StatelessWidget {
-  final _SpotlightItem item;
+  final SpotlightItem item;
   const _ImageContent({required this.item});
 
   @override
@@ -1009,7 +1009,7 @@ class _ImageContent extends StatelessWidget {
 }
 
 class _VideoContent extends StatefulWidget {
-  final _SpotlightItem item;
+  final SpotlightItem item;
   const _VideoContent({required this.item});
   @override
   State<_VideoContent> createState() => _VideoContentState();
@@ -1146,7 +1146,7 @@ class _VideoContentState extends State<_VideoContent> {
 }
 
 class _PollContent extends StatefulWidget {
-  final _SpotlightItem item;
+  final SpotlightItem item;
   const _PollContent({required this.item});
 
   @override
@@ -1384,7 +1384,7 @@ class _PollOption extends StatelessWidget {
 }
 
 class _PredictionContent extends StatelessWidget {
-  final _SpotlightItem item;
+  final SpotlightItem item;
   const _PredictionContent({required this.item});
 
   @override
@@ -1500,7 +1500,7 @@ class _PredictionTeam extends StatelessWidget {
 }
 
 class _GeneratedContent extends StatelessWidget {
-  final _SpotlightItem item;
+  final SpotlightItem item;
   const _GeneratedContent({required this.item});
 
   @override
@@ -1667,7 +1667,7 @@ String _typeLabel(_SpotlightType type) {
 // ============================================================
 
 class _EngagementRow extends ConsumerStatefulWidget {
-  final _SpotlightItem item;
+  final SpotlightItem item;
   const _EngagementRow({required this.item});
 
   @override
@@ -2267,7 +2267,7 @@ class _CommentSheetState extends State<_CommentSheet> {
 // ============================================================
 
 class _ActionRow extends StatefulWidget {
-  final _SpotlightItem item;
+  final SpotlightItem item;
   final bool isAdmin;
   final VoidCallback? onDeleted;
   const _ActionRow({

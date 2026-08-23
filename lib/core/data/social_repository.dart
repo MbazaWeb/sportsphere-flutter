@@ -101,7 +101,7 @@ class SocialRepository {
       'options': opts,
       'totalVotes': 0,
       if (endsAt != null) 'endsAt': endsAt.toIso8601String(),
-      'createdAt': DateTime.now().toIso8601String(),
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
     return postId;
   }
@@ -152,7 +152,7 @@ class SocialRepository {
       'predictedHome': predictedHome,
       'predictedAway': predictedAway,
       'confidence': confidence,
-      'createdAt': DateTime.now().toIso8601String(),
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
     return postId;
   }
@@ -193,8 +193,8 @@ class SocialRepository {
       'likeCount': 0,
       'commentCount': 0,
       'shareCount': 0,
-      'createdAt': DateTime.now().toIso8601String(),
-      'updatedAt': DateTime.now().toIso8601String(),
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
     });
 
     // Notify followers (non-blocking)
@@ -224,7 +224,7 @@ class SocialRepository {
     final uid = _uid;
     if (uid == null) throw StateError('Please sign in');
     final patch = <String, dynamic>{
-      'updatedAt': DateTime.now().toIso8601String(),
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
     };
     if (content != null) patch['content'] = content.trim();
     if (isBreaking != null) patch['isBreaking'] = isBreaking;
@@ -259,7 +259,7 @@ class SocialRepository {
         await _sb.from('PostLike').upsert({
           'postId': postId,
           'userId': uid,
-          'createdAt': DateTime.now().toIso8601String(),
+          'createdAt': DateTime.now().toUtc().toIso8601String(),
         });
         await incrementPostCounter(postId, 'likeCount', 1);
       } else {
@@ -382,7 +382,7 @@ class SocialRepository {
     await _sb.from('PostShare').upsert({
       'postId': postId,
       'userId': uid,
-      'createdAt': DateTime.now().toIso8601String(),
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
     await incrementPostCounter(postId, 'shareCount', 1);
     return true;
@@ -463,7 +463,7 @@ class SocialRepository {
       'mediaUrls': mediaUrls,
       'mediaType': mediaType,
       'likeCount': 0,
-      'createdAt': DateTime.now().toIso8601String(),
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
 
     await incrementPostCounter(postId, 'commentCount', 1);
@@ -665,7 +665,7 @@ class SocialRepository {
     if (uid == null) throw StateError('Please sign in');
 
     final patch = <String, dynamic>{
-      'updated_at': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
     };
     if (avatarUrl != null) patch['avatar_url'] = avatarUrl;
     if (coverUrl != null) patch['cover_url'] = coverUrl;
