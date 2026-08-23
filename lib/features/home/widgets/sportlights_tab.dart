@@ -33,7 +33,7 @@ import '../../../core/utils/media_type.dart';
 // To add a new role: add it to the appropriate set below.
 // ============================================================
 
-enum _SpotlightType {
+enum SpotlightType {
   team,
   player,
   coach,
@@ -68,39 +68,39 @@ enum _SpotlightType {
 
 /// Roles where "Become Fan" appears alongside "Follow".
 const _fanRoles = {
-  _SpotlightType.team,
-  _SpotlightType.player,
-  _SpotlightType.coach,
-  _SpotlightType.scout,
-  _SpotlightType.agent,
-  _SpotlightType.academy,
+  SpotlightType.team,
+  SpotlightType.player,
+  SpotlightType.coach,
+  SpotlightType.scout,
+  SpotlightType.agent,
+  SpotlightType.academy,
 };
 
 /// Roles that only show "Follow" — no fan option.
 const _followOnlyRoles = {
-  _SpotlightType.journalist,
-  _SpotlightType.analyst,
-  _SpotlightType.commentator,
-  _SpotlightType.creator,
-  _SpotlightType.moderator,
-  _SpotlightType.official,
-  _SpotlightType.organization,
-  _SpotlightType.league,
-  _SpotlightType.competition,
-  _SpotlightType.fan,
+  SpotlightType.journalist,
+  SpotlightType.analyst,
+  SpotlightType.commentator,
+  SpotlightType.creator,
+  SpotlightType.moderator,
+  SpotlightType.official,
+  SpotlightType.organization,
+  SpotlightType.league,
+  SpotlightType.competition,
+  SpotlightType.fan,
 };
 
 /// Community-origin posts — show "Join Community".
 const _communityRoles = {
-  _SpotlightType.community,
+  SpotlightType.community,
 };
 
 /// Commerce roles — show "Buy Now" / "Shop" buttons.
 const _commerceRoles = {
-  _SpotlightType.business,
-  _SpotlightType.sponsor,
-  _SpotlightType.commercialPartner,
-  _SpotlightType.venue,
+  SpotlightType.business,
+  SpotlightType.sponsor,
+  SpotlightType.commercialPartner,
+  SpotlightType.venue,
 };
 
 // ============================================================
@@ -108,12 +108,13 @@ const _commerceRoles = {
 // ============================================================
 
 class SpotlightItem {
-  final _SpotlightType type;
+  final SpotlightType type;
   final String author;
   final String role;
   final String handle;
   final String? targetUserId;
   final String? postId;
+  final String? matchId;
   final String age;
   final String? asset;
   final int likes;
@@ -140,6 +141,7 @@ class SpotlightItem {
     this.handle = 'playify',
     this.targetUserId,
     this.postId,
+    this.matchId,
     required this.age,
     this.asset,
     required this.likes,
@@ -163,39 +165,39 @@ class SpotlightItem {
   String get profilePath {
     final h = handle.replaceAll('@', '');
     switch (type) {
-      case _SpotlightType.team:
+      case SpotlightType.team:
         return '/team/$h';
-      case _SpotlightType.player:
+      case SpotlightType.player:
         return '/player/$h';
-      case _SpotlightType.coach:
+      case SpotlightType.coach:
         return '/role/coach/$h';
-      case _SpotlightType.scout:
+      case SpotlightType.scout:
         return '/role/scout/$h';
-      case _SpotlightType.agent:
+      case SpotlightType.agent:
         return '/role/agent/$h';
-      case _SpotlightType.journalist:
+      case SpotlightType.journalist:
         return '/role/journalist/$h';
-      case _SpotlightType.analyst:
+      case SpotlightType.analyst:
         return '/role/analyst/$h';
-      case _SpotlightType.commentator:
+      case SpotlightType.commentator:
         return '/role/commentator/$h';
-      case _SpotlightType.creator:
+      case SpotlightType.creator:
         return '/role/creator/$h';
-      case _SpotlightType.moderator:
+      case SpotlightType.moderator:
         return '/role/moderator/$h';
-      case _SpotlightType.official:
+      case SpotlightType.official:
         return '/role/official/$h';
-      case _SpotlightType.organization:
+      case SpotlightType.organization:
         return '/role/organization/$h';
-      case _SpotlightType.league:
+      case SpotlightType.league:
         return '/role/league/$h';
-      case _SpotlightType.community:
+      case SpotlightType.community:
         return '/role/community/$h';
-      case _SpotlightType.business:
+      case SpotlightType.business:
         return '/role/business/$h';
-      case _SpotlightType.sponsor:
+      case SpotlightType.sponsor:
         return '/role/sponsor/$h';
-      case _SpotlightType.fan:
+      case SpotlightType.fan:
         return '/profile/$h';
       default:
         return '/role/${role.toLowerCase()}/$h';
@@ -235,22 +237,22 @@ String _handleFromTeamTag(String? tag) {
   return aliases[raw] ?? raw;
 }
 
-_SpotlightType _typeForRole(String role) {
+SpotlightType _typeForRole(String role) {
   switch (role.toLowerCase()) {
     case 'team':
-      return _SpotlightType.team;
+      return SpotlightType.team;
     case 'player':
-      return _SpotlightType.player;
+      return SpotlightType.player;
     case 'coach':
-      return _SpotlightType.coach;
+      return SpotlightType.coach;
     case 'official':
-      return _SpotlightType.official;
+      return SpotlightType.official;
     case 'organization':
-      return _SpotlightType.organization;
+      return SpotlightType.organization;
     case 'fan':
-      return _SpotlightType.fan;
+      return SpotlightType.fan;
     default:
-      return _SpotlightType.official;
+      return SpotlightType.official;
   }
 }
 
@@ -360,7 +362,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
         String roleLabel = (r['postType'] as String?) ??
             (r['post_type'] as String?) ??
             'Official';
-        var type = _SpotlightType.official;
+        var type = SpotlightType.official;
 
         if (uid != null && profiles.containsKey(uid)) {
           final p = profiles[uid]!;
@@ -387,22 +389,25 @@ class _SportlightsTabState extends State<SportlightsTab> {
         String? targetUserId = uid;
 
         if (postType == 'live_coverage') {
-          type = _SpotlightType.liveCoverage;
+          type = SpotlightType.liveCoverage;
           roleLabel = 'LIVE';
+        } else if (postType == 'match') {
+          type = SpotlightType.match;
+          roleLabel = 'Match';
         } else if (postType == 'welcome' ||
             (teamTag != null &&
                 teamTag.isNotEmpty &&
                 !teamTag.startsWith('match:'))) {
-          type = _SpotlightType.team;
+          type = SpotlightType.team;
           roleLabel = 'Team';
           handle = _handleFromTeamTag(teamTag);
         } else if (postType == 'poll') {
-          type = _SpotlightType.poll;
+          type = SpotlightType.poll;
         } else if (postType == 'prediction') {
-          type = _SpotlightType.prediction;
+          type = SpotlightType.prediction;
         } else if (postType == 'video' ||
             (postType == 'media' && isVideoMediaUrl(asset))) {
-          type = _SpotlightType.video;
+          type = SpotlightType.video;
         } else if (postType == 'image' ||
             (postType == 'media' && asset != null && asset.isNotEmpty)) {
           // Keep role-based type for author badge; media still shows as image
@@ -422,8 +427,8 @@ class _SportlightsTabState extends State<SportlightsTab> {
         int? predHs;
         int? predAs;
 
-        if (postType == 'poll' || type == _SpotlightType.poll) {
-          type = _SpotlightType.poll;
+        if (postType == 'poll' || type == SpotlightType.poll) {
+          type = SpotlightType.poll;
           try {
             final poll = await Supabase.instance.client
                 .from('Poll')
@@ -461,8 +466,8 @@ class _SportlightsTabState extends State<SportlightsTab> {
           }
         }
 
-        if (postType == 'prediction' || type == _SpotlightType.prediction) {
-          type = _SpotlightType.prediction;
+        if (postType == 'prediction' || type == SpotlightType.prediction) {
+          type = SpotlightType.prediction;
           try {
             final pred = await Supabase.instance.client
                 .from('Prediction')
@@ -495,6 +500,39 @@ class _SportlightsTabState extends State<SportlightsTab> {
             }
           } catch (e) {
             debugPrint('prediction load: $e');
+          }
+        }
+
+        // ── Match enrichment: fetch Match row via matchId ──
+        String? mId;
+        String? mHome, mAway, mHomeBadge, mAwayBadge;
+        String? mScore, mStatus, mLeague, mVenue;
+        DateTime? mKickoff;
+        final matchIdRef = r['matchId']?.toString() ?? r['match_id']?.toString();
+        if (postType == 'match' && matchIdRef != null) {
+          try {
+            final m = await Supabase.instance.client
+                .from('Match')
+                .select()
+                .eq('id', matchIdRef)
+                .maybeSingle();
+            if (m != null) {
+              mId = m['id']?.toString();
+              mHome = m['homeTeamName']?.toString() ?? m['home_team_name']?.toString();
+              mAway = m['awayTeamName']?.toString() ?? m['away_team_name']?.toString();
+              mHomeBadge = m['homeBadge']?.toString() ?? m['home_badge']?.toString();
+              mAwayBadge = m['awayBadge']?.toString() ?? m['away_badge']?.toString();
+              final hs = m['homeScore']?.toString() ?? m['home_score']?.toString();
+              final as2 = m['awayScore']?.toString() ?? m['away_score']?.toString();
+              mScore = (hs != null && as2 != null) ? '$hs - $as2' : null;
+              mStatus = m['status']?.toString();
+              mLeague = m['leagueName']?.toString() ?? m['league_name']?.toString();
+              mVenue = m['venue']?.toString();
+              final ko = m['kickoffAt'] ?? m['kickoff_at'];
+              mKickoff = DateTime.tryParse(ko?.toString() ?? '');
+            }
+          } catch (e) {
+            debugPrint('match load: $e');
           }
         }
 
@@ -569,8 +607,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
     super.dispose();
   }
 
-  List<SpotlightItem> get _items =>
-      _live.isEmpty ? _feedItems : [..._live, ..._feedItems];
+  List<SpotlightItem> get _items => _live;
 
   @override
   Widget build(BuildContext context) {
@@ -879,7 +916,7 @@ class _AuthorHeader extends StatelessWidget {
               ),
               const SizedBox(height: 3),
               Text(
-                item.type == _SpotlightType.team
+                item.type == SpotlightType.team
                     ? '@${item.handle} · Become a fan of this team'
                     : '·  ${item.age}',
                 style: TextStyle(
@@ -950,12 +987,14 @@ class _MediaArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     switch (item.type) {
-      case _SpotlightType.poll:
+      case SpotlightType.poll:
         return _PollContent(item: item);
-      case _SpotlightType.prediction:
+      case SpotlightType.prediction:
         return _PredictionContent(item: item);
-      case _SpotlightType.video:
+      case SpotlightType.video:
         return _VideoContent(item: item);
+      case SpotlightType.match:
+        return _MatchContent(item: item);
       default:
         return _ImageContent(item: item);
     }
@@ -1516,6 +1555,257 @@ class _PredictionTeam extends StatelessWidget {
   }
 }
 
+// ============================================================
+// MATCH CONTENT — shows fixture details in the feed card
+// ============================================================
+
+class _MatchContent extends StatelessWidget {
+  final SpotlightItem item;
+  const _MatchContent({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final home = item.homeTeam ?? 'Home';
+    final away = item.awayTeam ?? 'Away';
+    final score = item.matchScore;
+    final status = item.matchStatus;
+    final league = item.matchLeague;
+    final venue = item.matchVenue;
+    final kickoff = item.matchKickoff;
+
+    // Status badge color
+    final statusLower = (status ?? '').toLowerCase();
+    final bool isLive = statusLower == 'live' || statusLower.contains('half');
+    final bool isFinished = statusLower == 'ft' || statusLower == 'finished' || statusLower == 'full time';
+    Color statusColor = const Color(0xFF8FA3B8);
+    String statusLabel = status?.toUpperCase() ?? 'SCHEDULED';
+    if (isLive) {
+      statusColor = const Color(0xFFFF3B30);
+      statusLabel = 'LIVE';
+    } else if (isFinished) {
+      statusColor = const Color(0xFF34C759);
+      statusLabel = 'FT';
+    } else if (statusLower == 'ns' || statusLower == 'not started' || status == null) {
+      statusLabel = 'SCHEDULED';
+    }
+
+    // Kickoff time formatter
+    String? kickoffLabel;
+    if (kickoff != null) {
+      kickoffLabel = '${kickoff.day}/${kickoff.month} ${kickoff.hour.toString().padLeft(2, '0')}:${kickoff.minute.toString().padLeft(2, '0')}';
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFF061321),
+            Color.lerp(const Color(0xFF061321), item.accent, 0.18)!,
+            const Color(0xFF02060D),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(0),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // League + status row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              if (league != null && league.isNotEmpty)
+                Expanded(
+                  child: Text(
+                    league,
+                    style: const TextStyle(
+                      color: Color(0xFF8FA3B8),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                )
+              else
+                const Spacer(),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  statusLabel,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Teams + Score
+          Row(
+            children: [
+              // Home team
+              Expanded(
+                child: Column(
+                  children: [
+                    if (item.homeBadge != null && item.homeBadge!.isNotEmpty)
+                      ClipOval(
+                        child: Image.network(
+                          item.homeBadge!,
+                          width: 44, height: 44,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Icon(Icons.shield_rounded, size: 44, color: Color(0xFF8FA3B8)),
+                        ),
+                      )
+                    else
+                      const Icon(Icons.shield_rounded, size: 44, color: Color(0xFF8FA3B8)),
+                    const SizedBox(height: 10),
+                    Text(
+                      home,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFFF7FAFF),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Score / time
+              SizedBox(
+                width: 80,
+                child: Column(
+                  children: [
+                    if (score != null)
+                      Text(
+                        score,
+                        style: TextStyle(
+                          color: isLive ? const Color(0xFFFF3B30) : const Color(0xFFF7FAFF),
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 2,
+                        ),
+                      )
+                    else if (isLive)
+                      const Text(
+                        '0 - 0',
+                        style: TextStyle(
+                          color: Color(0xFFFF3B30),
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 2,
+                        ),
+                      )
+                    else
+                      const Text(
+                        'VS',
+                        style: TextStyle(
+                          color: Color(0xFF8FA3B8),
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 3,
+                        ),
+                      ),
+                    if (isLive && status != null && !status.contains('live'))
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          status!,
+                          style: const TextStyle(color: Color(0xFFFF3B30), fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+
+              // Away team
+              Expanded(
+                child: Column(
+                  children: [
+                    if (item.awayBadge != null && item.awayBadge!.isNotEmpty)
+                      ClipOval(
+                        child: Image.network(
+                          item.awayBadge!,
+                          width: 44, height: 44,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Icon(Icons.shield_rounded, size: 44, color: Color(0xFF8FA3B8)),
+                        ),
+                      )
+                    else
+                      const Icon(Icons.shield_rounded, size: 44, color: Color(0xFF8FA3B8)),
+                    const SizedBox(height: 10),
+                    Text(
+                      away,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFFF7FAFF),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // Venue + kickoff
+          if (venue != null || kickoffLabel != null) ...[
+            const SizedBox(height: 20),
+            Divider(color: const Color(0xFF8FA3B8).withOpacity(0.15), height: 1),
+            const SizedBox(height: 14),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (venue != null && venue.isNotEmpty) ...[
+                  const Icon(Icons.stadium_rounded, size: 14, color: Color(0xFF8FA3B8)),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      venue,
+                      style: const TextStyle(color: Color(0xFF8FA3B8), fontSize: 12),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+                if (venue != null && kickoffLabel != null) const SizedBox(width: 16),
+                if (kickoffLabel != null) ...[
+                  const Icon(Icons.schedule_rounded, size: 14, color: Color(0xFF8FA3B8)),
+                  const SizedBox(width: 4),
+                  Text(
+                    kickoffLabel,
+                    style: const TextStyle(color: Color(0xFF8FA3B8), fontSize: 12),
+                  ),
+                ],
+              ],
+            ),
+          ],
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+}
+
+
+
 class _GeneratedContent extends StatelessWidget {
   final SpotlightItem item;
   const _GeneratedContent({required this.item});
@@ -1565,116 +1855,116 @@ class _GeneratedContent extends StatelessWidget {
 
 
 
-IconData _typeIcon(_SpotlightType type) {
+IconData _typeIcon(SpotlightType type) {
   switch (type) {
-    case _SpotlightType.team:
+    case SpotlightType.team:
       return Icons.groups_rounded;
-    case _SpotlightType.player:
+    case SpotlightType.player:
       return Icons.person_rounded;
-    case _SpotlightType.coach:
+    case SpotlightType.coach:
       return Icons.sports_rounded;
-    case _SpotlightType.scout:
+    case SpotlightType.scout:
       return Icons.search_rounded;
-    case _SpotlightType.agent:
+    case SpotlightType.agent:
       return Icons.handshake_rounded;
-    case _SpotlightType.academy:
+    case SpotlightType.academy:
       return Icons.school_rounded;
-    case _SpotlightType.journalist:
+    case SpotlightType.journalist:
       return Icons.newspaper_rounded;
-    case _SpotlightType.analyst:
+    case SpotlightType.analyst:
       return Icons.analytics_rounded;
-    case _SpotlightType.commentator:
+    case SpotlightType.commentator:
       return Icons.mic_rounded;
-    case _SpotlightType.creator:
+    case SpotlightType.creator:
       return Icons.play_circle_fill_rounded;
-    case _SpotlightType.moderator:
+    case SpotlightType.moderator:
       return Icons.shield_moon_rounded;
-    case _SpotlightType.official:
+    case SpotlightType.official:
       return Icons.gavel_rounded;
-    case _SpotlightType.organization:
+    case SpotlightType.organization:
       return Icons.corporate_fare_rounded;
-    case _SpotlightType.league:
+    case SpotlightType.league:
       return Icons.emoji_events_rounded;
-    case _SpotlightType.competition:
+    case SpotlightType.competition:
       return Icons.sports_score_rounded;
-    case _SpotlightType.community:
+    case SpotlightType.community:
       return Icons.groups_rounded;
-    case _SpotlightType.fan:
+    case SpotlightType.fan:
       return Icons.favorite_rounded;
-    case _SpotlightType.business:
+    case SpotlightType.business:
       return Icons.storefront_rounded;
-    case _SpotlightType.sponsor:
+    case SpotlightType.sponsor:
       return Icons.local_offer_rounded;
-    case _SpotlightType.commercialPartner:
+    case SpotlightType.commercialPartner:
       return Icons.handshake_rounded;
-    case _SpotlightType.venue:
+    case SpotlightType.venue:
       return Icons.stadium_rounded;
-    case _SpotlightType.match:
+    case SpotlightType.match:
       return Icons.stadium_rounded;
-    case _SpotlightType.video:
+    case SpotlightType.video:
       return Icons.play_circle_fill_rounded;
-    case _SpotlightType.poll:
+    case SpotlightType.poll:
       return Icons.poll_rounded;
-    case _SpotlightType.prediction:
+    case SpotlightType.prediction:
       return Icons.insights_rounded;
-    case _SpotlightType.liveCoverage:
+    case SpotlightType.liveCoverage:
       return Icons.sensors;
   }
 }
 
-String _typeLabel(_SpotlightType type) {
+String _typeLabel(SpotlightType type) {
   switch (type) {
-    case _SpotlightType.team:
+    case SpotlightType.team:
       return 'Team';
-    case _SpotlightType.player:
+    case SpotlightType.player:
       return 'Player';
-    case _SpotlightType.coach:
+    case SpotlightType.coach:
       return 'Coach';
-    case _SpotlightType.scout:
+    case SpotlightType.scout:
       return 'Scout';
-    case _SpotlightType.agent:
+    case SpotlightType.agent:
       return 'Agent';
-    case _SpotlightType.academy:
+    case SpotlightType.academy:
       return 'Academy';
-    case _SpotlightType.journalist:
+    case SpotlightType.journalist:
       return 'Journalist';
-    case _SpotlightType.analyst:
+    case SpotlightType.analyst:
       return 'Analyst';
-    case _SpotlightType.commentator:
+    case SpotlightType.commentator:
       return 'Commentator';
-    case _SpotlightType.creator:
+    case SpotlightType.creator:
       return 'Creator';
-    case _SpotlightType.moderator:
+    case SpotlightType.moderator:
       return 'Moderator';
-    case _SpotlightType.official:
+    case SpotlightType.official:
       return 'Official';
-    case _SpotlightType.organization:
+    case SpotlightType.organization:
       return 'Organization';
-    case _SpotlightType.league:
+    case SpotlightType.league:
       return 'League';
-    case _SpotlightType.competition:
+    case SpotlightType.competition:
       return 'Competition';
-    case _SpotlightType.community:
+    case SpotlightType.community:
       return 'Community';
-    case _SpotlightType.fan:
+    case SpotlightType.fan:
       return 'Fan';
-    case _SpotlightType.business:
+    case SpotlightType.business:
       return 'Business';
-    case _SpotlightType.sponsor:
+    case SpotlightType.sponsor:
       return 'Sponsor';
-    case _SpotlightType.commercialPartner:
+    case SpotlightType.commercialPartner:
       return 'Partner';
-    case _SpotlightType.venue:
+    case SpotlightType.venue:
       return 'Venue';
-    case _SpotlightType.match:
+    case SpotlightType.match:
       return 'Match';
-    case _SpotlightType.video:
+    case SpotlightType.video:
       return 'Video';
-    case _SpotlightType.poll:
+    case SpotlightType.poll:
       return 'Poll';
-    case _SpotlightType.prediction:
+    case SpotlightType.prediction:
       return 'Prediction';
-    case _SpotlightType.liveCoverage:
+    case SpotlightType.liveCoverage:
       return 'LIVE';
   }
 }
@@ -1722,7 +2012,7 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
   @override
   void didUpdateWidget(covariant _EngagementRow oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // #7.19: when the parent rebuilds this row with a fresh `_SpotlightItem`
+    // #7.19: when the parent rebuilds this row with a fresh `SpotlightItem`
     // (e.g. after a realtime `Post` change or pull-to-refresh), re-sync the
     // local counter caches from the new widget values. We deliberately do
     // NOT touch `_liked` / `_shared` here — those reflect the current user's
@@ -1742,7 +2032,7 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
   /// has liked the given post.
   ///
   /// `SocialRepository` doesn't expose a `hasLiked` method yet (owned by
-  /// Agent S6), and `_SpotlightItem` is always a Post (never a `NewsItem` —
+  /// Agent S6), and `SpotlightItem` is always a Post (never a `NewsItem` —
   /// news lives in `news_tab.dart` with its own `_NewsCard`), so we just hit
   /// `PostLike` here. When `SocialRepository.hasLiked` lands we can delegate.
   Future<bool> _hasLikedPost(String postId) async {
@@ -2304,7 +2594,7 @@ class _ActionRowState extends State<_ActionRow> {
     final handle = item.handle.replaceAll('@', '').trim();
 
     // Team / welcome posts: follow the TEAM account, never the admin author
-    if (item.type == _SpotlightType.team) {
+    if (item.type == SpotlightType.team) {
       try {
         Map<String, dynamic>? team;
         if (item.targetUserId != null && item.targetUserId!.isNotEmpty) {
@@ -2479,7 +2769,7 @@ class _ActionRowState extends State<_ActionRow> {
     final accent = widget.item.accent;
 
     // ── Commerce: match tickets & business ──────────────────
-    if (type == _SpotlightType.match) {
+    if (type == SpotlightType.match) {
       return _TwoButtons(
         primary: _Btn(
           label: 'Buy Ticket',
@@ -2516,7 +2806,7 @@ class _ActionRowState extends State<_ActionRow> {
     }
 
     // ── Video ────────────────────────────────────────────────
-    if (type == _SpotlightType.video) {
+    if (type == SpotlightType.video) {
       return _TwoButtons(
         primary: _Btn(
           label: 'Watch',
@@ -2543,7 +2833,7 @@ class _ActionRowState extends State<_ActionRow> {
     }
 
     // ── Poll ─────────────────────────────────────────────────
-    if (type == _SpotlightType.poll) {
+    if (type == SpotlightType.poll) {
       return _TwoButtons(
         primary: _Btn(
           label: 'Vote',

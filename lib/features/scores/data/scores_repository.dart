@@ -17,6 +17,13 @@ class ScoresRepository {
 
   SupabaseClient get _sb => Supabase.instance.client;
 
+  // NOTE: The previous _public() wrapper called signOut(scope: local)
+  // when a data query failed with JWT/session/401 keywords. This was
+  // INCORRECT — a data query failure must NEVER destroy the auth session.
+  // _ensureValidSession() in main.dart handles stale JWT at startup.
+  // If a public query fails here, the error propagates to the UI which
+  // shows the appropriate message via friendlyError().
+
   // ─────────────────────────────────────────────────────────────────────────
   // Live / Today / Upcoming / Results
   // ─────────────────────────────────────────────────────────────────────────
@@ -29,39 +36,39 @@ class ScoresRepository {
   ///   2. Fallback: any match whose status is NOT in (finished ∪ postponed)
   ///      AND whose kickoff is within the last 110 minutes.
   Future<List<MatchModel>> getLive({int limit = kMaxMatchesPerFetch}) async {
-    final liveOr = kLiveStatuses.map((s) => 'status.eq.$s').join(',');
-    final rows = await _sb
-        .from('Match')
-        .select()
-        .or(liveOr)
-        .order('kickoffAt')
-        .limit(limit);
-    final list = _mapRows(rows as List);
-    if (list.isNotEmpty) return list;
+      final liveOr = kLiveStatuses.map((s) => 'status.eq.$s').join(',');
+      final rows = await _sb
+          .from('Match')
+          .select()
+          .or(liveOr)
+          .order('kickoffAt')
+          .limit(limit);
+      final list = _mapRows(rows as List);
+      if (list.isNotEmpty) return list;
 
-    final now = DateTime.now().toUtc();
-    final all = await _fetchAll(limit: limit);
-    return all.where((m) {
-      if (isFinishedStatus(m.status) || isPostponedStatus(m.status)) {
-        return false;
-      }
-      final end = m.startTime.add(const Duration(minutes: 110));
-      return !now.isBefore(m.startTime) && now.isBefore(end);
-    }).toList();
+      final now = DateTime.now().toUtc();
+      final all = await _fetchAll(limit: limit);
+      return all.where((m) {
+        if (isFinishedStatus(m.status) || isPostponedStatus(m.status)) {
+          return false;
+        }
+        final end = m.startTime.add(const Duration(minutes: 110));
+        return !now.isBefore(m.startTime) && now.isBefore(end);
+      }).toList();
   }
 
   Future<List<MatchModel>> getToday({int limit = kMaxMatchesPerFetch}) async {
-    final now = DateTime.now().toUtc();
-    final start = DateTime.utc(now.year, now.month, now.day);
-    final end = start.add(const Duration(days: 1));
-    final rows = await _sb
-        .from('Match')
-        .select()
-        .gte('kickoffAt', start.toIso8601String())
-        .lt('kickoffAt', end.toIso8601String())
-        .order('kickoffAt')
-        .limit(limit);
-    return _mapRows(rows as List);
+      final now = DateTime.now().toUtc();
+      final start = DateTime.utc(now.year, now.month, now.day);
+      final end = start.add(const Duration(days: 1));
+      final rows = await _sb
+          .from('Match')
+          .select()
+          .gte('kickoffAt', start.toIso8601String())
+          .lt('kickoffAt', end.toIso8601String())
+          .order('kickoffAt')
+          .limit(limit);
+      return _mapRows(rows as List);
   }
 
   Future<List<MatchModel>> getUpcoming({
@@ -119,9 +126,9 @@ class ScoresRepository {
   }
 
   Future<List<MatchModel>> _fetchAll({int limit = kMaxMatchesPerFetch}) async {
-    final rows =
-        await _sb.from('Match').select().order('kickoffAt').limit(limit);
-    return _mapRows(rows as List);
+      final rows =
+          await _sb.from('Match').select().order('kickoffAt').limit(limit);
+      return _mapRows(rows as List);
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -194,12 +201,19 @@ class ScoresRepository {
     final winPts = winPointsForSport(sportSlug);
     final drawPts = drawPointsForSport(sportSlug);
 
-    for (final raw in rows as List) {
+    for (final raw in rowList) {
       final r = Map<String, dynamic>.from(raw as Map);
       final leagueName = ((r['league'] as String?) ?? '').toLowerCase().trim();
 
-      // Defensive in-memory safety net (see note above).
-      if (leagueLower.isNotEmpty && leagueName != leagueLower) continue;
+      // Filter: if league specified, check that this match belongs to it.
+      // Accept if: exact match, OR either name contains the other (handles
+      // "NBC Tanzania Premier League" vs "Tanzania Premier League" etc.)
+      if (leagueLower.isNotEmpty) {
+        final match = leagueName == leagueLower ||
+            leagueName.contains(leagueLower) ||
+            leagueLower.contains(leagueName);
+        if (!match) continue;
+      }
 
       final status = ((r['status'] as String?) ?? '').toLowerCase();
       if (!kFinishedStatuses.contains(status)) continue;

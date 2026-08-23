@@ -616,37 +616,39 @@ class SocialRepository {
   // ============================================================
 
   /// Get the user's feed (newest first). Falls back across column naming.
+  /// NOTE: A feed query failure must NEVER destroy the auth session.
+  /// Errors are caught and logged; the caller gets an empty list.
   Future<List<Map<String, dynamic>>> feedForUser() async {
     try {
       // Prefer camelCase schema used by createPost
-      try {
-        final rows = await _sb
-            .from('Post')
-            .select()
-            .order('createdAt', ascending: false)
-            .limit(50);
-        return List<Map<String, dynamic>>.from(rows as List);
-      } catch (e1) {
-        debugPrint('feed createdAt order failed: $e1');
-      }
+      final rows = await _sb
+          .from('Post')
+          .select()
+          .order('createdAt', ascending: false)
+          .limit(50);
+      return List<Map<String, dynamic>>.from(rows as List);
+    } catch (e1) {
+      debugPrint('[FEED] createdAt order failed: $e1');
+    }
 
-      // snake_case fallback
-      try {
-        final rows = await _sb
-            .from('Post')
-            .select()
-            .order('created_at', ascending: false)
-            .limit(50);
-        return List<Map<String, dynamic>>.from(rows as List);
-      } catch (e2) {
-        debugPrint('feed created_at order failed: $e2');
-      }
+    // snake_case fallback
+    try {
+      final rows = await _sb
+          .from('Post')
+          .select()
+          .order('created_at', ascending: false)
+          .limit(50);
+      return List<Map<String, dynamic>>.from(rows as List);
+    } catch (e2) {
+      debugPrint('[FEED] created_at order failed: $e2');
+    }
 
-      // Last resort: unordered
+    // Last resort: unordered
+    try {
       final rows = await _sb.from('Post').select().limit(50);
       return List<Map<String, dynamic>>.from(rows as List);
-    } catch (e) {
-      debugPrint('Failed to get feed: $e');
+    } catch (e3) {
+      debugPrint('[FEED] unordered query failed: $e3');
       return [];
     }
   }

@@ -30,14 +30,21 @@ Future<void> main() async {
     ),
   );
 
-  // Never block startup on optional services (Firebase, notifications,
-  // network validation) — a hang here leaves the app stuck on the splash.
-  unawaited(_initOptionalServices());
+  // Validate session BEFORE building the widget tree so a stale JWT
+  // left in local storage does not cause PostgREST 401 errors on
+  // public endpoints (Match, Post, Community, …).  This adds ~1–2 s
+  // of latency on cold start with a persisted session, but the splash
+  // animation (2.8 s) covers it.
+  await _ensureValidSession();
+
+  // Non-blocking: Firebase, local notifications, FCM — a hang here
+  // leaves the app stuck on the splash.
+  unawaited(_initBackgroundServices());
 
   runApp(const ProviderScope(child: SportSphereApp()));
 }
 
-Future<void> _initOptionalServices() async {
+Future<void> _initBackgroundServices() async {
   // Initialize Firebase (required for FCM). No-op if config is missing.
   try {
     await Firebase.initializeApp().timeout(const Duration(seconds: 8));
@@ -45,7 +52,6 @@ Future<void> _initOptionalServices() async {
     debugPrint('Firebase init skipped (no config): $e');
     return;
   }
-  await _ensureValidSession();
   try {
     await LocalNotificationService.instance
         .init()

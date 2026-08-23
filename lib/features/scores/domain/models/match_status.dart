@@ -37,6 +37,16 @@ const Set<String> kFinishedStatuses = {
   'ft',
   'completed',
   'full_time',
+  'fulltime',
+  'ended',
+  'final',
+  'done',
+  'played',
+  'result',
+  'fts',
+  '90',
+  'aet',
+  'pen',
 };
 
 /// Lower-cased status strings that mean "match won't be played as scheduled".

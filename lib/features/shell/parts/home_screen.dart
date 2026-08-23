@@ -114,6 +114,14 @@ class _SpotlightsContent extends StatelessWidget {
   }
 }
 
+// ── NOTE ──────────────────────────────────────────────────────────────
+// The previous _publicRead() wrapper called signOut(scope: local)
+// when a data query failed with JWT/session/401 keywords. This was
+// INCORRECT — a data query failure must NEVER destroy the auth session.
+// Queries below now run directly; errors propagate to the UI which
+// shows appropriate messages via friendlyError().
+// ──────────────────────────────────────────────────────────────────
+
 // ── Trending tab ───────────────────────────────────────────
 
 class _TrendingContent extends StatefulWidget {

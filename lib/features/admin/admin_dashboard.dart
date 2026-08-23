@@ -9,6 +9,7 @@ import '../../../core/theme/colors.dart';
 import '../../../core/widgets/country_picker_field.dart';
 import '../../../core/widgets/team_color_picker.dart';
 import '../../../core/widgets/grass_form.dart';
+import 'bulk_upload_screen.dart';
 import '../../../core/utils/form_validators.dart';
 import '../../../features/auth/presentation/auth_controller.dart';
 import '../scores/presentation/admin_live_control.dart';
@@ -137,6 +138,7 @@ class _OverviewTab extends ConsumerWidget {
         _ActionCard(Icons.add_circle_rounded,SportSphereColors.sportGreen,'Schedule Fixture','Add a new match to the calendar',()=>_showCreateMatch(context)),
         _ActionCard(Icons.newspaper_rounded,SportSphereColors.sportOrange,'Post News Article','Publish breaking news or updates',()=>_showNewsCompose(context)),
         _ActionCard(Icons.person_add_rounded,SportSphereColors.electricBlue,'Create User','Add a new user account',()=>_showCreateUser(context)),
+        _ActionCard(Icons.upload_file_rounded,const Color(0xFF22C55E),'Bulk Upload','Import fixtures, teams & players via CSV',()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const BulkUploadScreen()))),
     ]));
   }
 }

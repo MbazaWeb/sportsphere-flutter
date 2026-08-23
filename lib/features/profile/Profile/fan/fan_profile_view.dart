@@ -13,6 +13,7 @@ import '../../presentation/become_pro_sheet.dart';
 import '../../shared/profile_widgets.dart';
 import '../../../auth/presentation/auth_controller.dart';
 import '../../../home/widgets/sportlights_tab.dart';
+import '../../../../core/utils/media_type.dart';
 // ══════════════════════════════════════════════════════════════════════════════
 // MODEL
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1011,6 +1012,7 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
           role: widget.profile.role,
           handle: widget.profile.handle,
           postId: r['id']?.toString(),
+          matchId: (r['matchId'] ?? r['match_id'])?.toString(),
           age: age,
           asset: asset,
           likes: (r['likeCount'] as int?) ?? 0,

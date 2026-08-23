@@ -35,16 +35,26 @@ class AuthRepository {
         }
       } catch (_) {}
     }
+
+    // ── PHASE 1: Authenticate with Supabase Auth ────────────────────────
+    // signInWithPassword is the ONLY source of truth for credentials.
+    // A failure here means invalid credentials, not confirmed, etc.
     final response = await _supabase.auth.signInWithPassword(
       email: email,
       password: password,
     );
-
     final user = response.user;
     if (user == null) throw Exception('Login failed');
 
-    // Read role from profiles table — not from metadata which may be stale
-    return _profileFromDb(user);
+    // ── PHASE 2: Load application profile ───────────────────────────────
+    // If the profile query fails, authentication still succeeded.
+    // Return a profile from metadata rather than failing the whole login.
+    try {
+      return await _profileFromDb(user);
+    } catch (e) {
+      debugPrint('[AUTH] login: profile load failed after auth success, using metadata: $e');
+      return _userFromSupabase(user);
+    }
   }
 
   // ── Register ───────────────────────────────────────────────────────────────
@@ -90,17 +100,30 @@ class AuthRepository {
     await _supabase.auth.signOut();
   }
 
+  /// Drop local session only (no network). Used when JWT is expired/invalid so
+  /// public reads can proceed with the anon key as a true guest.
+  Future<void> signOutLocal() async {
+    await _supabase.auth.signOut(scope: SignOutScope.local);
+  }
+
   // ── Hydrate profile ────────────────────────────────────────────────────────
   Future<UserProfile?> hydrateProfile() async {
     final session = currentSession;
     if (session == null) return null;
 
     final userId = session.user.id;
+    // Use .maybeSingle() instead of .single() — if the profile row
+    // doesn't exist (trigger didn't fire), .single() throws PostgrestException
+    // 406 which is NOT an auth failure. Return null so the caller can decide.
     final response = await _supabase
         .from('profiles')
         .select()
         .eq('id', userId)
-        .single();
+        .maybeSingle();
+    if (response == null) {
+      debugPrint('[PROFILE] hydrateProfile: no profile row for user $userId');
+      return null;
+    }
 
     // Read live counts from the real tables instead of stale cached columns
     int postCount = 0;

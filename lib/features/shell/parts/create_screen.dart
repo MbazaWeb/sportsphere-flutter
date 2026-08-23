@@ -1134,7 +1134,7 @@ class _MediaStrip extends StatelessWidget {
 // POLL PANEL
 // ══════════════════════════════════════════════════════════════════════════════
 
-class _PollPanel extends StatelessWidget {
+class _PollPanel extends StatefulWidget {
   final List<TextEditingController> options;
   final List<Map<String,dynamic>> teams;
   final List<Map<String,dynamic>> players;
@@ -1157,6 +1157,14 @@ class _PollPanel extends StatelessWidget {
     required this.onAddPlayer,
   });
 
+  @override
+  State<_PollPanel> createState() => _PollPanelState();
+}
+
+class _PollPanelState extends State<_PollPanel> {
+  bool _loadingTeams = false;
+  bool _loadingPlayers = false;
+
   static const _durations = [
     (label: '1 hour', dur: Duration(hours: 1)),
     (label: '6 hours', dur: Duration(hours: 6)),
@@ -1164,6 +1172,80 @@ class _PollPanel extends StatelessWidget {
     (label: '3 days', dur: Duration(days: 3)),
     (label: '7 days', dur: Duration(days: 7)),
   ];
+
+  Future<void> _fillFromTeams() async {
+    if (_loadingTeams) return;
+    setState(() => _loadingTeams = true);
+    try {
+      final rows = await Supabase.instance.client
+          .from('Team')
+          .select('name')
+          .order('name')
+          .limit(4);
+      final names = <String>[];
+      for (final r in (rows as List)) {
+        final n = (r as Map)['name']?.toString().trim();
+        if (n != null && n.isNotEmpty) names.add(n);
+      }
+      if (names.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No teams found')),
+          );
+        }
+        return;
+      }
+      for (var i = 0; i < widget.options.length; i++) {
+        widget.options[i].text = i < names.length ? names[i] : '';
+      }
+      if (mounted) setState(() {});
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not load teams: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loadingTeams = false);
+    }
+  }
+
+  Future<void> _fillFromPlayers() async {
+    if (_loadingPlayers) return;
+    setState(() => _loadingPlayers = true);
+    try {
+      final rows = await Supabase.instance.client
+          .from('Player')
+          .select('name')
+          .order('name')
+          .limit(4);
+      final names = <String>[];
+      for (final r in (rows as List)) {
+        final n = (r as Map)['name']?.toString().trim();
+        if (n != null && n.isNotEmpty) names.add(n);
+      }
+      if (names.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No players found')),
+          );
+        }
+        return;
+      }
+      for (var i = 0; i < widget.options.length; i++) {
+        widget.options[i].text = i < names.length ? names[i] : '';
+      }
+      if (mounted) setState(() {});
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not load players: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loadingPlayers = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1174,26 +1256,89 @@ class _PollPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ...List.generate(options.length, (i) {
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: _loadingTeams ? null : _fillFromTeams,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: SportSphereColors.electricBlue.withValues(alpha: 0.12),
+                      border: Border.all(
+                        color: SportSphereColors.electricBlue.withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (_loadingTeams)
+                          const SizedBox(
+                            width: 14, height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: SportSphereColors.electricBlue),
+                          )
+                        else
+                          const Icon(Icons.groups_rounded, size: 16, color: SportSphereColors.electricBlue),
+                        const SizedBox(width: 6),
+                        const Text('From teams', style: TextStyle(color: SportSphereColors.electricBlue, fontSize: 12, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: GestureDetector(
+                  onTap: _loadingPlayers ? null : _fillFromPlayers,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: SportSphereColors.electricBlue.withValues(alpha: 0.12),
+                      border: Border.all(
+                        color: SportSphereColors.electricBlue.withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (_loadingPlayers)
+                          const SizedBox(
+                            width: 14, height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: SportSphereColors.electricBlue),
+                          )
+                        else
+                          const Icon(Icons.person_outline_rounded, size: 16, color: SportSphereColors.electricBlue),
+                        const SizedBox(width: 6),
+                        const Text('From players', style: TextStyle(color: SportSphereColors.electricBlue, fontSize: 12, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...List.generate(widget.options.length, (i) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Row(
                 children: [
                   Expanded(
                     child: _PanelField(
-                      controller: options[i],
+                      controller: widget.options[i],
                       hint: 'Option ${i + 1}',
                       icon: Icons.circle_outlined,
                     ),
                   ),
-                  if (options.length > 2) ...[
+                  if (widget.options.length > 2) ...[
                     const SizedBox(width: 8),
                     GestureDetector(
-                      onTap: () => onRemoveOption(i),
+                      onTap: () => widget.onRemoveOption(i),
                       child: Icon(
                         Icons.remove_circle_outline_rounded,
-                        color: SportSphereColors.danger
-                            .withValues(alpha: 0.75),
+                        color: SportSphereColors.danger.withValues(alpha: 0.75),
                         size: 22,
                       ),
                     ),
@@ -1205,37 +1350,19 @@ class _PollPanel extends StatelessWidget {
 
           if (options.length < 6)
             GestureDetector(
-              onTap: onAddOption,
+              onTap: widget.onAddOption,
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: SportSphereColors.electricBlue
-                        .withValues(alpha: 0.30),
-                    style: BorderStyle.solid,
-                  ),
+                  border: Border.all(color: SportSphereColors.electricBlue.withValues(alpha: 0.30)),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.add_circle_outline_rounded,
-                      color: SportSphereColors.electricBlue,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Add option',
-                      style: TextStyle(
-                        color: SportSphereColors.electricBlue,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    Icon(Icons.add_rounded, color: SportSphereColors.electricBlue, size: 18),
+                    SizedBox(width: 8),
+                    Text('Add option', style: TextStyle(color: SportSphereColors.electricBlue, fontSize: 13, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ),
@@ -1262,49 +1389,29 @@ class _PollPanel extends StatelessWidget {
             ]),
           ],
           const SizedBox(height: 14),
-          Text(
-            'Poll duration',
-            style: TextStyle(
-              color: SportSphereColors.muted,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          const Text('Poll duration', style: TextStyle(color: SportSphereColors.muted, fontSize: 12, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: _durations.map((d) {
-              final active = duration == d.dur;
+              final active = widget.duration == d.dur;
               return GestureDetector(
-                onTap: () => onDurationChanged(d.dur),
+                onTap: () => widget.onDurationChanged(d.dur),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 7,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
-                    color: active
-                        ? SportSphereColors.electricBlue
-                        : SportSphereColors.white.withValues(alpha: 0.06),
-                    border: Border.all(
-                      color: active
-                          ? SportSphereColors.electricBlue
-                          : SportSphereColors.white.withValues(alpha: 0.10),
-                    ),
+                    color: active ? SportSphereColors.electricBlue : SportSphereColors.white.withValues(alpha: 0.06),
+                    border: Border.all(color: active ? SportSphereColors.electricBlue : SportSphereColors.white.withValues(alpha: 0.10)),
                   ),
                   child: Text(
                     d.label,
                     style: TextStyle(
-                      color: active
-                          ? SportSphereColors.white
-                          : SportSphereColors.muted,
+                      color: active ? SportSphereColors.white : SportSphereColors.muted,
                       fontSize: 12,
-                      fontWeight: active
-                          ? FontWeight.w700
-                          : FontWeight.w500,
+                      fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                     ),
                   ),
                 ),
