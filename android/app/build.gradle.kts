@@ -33,6 +33,13 @@ android {
         jvmTarget = JavaVersion.VERSION_11.toString()
     }
 
+    // ── Run D8 dexer out-of-process so it gets its own JVM heap ───────────
+    // Without this, D8 shares the Gradle JVM heap and OOMs on low-RAM machines.
+    dexOptions {
+        javaMaxHeapSize = "512m"
+        preDexLibraries = false
+    }
+
     defaultConfig {
         applicationId = "com.sportsphere.sportsphere_app"
         minSdk = 23
