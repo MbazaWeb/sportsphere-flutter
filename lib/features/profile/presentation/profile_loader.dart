@@ -153,6 +153,7 @@ class ProfileLoader {
             (row?['avatar_url'] as String?) ??
             (row?['avatarUrl'] as String?) ??
             'assets/images/Playify_logo.png', // fallback for official account
+        coverAsset:
             (row?['cover_url'] as String?) ?? (row?['coverUrl'] as String?),
         isVerified: true,
         isOwnProfile: authId.isNotEmpty &&

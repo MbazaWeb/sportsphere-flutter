@@ -13,6 +13,7 @@ import '../../presentation/become_pro_sheet.dart';
 import '../../shared/profile_widgets.dart';
 import '../../../auth/presentation/auth_controller.dart';
 import '../../../home/widgets/sportlights_tab.dart';
+import '../../../../core/utils/media_type.dart';
 // ══════════════════════════════════════════════════════════════════════════════
 // MODEL
 // ══════════════════════════════════════════════════════════════════════════════
@@ -991,15 +992,15 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
         }
 
         // Determine SpotlightType
-        _SpotlightType type;
+        SpotlightType type;
         switch (postType) {
-          case 'poll': type = _SpotlightType.poll; break;
-          case 'prediction': type = _SpotlightType.prediction; break;
-          case 'video': type = _SpotlightType.video; break;
+          case 'poll': type = SpotlightType.poll; break;
+          case 'prediction': type = SpotlightType.prediction; break;
+          case 'video': type = SpotlightType.video; break;
           case 'media':
             type = (asset != null && isVideoMediaUrl(asset))
-                ? _SpotlightType.video : _SpotlightType.official; break;
-          default: type = _SpotlightType.official;
+                ? SpotlightType.video : SpotlightType.official; break;
+          default: type = SpotlightType.official;
         }
 
         final createdAt = r['createdAt'] ?? r['created_at'];
@@ -1020,6 +1021,7 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
           role: widget.profile.role,
           handle: widget.profile.handle,
           postId: r['id']?.toString(),
+          matchId: (r['matchId'] ?? r['match_id'])?.toString(),
           age: age,
           asset: asset,
           likes: (r['likeCount'] as int?) ?? 0,
