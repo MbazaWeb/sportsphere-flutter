@@ -12,6 +12,7 @@ import '../../features/profile/Profile/player/player_profile_view.dart';
 import '../../features/profile/Profile/team/team_profile_view.dart';
 import '../../features/admin/admin_dashboard.dart';
 import '../../features/profile/presentation/profile_loader.dart';
+import '../../features/profile/templates/role_profile_model.dart';
 import '../../features/profile/templates/role_profile_shell.dart';
 import '../../features/shell/app_shell.dart';
 import '../../splash_screen.dart';
