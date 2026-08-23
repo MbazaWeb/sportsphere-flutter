@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../core/theme/colors.dart';
@@ -59,15 +60,27 @@ class ProfilePost {
   final int shares;
 
   /// Flat list of media URLs attached to the post (images and/or videos).
-  /// Populated either by passing [mediaUrls] directly at construction, or
-  /// automatically from the legacy [imageUrl] single-URL param when
-  /// [mediaUrls] is empty.
   final List<String> mediaUrls;
 
-  /// Whether the post carries image/video/mixed media. Derived from
-  /// [mediaUrls] when null. Kept nullable so callers can omit it and let
-  /// [effectiveMediaType] infer it from the URL list.
+  /// Whether the post carries image/video/mixed media.
   final ProfileMediaType? mediaType;
+
+  // ── Poll fields ────────────────────────────────────────────
+  final String? pollId;
+  final List<String> pollOptions;
+  final int? pollTotalVotes;
+  final int? myPollVote;
+  final Map<int, int> pollCounts;
+
+  // ── Prediction fields ──────────────────────────────────────
+  final String? predHome;
+  final String? predAway;
+  final int? predHomeScore;
+  final int? predAwayScore;
+  final String? myPrediction;
+
+  // ── Post type ──────────────────────────────────────────────
+  final String postType; // text, media, poll, prediction, video
 
   /// Backwards-compatible constructor.
   ///
@@ -85,7 +98,18 @@ class ProfilePost {
     required this.shares,
     List<String> mediaUrls = const [],
     this.mediaType,
-    // ── Legacy params (deprecated; kept for source-compat) ──────────────
+    this.pollId,
+    this.pollOptions = const [],
+    this.pollTotalVotes,
+    this.myPollVote,
+    this.pollCounts = const {},
+    this.predHome,
+    this.predAway,
+    this.predHomeScore,
+    this.predAwayScore,
+    this.myPrediction,
+    this.postType = 'text',
+    // ── Legacy params ──────────────────────────────────────────────────
     this.hasImage = false,
     this.imageCount = 1,
     this.hasVideo = false,
@@ -566,7 +590,14 @@ class _ProfilePostCardState extends State<ProfilePostCard> {
             //              N>1 = horizontal PageView with dots indicator
             //   • video  → _ProfilePostVideo widget (uses video_player)
             //   • mixed  → render every URL in order via _ProfilePostMediaItem
-            if (post.mediaUrls.isNotEmpty) ...[
+            if (post.postType == 'poll' && post.pollOptions.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _ProfilePollWidget(post: post),
+            ] else if (post.postType == 'prediction' &&
+                (post.predHome != null || post.predAway != null)) ...[
+              const SizedBox(height: 12),
+              _ProfilePredictionWidget(post: post),
+            ] else if (post.mediaUrls.isNotEmpty) ...[
               const SizedBox(height: 12),
               _ProfilePostMedia(
                 urls: post.mediaUrls,
@@ -1327,4 +1358,342 @@ class ProfileMoreOption {
     required this.onTap,
     this.destructive = false,
   });
+}
+
+// ══ Poll widget for profile Spotlights ════════════════════════════════════════
+
+class _ProfilePollWidget extends StatefulWidget {
+  final ProfilePost post;
+  const _ProfilePollWidget({required this.post});
+  @override State<_ProfilePollWidget> createState() => _ProfilePollWidgetState();
+}
+
+class _ProfilePollWidgetState extends State<_ProfilePollWidget> {
+  late int? _voted;
+  late Map<int,int> _counts;
+
+  @override
+  void initState() {
+    super.initState();
+    _voted = widget.post.myPollVote;
+    _counts = Map<int,int>.from(widget.post.pollCounts);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final options = widget.post.pollOptions;
+    final total = (widget.post.pollTotalVotes ?? 0) +
+        _counts.values.fold<int>(0, (a, b) => a + b);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF092B4A),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: SportSphereColors.electricBlue.withValues(alpha: 0.4)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(Icons.poll_rounded, color: SportSphereColors.electricBlue, size: 16),
+          const SizedBox(width: 6),
+          const Text('POLL', style: TextStyle(color: SportSphereColors.electricBlue,
+              fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.1)),
+          const Spacer(),
+          if (total > 0) Text('$total vote${total == 1 ? '' : 's'}',
+              style: const TextStyle(color: SportSphereColors.muted, fontSize: 11)),
+        ]),
+        const SizedBox(height: 10),
+        ...List.generate(options.length, (i) {
+          final count = _counts[i] ?? 0;
+          final pct = total > 0 ? (count / total * 100).round() : 0;
+          final voted = _voted == i;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: GestureDetector(
+              onTap: () async {
+                if (_voted != null) return;
+                final pollId = widget.post.pollId;
+                if (pollId == null) { setState(() => _voted = i); return; }
+                try {
+                  await Supabase.instance.client.rpc('increment_poll_votes', params: {
+                    'p_poll_id': pollId, 'p_user_id': Supabase.instance.client.auth.currentUser?.id, 'p_option_index': i,
+                  });
+                  setState(() { _voted = i; _counts[i] = (_counts[i] ?? 0) + 1; });
+                } catch (_) { setState(() => _voted = i); }
+              },
+              child: Stack(children: [
+                Container(
+                  height: 38,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.white.withValues(alpha: 0.06),
+                    border: Border.all(color: voted
+                        ? SportSphereColors.electricBlue
+                        : Colors.white.withValues(alpha: 0.1)),
+                  ),
+                ),
+                if (_voted != null)
+                  FractionallySizedBox(
+                    widthFactor: pct / 100,
+                    child: Container(
+                      height: 38,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: voted
+                            ? SportSphereColors.electricBlue.withValues(alpha: 0.25)
+                            : Colors.white.withValues(alpha: 0.08),
+                      ),
+                    ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: Row(children: [
+                    if (voted) ...[
+                      const Icon(Icons.check_circle_rounded,
+                          color: SportSphereColors.electricBlue, size: 14),
+                      const SizedBox(width: 6),
+                    ],
+                    Expanded(child: Text(options[i],
+                        style: TextStyle(
+                            color: voted ? SportSphereColors.electricBlue : SportSphereColors.white,
+                            fontSize: 13, fontWeight: FontWeight.w600))),
+                    if (_voted != null)
+                      Text('$pct%', style: const TextStyle(
+                          color: SportSphereColors.muted, fontSize: 12)),
+                  ]),
+                ),
+              ]),
+            ),
+          );
+        }),
+      ]),
+    );
+  }
+}
+
+// ══ Prediction widget for profile Spotlights ══════════════════════════════════
+
+class _ProfilePredictionWidget extends StatelessWidget {
+  final ProfilePost post;
+  const _ProfilePredictionWidget({required this.post});
+
+  @override
+  Widget build(BuildContext context) {
+    final home = post.predHome ?? 'Home';
+    final away = post.predAway ?? 'Away';
+    final hs = post.predHomeScore ?? 0;
+    final as_ = post.predAwayScore ?? 0;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+            colors: [Color(0xFF182E0E), Color(0xFF071421)]),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF7FD820).withValues(alpha: 0.5)),
+      ),
+      child: Column(children: [
+        Row(children: [
+          const Icon(Icons.analytics_outlined, color: Color(0xFF7FD820), size: 16),
+          const SizedBox(width: 6),
+          const Text('PREDICTION', style: TextStyle(color: Color(0xFF7FD820),
+              fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.1)),
+        ]),
+        const SizedBox(height: 12),
+        Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
+          Expanded(child: Text(home, textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13))),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(12)),
+            child: Text('$hs  -  $as_',
+                style: const TextStyle(color: Colors.white, fontSize: 24,
+                    fontWeight: FontWeight.w900, letterSpacing: 3)),
+          ),
+          Expanded(child: Text(away, textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13))),
+        ]),
+        if (post.myPrediction != null) ...[
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: const Color(0xFF7FD820).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFF7FD820).withValues(alpha: 0.35)),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.check_circle_rounded, color: Color(0xFF7FD820), size: 13),
+              const SizedBox(width: 5),
+              Text('You predicted ${post.myPrediction!.replaceAll('-', ' - ')}',
+                  style: const TextStyle(color: Color(0xFF7FD820), fontSize: 11,
+                      fontWeight: FontWeight.w600)),
+            ]),
+          ),
+        ],
+      ]),
+    );
+  }
+}
+
+
+// ══ Poll widget for profile Spotlights ════════════════════════════════════════
+
+class _ProfilePollWidget extends StatefulWidget {
+  final ProfilePost post;
+  const _ProfilePollWidget({required this.post});
+  @override State<_ProfilePollWidget> createState() => _ProfilePollWidgetState();
+}
+
+class _ProfilePollWidgetState extends State<_ProfilePollWidget> {
+  late int? _voted;
+  late Map<int,int> _counts;
+
+  @override
+  void initState() {
+    super.initState();
+    _voted = widget.post.myPollVote;
+    _counts = Map<int,int>.from(widget.post.pollCounts);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final options = widget.post.pollOptions;
+    final total = widget.post.pollTotalVotes ?? _counts.values.fold<int>(0, (a,b)=>a+b);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF092B4A),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: SportSphereColors.electricBlue.withValues(alpha:0.4)),
+      ),
+      child: Column(crossAxisAlignment:CrossAxisAlignment.start, children:[
+        Row(children:[
+          const Icon(Icons.poll_rounded, color:SportSphereColors.electricBlue, size:16),
+          const SizedBox(width:6),
+          const Text('POLL', style:TextStyle(color:SportSphereColors.electricBlue,
+              fontSize:11, fontWeight:FontWeight.w800, letterSpacing:1.1)),
+          const Spacer(),
+          if(total>0) Text('$total vote${total==1?"":"s"}',
+              style:const TextStyle(color:SportSphereColors.muted, fontSize:11)),
+        ]),
+        const SizedBox(height:10),
+        ...List.generate(options.length, (i) {
+          final count = _counts[i]??0;
+          final pct = total>0 ? (count/total*100).round() : 0;
+          final voted = _voted==i;
+          return Padding(
+            padding:const EdgeInsets.only(bottom:8),
+            child:GestureDetector(
+              onTap:() async {
+                if(_voted!=null) return;
+                final pollId=widget.post.pollId;
+                if(pollId==null){setState(()=>_voted=i);return;}
+                try {
+                  await Supabase.instance.client.rpc('increment_poll_votes', params:{
+                    'p_poll_id':pollId,
+                    'p_user_id':Supabase.instance.client.auth.currentUser?.id,
+                    'p_option_index':i,
+                  });
+                  setState((){_voted=i;_counts[i]=(_counts[i]??0)+1;});
+                } catch(_){setState(()=>_voted=i);}
+              },
+              child:Stack(children:[
+                Container(height:38, decoration:BoxDecoration(
+                  borderRadius:BorderRadius.circular(8),
+                  color:Colors.white.withValues(alpha:0.06),
+                  border:Border.all(color:voted
+                      ?SportSphereColors.electricBlue
+                      :Colors.white.withValues(alpha:0.1)),
+                )),
+                if(_voted!=null) FractionallySizedBox(
+                  widthFactor:pct/100,
+                  child:Container(height:38, decoration:BoxDecoration(
+                    borderRadius:BorderRadius.circular(8),
+                    color:voted
+                        ?SportSphereColors.electricBlue.withValues(alpha:0.25)
+                        :Colors.white.withValues(alpha:0.08),
+                  )),
+                ),
+                Padding(
+                  padding:const EdgeInsets.symmetric(horizontal:12,vertical:10),
+                  child:Row(children:[
+                    if(voted)...[
+                      const Icon(Icons.check_circle_rounded,color:SportSphereColors.electricBlue,size:14),
+                      const SizedBox(width:6),
+                    ],
+                    Expanded(child:Text(options[i], style:TextStyle(
+                        color:voted?SportSphereColors.electricBlue:SportSphereColors.white,
+                        fontSize:13,fontWeight:FontWeight.w600))),
+                    if(_voted!=null) Text('$pct%',
+                        style:const TextStyle(color:SportSphereColors.muted,fontSize:12)),
+                  ]),
+                ),
+              ]),
+            ),
+          );
+        }),
+      ]),
+    );
+  }
+}
+
+// ══ Prediction widget for profile Spotlights ══════════════════════════════════
+
+class _ProfilePredictionWidget extends StatelessWidget {
+  final ProfilePost post;
+  const _ProfilePredictionWidget({required this.post});
+  @override
+  Widget build(BuildContext context) {
+    final home=post.predHome??'Home';
+    final away=post.predAway??'Away';
+    final hs=post.predHomeScore??0;
+    final as_=post.predAwayScore??0;
+    return Container(
+      padding:const EdgeInsets.all(16),
+      decoration:BoxDecoration(
+        gradient:const LinearGradient(colors:[Color(0xFF182E0E),Color(0xFF071421)]),
+        borderRadius:BorderRadius.circular(16),
+        border:Border.all(color:const Color(0xFF7FD820).withValues(alpha:0.5)),
+      ),
+      child:Column(children:[
+        Row(children:[
+          const Icon(Icons.analytics_outlined,color:Color(0xFF7FD820),size:16),
+          const SizedBox(width:6),
+          const Text('PREDICTION',style:TextStyle(color:Color(0xFF7FD820),
+              fontSize:11,fontWeight:FontWeight.w800,letterSpacing:1.1)),
+        ]),
+        const SizedBox(height:12),
+        Row(mainAxisAlignment:MainAxisAlignment.spaceEvenly, children:[
+          Expanded(child:Text(home,textAlign:TextAlign.center,
+              style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w700,fontSize:13))),
+          Container(
+            padding:const EdgeInsets.symmetric(horizontal:14,vertical:8),
+            decoration:BoxDecoration(color:Colors.black.withValues(alpha:0.3),borderRadius:BorderRadius.circular(12)),
+            child:Text('$hs  -  $as_',style:const TextStyle(
+                color:Colors.white,fontSize:22,fontWeight:FontWeight.w900,letterSpacing:3)),
+          ),
+          Expanded(child:Text(away,textAlign:TextAlign.center,
+              style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w700,fontSize:13))),
+        ]),
+        if(post.myPrediction!=null)...[
+          const SizedBox(height:10),
+          Container(
+            padding:const EdgeInsets.symmetric(horizontal:10,vertical:5),
+            decoration:BoxDecoration(
+              color:const Color(0xFF7FD820).withValues(alpha:0.12),
+              borderRadius:BorderRadius.circular(20),
+              border:Border.all(color:const Color(0xFF7FD820).withValues(alpha:0.35)),
+            ),
+            child:Row(mainAxisSize:MainAxisSize.min,children:[
+              const Icon(Icons.check_circle_rounded,color:Color(0xFF7FD820),size:13),
+              const SizedBox(width:5),
+              Text('You predicted ${post.myPrediction!.replaceAll('-',' - ')}',
+                  style:const TextStyle(color:Color(0xFF7FD820),fontSize:11,fontWeight:FontWeight.w600)),
+            ]),
+          ),
+        ],
+      ]),
+    );
+  }
 }

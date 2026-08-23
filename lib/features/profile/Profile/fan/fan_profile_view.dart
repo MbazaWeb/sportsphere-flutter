@@ -1077,6 +1077,57 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
             mediaType = null;
           }
 
+          // Fetch poll data if needed
+          String? pollId;
+          List<String> pollOptions = [];
+          int? pollTotalVotes;
+          int? myPollVote;
+          Map<int, int> pollCounts = {};
+          if (type == 'poll') {
+            try {
+              final poll = await Supabase.instance.client
+                  .from('Poll').select().eq('postId', p['id']).maybeSingle();
+              if (poll != null) {
+                pollId = poll['id']?.toString();
+                final opts = poll['options'];
+                if (opts is List) pollOptions = opts.map((e) => e.toString()).toList();
+                pollTotalVotes = poll['totalVotes'] as int?;
+                final me = Supabase.instance.client.auth.currentUser?.id;
+                if (me != null && pollId != null) {
+                  final v = await Supabase.instance.client.from('PollVote')
+                      .select().eq('pollId', pollId).eq('userId', me).maybeSingle();
+                  myPollVote = v?['optionIdx'] as int?;
+                  // Get per-option counts
+                  final votes = await Supabase.instance.client.from('PollVote')
+                      .select('optionIdx').eq('pollId', pollId);
+                  for (final vr in votes as List) {
+                    final idx = vr['optionIdx'] as int?;
+                    if (idx != null) pollCounts[idx] = (pollCounts[idx] ?? 0) + 1;
+                  }
+                }
+              }
+            } catch (_) {}
+          }
+
+          // Fetch prediction data if needed
+          String? predHome, predAway, myPrediction;
+          int? predHomeScore, predAwayScore;
+          if (type == 'prediction') {
+            try {
+              final pred = await Supabase.instance.client
+                  .from('Prediction').select().eq('postId', p['id']).maybeSingle();
+              if (pred != null) {
+                predHome = pred['homeTeam'] as String?;
+                predAway = pred['awayTeam'] as String?;
+                predHomeScore = pred['predictedHome'] as int?;
+                predAwayScore = pred['predictedAway'] as int?;
+                if (predHomeScore != null && predAwayScore != null) {
+                  myPrediction = '$predHomeScore-$predAwayScore';
+                }
+              }
+            } catch (_) {}
+          }
+
           return ProfilePostCard(
             post: ProfilePost(
               text: content,
@@ -1087,6 +1138,17 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
               shares: (p['shareCount'] as int?) ?? 0,
               mediaUrls: mediaUrls,
               mediaType: mediaType,
+              postType: type,
+              pollId: pollId,
+              pollOptions: pollOptions,
+              pollTotalVotes: pollTotalVotes,
+              myPollVote: myPollVote,
+              pollCounts: pollCounts,
+              predHome: predHome,
+              predAway: predAway,
+              predHomeScore: predHomeScore,
+              predAwayScore: predAwayScore,
+              myPrediction: myPrediction,
             ),
             authorName: widget.profile.displayName,
             authorHandle: widget.profile.atHandle,
