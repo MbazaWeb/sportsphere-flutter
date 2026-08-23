@@ -4,7 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/colors.dart';
 
 class BulkUploadScreen extends StatefulWidget {
-  const BulkUploadScreen({super.key});
+  const BulkUploadScreen({super.key, this.onDone});
+  final VoidCallback? onDone;
   @override State<BulkUploadScreen> createState() => _BulkUploadScreenState();
 }
 

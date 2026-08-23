@@ -558,7 +558,7 @@ Future<void> _showReconcileDialog(BuildContext ctx) async {
               title: const Text('Done', style: TextStyle(color: SportSphereColors.white)),
               content: Text('Scanned: ${report.length}\nCreated: $created\nHealthy: $healthy\nFailed: $failed',
                   style: const TextStyle(color: SportSphereColors.white, fontSize: 13)),
-              actions: [TextButton(onPressed: () => Navigator.pop(_), child: const Text('OK'))],
+              actions: [TextButton(onPressed: () => Navigator.pop(c), child: const Text('OK'))],
             ));
           } catch (e) {
             if (ctx.mounted) {
