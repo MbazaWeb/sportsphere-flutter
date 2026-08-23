@@ -57,20 +57,52 @@ class SocialRepository {
 
   String _mimeFor(String ext) {
     switch (ext) {
+      // Images
       case 'png':
         return 'image/png';
       case 'webp':
         return 'image/webp';
       case 'gif':
         return 'image/gif';
+      case 'bmp':
+        return 'image/bmp';
+      case 'heic':
+        return 'image/heic';
+      case 'heif':
+        return 'image/heif';
+      // Videos — accept every common container/format so admin & user
+      // uploads don't fail with "Something went wrong".
       case 'mp4':
+      case 'm4v':
         return 'video/mp4';
       case 'mov':
         return 'video/quicktime';
+      case 'mkv':
+        return 'video/x-matroska';
+      case 'webm':
+        return 'video/webm';
+      case 'avi':
+        return 'video/x-msvideo';
+      case '3gp':
+        return 'video/3gpp';
+      case '3g2':
+        return 'video/3gpp2';
+      case 'flv':
+        return 'video/x-flv';
+      case 'wmv':
+        return 'video/x-ms-wmv';
+      case 'ts':
+        return 'video/mp2t';
+      case 'ogv':
+        return 'video/ogg';
+      case 'mpeg':
+      case 'mpg':
+        return 'video/mpeg';
+      // Documents
       case 'pdf':
         return 'application/pdf';
       default:
-        return 'image/jpeg';
+        return 'application/octet-stream';
     }
   }
 

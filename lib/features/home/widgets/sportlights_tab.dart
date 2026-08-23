@@ -12,6 +12,7 @@ import '../../../core/theme/colors.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../shell/media/media_tools.dart';
 import '../../shell/media/pdf_viewer_page.dart';
+import '../../shell/nav_provider.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/branding.dart';
@@ -2835,6 +2836,20 @@ class _ActionRow extends StatefulWidget {
 }
 
 class _ActionRowState extends State<_ActionRow> {
+  // Navigation to the Scores tab uses the global shellTabProvider /
+  // pendingMatchIdProvider from nav_provider.dart. We access them via
+  // ProviderScope.containerOf(context) so this widget doesn't need to be
+  // a ConsumerWidget (which would propagate the ref change through
+  // SpotlightCard and the parent feed).
+
+  void _goToScores({String? matchId}) {
+    final container = ProviderScope.containerOf(context, listen: false);
+    container.read(shellTabProvider.notifier).set(1); // Scores tab index
+    if (matchId != null && matchId.isNotEmpty) {
+      container.read(pendingMatchIdProvider.notifier).set(matchId);
+    }
+  }
+
   Future<String?> _resolveTargetId() async {
     final item = widget.item;
     final sb = Supabase.instance.client;
@@ -3029,7 +3044,7 @@ class _ActionRowState extends State<_ActionRow> {
           icon: Icons.stadium_outlined,
           color: accent,
           outlined: true,
-          onTap: () {},
+          onTap: () => _goToScores(matchId: widget.item.matchId),
         ),
       );
     }
@@ -3100,28 +3115,14 @@ class _ActionRowState extends State<_ActionRow> {
 
     // ── Prediction — View Match only (no Predict button) ────────────────────
     if (type == SpotlightType.prediction) {
-      final matchId = widget.item.predMatchId;
+      final matchId = widget.item.predMatchId ?? widget.item.matchId;
       return _OneButton(
         child: _Btn(
           label: 'View Match',
           icon: Icons.sports_soccer_outlined,
           color: accent,
           outlined: true,
-          onTap: () {
-            // Navigate to Scores tab (index 1)
-            context.go('/home');
-            // Use a post-frame callback to switch to scores tab
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Check the Scores tab for this match'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              }
-            });
-          },
+          onTap: () => _goToScores(matchId: matchId),
         ),
       );
     }

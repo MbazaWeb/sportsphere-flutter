@@ -233,8 +233,12 @@ class _CreateComposerState extends State<_CreateComposer>
 
   Future<void> _pickMedia() async {
     if (_mediaTiles.length >= 4) return;
-    // Show source picker
-    final source = await showModalBottomSheet<ImageSource>(
+    // Show source picker.
+    // 'Video file (any format)' uses FilePicker, which lets the user pick
+    // any video file the OS recognizes (mp4, mov, mkv, webm, avi, 3gp, flv,
+    // wmv, m4v, ts, …). The image_picker.pickVideo path only handles
+    // camera-recorded mp4/mov and silently fails on everything else.
+    final source = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: SportSphereColors.surface,
       shape: const RoundedRectangleBorder(
@@ -246,18 +250,25 @@ class _CreateComposerState extends State<_CreateComposer>
           children: [
             ListTile(
               leading: const Icon(Icons.photo_library_rounded, color: SportSphereColors.electricBlue),
-              title: const Text('Gallery', style: TextStyle(color: SportSphereColors.white)),
-              onTap: () => Navigator.pop(sheetCtx, ImageSource.gallery),
+              title: const Text('Photo from Gallery', style: TextStyle(color: SportSphereColors.white)),
+              onTap: () => Navigator.pop(sheetCtx, 'gallery_image'),
             ),
             ListTile(
               leading: const Icon(Icons.videocam_rounded, color: SportSphereColors.sportGreen),
-              title: const Text('Camera (Photo)', style: TextStyle(color: SportSphereColors.white)),
-              onTap: () => Navigator.pop(sheetCtx, ImageSource.camera),
+              title: const Text('Record Video', style: TextStyle(color: SportSphereColors.white)),
+              onTap: () => Navigator.pop(sheetCtx, 'camera_video'),
             ),
             ListTile(
-              leading: const Icon(Icons.video_library_rounded, color: SportSphereColors.sportOrange),
-              title: const Text('Camera (Video)', style: TextStyle(color: SportSphereColors.white)),
-              onTap: () => Navigator.pop(sheetCtx, ImageSource.camera),
+              leading: const Icon(Icons.photo_camera_rounded, color: SportSphereColors.sportOrange),
+              title: const Text('Take Photo', style: TextStyle(color: SportSphereColors.white)),
+              onTap: () => Navigator.pop(sheetCtx, 'camera_image'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.video_library_rounded, color: Color(0xFF9B6DFF)),
+              title: const Text('Video file (any format)', style: TextStyle(color: SportSphereColors.white)),
+              subtitle: const Text('mp4, mov, mkv, webm, avi, 3gp, …',
+                  style: TextStyle(color: SportSphereColors.muted, fontSize: 11)),
+              onTap: () => Navigator.pop(sheetCtx, 'any_video'),
             ),
           ],
         ),
@@ -265,54 +276,36 @@ class _CreateComposerState extends State<_CreateComposer>
     );
     if (source == null) return;
 
-    // Determine if user wants video
-    bool pickVideo = false;
-    if (source == ImageSource.camera) {
-      // Second sheet was video option — detect by what they tapped
-      // The camera source can do both. For simplicity, pick image first.
-      pickVideo = false;
-    }
-
     setState(() => _type = _PostType.media);
-    try {
-      if (pickVideo) {
-        final file = await _picker.pickVideo(source: source);
-        if (file == null) return;
-        setState(() => _posting = true);
-        final url = await _social.uploadPickedFile(
-          bucket: 'media', folder: 'videos', file: file,
-        );
-        setState(() {
-          _mediaTiles.add(url);
-          _mediaIsVideo.add(true);
-          _posting = false;
-        });
-      } else {
-        // Show a quick image/video choice if gallery
-        if (source == ImageSource.gallery) {
-          final choice = await showDialog<String>(
-            context: context,
-            builder: (d) => SimpleDialog(
-              backgroundColor: const Color(0xFF0C1A2A),
-              title: const Text('Pick media type', style: TextStyle(color: Colors.white)),
-              children: [
-                SimpleDialogOption(
-                  child: const Text('Image', style: TextStyle(color: SportSphereColors.electricBlue)),
-                  onPressed: () => Navigator.pop(d, 'image'),
-                ),
-                SimpleDialogOption(
-                  child: const Text('Video', style: TextStyle(color: SportSphereColors.sportGreen)),
-                  onPressed: () => Navigator.pop(d, 'video'),
-                ),
-              ],
-            ),
-          );
-          if (choice == null) return;
-          pickVideo = choice == 'video';
-        }
 
-        if (pickVideo) {
-          final file = await _picker.pickVideo(source: source);
+    try {
+      switch (source) {
+        // ── Any-format video via FilePicker ──
+        case 'any_video':
+          final result = await FilePicker.pickFiles(
+            type: FileType.video,
+            allowMultiple: false,
+          );
+          if (result == null || result.files.isEmpty) return;
+          final picked = result.files.single;
+          if (picked.path == null || picked.path!.isEmpty) {
+            throw StateError('Could not access the selected file');
+          }
+          setState(() => _posting = true);
+          final xfile = XFile(picked.path!);
+          final url = await _social.uploadPickedFile(
+            bucket: 'media', folder: 'videos', file: xfile,
+          );
+          setState(() {
+            _mediaTiles.add(url);
+            _mediaIsVideo.add(true);
+            _posting = false;
+          });
+          break;
+
+        // ── Record video with camera ──
+        case 'camera_video':
+          final file = await _picker.pickVideo(source: ImageSource.camera);
           if (file == null) return;
           setState(() => _posting = true);
           final url = await _social.uploadPickedFile(
@@ -323,8 +316,11 @@ class _CreateComposerState extends State<_CreateComposer>
             _mediaIsVideo.add(true);
             _posting = false;
           });
-        } else {
-          final file = await _picker.pickImage(source: source, imageQuality: 85);
+          break;
+
+        // ── Take photo with camera ──
+        case 'camera_image':
+          final file = await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
           if (file == null) return;
           setState(() => _posting = true);
           final url = await _social.uploadPickedFile(
@@ -335,7 +331,22 @@ class _CreateComposerState extends State<_CreateComposer>
             _mediaIsVideo.add(false);
             _posting = false;
           });
-        }
+          break;
+
+        // ── Photo from gallery ──
+        case 'gallery_image':
+          final file = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+          if (file == null) return;
+          setState(() => _posting = true);
+          final url = await _social.uploadPickedFile(
+            bucket: 'posts', folder: 'images', file: file,
+          );
+          setState(() {
+            _mediaTiles.add(url);
+            _mediaIsVideo.add(false);
+            _posting = false;
+          });
+          break;
       }
     } catch (e) {
       setState(() => _posting = false);

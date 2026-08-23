@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'dart:async';
 
+import 'package:cross_file/cross_file.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,6 +26,7 @@ import '../scores/presentation/pages/scores_page.dart';
 import '../shop/models/shop_models.dart';
 import '../shop/presentation/shop_tab.dart';
 import '../../core/utils/friendly_error.dart';
+import 'nav_provider.dart';
 
 part 'parts/home_screen.dart';
 part 'parts/search_fullscreen.dart';
@@ -43,7 +46,12 @@ class SportSphereShell extends ConsumerStatefulWidget {
 }
 
 class _SportSphereShellState extends ConsumerState<SportSphereShell> {
+  // Local index tracks the user's manual tab taps. We then reconcile with
+  // shellTabProvider (set externally by Spotlight "View Match" buttons etc.)
+  // in build() — if shellTabProvider differs from _index, we let it win and
+  // sync _index to it.
   int _index = 0;
+  int _lastSyncedTab = 0;
 
   void goHome() {
     if (!mounted) return;
@@ -69,6 +77,14 @@ class _SportSphereShellState extends ConsumerState<SportSphereShell> {
     final auth = ref.watch(authControllerProvider);
     final isGuest = auth.isGuest || auth.status == AuthStatus.unknown;
 
+    // Reconcile with the externally-set shellTabProvider. If a widget set
+    // shellTabProvider to e.g. 1 (Scores), switch to that tab once.
+    final requestedTab = ref.watch(shellTabProvider);
+    if (requestedTab != _lastSyncedTab) {
+      _index = requestedTab;
+      _lastSyncedTab = requestedTab;
+    }
+
     final screens = isGuest ? _guestScreens : _authScreens;
     final safeIndex = _index.clamp(0, screens.length - 1);
 
@@ -85,7 +101,13 @@ class _SportSphereShellState extends ConsumerState<SportSphereShell> {
       bottomNavigationBar: _BottomNavigation(
         currentIndex: safeIndex,
         isGuest: isGuest,
-        onChanged: (index) => setState(() => _index = index),
+        onChanged: (index) {
+          setState(() => _index = index);
+          // Keep shellTabProvider in sync so external code reading it
+          // sees the current tab.
+          ref.read(shellTabProvider.notifier).set(index);
+          _lastSyncedTab = index;
+        },
       ),
     );
   }
