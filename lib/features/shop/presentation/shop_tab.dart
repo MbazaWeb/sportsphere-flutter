@@ -146,21 +146,6 @@ class _PreviewCard extends StatelessWidget {
     );
   }
 }
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
-      children: [
-        if (catalog.tickets.isNotEmpty)
-          _Section(title: 'Tickets', icon: Icons.confirmation_number_rounded, items: catalog.tickets, catalog: catalog),
-        if (catalog.memberships.isNotEmpty)
-          _Section(title: 'Membership', icon: Icons.card_membership_rounded, items: catalog.memberships, catalog: catalog),
-        if (catalog.merch.isNotEmpty)
-          _Section(title: 'Shop', icon: Icons.storefront_rounded, items: catalog.merch, catalog: catalog),
-        if (catalog.donations.isNotEmpty)
-          _Section(title: 'Support & donate', icon: Icons.favorite_rounded, items: catalog.donations, catalog: catalog),
-      ],
-    );
-  }
-}
 
 class _Section extends StatelessWidget {
   final String title;
