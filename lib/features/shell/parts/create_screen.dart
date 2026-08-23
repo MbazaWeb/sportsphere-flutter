@@ -169,7 +169,6 @@ class _CreateComposerState extends State<_CreateComposer>
       }
     } catch (_) {}
   }
-  }
 
   Future<void> _loadMatches() async {
     try {
@@ -1340,7 +1339,7 @@ class _PollPanelState extends State<_PollPanel> {
                 children: [
                   Expanded(
                     child: _PanelField(
-                      controller: widget.widget.options[i],
+                      controller: widget.options[i],
                       hint: 'Option ${i + 1}',
                       icon: Icons.circle_outlined,
                     ),
@@ -1348,7 +1347,7 @@ class _PollPanelState extends State<_PollPanel> {
                   if (widget.options.length > 2) ...[
                     const SizedBox(width: 8),
                     GestureDetector(
-                      onTap: () => widget.widget.onRemoveOption(i),
+                      onTap: () => widget.onRemoveOption(i),
                       child: Icon(
                         Icons.remove_circle_outline_rounded,
                         color: SportSphereColors.danger.withValues(alpha: 0.75),
@@ -1478,7 +1477,7 @@ class _PollPanelState extends State<_PollPanel> {
           borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
       builder: (_) => StatefulBuilder(builder: (bCtx, bSet) {
         final q = searchCtrl.text.toLowerCase();
-        final filtered = players.where((p) =>
+        final filtered = widget.players.where((p) =>
             (p['name'] as String? ?? '').toLowerCase().contains(q)).toList();
         return DraggableScrollableSheet(
           initialChildSize: 0.7, minChildSize: 0.3, maxChildSize: 0.9, expand: false,
