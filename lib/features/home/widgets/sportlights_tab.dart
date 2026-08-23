@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:video_player/video_player.dart';
 import '../../../core/admin/app_admin.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -1007,41 +1008,134 @@ class _ImageContent extends StatelessWidget {
   }
 }
 
-class _VideoContent extends StatelessWidget {
+class _VideoContent extends StatefulWidget {
   final _SpotlightItem item;
   const _VideoContent({required this.item});
+  @override
+  State<_VideoContent> createState() => _VideoContentState();
+}
+
+class _VideoContentState extends State<_VideoContent> {
+  VideoPlayerController? _ctrl;
+  bool _initialized = false;
+  bool _playing = false;
+  bool _error = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final url = widget.item.asset;
+    if (url != null && url.startsWith('http')) {
+      _ctrl = VideoPlayerController.networkUrl(Uri.parse(url))
+        ..initialize().then((_) {
+          if (mounted) setState(() => _initialized = true);
+        }).catchError((_) {
+          if (mounted) setState(() => _error = true);
+        });
+      _ctrl!.setLooping(false);
+      _ctrl!.addListener(() {
+        if (mounted) setState(() => _playing = _ctrl!.value.isPlaying);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl?.dispose();
+    super.dispose();
+  }
+
+  void _togglePlay() {
+    if (_ctrl == null || !_initialized) return;
+    if (_ctrl!.value.isPlaying) {
+      _ctrl!.pause();
+    } else {
+      _ctrl!.play();
+    }
+    setState(() => _playing = _ctrl!.value.isPlaying);
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_error || _ctrl == null) {
+      // Fallback — no valid URL
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          height: 220,
+          color: const Color(0xFF071421),
+          child: const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.videocam_off_rounded, color: SportSphereColors.muted, size: 40),
+                SizedBox(height: 8),
+                Text('Video unavailable', style: TextStyle(color: SportSphereColors.muted)),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(18),
-      child: AspectRatio(
-        aspectRatio: 0.86,
+      child: GestureDetector(
+        onTap: _togglePlay,
         child: Stack(
-          fit: StackFit.expand,
+          alignment: Alignment.center,
           children: [
-            _GeneratedContent(item: item),
-            Center(
+            // Video frame
+            _initialized
+                ? AspectRatio(
+                    aspectRatio: _ctrl!.value.aspectRatio,
+                    child: VideoPlayer(_ctrl!),
+                  )
+                : Container(
+                    height: 220,
+                    color: const Color(0xFF071421),
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        color: SportSphereColors.electricBlue, strokeWidth: 2),
+                    ),
+                  ),
+
+            // Play/Pause overlay
+            AnimatedOpacity(
+              opacity: _playing ? 0.0 : 1.0,
+              duration: const Duration(milliseconds: 200),
               child: Container(
-                width: 68,
-                height: 68,
+                width: 64, height: 64,
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.55),
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.35),
-                  ),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
                 ),
-                child: const Icon(
-                  Icons.play_arrow_rounded,
-                  color: Colors.white,
-                  size: 40,
+                child: Icon(
+                  _playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                  color: Colors.white, size: 38,
                 ),
               ),
             ),
+
+            // Progress bar at bottom
+            if (_initialized)
+              Positioned(
+                bottom: 0, left: 0, right: 0,
+                child: VideoProgressIndicator(
+                  _ctrl!,
+                  allowScrubbing: true,
+                  colors: VideoProgressColors(
+                    playedColor: SportSphereColors.electricBlue,
+                    bufferedColor: Colors.white24,
+                    backgroundColor: Colors.black26,
+                  ),
+                ),
+              ),
+
+            // VIDEO label
             const Positioned(
-              left: 16,
-              bottom: 16,
+              left: 12, top: 12,
               child: _ContentLabel(text: 'VIDEO'),
             ),
           ],
