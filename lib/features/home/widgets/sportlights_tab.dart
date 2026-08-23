@@ -133,7 +133,7 @@ class SpotlightItem {
   final int? predAwayScore;
   final String? myPrediction;  // "homeScore-awayScore" if current user already predicted
   final String? predMatchId;   // Match.id for "View Match" navigation
-  // Match card fields (for _SpotlightType.match posts)
+  // Match card fields (for SpotlightType.match posts)
   final String? homeTeam;
   final String? awayTeam;
   final String? matchScore;

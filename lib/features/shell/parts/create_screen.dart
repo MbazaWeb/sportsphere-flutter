@@ -1369,7 +1369,7 @@ class _PollPanelState extends State<_PollPanel> {
             ),
 
           // Quick-add from DB
-          if (options.length < 6 && (teams.isNotEmpty || players.isNotEmpty)) ...[
+          if (widget.options.length < 6 && (widget.teams.isNotEmpty || widget.players.isNotEmpty)) ...[
             const SizedBox(height: 8),
             Wrap(spacing: 8, children: [
               if (teams.isNotEmpty)
@@ -1379,7 +1379,7 @@ class _PollPanelState extends State<_PollPanel> {
                   color: const Color(0xFF9B6DFF),
                   onTap: (context) => _pickTeamForPoll(context),
                 ),
-              if (players.isNotEmpty)
+              if (widget.players.isNotEmpty)
                 _PollQuickAdd(
                   label: '+ Player',
                   icon: Icons.person_rounded,
@@ -1439,14 +1439,14 @@ class _PollPanelState extends State<_PollPanel> {
           ),
           Expanded(child: ListView.builder(
             controller: sc,
-            itemCount: teams.length,
+            itemCount: widget.teams.length,
             itemBuilder: (_, i) {
-              final t = teams[i];
+              final t = widget.teams[i];
               return ListTile(
                 leading: const Icon(Icons.groups_rounded, color: Color(0xFF9B6DFF)),
                 title: Text(t['name']?.toString() ?? '',
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                onTap: () { Navigator.pop(context); onAddTeam(t['name']?.toString() ?? ''); },
+                onTap: () { Navigator.pop(context); widget.onAddTeam(t['name']?.toString() ?? ''); },
               );
             },
           )),
@@ -1465,7 +1465,7 @@ class _PollPanelState extends State<_PollPanel> {
           borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
       builder: (_) => StatefulBuilder(builder: (bCtx, bSet) {
         final q = searchCtrl.text.toLowerCase();
-        final filtered = players.where((p) =>
+        final filtered = widget.players.where((p) =>
             (p['name'] as String? ?? '').toLowerCase().contains(q)).toList();
         return DraggableScrollableSheet(
           initialChildSize: 0.7, minChildSize: 0.3, maxChildSize: 0.9, expand: false,
@@ -1502,7 +1502,7 @@ class _PollPanelState extends State<_PollPanel> {
                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
                   subtitle: Text(p['position']?.toString() ?? '',
                       style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                  onTap: () { Navigator.pop(bCtx); onAddPlayer(p['name']?.toString() ?? ''); },
+                  onTap: () { Navigator.pop(bCtx); widget.onAddPlayer(p['name']?.toString() ?? ''); },
                 );
               },
             )),
@@ -1826,7 +1826,7 @@ class _PredictionPanel extends StatelessWidget {
           borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
       builder: (_) => StatefulBuilder(builder: (bCtx, bSet) {
         final query = searchCtrl.text.toLowerCase();
-        final filtered = players.where((p) =>
+        final filtered = widget.players.where((p) =>
             (p['name'] as String? ?? '').toLowerCase().contains(query)).toList();
         return DraggableScrollableSheet(
           initialChildSize: 0.7, minChildSize: 0.3, maxChildSize: 0.9, expand: false,
