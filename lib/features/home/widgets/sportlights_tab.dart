@@ -1759,11 +1759,9 @@ class _MatchContentState extends State<_MatchContent> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            outcome == 'home'
-                ? 'Predicted $homeName win ($home-$away)'
-                : outcome == 'draw'
-                    ? 'Predicted a draw ($home-$away)'
-                    : 'Predicted $awayName win ($home-$away)',
+            outcome == 'home' ? 'Predicted HOME ✓'
+                : outcome == 'draw' ? 'Predicted X (Draw) ✓'
+                : 'Predicted AWAY ✓',
           ),
           duration: const Duration(seconds: 2),
         ),
@@ -2116,21 +2114,21 @@ class _MatchContentState extends State<_MatchContent> {
           Row(
             children: [
               _predictChip(
-                label: '${home.length > 8 ? '${home.substring(0, 8)}…' : home} Win',
+                label: 'HOME',
                 value: 'home',
                 icon: Icons.home_outlined,
                 color: const Color(0xFF34C759),
               ),
               const SizedBox(width: 8),
               _predictChip(
-                label: 'Draw',
+                label: 'X',
                 value: 'draw',
                 icon: Icons.swap_horiz_rounded,
                 color: const Color(0xFFFFD700),
               ),
               const SizedBox(width: 8),
               _predictChip(
-                label: '${away.length > 8 ? '${away.substring(0, 8)}…' : away} Win',
+                label: 'AWAY',
                 value: 'away',
                 icon: Icons.flight_takeoff_outlined,
                 color: const Color(0xFFFF3B30),
