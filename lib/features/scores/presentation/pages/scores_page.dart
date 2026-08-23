@@ -1001,7 +1001,7 @@ class _Dropdown extends StatelessWidget {
 
 class _DatedMatchList extends ConsumerWidget {
   final FutureProvider<List<MatchModel>> provider;
-  final NotifierProvider<Notifier<DateTime>, DateTime> dateProvider;
+  final NotifierProvider<DateNotifier, DateTime> dateProvider;
   final bool future;
   final String emptyTitle;
   final String emptyHint;

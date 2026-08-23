@@ -81,24 +81,28 @@ final todayDayProvider =
 // ─────────────────────────────────────────────────────────────────────────────
 // Date notifiers used by Upcoming / Results tabs.
 // ─────────────────────────────────────────────────────────────────────────────
-class UpcomingDate extends Notifier<DateTime> {
+
+/// Common base for date-picker notifiers so callers can hold a
+/// `NotifierProvider<DateNotifier, DateTime>` reference and call `update()`
+/// without knowing the concrete subclass.
+abstract class DateNotifier extends Notifier<DateTime> {
+  void update(DateTime d) => state = d;
+}
+
+class UpcomingDate extends DateNotifier {
   @override
   DateTime build() {
     final n = DateTime.now();
     return DateTime(n.year, n.month, n.day).add(const Duration(days: 1));
   }
-
-  void update(DateTime d) => state = d;
 }
 
-class ResultsDate extends Notifier<DateTime> {
+class ResultsDate extends DateNotifier {
   @override
   DateTime build() {
     final n = DateTime.now();
     return DateTime(n.year, n.month, n.day).subtract(const Duration(days: 1));
   }
-
-  void update(DateTime d) => state = d;
 }
 
 final upcomingDateProvider =
