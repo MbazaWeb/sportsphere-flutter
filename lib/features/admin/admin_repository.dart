@@ -4,16 +4,236 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class AdminRepository {
   static SupabaseClient get _sb => Supabase.instance.client;
 
-  // Service role client for operations blocked by RLS (team/player/coach creation)
+  // Service role client for operations blocked by RLS
   static SupabaseClient get _admin {
     try {
       return SupabaseClient(
         'https://fffqjbrethogesgghjsn.supabase.co',
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZmZnFqYnJldGhvZ2VzZ2doanNuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NzE2OTA1NSwiZXhwIjoyMTAyNzQ1MDU1fQ.TFIjn9A6i72aitmPbrsU-DhZjJ9JC51VOrbLTUbCrCE',
       );
-    } catch (_) {
-      return Supabase.instance.client;
+    } catch (_) { return Supabase.instance.client; }
+  }
+
+  // ── Entity Identity ────────────────────────────────────────────────────────
+
+  /// Creates a Supabase Auth user + profiles row for an entity (Team/Player/League).
+  /// Returns the new auth UID, or null if creation fails.
+  /// Never stores plaintext passwords in any public table.
+  Future<String?> _createEntityIdentity({
+    required String entityType,  // 'team' | 'player' | 'league'
+    required String entityId,
+    required String displayName,
+    required String handle,
+    String? logoUrl,
+  }) async {
+    // Derive a deterministic but unguessable email for this entity
+    final email = '$handle.$entityType@entity.playify.app';
+    // Generate a secure random password — entity can only log in after claiming
+    final password = 'Entity!${DateTime.now().millisecondsSinceEpoch}@Playify';
+
+    try {
+      // 1. Create auth user
+      final res = await _admin.auth.admin.createUser(AdminUserAttributes(
+        email: email,
+        password: password,
+        userMetadata: {
+          'entity_type': entityType,
+          'entity_id': entityId,
+          'display_name': displayName,
+          'handle': handle,
+          'is_entity_account': true,
+        },
+        emailConfirm: true,
+      ));
+      final uid = res.user?.id.toString();
+      if (uid == null || uid.isEmpty) return null;
+
+      // 2. Create profiles row
+      await _admin.from('profiles').upsert({
+        'id': uid,
+        'handle': handle,
+        'role': entityType,
+        'first_name': displayName,
+        'last_name': '',
+        'email': email,
+        if (logoUrl != null) 'avatar_url': logoUrl,
+        'bio': 'Official $displayName account on Playify.',
+      });
+
+      // 3. Create User row for feed compatibility
+      try {
+        await _admin.from('User').upsert({
+          'id': uid,
+          'handle': handle,
+          'name': displayName,
+          'email': email,
+          'role': entityType,
+          'isVerified': true,
+          if (logoUrl != null) 'avatarUrl': logoUrl,
+        });
+      } catch (_) {}
+
+      return uid;
+    } catch (e) {
+      debugPrint('_createEntityIdentity($entityType, $entityId): $e');
+      return null;
     }
+  }
+
+  /// Resolves entity → profiles row via accountUserId.
+  /// This is the canonical resolver — never search profiles by entity name.
+  Future<Map<String, dynamic>?> resolveEntityProfile({
+    required String entityType,
+    required String entityId,
+  }) async {
+    try {
+      // 1. Get accountUserId from the entity
+      final table = entityType == 'team' ? 'Team'
+          : entityType == 'player' ? 'Player' : 'League';
+      final entity = await _sb.from(table).select('accountUserId, name, logoUrl')
+          .eq('id', entityId).maybeSingle();
+      if (entity == null) return null;
+
+      final accountUid = entity['accountUserId'] as String?;
+      if (accountUid == null || accountUid.isEmpty) return null;
+
+      // 2. Get profile via accountUserId
+      final profile = await _sb.from('profiles')
+          .select().eq('id', accountUid).maybeSingle();
+      return profile as Map<String, dynamic>?;
+    } catch (e) {
+      debugPrint('resolveEntityProfile($entityType, $entityId): $e');
+      return null;
+    }
+  }
+
+  /// Reconciles all entities that are missing their identity.
+  /// Safe: never overwrites existing identities.
+  /// Returns a report of actions taken.
+  Future<List<Map<String, dynamic>>> reconcileEntityIdentities() async {
+    final report = <Map<String, dynamic>>[];
+    for (final entityType in ['team', 'player', 'league']) {
+      final table = entityType == 'team' ? 'Team'
+          : entityType == 'player' ? 'Player' : 'League';
+      try {
+        final rows = await _admin.from(table).select('id, name, logoUrl, accountUserId, isClaimable');
+        for (final row in rows as List) {
+          final id = row['id']?.toString() ?? '';
+          final name = row['name']?.toString() ?? '';
+          final accountUid = row['accountUserId'] as String?;
+
+          if (id.isEmpty || name.isEmpty) continue;
+
+          if (accountUid != null && accountUid.isNotEmpty) {
+            // Already has identity — mark healthy
+            report.add({'entity_type': entityType, 'entity_id': id,
+                'entity_name': name, 'status': 'ALREADY_HAS_IDENTITY', 'action': 'NONE'});
+            continue;
+          }
+
+          // Missing identity — create one
+          final slug = name.toLowerCase().replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), '');
+          final handle = '${slug}_${entityType[0]}${id.replaceAll(RegExp(r'[^0-9]'), '').substring(0, 6)}';
+          final uid = await _createEntityIdentity(
+            entityType: entityType, entityId: id, displayName: name,
+            handle: handle, logoUrl: row['logoUrl'] as String?,
+          );
+
+          if (uid != null) {
+            // Attach identity to entity
+            await _admin.from(table).update({
+              'accountUserId': uid,
+              'isClaimable': true,
+              'identity_status': 'healthy',
+            }).eq('id', id);
+
+            // Create fan community for teams
+            if (entityType == 'team') {
+              await _createEntityCommunity(entityId: id, entityName: name, slug: handle);
+            }
+
+            report.add({'entity_type': entityType, 'entity_id': id,
+                'entity_name': name, 'account_uid': uid,
+                'status': 'RECONCILED', 'action': 'CREATED_IDENTITY'});
+          } else {
+            report.add({'entity_type': entityType, 'entity_id': id,
+                'entity_name': name, 'status': 'FAILED', 'action': 'IDENTITY_CREATION_FAILED'});
+          }
+        }
+      } catch (e) {
+        debugPrint('reconcile $table: $e');
+      }
+    }
+    return report;
+  }
+
+  Future<void> _createEntityCommunity({
+    required String entityId,
+    required String entityName,
+    required String slug,
+  }) async {
+    try {
+      await _admin.from('entity_communities').upsert({
+        'entity_type': 'team',
+        'entity_id': entityId,
+        'name': '$entityName Fan Community',
+        'slug': '${slug}_fans',
+        'description': 'Official fan community for $entityName on Playify.',
+      });
+    } catch (e) {
+      debugPrint('createEntityCommunity($entityId): $e');
+    }
+  }
+
+  /// Follow or unfollow an entity (Team/Player/League).
+  /// Uses entity_follows table — works even before Fan/Follow tables support UUIDs.
+  Future<void> followEntity({
+    required String entityType,
+    required String entityId,
+    required bool follow,
+    bool isFan = false,
+  }) async {
+    final uid = _sb.auth.currentUser?.id;
+    if (uid == null) throw StateError('Please sign in to follow');
+
+    // Resolve accountUserId for this entity
+    final table = entityType == 'team' ? 'Team' : entityType == 'player' ? 'Player' : 'League';
+    String? accountUid;
+    try {
+      final entity = await _sb.from(table).select('accountUserId').eq('id', entityId).maybeSingle();
+      accountUid = entity?['accountUserId'] as String?;
+    } catch (_) {}
+
+    if (follow) {
+      await _admin.from('entity_follows').upsert({
+        'follower_id': uid,
+        'entity_type': entityType,
+        'entity_id': entityId,
+        'account_uid': accountUid,
+        'is_fan': isFan,
+      });
+    } else {
+      await _admin.from('entity_follows').delete()
+          .eq('follower_id', uid)
+          .eq('entity_type', entityType)
+          .eq('entity_id', entityId);
+    }
+  }
+
+  Future<bool> isFollowingEntity({
+    required String entityType,
+    required String entityId,
+    bool checkFan = false,
+  }) async {
+    final uid = _sb.auth.currentUser?.id;
+    if (uid == null) return false;
+    try {
+      var q = _sb.from('entity_follows').select('id')
+          .eq('follower_id', uid).eq('entity_type', entityType).eq('entity_id', entityId);
+      if (checkFan) q = q.eq('is_fan', true);
+      final rows = await q;
+      return (rows as List).isNotEmpty;
+    } catch (_) { return false; }
   }
 
   // ── Users ──────────────────────────────────────────────────────────────────
@@ -201,6 +421,15 @@ class AdminRepository {
   }) async {
     final slug = name.toLowerCase().replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), '');
     final id = 'team-${DateTime.now().millisecondsSinceEpoch}';
+    final handle = '${slug}_t${id.replaceAll(RegExp(r'[^0-9]'), '').substring(0, 6)}';
+
+    // Step 1: Create entity identity FIRST
+    final accountUid = await _createEntityIdentity(
+      entityType: 'team', entityId: id, displayName: name,
+      handle: handle, logoUrl: logoUrl,
+    );
+
+    // Step 2: Insert team with accountUserId
     final base = <String, dynamic>{
       'id': id,
       'name': name,
@@ -214,19 +443,27 @@ class AdminRepository {
       'source': 'admin',
       'verified': true,
       'isActive': true,
-      'createdAt': DateTime.now().toIso8601String(),
-      'updatedAt': DateTime.now().toIso8601String(),
+      'isClaimable': true,
+      'identity_status': accountUid != null ? 'healthy' : 'pending',
+      if (accountUid != null) 'accountUserId': accountUid,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
     };
-    // Try with primaryColor first; column may be missing if migration not applied
+
     try {
       await _admin.from('Team').insert({
         ...base,
-        if (primaryColor != null && primaryColor.isNotEmpty)
-          'primaryColor': primaryColor,
+        if (primaryColor != null && primaryColor.isNotEmpty) 'primaryColor': primaryColor,
       });
     } catch (e) {
       await _admin.from('Team').insert(base);
     }
+
+    // Step 3: Create fan community
+    if (accountUid != null) {
+      await _createEntityCommunity(entityId: id, entityName: name, slug: handle);
+    }
+
     return id;
   }
 
@@ -306,20 +543,25 @@ class AdminRepository {
     int? heightCm,
     int? weightKg,
   }) async {
-    final slug = '${name.toLowerCase().replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}';
     final id = 'player-${DateTime.now().millisecondsSinceEpoch}';
-    // Split name into firstName/lastName for the schema
+    final slug = '${name.toLowerCase().replaceAll(' ', '_')}_$id';
     final parts = name.trim().split(' ');
     final firstName = parts.first;
     final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+    final handle = '${firstName.toLowerCase()}${lastName.isNotEmpty ? '_${lastName.toLowerCase()}' : ''}_p${id.replaceAll(RegExp(r'[^0-9]'), '').substring(0, 6)}';
+
+    // Create identity
+    final accountUid = await _createEntityIdentity(
+      entityType: 'player', entityId: id, displayName: name,
+      handle: handle.replaceAll(RegExp(r'[^a-z0-9_]'), ''), logoUrl: photoUrl,
+    );
+
     await _admin.from('Player').insert({
-      'id': id,
-      'name': name,
-      'firstName': firstName,
-      'lastName': lastName,
-      'slug': slug,
-      'position': position,
-      'sport_slug': 'football',
+      'id': id, 'name': name, 'firstName': firstName, 'lastName': lastName,
+      'slug': slug, 'position': position, 'sport_slug': 'football',
+      'isClaimable': true,
+      'identity_status': accountUid != null ? 'healthy' : 'pending',
+      if (accountUid != null) 'accountUserId': accountUid,
       if (teamId != null && teamId.isNotEmpty) 'teamId': teamId,
       if (nationality != null) 'nationality': nationality,
       if (shirtNumber != null) 'shirtNumber': shirtNumber,
@@ -327,10 +569,9 @@ class AdminRepository {
       if (dateOfBirth != null) 'dateOfBirth': dateOfBirth.toIso8601String(),
       if (heightCm != null) 'heightCm': heightCm,
       if (weightKg != null) 'weightKg': weightKg,
-      'isActive': true,
-      'verified': false,
-      'createdAt': DateTime.now().toIso8601String(),
-      'updatedAt': DateTime.now().toIso8601String(),
+      'isActive': true, 'verified': false,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
     });
   }
 

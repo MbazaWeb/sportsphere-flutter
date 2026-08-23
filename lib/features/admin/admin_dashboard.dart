@@ -134,6 +134,7 @@ class _OverviewTab extends ConsumerWidget {
         ]),
         const SizedBox(height:24), _Label('QUICK ACTIONS'), const SizedBox(height:10),
         _ActionCard(Icons.sensors_rounded,const Color(0xFFE31B23),'Live Match Control','Update scores, status and minutes live',()=>openAdminLiveControl(context,ref)),
+        _ActionCard(Icons.healing_rounded,const Color(0xFF9B6DFF),'Reconcile Identities','Fix entities missing Playify identity',()=>_showReconcileDialog(context)),
         _ActionCard(Icons.emoji_events_rounded,const Color(0xFFFFD700),'Create Competition','Add new league or cup',()=>_showCreateCompetition(context)),
         _ActionCard(Icons.groups_rounded,const Color(0xFF9B6DFF),'Create Team','Add a new club or national team',()=>_showCreateTeam(context,null)),
         _ActionCard(Icons.add_circle_rounded,SportSphereColors.sportGreen,'Schedule Fixture','Add a new match to the calendar',()=>_showCreateMatch(context)),
@@ -521,6 +522,55 @@ class _NewsTabState extends State<_NewsTab> {
           );},
       ))),
   ]);
+}
+
+// ══ RECONCILE DIALOG ══════════════════════════════════════════════════════════
+
+Future<void> _showReconcileDialog(BuildContext ctx) async {
+  showDialog<void>(context: ctx, barrierDismissible: false, builder: (c) => AlertDialog(
+    backgroundColor: GrassForm.sheetBg,
+    title: const Text('Reconcile Entity Identities', style: TextStyle(color: SportSphereColors.white)),
+    content: const Text(
+      'Scans all Teams, Players and Leagues.\n\nEntities missing a Playify identity will have one created. Existing identities are not touched.',
+      style: TextStyle(color: SportSphereColors.muted, fontSize: 13)),
+    actions: [
+      TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancel')),
+      TextButton(
+        onPressed: () async {
+          Navigator.pop(c);
+          if (!ctx.mounted) return;
+          showDialog<void>(context: ctx, barrierDismissible: false, builder: (_) => const AlertDialog(
+            backgroundColor: SportSphereColors.surface,
+            content: Row(children: [
+              CircularProgressIndicator(color: SportSphereColors.electricBlue),
+              SizedBox(width: 16),
+              Text('Reconciling...', style: TextStyle(color: SportSphereColors.white)),
+            ]),
+          ));
+          try {
+            final report = await _repo.reconcileEntityIdentities();
+            if (ctx.mounted) Navigator.of(ctx, rootNavigator: true).pop();
+            final created = report.where((r) => r['status'] == 'RECONCILED').length;
+            final failed  = report.where((r) => r['status'] == 'FAILED').length;
+            final healthy = report.where((r) => r['status'] == 'ALREADY_HAS_IDENTITY').length;
+            if (ctx.mounted) showDialog<void>(context: ctx, builder: (_) => AlertDialog(
+              backgroundColor: GrassForm.sheetBg,
+              title: const Text('Done', style: TextStyle(color: SportSphereColors.white)),
+              content: Text('Scanned: ${report.length}\nCreated: $created\nHealthy: $healthy\nFailed: $failed',
+                  style: const TextStyle(color: SportSphereColors.white, fontSize: 13)),
+              actions: [TextButton(onPressed: () => Navigator.pop(_), child: const Text('OK'))],
+            ));
+          } catch (e) {
+            if (ctx.mounted) {
+              Navigator.of(ctx, rootNavigator: true).pop();
+              ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error: $e')));
+            }
+          }
+        },
+        child: const Text('Reconcile', style: TextStyle(color: SportSphereColors.sportGreen)),
+      ),
+    ],
+  ));
 }
 
 // ══ SHARED DIALOGS ══════════════════════════════════════════════════════════════
