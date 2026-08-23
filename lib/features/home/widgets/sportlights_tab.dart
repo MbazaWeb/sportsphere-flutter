@@ -133,7 +133,6 @@ class SpotlightItem {
   final int? predAwayScore;
   final String? myPrediction;  // "homeScore-awayScore" if current user already predicted
   // ── Match-specific fields (populated when postType == 'match') ──
-  final String? matchId;
   final String? homeTeam;
   final String? awayTeam;
   final String? homeBadge;
@@ -169,7 +168,6 @@ class SpotlightItem {
     this.predHomeScore,
     this.predAwayScore,
     this.myPrediction,
-    this.matchId,
     this.homeTeam,
     this.awayTeam,
     this.homeBadge,
@@ -394,7 +392,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
           type = SpotlightType.liveCoverage;
           roleLabel = 'LIVE';
         } else if (postType == 'match') {
-          type = _SpotlightType.match;
+          type = SpotlightType.match;
           roleLabel = 'Match';
         } else if (postType == 'welcome' ||
             (teamTag != null &&
@@ -1004,7 +1002,7 @@ class _MediaArea extends StatelessWidget {
         return _PredictionContent(item: item);
       case SpotlightType.video:
         return _VideoContent(item: item);
-      case _SpotlightType.match:
+      case SpotlightType.match:
         return _MatchContent(item: item);
       default:
         return _ImageContent(item: item);
@@ -1571,7 +1569,7 @@ class _PredictionTeam extends StatelessWidget {
 // ============================================================
 
 class _MatchContent extends StatelessWidget {
-  final _SpotlightItem item;
+  final SpotlightItem item;
   const _MatchContent({required this.item});
 
   @override
@@ -2023,7 +2021,7 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
   @override
   void didUpdateWidget(covariant _EngagementRow oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // #7.19: when the parent rebuilds this row with a fresh `_SpotlightItem`
+    // #7.19: when the parent rebuilds this row with a fresh `SpotlightItem`
     // (e.g. after a realtime `Post` change or pull-to-refresh), re-sync the
     // local counter caches from the new widget values. We deliberately do
     // NOT touch `_liked` / `_shared` here — those reflect the current user's
@@ -2043,7 +2041,7 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
   /// has liked the given post.
   ///
   /// `SocialRepository` doesn't expose a `hasLiked` method yet (owned by
-  /// Agent S6), and `_SpotlightItem` is always a Post (never a `NewsItem` —
+  /// Agent S6), and `SpotlightItem` is always a Post (never a `NewsItem` —
   /// news lives in `news_tab.dart` with its own `_NewsCard`), so we just hit
   /// `PostLike` here. When `SocialRepository.hasLiked` lands we can delegate.
   Future<bool> _hasLikedPost(String postId) async {

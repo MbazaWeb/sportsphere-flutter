@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/colors.dart';
 import '../auth/presentation/auth_controller.dart';
 import '../profile/presentation/edit_profile_sheet.dart';
+import 'bulk_upload_screen.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ADMIN PROFILE VIEW
@@ -259,6 +260,7 @@ class _QuickActionsTab extends StatelessWidget {
       const SizedBox(height: 20),
       _Section('SYSTEM'),
       _Tile(Icons.dashboard_rounded,        const Color(0xFF9B6DFF),       'Full Dashboard',           'All admin controls in one place',        () => context.push('/admin')),
+      _Tile(Icons.upload_file_rounded,       const Color(0xFF22C55E),       'Bulk Upload',              'Import fixtures, teams & players via CSV', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BulkUploadScreen()))),
       _Tile(Icons.refresh_rounded,          SportSphereColors.muted,       'Refresh Stats',            'Reload platform counters',               () { HapticFeedback.mediumImpact(); onRefresh(); }),
     ]);
   }

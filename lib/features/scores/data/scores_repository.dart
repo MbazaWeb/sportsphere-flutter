@@ -201,12 +201,19 @@ class ScoresRepository {
     final winPts = winPointsForSport(sportSlug);
     final drawPts = drawPointsForSport(sportSlug);
 
-    for (final raw in rows as List) {
+    for (final raw in rowList) {
       final r = Map<String, dynamic>.from(raw as Map);
       final leagueName = ((r['league'] as String?) ?? '').toLowerCase().trim();
 
-      // Defensive in-memory safety net (see note above).
-      if (leagueLower.isNotEmpty && leagueName != leagueLower) continue;
+      // Filter: if league specified, check that this match belongs to it.
+      // Accept if: exact match, OR either name contains the other (handles
+      // "NBC Tanzania Premier League" vs "Tanzania Premier League" etc.)
+      if (leagueLower.isNotEmpty) {
+        final match = leagueName == leagueLower ||
+            leagueName.contains(leagueLower) ||
+            leagueLower.contains(leagueName);
+        if (!match) continue;
+      }
 
       final status = ((r['status'] as String?) ?? '').toLowerCase();
       if (!kFinishedStatuses.contains(status)) continue;
