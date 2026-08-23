@@ -13,17 +13,16 @@ void downloadExcelFile(Uint8List bytes, String filename) {
 }
 
 Future<List<int>?> pickExcelFile() async {
-  final completer = html.document.createElement('input') as html.FileUploadInputElement;
-  completer.accept = '.xlsx';
-  completer.click();
-  await completer.onChange.first;
-  final file = completer.files?.first;
+  final input = html.document.createElement('input') as html.FileUploadInputElement;
+  input.accept = '.xlsx';
+  input.click();
+  await input.onChange.first;
+  final file = input.files?.first;
   if (file == null) return null;
   final reader = html.FileReader();
   reader.readAsArrayBuffer(file);
   await reader.onLoad.first;
   final result = reader.result;
-  if (result is List<int>) return result;
-  if (result is html.ByteBuffer) return result.asUint8List();
+  if (result is ByteBuffer) return result.asUint8List();
   return null;
 }
