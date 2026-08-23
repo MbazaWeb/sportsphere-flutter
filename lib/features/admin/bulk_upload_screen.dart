@@ -1,79 +1,117 @@
+import 'dart:typed_data';
+
+import 'package:excel/excel.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/theme/colors.dart';
 
-// ── Template definitions ───────────────────────────────────────────────────
+// ignore: avoid_web_libraries_in_flutter
+import 'bulk_upload_web.dart' if (dart.library.io) 'bulk_upload_stub.dart';
 
-class _Template {
-  final String label;
-  final String table;
-  final List<_Col> columns;
-  const _Template({required this.label, required this.table, required this.columns});
-
-  String get csvHeader => columns.map((c) => c.key).join(',');
-
-  String get exampleRow => columns.map((c) => c.example).join(',');
-
-  String get fullTemplate => '$csvHeader\n$exampleRow';
-}
+// ── Column definition ──────────────────────────────────────────────────────
 
 class _Col {
-  final String key;       // CSV column name = DB column name
-  final String label;     // Human label
-  final String example;   // Example value
+  final String key;
+  final String label;
+  final String example;
   final bool required;
   final String hint;
-  const _Col(this.key, this.label, this.example, {this.required = false, this.hint = ''});
+  const _Col(this.key, this.label, this.example,
+      {this.required = false, this.hint = ''});
 }
 
-const _templates = [
-  _Template(
-    label: 'Teams',
-    table: 'Team',
-    columns: [
-      _Col('name',        'Club Name',       'Simba Sport Club',       required: true),
-      _Col('shortName',   'Short Name',      'Simba',                  hint: 'Max 6 chars'),
-      _Col('country',     'Country',         'Tanzania',               required: true),
-      _Col('city',        'City',            'Dar es Salaam'),
-      _Col('venue',       'Stadium',         'Benjamin Mkapa Stadium'),
-      _Col('foundedYear', 'Founded Year',    '1936',                   hint: 'YYYY'),
-      _Col('leagueId',    'League ID',       'league-1787427770104',   hint: 'From leagues table'),
-      _Col('logoUrl',     'Logo URL',        'https://example.com/logo.png'),
-    ],
-  ),
-  _Template(
-    label: 'Players',
-    table: 'Player',
-    columns: [
-      _Col('firstName',   'First Name',      'John',                   required: true),
-      _Col('lastName',    'Last Name',       'Bocco',                  required: true),
-      _Col('position',    'Position',        'Forward',                required: true, hint: 'Goalkeeper/Defender/Midfielder/Forward/Winger/Striker'),
-      _Col('nationality', 'Nationality',     'Tanzanian'),
-      _Col('shirtNumber', 'Shirt Number',    '9',                      hint: 'Integer'),
-      _Col('teamId',      'Team ID',         'team-1787435558291',     hint: 'From teams table'),
-      _Col('dateOfBirth', 'Date of Birth',   '1995-06-15',             hint: 'YYYY-MM-DD'),
-      _Col('heightCm',    'Height (cm)',     '180',                    hint: 'Integer'),
-      _Col('weightKg',    'Weight (kg)',     '75',                     hint: 'Integer'),
-      _Col('photoUrl',    'Photo URL',       'https://example.com/photo.jpg'),
-    ],
-  ),
-  _Template(
-    label: 'Fixtures',
-    table: 'Match',
-    columns: [
-      _Col('homeTeam',    'Home Team Name',  'Simba Sport Club',       required: true),
-      _Col('awayTeam',    'Away Team Name',  'Young Africans SC',      required: true),
-      _Col('league',      'Competition',     'Tanzania Premier League', required: true),
-      _Col('kickoffAt',   'Kickoff (UTC)',   '2026-09-01T18:00:00Z',   required: true, hint: 'ISO 8601'),
-      _Col('venue',       'Venue',           'Benjamin Mkapa Stadium'),
-      _Col('season',      'Season',          '2026/27'),
-      _Col('homeBadge',   'Home Badge URL',  'https://example.com/simba.png'),
-      _Col('awayBadge',   'Away Badge URL',  'https://example.com/yanga.png'),
-    ],
-  ),
+// ── Sheet templates ────────────────────────────────────────────────────────
+
+const _teamCols = [
+  _Col('name',        'Club Name',       'Simba Sport Club',            required: true),
+  _Col('shortName',   'Short Name',      'Simba',                       hint: 'Max 6 chars'),
+  _Col('country',     'Country',         'Tanzania',                    required: true),
+  _Col('city',        'City',            'Dar es Salaam'),
+  _Col('venue',       'Stadium',         'Benjamin Mkapa Stadium'),
+  _Col('foundedYear', 'Founded Year',    '1936',                        hint: 'YYYY number'),
+  _Col('leagueId',    'League ID',       '',                            hint: 'From Leagues tab'),
+  _Col('logoUrl',     'Logo URL',        ''),
 ];
+
+const _playerCols = [
+  _Col('firstName',   'First Name',      'John',                        required: true),
+  _Col('lastName',    'Last Name',       'Bocco',                       required: true),
+  _Col('position',    'Position',        'Forward',                     required: true,
+      hint: 'Goalkeeper / Defender / Midfielder / Forward / Winger / Striker'),
+  _Col('nationality', 'Nationality',     'Tanzanian'),
+  _Col('shirtNumber', 'Shirt Number',    '9',                           hint: 'Number'),
+  _Col('teamId',      'Team ID',         '',                            hint: 'From Teams tab'),
+  _Col('dateOfBirth', 'Date of Birth',   '1995-06-15',                  hint: 'YYYY-MM-DD'),
+  _Col('heightCm',    'Height cm',       '180',                         hint: 'Number'),
+  _Col('weightKg',    'Weight kg',       '75',                          hint: 'Number'),
+  _Col('photoUrl',    'Photo URL',       ''),
+];
+
+const _fixtureCols = [
+  _Col('homeTeam',    'Home Team Name',  'Simba Sport Club',            required: true),
+  _Col('awayTeam',    'Away Team Name',  'Young Africans SC',           required: true),
+  _Col('league',      'Competition',     'Tanzania Premier League',     required: true),
+  _Col('kickoffAt',   'Kickoff UTC',     '2026-09-01T18:00:00Z',        required: true,
+      hint: 'ISO 8601 e.g. 2026-09-01T18:00:00Z'),
+  _Col('venue',       'Venue',           'Benjamin Mkapa Stadium'),
+  _Col('season',      'Season',          '2026/27'),
+  _Col('homeBadge',   'Home Badge URL',  ''),
+  _Col('awayBadge',   'Away Badge URL',  ''),
+];
+
+const _sheets = [
+  ('Teams',    _teamCols),
+  ('Players',  _playerCols),
+  ('Fixtures', _fixtureCols),
+];
+
+// ── Excel generation ───────────────────────────────────────────────────────
+
+Uint8List _buildTemplate() {
+  final excel = Excel.createExcel();
+  // Remove default Sheet1
+  excel.delete('Sheet1');
+
+  for (final (sheetName, cols) in _sheets) {
+    final sheet = excel[sheetName];
+
+    // Header row — bold
+    for (var i = 0; i < cols.length; i++) {
+      final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
+      cell.value = TextCellValue(cols[i].key);
+      cell.cellStyle = CellStyle(bold: true, fontColorHex: ExcelColor.fromHexString('FF168CFF'));
+    }
+
+    // Hint row (row 2, italic)
+    for (var i = 0; i < cols.length; i++) {
+      final col = cols[i];
+      final hint = [
+        col.label,
+        if (col.required) '(REQUIRED)',
+        if (col.hint.isNotEmpty) col.hint,
+      ].join(' — ');
+      final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 1));
+      cell.value = TextCellValue(hint);
+      cell.cellStyle = CellStyle(italic: true, fontColorHex: ExcelColor.fromHexString('FF888888'));
+    }
+
+    // Example data row
+    for (var i = 0; i < cols.length; i++) {
+      final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 2));
+      cell.value = TextCellValue(cols[i].example);
+    }
+
+    // Set column widths
+    for (var i = 0; i < cols.length; i++) {
+      sheet.setColumnWidth(i, 22);
+    }
+  }
+
+  final bytes = excel.encode();
+  return Uint8List.fromList(bytes!);
+}
 
 // ── Screen ─────────────────────────────────────────────────────────────────
 
@@ -86,155 +124,163 @@ class BulkUploadScreen extends StatefulWidget {
 class _BulkUploadScreenState extends State<BulkUploadScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabs;
-  int _typeIndex = 0;
-  final _ctrl = TextEditingController();
-  bool _uploading = false;
-  String? _result;
+  bool _downloading = false;
 
-  // Preview state
-  List<String> _headers = [];
-  List<Map<String, String>> _previewRows = [];
-  bool _previewing = false;
+  // Per-tab state
+  final List<List<String>> _headers = [[], [], []];
+  final List<List<Map<String, String>>> _rows = [[], [], []];
+  final List<String?> _results = [null, null, null];
+  final List<bool> _uploading = [false, false, false];
 
-  _Template get _tpl => _templates[_typeIndex];
+  int get _idx => _tabs.index;
 
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: _templates.length, vsync: this);
-    _tabs.addListener(() {
-      if (!_tabs.indexIsChanging) {
-        setState(() {
-          _typeIndex = _tabs.index;
-          _headers = [];
-          _previewRows = [];
-          _result = null;
-          _ctrl.clear();
-        });
-      }
-    });
+    _tabs = TabController(length: 3, vsync: this);
+    _tabs.addListener(() => setState(() {}));
   }
 
   @override
-  void dispose() {
-    _tabs.dispose();
-    _ctrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _tabs.dispose(); super.dispose(); }
 
-  void _loadTemplate() {
-    _ctrl.text = _tpl.fullTemplate;
-    _parse();
-  }
+  // ── Download template ───────────────────────────────────────────────────
 
-  void _copyTemplate() {
-    Clipboard.setData(ClipboardData(text: _tpl.fullTemplate));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Template copied to clipboard'),
-          duration: Duration(seconds: 2)));
-  }
-
-  void _parse() {
-    final text = _ctrl.text.trim();
-    if (text.isEmpty) { setState(() { _headers = []; _previewRows = []; }); return; }
-    final lines = text.split('\n').where((l) => l.trim().isNotEmpty).toList();
-    if (lines.isEmpty) return;
-    final headers = lines.first.split(',').map((h) => h.trim()).toList();
-    final rows = <Map<String, String>>[];
-    for (final line in lines.skip(1)) {
-      final vals = line.split(',').map((v) => v.trim()).toList();
-      final row = <String, String>{};
-      for (var i = 0; i < headers.length && i < vals.length; i++) {
-        row[headers[i]] = vals[i];
-      }
-      if (row.isNotEmpty) rows.add(row);
-    }
-    setState(() { _headers = headers; _previewRows = rows; _previewing = true; });
-  }
-
-  Future<void> _upload() async {
-    if (_previewRows.isEmpty) { _parse(); return; }
-    setState(() { _uploading = true; _result = null; });
-
-    final tpl = _tpl;
-    int count = 0;
-    int failed = 0;
-
+  Future<void> _downloadTemplate() async {
+    setState(() => _downloading = true);
     try {
-      for (final row in _previewRows) {
-        final insert = <String, dynamic>{};
-        final now = DateTime.now().toUtc().toIso8601String();
-
-        for (final col in tpl.columns) {
-          final v = row[col.key]?.trim() ?? '';
-          if (v.isEmpty) continue;
-          // Type coercions
-          if (col.key == 'shirtNumber' || col.key == 'heightCm' ||
-              col.key == 'weightKg' || col.key == 'foundedYear') {
-            insert[col.key] = int.tryParse(v) ?? v;
-          } else {
-            insert[col.key] = v;
-          }
-        }
-
-        if (insert.isEmpty) continue;
-
-        // Generate ID and timestamps
-        final ts = DateTime.now().millisecondsSinceEpoch;
-        insert['id'] ??= '${tpl.table.toLowerCase()}-$ts-$count';
-        insert['createdAt'] = now;
-        insert['updatedAt'] = now;
-
-        // Team-specific defaults
-        if (tpl.table == 'Team') {
-          final name = insert['name']?.toString() ?? '';
-          final slug = name.toLowerCase().replaceAll(' ', '_')
-              .replaceAll(RegExp(r'[^a-z0-9_]'), '');
-          insert['slug'] ??= '${slug}_${insert['id']}';
-          insert['isActive'] = true;
-          insert['verified'] = true;
-          insert['source'] = 'bulk_upload';
-        }
-
-        // Player-specific defaults
-        if (tpl.table == 'Player') {
-          final fn = insert['firstName']?.toString() ?? '';
-          final ln = insert['lastName']?.toString() ?? '';
-          insert['name'] ??= '$fn $ln'.trim();
-          final slug = '${fn}_${ln}_$ts'.toLowerCase()
-              .replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), '');
-          insert['slug'] ??= slug;
-          insert['sport_slug'] = 'football';
-          insert['isActive'] = true;
-          insert['verified'] = false;
-        }
-
-        // Match-specific defaults
-        if (tpl.table == 'Match') {
-          insert['status'] = 'upcoming';
-          insert['homeScore'] = 0;
-          insert['awayScore'] = 0;
-        }
-
-        try {
-          await Supabase.instance.client.from(tpl.table).upsert(insert);
-          count++;
-        } catch (e) {
-          failed++;
-        }
-      }
-
-      final msg = failed == 0
-          ? 'Uploaded $count records successfully ✓'
-          : 'Uploaded $count records. $failed failed.';
+      final bytes = _buildTemplate();
+      downloadExcelFile(bytes, 'playify_bulk_template.xlsx');
       if (mounted) {
-        setState(() { _result = msg; _uploading = false; });
-        widget.onDone?.call();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Template downloaded — fill all 3 sheets then upload')));
       }
     } catch (e) {
-      if (mounted) setState(() { _result = 'Error: $e'; _uploading = false; });
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Download failed: $e')));
+    } finally {
+      if (mounted) setState(() => _downloading = false);
     }
   }
+
+  // ── Upload filled file ──────────────────────────────────────────────────
+
+  Future<void> _pickAndParse() async {
+    try {
+      final bytes = await pickExcelFile();
+      if (bytes == null) return;
+
+      final excel = Excel.decodeBytes(bytes);
+      for (var si = 0; si < _sheets.length; si++) {
+        final sheetName = _sheets[si].$1;
+        final sheet = excel[sheetName];
+        if (sheet.rows.isEmpty) continue;
+
+        // Row 0 = headers (column keys)
+        final hdrs = sheet.rows[0]
+            .map((c) => c?.value?.toString().trim() ?? '')
+            .where((h) => h.isNotEmpty)
+            .toList();
+
+        // Row 2+ = data (skip row 1 hints)
+        final dataRows = <Map<String, String>>[];
+        for (final row in sheet.rows.skip(2)) {
+          final map = <String, String>{};
+          for (var i = 0; i < hdrs.length && i < row.length; i++) {
+            final v = row[i]?.value?.toString().trim() ?? '';
+            if (v.isNotEmpty) map[hdrs[i]] = v;
+          }
+          if (map.isNotEmpty) dataRows.add(map);
+        }
+
+        _headers[si] = hdrs;
+        _rows[si] = dataRows;
+        _results[si] = null;
+      }
+
+      setState(() {});
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Loaded — Teams: ${_rows[0].length}, '
+                'Players: ${_rows[1].length}, Fixtures: ${_rows[2].length} rows')));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error reading file: $e')));
+    }
+  }
+
+  // ── Upload one sheet ────────────────────────────────────────────────────
+
+  Future<void> _uploadSheet(int si) async {
+    final rows = _rows[si];
+    if (rows.isEmpty) return;
+    setState(() { _uploading[si] = true; _results[si] = null; });
+
+    final tableName = si == 0 ? 'Team' : si == 1 ? 'Player' : 'Match';
+    int count = 0; int failed = 0;
+
+    for (final row in rows) {
+      final insert = <String, dynamic>{};
+      final now = DateTime.now().toUtc().toIso8601String();
+      final ts = DateTime.now().millisecondsSinceEpoch;
+
+      row.forEach((k, v) {
+        if (v.isEmpty) return;
+        const intCols = ['shirtNumber', 'heightCm', 'weightKg', 'foundedYear',
+                         'homeScore', 'awayScore'];
+        if (intCols.contains(k)) insert[k] = int.tryParse(v) ?? v;
+        else insert[k] = v;
+      });
+
+      if (insert.isEmpty) continue;
+      insert['id'] ??= '${tableName.toLowerCase()}-$ts-$count';
+      insert['createdAt'] = now;
+      insert['updatedAt'] = now;
+
+      if (tableName == 'Team') {
+        final name = insert['name']?.toString() ?? '';
+        final slug = name.toLowerCase()
+            .replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), '');
+        insert['slug'] ??= '${slug}_${insert['id']}';
+        insert['isActive'] = true;
+        insert['verified'] = true;
+        insert['source'] = 'bulk_upload';
+      }
+      if (tableName == 'Player') {
+        final fn = insert['firstName']?.toString() ?? '';
+        final ln = insert['lastName']?.toString() ?? '';
+        insert['name'] = '$fn $ln'.trim();
+        final slug = '${fn}_${ln}_$ts'.toLowerCase()
+            .replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), '');
+        insert['slug'] ??= slug;
+        insert['sport_slug'] = 'football';
+        insert['isActive'] = true;
+        insert['verified'] = false;
+      }
+      if (tableName == 'Match') {
+        insert['status'] ??= 'upcoming';
+        insert['homeScore'] ??= 0;
+        insert['awayScore'] ??= 0;
+      }
+
+      try {
+        await Supabase.instance.client.from(tableName).upsert(insert);
+        count++;
+      } catch (_) { failed++; }
+    }
+
+    final msg = failed == 0
+        ? 'Uploaded $count records ✓'
+        : 'Uploaded $count, failed $failed';
+    if (mounted) {
+      setState(() { _results[si] = msg; _uploading[si] = false; });
+      if (failed == 0) widget.onDone?.call();
+    }
+  }
+
+  // ── Build ───────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -242,168 +288,129 @@ class _BulkUploadScreenState extends State<BulkUploadScreen>
       backgroundColor: SportSphereColors.background,
       appBar: AppBar(
         backgroundColor: SportSphereColors.surface,
-        title: const Text('Bulk Upload', style: TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w800)),
+        title: const Text('Bulk Upload', style: TextStyle(
+            color: SportSphereColors.white, fontWeight: FontWeight.w800)),
         iconTheme: const IconThemeData(color: SportSphereColors.white),
+        actions: [
+          TextButton.icon(
+            onPressed: _downloading ? null : _downloadTemplate,
+            icon: _downloading
+                ? const SizedBox(width: 16, height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.download_rounded, color: Colors.white, size: 18),
+            label: const Text('Download Template',
+                style: TextStyle(color: Colors.white, fontSize: 12)),
+          ),
+          const SizedBox(width: 4),
+          TextButton.icon(
+            onPressed: _pickAndParse,
+            icon: const Icon(Icons.upload_file_rounded, color: SportSphereColors.electricBlue, size: 18),
+            label: const Text('Upload File',
+                style: TextStyle(color: SportSphereColors.electricBlue, fontSize: 12)),
+          ),
+          const SizedBox(width: 8),
+        ],
         bottom: TabBar(
           controller: _tabs,
           labelColor: SportSphereColors.electricBlue,
           unselectedLabelColor: SportSphereColors.muted,
           indicatorColor: SportSphereColors.electricBlue,
-          tabs: _templates.map((t) => Tab(text: t.label)).toList(),
+          tabs: const [Tab(text: 'Teams'), Tab(text: 'Players'), Tab(text: 'Fixtures')],
         ),
       ),
       body: TabBarView(
         controller: _tabs,
-        children: _templates.map((_) => _buildBody()).toList(),
+        children: List.generate(3, (si) => _buildTab(si)),
       ),
     );
   }
 
-  Widget _buildBody() {
-    final tpl = _tpl;
+  Widget _buildTab(int si) {
+    final sheetName = _sheets[si].$1;
+    final cols = _sheets[si].$2;
+    final rows = _rows[si];
+    final headers = _headers[si];
+    final result = _results[si];
+    final uploading = _uploading[si];
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-        // ── Column reference card ─────────────────────────────────────────
+        // ── How to use ───────────────────────────────────────────────────
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: SportSphereColors.surface,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: SportSphereColors.electricBlue.withValues(alpha: 0.25)),
+            border: Border.all(color: SportSphereColors.electricBlue.withValues(alpha: 0.2)),
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              const Icon(Icons.table_chart_rounded, color: SportSphereColors.electricBlue, size: 16),
+              const Icon(Icons.info_outline_rounded,
+                  color: SportSphereColors.electricBlue, size: 16),
               const SizedBox(width: 6),
-              Text('${tpl.label} Columns',
-                  style: const TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700)),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: _copyTemplate,
-                icon: const Icon(Icons.copy_rounded, size: 14),
-                label: const Text('Copy Template', style: TextStyle(fontSize: 12)),
-                style: TextButton.styleFrom(foregroundColor: SportSphereColors.electricBlue),
-              ),
+              Text('$sheetName — Required Columns',
+                  style: const TextStyle(color: SportSphereColors.white,
+                      fontWeight: FontWeight.w700, fontSize: 14)),
             ]),
-            const SizedBox(height: 8),
-            ...tpl.columns.map((col) => Padding(
+            const SizedBox(height: 10),
+            ...cols.map((col) => Padding(
               padding: const EdgeInsets.symmetric(vertical: 3),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Container(
-                  width: 8, height: 8,
+                Container(width: 8, height: 8,
                   margin: const EdgeInsets.only(top: 5, right: 8),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: col.required ? SportSphereColors.danger : SportSphereColors.muted,
-                  ),
-                ),
-                SizedBox(width: 110,
-                  child: Text(col.key,
-                    style: const TextStyle(color: SportSphereColors.electricBlue, fontSize: 12, fontFamily: 'monospace'))),
+                  )),
+                SizedBox(width: 130,
+                  child: Text(col.key, style: const TextStyle(
+                      color: SportSphereColors.electricBlue, fontSize: 12,
+                      fontFamily: 'monospace'))),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(col.label,
-                    style: const TextStyle(color: SportSphereColors.white, fontSize: 12)),
+                  Text(col.label, style: const TextStyle(color: SportSphereColors.white, fontSize: 12)),
                   if (col.hint.isNotEmpty)
-                    Text(col.hint,
-                      style: const TextStyle(color: SportSphereColors.muted, fontSize: 10)),
+                    Text(col.hint, style: const TextStyle(
+                        color: SportSphereColors.muted, fontSize: 10)),
                 ])),
                 if (col.required)
-                  const Text('*', style: TextStyle(color: SportSphereColors.danger, fontWeight: FontWeight.w900)),
+                  const Text('*', style: TextStyle(
+                      color: SportSphereColors.danger, fontWeight: FontWeight.w900)),
               ]),
             )),
-            const SizedBox(height: 4),
-            const Text('* Required column',
+            const SizedBox(height: 6),
+            const Text('* Required  ● = Optional',
                 style: TextStyle(color: SportSphereColors.muted, fontSize: 10)),
           ]),
         ),
 
         const SizedBox(height: 14),
 
-        // ── Template download button ──────────────────────────────────────
-        OutlinedButton.icon(
-          onPressed: _loadTemplate,
-          icon: const Icon(Icons.download_rounded, size: 16),
-          label: const Text('Load Example Template'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: SportSphereColors.sportGreen,
-            side: const BorderSide(color: SportSphereColors.sportGreen),
-          ),
-        ),
-
-        const SizedBox(height: 14),
-
-        // ── CSV input ─────────────────────────────────────────────────────
-        const Text('Paste CSV Data:', style: TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700)),
-        const SizedBox(height: 6),
-        Container(
-          decoration: BoxDecoration(
-            color: SportSphereColors.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-          ),
-          child: TextField(
-            controller: _ctrl,
-            maxLines: 8,
-            style: const TextStyle(color: SportSphereColors.white, fontSize: 12, fontFamily: 'monospace'),
-            decoration: InputDecoration(
-              hintText: '${tpl.csvHeader}\n${tpl.exampleRow}',
-              hintStyle: TextStyle(color: SportSphereColors.muted.withValues(alpha: 0.5), fontSize: 11),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.all(12),
+        // ── Step guide ───────────────────────────────────────────────────
+        if (rows.isEmpty) ...[
+          const _Step(n: '1', text: 'Tap Download Template (top right) to get the Excel file'),
+          const _Step(n: '2', text: 'Fill in the data on the $sheetName sheet'),
+          const _Step(n: '3', text: 'Tap Upload File to import your data'),
+          const SizedBox(height: 14),
+          SizedBox(width: double.infinity, child: OutlinedButton.icon(
+            onPressed: _downloading ? null : _downloadTemplate,
+            icon: const Icon(Icons.download_rounded),
+            label: const Text('Download Template (.xlsx)'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: SportSphereColors.sportGreen,
+              side: const BorderSide(color: SportSphereColors.sportGreen),
+              padding: const EdgeInsets.symmetric(vertical: 14),
             ),
-            onChanged: (_) { if (_previewing) setState(() { _headers = []; _previewRows = []; _previewing = false; }); },
-          ),
-        ),
-
-        const SizedBox(height: 10),
-
-        Row(children: [
-          Expanded(child: OutlinedButton.icon(
-            onPressed: _parse,
-            icon: const Icon(Icons.preview_rounded, size: 16),
-            label: const Text('Preview'),
-            style: OutlinedButton.styleFrom(foregroundColor: SportSphereColors.electricBlue,
-                side: const BorderSide(color: SportSphereColors.electricBlue)),
           )),
-          const SizedBox(width: 10),
-          Expanded(child: FilledButton.icon(
-            onPressed: _uploading ? null : (_previewRows.isNotEmpty ? _upload : _parse),
-            icon: _uploading
-                ? const SizedBox(width: 16, height: 16,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                : Icon(_previewRows.isNotEmpty ? Icons.upload_rounded : Icons.preview_rounded, size: 16),
-            label: Text(_uploading ? 'Uploading...' : _previewRows.isNotEmpty ? 'Upload ${_previewRows.length} rows' : 'Preview First'),
-            style: FilledButton.styleFrom(backgroundColor: SportSphereColors.electricBlue),
-          )),
-        ]),
-
-        // ── Result ────────────────────────────────────────────────────────
-        if (_result != null) ...[
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: (_result!.startsWith('Error') ? SportSphereColors.danger : SportSphereColors.sportGreen)
-                  .withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: (_result!.startsWith('Error')
-                  ? SportSphereColors.danger : SportSphereColors.sportGreen).withValues(alpha: 0.4)),
-            ),
-            child: Text(_result!, style: TextStyle(
-              color: _result!.startsWith('Error') ? SportSphereColors.danger : SportSphereColors.sportGreen,
-              fontSize: 13, fontWeight: FontWeight.w600)),
-          ),
         ],
 
-        // ── Preview table ─────────────────────────────────────────────────
-        if (_previewRows.isNotEmpty) ...[
-          const SizedBox(height: 16),
+        // ── Preview table ────────────────────────────────────────────────
+        if (rows.isNotEmpty) ...[
           Row(children: [
-            const Icon(Icons.table_rows_rounded, color: SportSphereColors.muted, size: 14),
+            const Icon(Icons.table_rows_rounded, color: SportSphereColors.sportGreen, size: 16),
             const SizedBox(width: 6),
-            Text('Preview — ${_previewRows.length} row${_previewRows.length == 1 ? '' : 's'}',
+            Text('${rows.length} row${rows.length == 1 ? '' : 's'} ready to upload',
                 style: const TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700)),
           ]),
           const SizedBox(height: 8),
@@ -414,29 +421,82 @@ class _BulkUploadScreenState extends State<BulkUploadScreen>
               child: DataTable(
                 headingRowColor: WidgetStatePropertyAll(SportSphereColors.surface),
                 dataRowColor: WidgetStatePropertyAll(SportSphereColors.background),
-                headingTextStyle: const TextStyle(color: SportSphereColors.electricBlue, fontSize: 11, fontWeight: FontWeight.w700),
+                headingTextStyle: const TextStyle(color: SportSphereColors.electricBlue,
+                    fontSize: 11, fontWeight: FontWeight.w700),
                 dataTextStyle: const TextStyle(color: SportSphereColors.white, fontSize: 11),
                 columnSpacing: 16,
-                columns: _headers.map((h) => DataColumn(label: Text(h))).toList(),
-                rows: _previewRows.take(10).map((row) => DataRow(
-                  cells: _headers.map((h) => DataCell(
-                    Text(row[h] ?? '', overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 11)),
-                  )).toList(),
+                columns: headers.map((h) => DataColumn(label: Text(h))).toList(),
+                rows: rows.take(10).map((row) => DataRow(
+                  cells: headers.map((h) => DataCell(
+                    Text(row[h] ?? '', overflow: TextOverflow.ellipsis))).toList(),
                 )).toList(),
               ),
             ),
           ),
-          if (_previewRows.length > 10)
+          if (rows.length > 10)
             Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text('+ ${_previewRows.length - 10} more rows not shown',
+              padding: const EdgeInsets.only(top: 4),
+              child: Text('+ ${rows.length - 10} more rows',
                   style: const TextStyle(color: SportSphereColors.muted, fontSize: 11)),
             ),
+          const SizedBox(height: 12),
+
+          if (result != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: (result.startsWith('Uploaded') && !result.contains('failed')
+                    ? SportSphereColors.sportGreen : SportSphereColors.danger)
+                    .withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(result, style: TextStyle(
+                color: result.startsWith('Uploaded') && !result.contains('failed')
+                    ? SportSphereColors.sportGreen : SportSphereColors.danger,
+                fontWeight: FontWeight.w600)),
+            ),
+
+          SizedBox(width: double.infinity, child: FilledButton.icon(
+            onPressed: uploading ? null : () => _uploadSheet(si),
+            icon: uploading
+                ? const SizedBox(width: 16, height: 16,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                : const Icon(Icons.cloud_upload_rounded),
+            label: Text(uploading ? 'Uploading...' : 'Upload ${rows.length} $sheetName'),
+            style: FilledButton.styleFrom(
+              backgroundColor: SportSphereColors.electricBlue,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          )),
         ],
 
         const SizedBox(height: 80),
       ]),
     );
   }
+}
+
+class _Step extends StatelessWidget {
+  final String n;
+  final String text;
+  const _Step({required this.n, required this.text});
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Row(children: [
+      Container(
+        width: 24, height: 24,
+        alignment: Alignment.center,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: SportSphereColors.electricBlue,
+        ),
+        child: Text(n, style: const TextStyle(
+            color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+      ),
+      const SizedBox(width: 10),
+      Expanded(child: Text(text, style: const TextStyle(color: SportSphereColors.white, fontSize: 13))),
+    ]),
+  );
 }
