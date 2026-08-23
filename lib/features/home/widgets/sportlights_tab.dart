@@ -1096,7 +1096,24 @@ class _ImageContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final asset = item.asset;
-    if (asset == null) return _GeneratedContent(item: item);
+
+    // No media — show text content if available, otherwise nothing
+    if (asset == null || asset.isEmpty) {
+      final text = (item.content ?? '').trim();
+      if (text.isEmpty) return const SizedBox.shrink();
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        child: Text(
+          text,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 15,
+            height: 1.45,
+          ),
+        ),
+      );
+    }
 
     final lower = asset.toLowerCase();
     final isPdf = lower.endsWith('.pdf') || lower.contains('application/pdf');
