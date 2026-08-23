@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/admin/app_admin.dart';
 import '../../../../core/theme/colors.dart';
 import '../../shared/profile_widgets.dart';
 import '../../../claims/presentation/claim_profile_sheet.dart';
 import '../../../../core/data/social_graph.dart';
+import '../../presentation/edit_profile_sheet.dart'
+    show showEntityEditSheet, EntityType;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MODELS
@@ -199,10 +204,11 @@ class _PlayerProfileViewState extends State<PlayerProfileView>
     if (me == null) return;
     try {
       final id = await _graph.resolveId(widget.profile.handle);
+      if (id == null) return;
       final f = await _graph.isFollowing(me, id);
       final n = await _graph.isFan(me, id);
       if (mounted) setState(() { _following = f; _isFan = n; });
-    } catch (_) {}
+    } catch (e) { debugPrint('_loadSocial: $e'); }
   }
 
   @override
@@ -230,8 +236,10 @@ class _PlayerProfileViewState extends State<PlayerProfileView>
                 setState(() => _following = next);
                 try {
                   final id = await _graph.resolveId(widget.profile.handle);
+                  if (id == null) throw StateError('profile not found');
                   await _graph.follow(id, on: next);
-                } catch (_) {
+                } catch (e) {
+                  debugPrint('onFollow: $e');
                   if (mounted) setState(() => _following = !next);
                 }
               },
@@ -241,6 +249,7 @@ class _PlayerProfileViewState extends State<PlayerProfileView>
                 setState(() => _isFan = next);
                 try {
                   final id = await _graph.resolveId(widget.profile.handle);
+                  if (id == null) throw StateError('profile not found');
                   await _graph.fan(id, on: next);
                   final me = _graph.currentUid;
                   if (me != null) await _graph.refreshCounts(me);
@@ -251,12 +260,16 @@ class _PlayerProfileViewState extends State<PlayerProfileView>
                           : 'Removed fan status'),
                     ));
                   }
-                } catch (_) {
+                } catch (e) {
+                  debugPrint('onBecomeFan: $e');
                   if (mounted) setState(() => _isFan = !next);
                 }
               },
               onBack: () => Navigator.of(context).maybePop(),
-              onShare: () {},
+              onShare: () {
+                final handle = widget.profile.handle;
+                Share.share('Check out ${widget.profile.name} on Playify @$handle');
+              },
               onMore: () => _showMore(context),
               onInfo: () => _tabCtrl.animateTo(1),
             ),
@@ -281,37 +294,62 @@ class _PlayerProfileViewState extends State<PlayerProfileView>
   }
 
   void _showMore(BuildContext context) {
+    final isAdmin = AppAdmin.isSessionAdmin;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (_) => ProfileMoreSheet(
         isOwnProfile: p.isOwnProfile,
-        options: p.isOwnProfile
-            ? [
-                ProfileMoreOption(icon: Icons.edit_outlined, label: 'Edit Profile', onTap: () => Navigator.pop(context)),
-                ProfileMoreOption(icon: Icons.share_outlined, label: 'Share Profile', onTap: () => Navigator.pop(context)),
-                ProfileMoreOption(icon: Icons.qr_code_rounded, label: 'QR Code', onTap: () => Navigator.pop(context)),
-              ]
-            : [
-                ProfileMoreOption(icon: Icons.share_outlined, label: 'Share Profile', onTap: () => Navigator.pop(context)),
-                ProfileMoreOption(icon: Icons.block_rounded, label: 'Block', onTap: () => Navigator.pop(context)),
-                if (p.isClaimable)
-                  ProfileMoreOption(
-                    icon: Icons.verified_user_outlined,
-                    label: 'Claim this player',
-                    onTap: () {
-                      Navigator.pop(context);
-                      showClaimProfileSheet(
-                        context,
-                        profileType: 'player',
-                        profileId: p.entityId ?? p.handle,
-                        profileName: p.displayName,
-                        playerId: p.entityId,
-                      );
-                    },
-                  ),
-                ProfileMoreOption(icon: Icons.flag_outlined, label: 'Report', onTap: () => Navigator.pop(context), destructive: true),
-              ],
+        options: [
+          // #5.4 — Admin-only "Edit Profile" entry. Was a dead Navigator.pop.
+          // Now opens EntityEditSheet pre-filled with the player's data.
+          if (isAdmin && p.entityId != null)
+            ProfileMoreOption(
+              icon: Icons.edit_outlined,
+              label: 'Edit Profile',
+              onTap: () async {
+                Navigator.pop(context); // dismiss the more-sheet
+                if (p.entityId == null) return;
+                await showEntityEditSheet(
+                  context,
+                  entityType: EntityType.player,
+                  entityId: p.entityId!,
+                  initialData: <String, dynamic>{
+                    'id': p.entityId,
+                    'name': p.fullName,
+                    'position': p.position,
+                    'nationality': p.nationality,
+                    'dateOfBirth': p.dob.toIso8601String(),
+                    'photoUrl': p.avatarAsset,
+                    'teamId': '',
+                    'shirtNumber': p.squadNumber,
+                  },
+                );
+              },
+            ),
+          ProfileMoreOption(icon: Icons.share_outlined, label: 'Share Profile', onTap: () => Navigator.pop(context)),
+          if (p.isOwnProfile && !isAdmin)
+            ProfileMoreOption(icon: Icons.qr_code_rounded, label: 'QR Code', onTap: () => Navigator.pop(context)),
+          if (!p.isOwnProfile)
+            ProfileMoreOption(icon: Icons.block_rounded, label: 'Block', onTap: () => Navigator.pop(context)),
+          if (p.isClaimable)
+            ProfileMoreOption(
+              icon: Icons.verified_user_outlined,
+              label: 'Claim this player',
+              onTap: () {
+                Navigator.pop(context);
+                showClaimProfileSheet(
+                  context,
+                  profileType: 'player',
+                  profileId: p.entityId ?? p.handle,
+                  profileName: p.displayName,
+                  playerId: p.entityId,
+                );
+              },
+            ),
+          if (!p.isOwnProfile)
+            ProfileMoreOption(icon: Icons.flag_outlined, label: 'Report', onTap: () => Navigator.pop(context), destructive: true),
+        ],
       ),
     );
   }

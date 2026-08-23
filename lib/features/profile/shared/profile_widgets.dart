@@ -1,5 +1,8 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../../core/theme/colors.dart';
 
@@ -7,6 +10,43 @@ import '../../../core/theme/colors.dart';
 // SHARED PROFILE WIDGETS
 // Used by FanProfileView, PlayerProfileView, and future role profiles
 // ══════════════════════════════════════════════════════════════════════════════
+
+// ── Post media type ───────────────────────────────────────────────────────────
+
+/// Identifies what kind of media a [ProfilePost] carries.
+enum ProfileMediaType {
+  /// Text-only post — no media section rendered.
+  text,
+
+  /// One or more image URLs.
+  image,
+
+  /// A single video URL.
+  video,
+
+  /// Mix of images and at least one video.
+  mixed,
+}
+
+/// Returns true when [url] looks like a video asset.
+bool _isVideoUrl(String url) {
+  final u = url.toLowerCase();
+  return u.endsWith('.mp4') ||
+      u.endsWith('.mov') ||
+      u.endsWith('.webm') ||
+      u.endsWith('.m4v') ||
+      u.endsWith('.mkv');
+}
+
+/// Derives a [ProfileMediaType] from a flat list of URLs.
+ProfileMediaType _inferMediaType(List<String> urls) {
+  if (urls.isEmpty) return ProfileMediaType.text;
+  final hasVideo = urls.any(_isVideoUrl);
+  final hasImage = urls.any((u) => !_isVideoUrl(u));
+  if (hasVideo && hasImage) return ProfileMediaType.mixed;
+  if (hasVideo) return ProfileMediaType.video;
+  return ProfileMediaType.image;
+}
 
 // ── Post model ─────────────────────────────────────────────────────────────────
 
@@ -17,23 +57,97 @@ class ProfilePost {
   final int likes;
   final int comments;
   final int shares;
-  final bool hasImage;
-  final int imageCount;
-  final bool hasVideo;
-  final String? imageUrl;
 
-  const ProfilePost({
+  /// Flat list of media URLs attached to the post (images and/or videos).
+  /// Populated either by passing [mediaUrls] directly at construction, or
+  /// automatically from the legacy [imageUrl] single-URL param when
+  /// [mediaUrls] is empty.
+  final List<String> mediaUrls;
+
+  /// Whether the post carries image/video/mixed media. Derived from
+  /// [mediaUrls] when null. Kept nullable so callers can omit it and let
+  /// [effectiveMediaType] infer it from the URL list.
+  final ProfileMediaType? mediaType;
+
+  /// Backwards-compatible constructor.
+  ///
+  /// New callers should pass [mediaUrls] (and optionally [mediaType]).
+  /// Existing callers may still pass the legacy [imageUrl] / [hasImage] /
+  /// [imageCount] / [hasVideo] flags — when [mediaUrls] is empty but
+  /// [imageUrl] is non-null, it is folded into [mediaUrls] automatically
+  /// so the post still renders with media.
+  ProfilePost({
     required this.text,
     required this.hashtags,
     required this.timeAgo,
     required this.likes,
     required this.comments,
     required this.shares,
+    List<String> mediaUrls = const [],
+    this.mediaType,
+    // ── Legacy params (deprecated; kept for source-compat) ──────────────
     this.hasImage = false,
     this.imageCount = 1,
     this.hasVideo = false,
     this.imageUrl,
-  });
+  })  : mediaUrls = (mediaUrls.isEmpty && imageUrl != null && imageUrl!.isNotEmpty)
+            ? [imageUrl!]
+            : mediaUrls;
+
+  /// Legacy constructor flag — ignored when [mediaUrls] is populated.
+  /// Prefer checking [effectiveMediaType] / [hasImageMedia] getter instead.
+  final bool hasImage;
+
+  /// Legacy constructor flag — ignored when [mediaUrls] is populated.
+  final int imageCount;
+
+  /// Legacy constructor flag — ignored when [mediaUrls] is populated.
+  final bool hasVideo;
+
+  /// Legacy single-image URL — folded into [mediaUrls] when [mediaUrls] is
+  /// empty at construction time.
+  final String? imageUrl;
+
+  /// Convenience: true when the post has at least one image URL.
+  bool get hasImageMedia {
+    switch (effectiveMediaType) {
+      case ProfileMediaType.image:
+      case ProfileMediaType.mixed:
+        return true;
+      case ProfileMediaType.text:
+      case ProfileMediaType.video:
+        return false;
+    }
+  }
+
+  /// Convenience: number of image URLs (excludes video URLs).
+  int get imageCountActual {
+    switch (effectiveMediaType) {
+      case ProfileMediaType.image:
+      case ProfileMediaType.mixed:
+        return mediaUrls.where((u) => !_isVideoUrl(u)).length;
+      case ProfileMediaType.text:
+      case ProfileMediaType.video:
+        return 0;
+    }
+  }
+
+  /// Convenience: true when the post has at least one video URL.
+  bool get hasVideoMedia {
+    switch (effectiveMediaType) {
+      case ProfileMediaType.video:
+      case ProfileMediaType.mixed:
+        return true;
+      case ProfileMediaType.text:
+      case ProfileMediaType.image:
+        return false;
+    }
+  }
+
+  /// Resolves the effective media type, inferring it from [mediaUrls] when the
+  /// caller did not specify one explicitly.
+  ProfileMediaType get effectiveMediaType =>
+      mediaType ?? _inferMediaType(mediaUrls);
 }
 
 // ── Count formatter ────────────────────────────────────────────────────────────
@@ -360,7 +474,59 @@ class _ProfilePostCardState extends State<ProfilePostCard> {
                   label: 'Post options',
                   button: true,
                   child: GestureDetector(
-                    onTap: () {},
+                    onTap: () {
+                      showModalBottomSheet<void>(
+                        context: context,
+                        backgroundColor: SportSphereColors.card,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.vertical(top: Radius.circular(20)),
+                        ),
+                        builder: (_) => SafeArea(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ListTile(
+                                leading: const Icon(Icons.link_rounded,
+                                    color: SportSphereColors.muted),
+                                title: const Text('Copy link'),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text('Link copied')),
+                                  );
+                                },
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.share_rounded,
+                                    color: SportSphereColors.muted),
+                                title: const Text('Share post'),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  Share.share(post.text.isEmpty
+                                      ? 'Check out this post on Playify'
+                                      : post.text);
+                                },
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.flag_outlined,
+                                    color: SportSphereColors.muted),
+                                title: const Text('Report'),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text(
+                                            'Report submitted — thank you')),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                     child: const Icon(Icons.more_vert_rounded,
                         color: SportSphereColors.muted, size: 20),
                   ),
@@ -394,29 +560,17 @@ class _ProfilePostCardState extends State<ProfilePostCard> {
               ),
             ),
 
-            // Media
-            if (post.imageUrl != null && post.imageUrl!.startsWith('http')) ...[
+            // Media — render based on ProfilePost.effectiveMediaType.
+            //   • text   → no media section
+            //   • image  → 1 image = single CachedNetworkImage,
+            //              N>1 = horizontal PageView with dots indicator
+            //   • video  → _ProfilePostVideo widget (uses video_player)
+            //   • mixed  → render every URL in order via _ProfilePostMediaItem
+            if (post.mediaUrls.isNotEmpty) ...[
               const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: Container(
-                  height: 200,
-                  width: double.infinity,
-                  color: const Color(0xFF071421),
-                  alignment: Alignment.center,
-                  padding: const EdgeInsets.all(24),
-                  child: Image.network(
-                    post.imageUrl!,
-                    fit: BoxFit.contain,
-                    filterQuality: FilterQuality.high,
-                  ),
-                ),
-              ),
-            ] else if (post.hasImage) ...[
-              const SizedBox(height: 12),
-              PostMedia(
-                imageCount: post.imageCount,
-                hasVideo: post.hasVideo,
+              _ProfilePostMedia(
+                urls: post.mediaUrls,
+                mediaType: post.effectiveMediaType,
                 accent: widget.accentColor,
               ),
             ],
@@ -501,10 +655,13 @@ class _EngagementBtn extends StatelessWidget {
   final IconData icon;
   final String label;
   final String semantics;
+  final VoidCallback? onTap;
+
   const _EngagementBtn({
     required this.icon,
     required this.label,
     required this.semantics,
+    this.onTap,
   });
 
   @override
@@ -513,7 +670,7 @@ class _EngagementBtn extends StatelessWidget {
       label: semantics,
       button: true,
       child: GestureDetector(
-        onTap: () {},
+        onTap: onTap ?? () {},
         child: Row(
           children: [
             Icon(icon, color: SportSphereColors.muted, size: 19),
@@ -606,6 +763,382 @@ class PostMediaTile extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Profile post media renderer ───────────────────────────────────────────────
+//
+// Handles all four media types carried by [ProfilePost]:
+//   • image  → 1 image = single CachedNetworkImage, N>1 = horizontal PageView
+//              with a dots indicator underneath.
+//   • video  → inline [_ProfilePostVideo] using the `video_player` package.
+//   • mixed  → all URLs rendered in order via [_ProfilePostMediaItem].
+//   • text   → caller decides not to render this widget at all.
+//
+// Uses `cached_network_image` for HTTP/HTTPS image caching. Non-network URLs
+// fall back to Image.asset / Image.network as appropriate.
+
+class _ProfilePostMedia extends StatelessWidget {
+  final List<String> urls;
+  final ProfileMediaType mediaType;
+  final Color accent;
+
+  const _ProfilePostMedia({
+    required this.urls,
+    required this.mediaType,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (urls.isEmpty) return const SizedBox.shrink();
+
+    switch (mediaType) {
+      case ProfileMediaType.image:
+        final imageUrls = urls.where((u) => !_isVideoUrl(u)).toList();
+        if (imageUrls.isEmpty) return const SizedBox.shrink();
+        if (imageUrls.length == 1) {
+          return _ProfilePostMediaItem(
+            url: imageUrls.first,
+            isVideo: false,
+            accent: accent,
+          );
+        }
+        return _ProfilePostImagePager(urls: imageUrls, accent: accent);
+      case ProfileMediaType.video:
+        final videoUrls = urls.where(_isVideoUrl).toList();
+        if (videoUrls.isEmpty) return const SizedBox.shrink();
+        if (videoUrls.length == 1) {
+          return _ProfilePostMediaItem(
+            url: videoUrls.first,
+            isVideo: true,
+            accent: accent,
+          );
+        }
+        return _ProfilePostImagePager(
+          urls: videoUrls,
+          accent: accent,
+          allVideos: true,
+        );
+      case ProfileMediaType.mixed:
+        // Render each URL in order; videos become inline players,
+        // images become cached network images.
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final u in urls) ...[
+              _ProfilePostMediaItem(
+                url: u,
+                isVideo: _isVideoUrl(u),
+                accent: accent,
+              ),
+              const SizedBox(height: 8),
+            ],
+          ],
+        );
+      case ProfileMediaType.text:
+        return const SizedBox.shrink();
+    }
+  }
+}
+
+/// Horizontal pager for multiple media URLs (images or videos).
+class _ProfilePostImagePager extends StatefulWidget {
+  final List<String> urls;
+  final Color accent;
+  final bool allVideos;
+
+  const _ProfilePostImagePager({
+    required this.urls,
+    required this.accent,
+    this.allVideos = false,
+  });
+
+  @override
+  State<_ProfilePostImagePager> createState() => _ProfilePostImagePagerState();
+}
+
+class _ProfilePostImagePagerState extends State<_ProfilePostImagePager> {
+  int _page = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: SizedBox(
+            height: 240,
+            child: PageView.builder(
+              itemCount: widget.urls.length,
+              onPageChanged: (i) => setState(() => _page = i),
+              itemBuilder: (_, i) => _ProfilePostMediaItem(
+                url: widget.urls[i],
+                isVideo: widget.allVideos,
+                accent: widget.accent,
+                fit: BoxFit.cover,
+                height: 240,
+              ),
+            ),
+          ),
+        ),
+        if (widget.urls.length > 1) ...[
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(widget.urls.length, (i) {
+              final active = i == _page;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: active ? 7 : 5,
+                height: active ? 7 : 5,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: active
+                      ? widget.accent
+                      : widget.accent.withValues(alpha: 0.30),
+                ),
+              );
+            }),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Renders a single media URL — video or image, network or asset.
+class _ProfilePostMediaItem extends StatelessWidget {
+  final String url;
+  final bool isVideo;
+  final Color accent;
+  final BoxFit fit;
+  final double? height;
+
+  const _ProfilePostMediaItem({
+    required this.url,
+    required this.isVideo,
+    required this.accent,
+    this.fit = BoxFit.cover,
+    this.height,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (isVideo) {
+      return _ProfilePostVideo(
+        url: url,
+        accent: accent,
+        fit: fit,
+        height: height,
+      );
+    }
+
+    final isNetwork = url.startsWith('http://') || url.startsWith('https://');
+    final inner = isNetwork
+        ? CachedNetworkImage(
+            imageUrl: url,
+            fit: fit,
+            placeholder: (_, __) => _mediaSkeleton(accent),
+            errorWidget: (_, __, ___) =>
+                _mediaErrorPlaceholder(accent),
+          )
+        : Image.asset(
+            url,
+            fit: fit,
+            errorBuilder: (_, __, ___) => _mediaErrorPlaceholder(accent),
+          );
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: SizedBox(
+        width: double.infinity,
+        height: height ?? 240,
+        child: inner,
+      ),
+    );
+  }
+
+  Widget _mediaSkeleton(Color accent) => Container(
+        color: const Color(0xFF071421),
+        alignment: Alignment.center,
+        child: CircularProgressIndicator(
+            strokeWidth: 2, color: accent.withValues(alpha: 0.6)),
+      );
+
+  Widget _mediaErrorPlaceholder(Color accent) => Container(
+        color: const Color(0xFF071421),
+        alignment: Alignment.center,
+        padding: const EdgeInsets.all(24),
+        child: Icon(Icons.broken_image_outlined,
+            color: accent.withValues(alpha: 0.45), size: 40),
+      );
+}
+
+/// Inline video player for a single URL using the `video_player` package.
+/// Initialises lazily on first build, shows a tappable thumbnail with a
+/// play button overlay until the user taps to start playback.
+class _ProfilePostVideo extends StatefulWidget {
+  final String url;
+  final Color accent;
+  final BoxFit fit;
+  final double? height;
+
+  const _ProfilePostVideo({
+    required this.url,
+    required this.accent,
+    this.fit = BoxFit.cover,
+    this.height,
+  });
+
+  @override
+  State<_ProfilePostVideo> createState() => _ProfilePostVideoState();
+}
+
+class _ProfilePostVideoState extends State<_ProfilePostVideo> {
+  VideoPlayerController? _controller;
+  bool _initialised = false;
+  bool _failed = false;
+  bool _showPlayOverlay = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    try {
+      final ctl = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+      await ctl.initialize();
+      if (!mounted) {
+        ctl.dispose();
+        return;
+      }
+      setState(() {
+        _controller = ctl;
+        _initialised = true;
+      });
+    } catch (e) {
+      debugPrint('[_ProfilePostVideo] init failed for ${widget.url}: $e');
+      if (mounted) setState(() => _failed = true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  void _togglePlay() {
+    final ctl = _controller;
+    if (ctl == null) return;
+    setState(() {
+      if (ctl.value.isPlaying) {
+        ctl.pause();
+        _showPlayOverlay = true;
+      } else {
+        ctl.play();
+        _showPlayOverlay = false;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final h = widget.height ?? 240;
+    if (_failed) {
+      return _errorTile(h);
+    }
+    if (!_initialised || _controller == null) {
+      return _loadingTile(h);
+    }
+    final ctl = _controller!;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: SizedBox(
+        width: double.infinity,
+        height: h,
+        child: Stack(
+          fit: StackFit.expand,
+          alignment: Alignment.center,
+          children: [
+            GestureDetector(
+              onTap: _togglePlay,
+              child: FittedBox(
+                fit: widget.fit,
+                clipBehavior: Clip.hardEdge,
+                child: SizedBox(
+                  width: ctl.value.size.width,
+                  height: ctl.value.size.height,
+                  child: VideoPlayer(ctl),
+                ),
+              ),
+            ),
+            if (_showPlayOverlay)
+              Align(
+                alignment: Alignment.center,
+                child: GestureDetector(
+                  onTap: _togglePlay,
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.black.withValues(alpha: 0.55),
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.35)),
+                    ),
+                    child: const Icon(Icons.play_arrow_rounded,
+                        color: Colors.white, size: 32),
+                  ),
+                ),
+              ),
+            Positioned(
+              bottom: 6,
+              left: 6,
+              right: 6,
+              child: VideoProgressIndicator(
+                ctl,
+                allowScrubbing: true,
+                colors: VideoProgressColors(
+                  playedColor: widget.accent,
+                  bufferedColor: widget.accent.withValues(alpha: 0.30),
+                  backgroundColor: Colors.white.withValues(alpha: 0.10),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _loadingTile(double h) => ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          width: double.infinity,
+          height: h,
+          color: const Color(0xFF071421),
+          alignment: Alignment.center,
+          child: CircularProgressIndicator(
+              strokeWidth: 2, color: widget.accent.withValues(alpha: 0.6)),
+        ),
+      );
+
+  Widget _errorTile(double h) => ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          width: double.infinity,
+          height: h,
+          color: const Color(0xFF071421),
+          alignment: Alignment.center,
+          child: Icon(Icons.error_outline_rounded,
+              color: widget.accent.withValues(alpha: 0.45), size: 40),
+        ),
+      );
 }
 
 // ── About section card ─────────────────────────────────────────────────────────

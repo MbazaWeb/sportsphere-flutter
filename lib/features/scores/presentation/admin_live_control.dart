@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/data/commerce_repository.dart';
 import '../../../core/theme/colors.dart';
+import '../../../core/utils/friendly_error.dart';
 import '../data/scores_repository.dart';
 import 'providers/scores_provider.dart';
-import '../../../core/utils/friendly_error.dart';
 
 Future<void> openAdminLiveControl(BuildContext context, WidgetRef ref) {
   return showModalBottomSheet<void>(
@@ -38,12 +38,23 @@ class _AdminLiveControlSheetState extends ConsumerState<_AdminLiveControlSheet>
   final _repo = const ScoresRepository();
   List<Map<String, dynamic>> _matches = [];
   bool _loading = true;
+  bool _hasMore = true;
+  int _offset = 0;
+  static const int _pageSize = 40;
+
+  /// Re-entrancy guard for the realtime-driven reload.
+  bool _refreshingFromRealtime = false;
+
+  /// Tracks whether we've seen the initial emission from the realtime stream
+  /// (so we don't re-fetch on the loading→data transition that always fires
+  /// when the listener is first attached).
+  bool _sawInitialTick = false;
 
   @override
   void initState() {
     super.initState();
     _tabs = TabController(length: 2, vsync: this);
-    _loadMatches();
+    _loadMatches(initial: true);
   }
 
   @override
@@ -52,14 +63,68 @@ class _AdminLiveControlSheetState extends ConsumerState<_AdminLiveControlSheet>
     super.dispose();
   }
 
-  Future<void> _loadMatches() async {
-    setState(() => _loading = true);
-    try {
-      final rows = await _repo.listMatchesForAdmin();
-      if (mounted) setState(() { _matches = rows; _loading = false; });
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
+  /// Listen to the shared `scores-realtime` channel — whenever a Match row
+  /// changes (admin save, external feed, etc.) we re-fetch the admin list.
+  ///
+  /// Called from `build` so riverpod auto-cleans the listener between rebuilds
+  /// (avoids leaking subscriptions when the sheet is dismissed).
+  void _listenToRealtime() {
+    ref.listen(matchRealtimeTickProvider, (_, __) {
+      if (!_sawInitialTick) {
+        _sawInitialTick = true;
+        return;
+      }
+      if (!_refreshingFromRealtime && mounted) {
+        _refreshingFromRealtime = true;
+        _loadMatches(initial: true).whenComplete(() {
+          _refreshingFromRealtime = false;
+        });
+      }
+    });
+  }
+
+  Future<void> _loadMatches({bool initial = false}) async {
+    if (initial) {
+      setState(() {
+        _loading = true;
+        _offset = 0;
+      });
     }
+    try {
+      final rows = await _repo.listMatchesForAdmin(
+        limit: _pageSize,
+        offset: _offset,
+      );
+      if (!mounted) return;
+      setState(() {
+        if (initial) {
+          _matches = rows;
+        } else {
+          // Defensive dedupe in case the page window overlaps (status changes
+          // between fetches can shift rows).
+          final seen = <String>{};
+          _matches = [
+            ..._matches,
+            for (final r in rows)
+              if (r['id'] != null && seen.add(r['id'].toString())) r,
+          ];
+        }
+        _hasMore = rows.length == _pageSize;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(friendlyError(e))),
+      );
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (!_hasMore || _loading) return;
+    _offset += _pageSize;
+    await _loadMatches(initial: false);
   }
 
   Future<void> _editMatch(Map<String, dynamic> m) async {
@@ -155,6 +220,21 @@ class _AdminLiveControlSheetState extends ConsumerState<_AdminLiveControlSheet>
                     ),
                   ],
                 ),
+                const SizedBox(height: 8),
+                // Quick link to add player stats for THIS match — passes the
+                // matchId from parent context so the admin no longer has to
+                // type it in (issue #1.30).
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () {
+                      Navigator.pop(d, false);
+                      _editPlayerStats(matchId: id);
+                    },
+                    icon: const Icon(Icons.person_add_alt_1, size: 16),
+                    label: const Text('Add player stats for this match'),
+                  ),
+                ),
               ],
             ),
           ),
@@ -184,16 +264,24 @@ class _AdminLiveControlSheetState extends ConsumerState<_AdminLiveControlSheet>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Match updated · live')),
         );
-        await _loadMatches();
+        await _loadMatches(initial: true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(friendlyError(e))));
       }
     }
   }
 
-  Future<void> _editPlayerStats() async {
+  /// Player stats editor.
+  ///
+  /// [matchId] is now passed from the parent context (the matches list /
+  /// edit-match dialog) instead of requiring the admin to type it in.
+  /// When called from the "Player stats" tab (no parent match context) we
+  /// surface a dropdown of the matches loaded in this sheet so the admin can
+  /// pick one with a tap.
+  Future<void> _editPlayerStats({String? matchId}) async {
     final search = TextEditingController();
     List<Map<String, dynamic>> found = [];
     Map<String, dynamic>? selected;
@@ -203,7 +291,7 @@ class _AdminLiveControlSheetState extends ConsumerState<_AdminLiveControlSheet>
     final minutes = TextEditingController(text: '90');
     final yellow = TextEditingController(text: '0');
     final red = TextEditingController(text: '0');
-    String? matchId;
+    String? chosenMatchId = matchId;
 
     await showDialog<void>(
       context: context,
@@ -218,6 +306,30 @@ class _AdminLiveControlSheetState extends ConsumerState<_AdminLiveControlSheet>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Match picker — populated from the sheet's loaded matches
+                  // (replaces the free-text "Match id (optional)" field).
+                  DropdownButtonFormField<String>(
+                    value: chosenMatchId,
+                    dropdownColor: const Color(0xFF0C1A2A),
+                    decoration: const InputDecoration(
+                      labelText: 'Match',
+                      labelStyle: TextStyle(color: Colors.white54),
+                    ),
+                    items: [
+                      for (final m in _matches)
+                        DropdownMenuItem<String>(
+                          value: m['id']?.toString() ?? '',
+                          child: Text(
+                            '${m['homeTeam'] ?? '?'} vs ${m['awayTeam'] ?? '?'}',
+                            style: const TextStyle(color: Colors.white),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                    onChanged: (v) =>
+                        setLocal(() => chosenMatchId = v?.isEmpty == true ? null : v),
+                  ),
+                  const SizedBox(height: 8),
                   TextField(
                     controller: search,
                     style: const TextStyle(color: Colors.white),
@@ -229,8 +341,16 @@ class _AdminLiveControlSheetState extends ConsumerState<_AdminLiveControlSheet>
                         onPressed: () async {
                           final q = search.text.trim();
                           if (q.isEmpty) return;
-                          final rows = await _repo.searchPlayers(q);
-                          setLocal(() => found = rows);
+                          try {
+                            final rows = await _repo.searchPlayers(q);
+                            setLocal(() => found = rows);
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(friendlyError(e))),
+                              );
+                            }
+                          }
                         },
                       ),
                     ),
@@ -263,14 +383,6 @@ class _AdminLiveControlSheetState extends ConsumerState<_AdminLiveControlSheet>
                       style: const TextStyle(color: Color(0xFF22C55E)),
                     ),
                   TextField(
-                    onChanged: (v) => matchId = v.trim().isEmpty ? null : v.trim(),
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
-                      labelText: 'Match id (optional)',
-                      labelStyle: TextStyle(color: Colors.white54),
-                    ),
-                  ),
-                  TextField(
                     controller: goals,
                     keyboardType: TextInputType.number,
                     style: const TextStyle(color: Colors.white),
@@ -298,13 +410,15 @@ class _AdminLiveControlSheetState extends ConsumerState<_AdminLiveControlSheet>
                     controller: yellow,
                     keyboardType: TextInputType.number,
                     style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(labelText: 'Yellow cards'),
+                    decoration:
+                        const InputDecoration(labelText: 'Yellow cards'),
                   ),
                   TextField(
                     controller: red,
                     keyboardType: TextInputType.number,
                     style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(labelText: 'Red cards'),
+                    decoration:
+                        const InputDecoration(labelText: 'Red cards'),
                   ),
                 ],
               ),
@@ -322,7 +436,7 @@ class _AdminLiveControlSheetState extends ConsumerState<_AdminLiveControlSheet>
                       try {
                         await CommerceRepository().upsertPlayerMatchStat(
                           playerId: selected!['id'].toString(),
-                          matchId: matchId,
+                          matchId: chosenMatchId,
                           goals: int.tryParse(goals.text) ?? 0,
                           assists: int.tryParse(assists.text) ?? 0,
                           saves: int.tryParse(saves.text) ?? 0,
@@ -355,6 +469,10 @@ class _AdminLiveControlSheetState extends ConsumerState<_AdminLiveControlSheet>
 
   @override
   Widget build(BuildContext context) {
+    // Subscribe to the shared realtime channel the first time we build.
+    // (Called here rather than in initState so [ref] is available.)
+    _listenToRealtime();
+
     final h = MediaQuery.of(context).size.height * 0.85;
     return SizedBox(
       height: h,
@@ -404,11 +522,41 @@ class _AdminLiveControlSheetState extends ConsumerState<_AdminLiveControlSheet>
                 _loading
                     ? const Center(child: CircularProgressIndicator())
                     : RefreshIndicator(
-                        onRefresh: _loadMatches,
+                        color: SportSphereColors.electricBlue,
+                        onRefresh: () => _loadMatches(initial: true),
                         child: ListView.builder(
                           padding: const EdgeInsets.all(12),
-                          itemCount: _matches.length,
+                          // Make sure the RefreshIndicator is draggable even
+                          // when the list is short.
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          itemCount: _matches.length + 1,
                           itemBuilder: (_, i) {
+                            if (i == _matches.length) {
+                              if (!_hasMore) {
+                                return const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 16),
+                                  child: Center(
+                                    child: Text(
+                                      '— end of list —',
+                                      style: TextStyle(
+                                          color: Colors.white38,
+                                          fontSize: 11),
+                                    ),
+                                  ),
+                                );
+                              }
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                child: Center(
+                                  child: TextButton.icon(
+                                    onPressed: _loadMore,
+                                    icon: const Icon(Icons.expand_more,
+                                        size: 18),
+                                    label: const Text('Load more'),
+                                  ),
+                                ),
+                              );
+                            }
                             final m = _matches[i];
                             final st = '${m['status'] ?? ''}';
                             final score =
@@ -448,7 +596,10 @@ class _AdminLiveControlSheetState extends ConsumerState<_AdminLiveControlSheet>
                       ),
                       const SizedBox(height: 16),
                       FilledButton.icon(
-                        onPressed: _editPlayerStats,
+                        // No parent match context here — open the dialog and
+                        // let the admin pick a match from the dropdown (which
+                        // is populated from the matches loaded above).
+                        onPressed: () => _editPlayerStats(matchId: null),
                         icon: const Icon(Icons.person_search_rounded),
                         label: const Text('Update player stats'),
                       ),

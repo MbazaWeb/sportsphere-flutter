@@ -38,14 +38,14 @@ delete from public.news_comments  where user_id in (select id from _wipe_ids);
 delete from public.device_tokens  where user_id in (select id from _wipe_ids);
 
 -- Step 5: PascalCase social tables (text FK)
-delete from public."ShopOrder"       where "buyerId"    in (select id from _wipe_ids);
+delete from public."ShopOrder"       where "userId"     in (select id from _wipe_ids);
 delete from public."PostShare"       where "userId"     in (select id from _wipe_ids);
-delete from public."Notification"    where "receiverId" in (select id from _wipe_ids) or "actorId" in (select id from _wipe_ids);
+delete from public."Notification"    where "userId"     in (select id from _wipe_ids) or "actorId" in (select id from _wipe_ids);
 delete from public."Message"         where "senderId"   in (select id from _wipe_ids) or "receiverId" in (select id from _wipe_ids);
 delete from public."CommentLike"     where "userId"     in (select id from _wipe_ids);
-delete from public."Comment"         where "authorId"   in (select id from _wipe_ids);
+delete from public."Comment"         where "userId"     in (select id from _wipe_ids);
 delete from public."PostLike"        where "userId"     in (select id from _wipe_ids);
-delete from public."Post"            where "authorId"   in (select id from _wipe_ids);
+delete from public."Post"            where "userId"     in (select id from _wipe_ids);
 delete from public."Follow"          where "followerId" in (select id from _wipe_ids) or "followingId" in (select id from _wipe_ids);
 delete from public."CommunityMember" where "userId"     in (select id from _wipe_ids);
 delete from public."PollVote"        where "userId"     in (select id from _wipe_ids);
@@ -106,7 +106,7 @@ delete from auth.users
 update public."User" set
   "followingCount" = (select count(*) from public."Follow" f where f."followerId" = "User".id),
   "followerCount"  = (select count(*) from public."Follow" f where f."followingId" = "User".id),
-  "postCount"      = (select count(*) from public."Post"   p where p."authorId"    = "User".id);
+  "postCount"      = (select count(*) from public."Post"   p where p."userId"      = "User".id);
 
 -- Step 12: Cleanup
 drop table _wipe_ids;

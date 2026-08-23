@@ -1521,6 +1521,56 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
       _social.hasShared(id).then((v) {
         if (mounted) setState(() => _shared = v);
       });
+      // #7.6: also load the like state from the DB so the heart icon reflects
+      // the user's actual like state on first paint (was previously hard-coded
+      // to `false`, causing the icon to flash from outlined to filled).
+      _hasLikedPost(id).then((v) {
+        if (mounted) setState(() => _liked = v);
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _EngagementRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // #7.19: when the parent rebuilds this row with a fresh `_SpotlightItem`
+    // (e.g. after a realtime `Post` change or pull-to-refresh), re-sync the
+    // local counter caches from the new widget values. We deliberately do
+    // NOT touch `_liked` / `_shared` here — those reflect the current user's
+    // own actions and shouldn't be reset just because the post counters
+    // changed.
+    final next = widget.item;
+    if (oldWidget.item.likes != next.likes ||
+        oldWidget.item.comments != next.comments ||
+        oldWidget.item.shares != next.shares) {
+      _likes = next.likes;
+      _comments = next.comments;
+      _shares = next.shares;
+    }
+  }
+
+  /// Queries the `PostLike` table directly to check whether the current user
+  /// has liked the given post.
+  ///
+  /// `SocialRepository` doesn't expose a `hasLiked` method yet (owned by
+  /// Agent S6), and `_SpotlightItem` is always a Post (never a `NewsItem` —
+  /// news lives in `news_tab.dart` with its own `_NewsCard`), so we just hit
+  /// `PostLike` here. When `SocialRepository.hasLiked` lands we can delegate.
+  Future<bool> _hasLikedPost(String postId) async {
+    final sb = Supabase.instance.client;
+    final uid = sb.auth.currentUser?.id;
+    if (uid == null) return false;
+    try {
+      final row = await sb
+          .from('PostLike')
+          .select('userId')
+          .eq('postId', postId)
+          .eq('userId', uid)
+          .maybeSingle();
+      return row != null;
+    } catch (e) {
+      debugPrint('_EngagementRow._hasLikedPost($postId): $e');
+      return false;
     }
   }
 
@@ -1532,25 +1582,57 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
       );
       return;
     }
+
+    // #7.7 + #7.8: tapping Share ALWAYS opens the OS share sheet first.
+    // Only after the sheet returns successfully do we record the PostShare
+    // row — this matches user expectations (a cancel/failure does NOT count
+    // as a share) and prevents phantom share-count increments.
+    final text = widget.item.content?.trim().isNotEmpty == true
+        ? widget.item.content!
+        : '${widget.item.author} on Playify';
     try {
-      final nowShared = await _social.toggleShare(id);
-      if (nowShared) {
-        final text = widget.item.content?.trim().isNotEmpty == true
-            ? widget.item.content!
-            : '${widget.item.author} on Playify';
-        try {
-          await Share.share(text, subject: 'SportSphere');
-        } catch (e) {
-          debugPrint('OS share: $e');
-        }
-      }
-      if (mounted) {
-        setState(() {
-          _shared = nowShared;
-          _shares = nowShared ? _shares + 1 : (_shares > 0 ? _shares - 1 : 0);
-        });
-      }
+      await Share.share(text, subject: 'SportSphere');
     } catch (e) {
+      // OS share sheet failed or was cancelled — bail out WITHOUT inserting
+      // a PostShare row.
+      debugPrint('_EngagementRow._onShare OS sheet failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
+      }
+      return;
+    }
+
+    // OS sheet returned successfully. If we've already recorded this share,
+    // don't insert a duplicate row — just leave the local state as-is.
+    if (_shared) return;
+
+    // Insert a fresh PostShare row. We use `upsert` (idempotent on the
+    // `(postId, userId)` PK) so a race with another device doesn't throw;
+    // the `trg_post_share_count` DB trigger bumps `Post.shareCount` on
+    // INSERT, so we mirror that locally with `_shares + 1`.
+    try {
+      final sb = Supabase.instance.client;
+      final uid = sb.auth.currentUser?.id;
+      if (uid == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Sign in to record share')),
+          );
+        }
+        return;
+      }
+      await sb.from('PostShare').upsert({
+        'postId': id,
+        'userId': uid,
+        'createdAt': DateTime.now().toIso8601String(),
+      });
+      if (!mounted) return;
+      setState(() {
+        _shared = true;
+        _shares = _shares + 1;
+      });
+    } catch (e) {
+      debugPrint('_EngagementRow._onShare insert PostShare failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
       }

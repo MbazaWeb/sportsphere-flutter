@@ -82,9 +82,15 @@ Future<TeamProfileModel> lookupTeamProfile(String handle) async {
     accentColor: parseHexColor(team?['primaryColor']?.toString()) ??
         parseHexColor((team?['metadata'] is Map ? (team!['metadata'] as Map)['primaryColor'] : null)?.toString()) ??
         const Color(0xFFE31B23),
-    postCount: (user?['postCount'] as int?) ?? 0,
-    fanCount: (user?['fanCount'] as int?) ?? 0,
-    followingCount: (user?['followingCount'] as int?) ?? 0,
+    postCount: (user?['postCount'] as int?) ??
+        (user?['post_count'] as int?) ??
+        0,
+    fanCount: (user?['fanCount'] as int?) ??
+        (user?['fan_count'] as int?) ??
+        0,
+    followingCount: (user?['followingCount'] as int?) ??
+        (user?['following_count'] as int?) ??
+        0,
     squad: squad,
     seasonStats: seasonStats,
     logoAsset: logo,

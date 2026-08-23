@@ -47,8 +47,12 @@ class SocialGraph {
   String? get _uid => _sb.auth.currentUser?.id;
   String? get currentUid => _uid;
 
-  /// Resolve an ID or handle to a user ID
-  Future<String> resolveId(String idOrHandle) => _resolve(idOrHandle);
+  /// Resolve an ID or handle to a user ID.
+  ///
+  /// Returns `null` when no User row (and no entity-backed account) can
+  /// be resolved for the given handle, so callers can bail out gracefully
+  /// instead of attempting to follow/fan a raw handle string.
+  Future<String?> resolveId(String idOrHandle) => _resolve(idOrHandle);
 
   /// Check if user [me] is following [targetId]
   Future<bool> isFollowing(String me, String targetId) async {
@@ -60,7 +64,8 @@ class SocialGraph {
           .eq('followingId', targetId)
           .limit(1);
       return (rows as List).isNotEmpty;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('isFollowing($me -> $targetId) error: $e');
       return false;
     }
   }
@@ -75,30 +80,68 @@ class SocialGraph {
           .eq('target_id', targetId)
           .limit(1);
       return (rows as List).isNotEmpty;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('isFan($me -> $targetId) error: $e');
       return false;
     }
   }
 
-  /// Refresh counts for a user
+  /// Returns the live fan count for [targetId] via the `count_fans_of`
+  /// RPC. Use this when freshness matters (e.g. right after a fan
+  /// toggle) instead of reading the cached `User.fanCount` column.
+  Future<int> fanCount(String targetId) async {
+    try {
+      final result =
+          await _sb.rpc('count_fans_of', params: {'p_id': targetId});
+      if (result is int) return result;
+      if (result is num) return result.toInt();
+      return 0;
+    } catch (e) {
+      debugPrint('fanCount($targetId) error: $e');
+      return 0;
+    }
+  }
+
+  /// Refresh counts for a user.
+  ///
+  /// The underlying `refresh_user_counts` RPC was revoked from `anon`
+  /// in migration `20260824000000_fix_top3_critical_security.sql`, so
+  /// this must be called from an authenticated session. We short-circuit
+  /// when there is no current user rather than throwing.
   Future<void> refreshCounts(String id) async {
+    if (_uid == null) {
+      debugPrint('refreshCounts($id) skipped: no authenticated session');
+      return;
+    }
     try {
       await _sb.rpc('refresh_user_counts', params: {'p_id': id});
     } catch (e) {
-      // Log but don't throw - counts will update eventually
+      // Log but don't throw — counts will catch up on the next refresh.
       debugPrint('Failed to refresh counts for $id: $e');
     }
   }
 
-  /// Resolve a handle or ID to a user ID
-  Future<String> _resolve(String idOrHandle) async {
+  /// Resolve a handle or ID to a user ID.
+  ///
+  /// 1. If [idOrHandle] looks like a UUID, return it as-is.
+  /// 2. Try the `User` table by exact then case-insensitive handle.
+  /// 3. Fall back to org-role entity tables (`Team`, `Player`, `Coach`,
+  ///    `League`, `Competition`, `Community`) — each may carry an
+  ///    `accountUserId` column pointing back to the User that owns the
+  ///    entity account. We try the slug in both `_` and `-` forms because
+  ///    the User handle convention uses underscores while entity slugs
+  ///    use dashes.
+  /// 4. If nothing matches, return `null` so callers don't try to
+  ///    follow/fan a raw handle string.
+  Future<String?> _resolve(String idOrHandle) async {
     try {
       final raw = idOrHandle.replaceAll('@', '').trim();
+      if (raw.isEmpty) return null;
 
-      // If it looks like a UUID, return as-is
+      // If it looks like a UUID, return as-is.
       if (raw.contains('-') && raw.length > 20) return raw;
 
-      // Try User table first
+      // 1) Try User table by exact handle.
       final user = await _sb
           .from('User')
           .select('id')
@@ -106,31 +149,87 @@ class SocialGraph {
           .maybeSingle();
       if (user?['id'] != null) return user!['id'].toString();
 
-      // Try Team accounts
-      final team = await _sb
-          .from('Team')
-          .select('accountUserId,id')
-          .or('id.eq.$raw,id.eq.tm-$raw')
-          .maybeSingle();
-      final aid = team?['accountUserId']?.toString();
-      if (aid != null && aid.isNotEmpty) return aid;
-
-      // Try case-insensitive handle match
-      final user2 = await _sb
+      // 2) Try case-insensitive handle match.
+      final userCi = await _sb
           .from('User')
           .select('id')
           .ilike('handle', raw)
           .maybeSingle();
-      return user2?['id']?.toString() ?? raw;
+      if (userCi?['id'] != null) return userCi!['id'].toString();
+
+      // 3) Org-role fallback — resolve through entity `accountUserId`.
+      final slugDash = raw.replaceAll('_', '-');
+      final accountUserId = await _resolveEntityAccount(raw, slugDash);
+      if (accountUserId != null && accountUserId.isNotEmpty) {
+        return accountUserId;
+      }
+
+      // 4) Nothing matched — return null so callers bail out gracefully.
+      return null;
     } catch (e) {
       debugPrint('Error resolving ID for $idOrHandle: $e');
-      return idOrHandle;
+      return null;
     }
+  }
+
+  /// Walks the org-role entity tables looking for a row whose
+  /// `accountUserId` column points back to a real User account.
+  ///
+  /// `Team`, `Player` and `Coach` are guaranteed to have the column
+  /// (see migrations 20260820084300 and 20260820084800). `League`,
+  /// `Competition` and `Community` may or may not have it depending on
+  /// claim-workflow state — we attempt the lookup defensively and skip
+  /// any table that rejects the query.
+  Future<String?> _resolveEntityAccount(String raw, String slugDash) async {
+    const tables = <String>[
+      'Team',
+      'Player',
+      'Coach',
+      'League',
+      'Competition',
+      'Community',
+    ];
+
+    for (final table in tables) {
+      try {
+        // Try the dash-form slug first (entity_taxonomy uses dashes).
+        final bySlugDash = await _sb
+            .from(table)
+            .select('accountUserId')
+            .eq('slug', slugDash)
+            .maybeSingle();
+        final id1 = bySlugDash?['accountUserId']?.toString();
+        if (id1 != null && id1.isNotEmpty) return id1;
+
+        // Then the underscore-form slug (User-handle convention).
+        final bySlugUnder = await _sb
+            .from(table)
+            .select('accountUserId')
+            .eq('slug', raw)
+            .maybeSingle();
+        final id2 = bySlugUnder?['accountUserId']?.toString();
+        if (id2 != null && id2.isNotEmpty) return id2;
+
+        // Then a case-insensitive slug match.
+        final bySlugIlike = await _sb
+            .from(table)
+            .select('accountUserId')
+            .ilike('slug', raw)
+            .maybeSingle();
+        final id3 = bySlugIlike?['accountUserId']?.toString();
+        if (id3 != null && id3.isNotEmpty) return id3;
+      } catch (e) {
+        // Schema drift between entity tables is expected — keep walking.
+        debugPrint('_resolveEntityAccount($table) error: $e');
+      }
+    }
+    return null;
   }
 
   /// Get followers of a user
   Future<List<GraphPerson>> followers(String userId) async {
     final id = await _resolve(userId);
+    if (id == null) return [];
     final rows = await _sb
         .from('Follow')
         .select('followerId')
@@ -142,6 +241,7 @@ class SocialGraph {
   /// Get users that a user is following
   Future<List<GraphPerson>> following(String userId) async {
     final id = await _resolve(userId);
+    if (id == null) return [];
     final rows = await _sb
         .from('Follow')
         .select('followingId')
@@ -153,6 +253,7 @@ class SocialGraph {
   /// Get fans of a user
   Future<List<GraphPerson>> fans(String userId) async {
     final id = await _resolve(userId);
+    if (id == null) return [];
     final rows = await _sb
         .from('fans')
         .select('fan_id')
@@ -249,7 +350,7 @@ class SocialGraph {
             .eq('followingId', targetId);
       }
 
-      // Refresh counts for both users
+      // Refresh counts for both users.
       await refreshCounts(targetId);
       await refreshCounts(uid);
     } catch (e) {
@@ -257,6 +358,12 @@ class SocialGraph {
       rethrow;
     }
   }
+
+  /// Unfollow a target user.
+  ///
+  /// Convenience wrapper around `follow(targetId, on: false)` so callers
+  /// don't need to thread a boolean for the common "stop following" path.
+  Future<void> unfollow(String targetId) => follow(targetId, on: false);
 
   /// Fan or unfan a target
   Future<void> fan(String targetId, {required bool on}) async {
@@ -280,10 +387,20 @@ class SocialGraph {
             .eq('target_id', targetId);
       }
 
+      // Refresh the target's fanCount first, then the caller's
+      // followingCount — fan and follow are linked in some flows, so
+      // the caller's own counters may also shift.
       await refreshCounts(targetId);
+      await refreshCounts(uid);
     } catch (e) {
       debugPrint('Failed to ${on ? 'fan' : 'unfan'}: $e');
       rethrow;
     }
   }
+
+  /// Unfan a target.
+  ///
+  /// Convenience wrapper around `fan(targetId, on: false)` so callers
+  /// don't need to thread a boolean for the common "stop fanning" path.
+  Future<void> unfan(String targetId) => fan(targetId, on: false);
 }

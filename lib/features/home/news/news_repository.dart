@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class NewsArticle {
@@ -73,6 +74,52 @@ class NewsRepository {
     return row != null;
   }
 
+  /// Returns true if the current user has liked [newsId].
+  ///
+  /// Alias for [isLiked], kept for API parity with the Post engagement row
+  /// (`SocialRepository.hasLiked`). Callers may use either name.
+  Future<bool> hasLiked(String newsId) => isLiked(newsId);
+
+  /// Returns the current `likeCount` stored on the `NewsItem` row.
+  ///
+  /// Used to refresh the local UI cache after a like toggle — the DB trigger
+  /// `trg_news_like_count` maintains this counter automatically, so this just
+  /// reads the fresh value back.
+  Future<int> likeCount(String newsId) async {
+    try {
+      final row = await _sb
+          .from('NewsItem')
+          .select('likeCount')
+          .eq('id', newsId)
+          .maybeSingle();
+      final v = row?['likeCount'];
+      if (v is int) return v;
+      if (v is num) return v.toInt();
+    } catch (e) {
+      debugPrint('NewsRepository.likeCount($newsId): $e');
+    }
+    return 0;
+  }
+
+  /// Re-fetches the `NewsItem` counters from the DB so callers can re-sync
+  /// their local cache after a like/comment/share toggle.
+  ///
+  /// The DB triggers (`trg_news_like_count`, `trg_news_comment_count`) and
+  /// the `bump_news_share` RPC maintain `likeCount` / `commentCount` /
+  /// `shareCount` automatically; this call is a verification + cache-bust
+  /// hook that gives the trigger time to commit before the UI re-reads.
+  Future<void> refreshNewsCounts(String newsId) async {
+    try {
+      await _sb
+          .from('NewsItem')
+          .select('likeCount, commentCount, shareCount')
+          .eq('id', newsId)
+          .maybeSingle();
+    } catch (e) {
+      debugPrint('NewsRepository.refreshNewsCounts($newsId): $e');
+    }
+  }
+
   Future<void> toggleLike(String newsId, {required bool like}) async {
     final uid = _uid;
     if (uid == null) throw StateError('Sign in to like');
@@ -81,6 +128,9 @@ class NewsRepository {
     } else {
       await _sb.from('news_likes').delete().eq('news_id', newsId).eq('user_id', uid);
     }
+    // The DB trigger `trg_news_like_count` maintains `NewsItem.likeCount`.
+    // Re-fetch the row so the local UI cache can re-sync to the fresh value.
+    await refreshNewsCounts(newsId);
   }
 
   Future<List<Map<String, dynamic>>> comments(String newsId) async {
@@ -99,9 +149,19 @@ class NewsRepository {
     });
   }
 
+  /// Records a share on the `NewsItem` by invoking the `bump_news_share`
+  /// RPC, which atomically increments `NewsItem.shareCount`.
+  ///
+  /// The RPC signature is `bump_news_share(p_id text) returns void` (defined
+  /// in migration `20260824010000_fix_all_remaining_db_issues.sql`). Errors
+  /// are logged via `debugPrint` rather than swallowed silently, but are NOT
+  /// rethrown — callers (e.g. `NewsTab._share`) do not wrap this in
+  /// try/catch, and rethrowing would crash the tap handler.
   Future<void> share(String newsId) async {
     try {
       await _sb.rpc('bump_news_share', params: {'p_id': newsId});
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('NewsRepository.share($newsId) bump_news_share RPC failed: $e');
+    }
   }
 }

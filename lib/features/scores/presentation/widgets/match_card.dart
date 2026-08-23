@@ -1,10 +1,27 @@
-import 'package:flutter/material.dart';
+import 'dart:convert';
 
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../../../core/data/social_repository.dart';
 import '../../../../core/theme/colors.dart';
+import '../../../../core/utils/friendly_error.dart';
+import '../../../../core/utils/rate_limiter.dart';
 import '../../../../core/widgets/glass_container.dart';
 import '../../domain/models/match_model.dart';
+import '../../domain/models/match_status.dart';
 
-class MatchCard extends StatelessWidget {
+/// Storage key prefix for locally-persisted match alerts (one JSON blob per
+/// match id). We use [FlutterSecureStorage] because `shared_preferences` is
+/// not in pubspec.yaml and adding a new dep is forbidden by the task brief.
+const String _kAlertStoragePrefix = 'match_alert_';
+
+class MatchCard extends StatefulWidget {
   final MatchModel match;
   final VoidCallback? onTeamTap;
   final VoidCallback? onCardTap;
@@ -19,14 +36,47 @@ class MatchCard extends StatelessWidget {
   });
 
   @override
+  State<MatchCard> createState() => _MatchCardState();
+}
+
+class _MatchCardState extends State<MatchCard> {
+  bool _liked = false;
+  bool _likeBusy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _seedLikedState();
+  }
+
+  Future<void> _seedLikedState() async {
+    final postId = widget.match.postId;
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (postId == null || postId.isEmpty || uid == null) return;
+    try {
+      final row = await Supabase.instance.client
+          .from('PostLike')
+          .select('userId')
+          .eq('postId', postId)
+          .eq('userId', uid)
+          .maybeSingle();
+      if (mounted && row != null) setState(() => _liked = true);
+    } catch (_) {
+      // Seeding is best-effort; if it fails we just start "unliked".
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final m = widget.match;
+    final statusColor = _statusBadgeColor(m);
     return Semantics(
       label:
-          '${match.homeTeamName} vs ${match.awayTeamName}, ${match.leagueName}, score ${match.score}, status ${match.status}',
+          '${m.homeTeamName} vs ${m.awayTeamName}, ${m.leagueName}, score ${m.score}, status ${m.status}',
       button: true,
       child: GestureDetector(
-        onTap: onCardTap,
-        onLongPress: onLongPress,
+        onTap: widget.onCardTap,
+        onLongPress: widget.onLongPress,
         child: GlassContainer(
           radius: 22,
           padding: const EdgeInsets.all(16),
@@ -39,19 +89,22 @@ class MatchCard extends StatelessWidget {
                   CircleAvatar(
                     radius: 12,
                     backgroundColor: SportSphereColors.surface2,
-                    child: const Icon(Icons.sports_soccer,
+                    child: Icon(sportIconFor(m.sportSlug),
                         size: 14, color: Colors.white),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    match.leagueName,
-                    style: const TextStyle(
-                      color: SportSphereColors.muted,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                  Expanded(
+                    child: Text(
+                      m.leagueName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: SportSphereColors.muted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                  const Spacer(),
                   Semantics(
                     label: 'Set match alerts',
                     button: true,
@@ -71,16 +124,16 @@ class MatchCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Semantics(
-                      label: 'View ${match.homeTeamName} profile',
+                      label: 'View ${m.homeTeamName} profile',
                       button: true,
                       child: GestureDetector(
-                        onTap: onTeamTap,
+                        onTap: widget.onTeamTap,
                         child: Column(
                           children: [
-                            _TeamAvatar(logo: match.homeTeamLogo),
+                            _TeamAvatar(logo: m.homeTeamLogo),
                             const SizedBox(height: 8),
                             Text(
-                              match.homeTeamName,
+                              m.homeTeamName,
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 color: Colors.white,
@@ -95,7 +148,7 @@ class MatchCard extends StatelessWidget {
                   Column(
                     children: [
                       Text(
-                        match.score,
+                        m.score,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 24,
@@ -107,17 +160,13 @@ class MatchCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: match.isLive
-                              ? SportSphereColors.danger.withValues(alpha: 0.2)
-                              : SportSphereColors.surface2,
+                          color: statusColor.withValues(alpha: 0.18),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          match.status,
+                          m.status,
                           style: TextStyle(
-                            color: match.isLive
-                                ? SportSphereColors.danger
-                                : SportSphereColors.sportGreen,
+                            color: statusColor,
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),
@@ -127,16 +176,16 @@ class MatchCard extends StatelessWidget {
                   ),
                   Expanded(
                     child: Semantics(
-                      label: 'View ${match.awayTeamName} profile',
+                      label: 'View ${m.awayTeamName} profile',
                       button: true,
                       child: GestureDetector(
-                        onTap: onTeamTap,
+                        onTap: widget.onTeamTap,
                         child: Column(
                           children: [
-                            _TeamAvatar(logo: match.awayTeamLogo),
+                            _TeamAvatar(logo: m.awayTeamLogo),
                             const SizedBox(height: 8),
                             Text(
-                              match.awayTeamName,
+                              m.awayTeamName,
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 color: Colors.white,
@@ -151,7 +200,10 @@ class MatchCard extends StatelessWidget {
                 ],
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 8),
+              _KickoffVenueRow(match: m),
+
+              const SizedBox(height: 12),
               Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
               const SizedBox(height: 12),
 
@@ -160,20 +212,28 @@ class MatchCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   _MatchAction(
-                    icon: Icons.favorite_border_rounded,
+                    icon: _liked
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
                     label: 'Like',
+                    iconColor:
+                        _liked ? SportSphereColors.danger : SportSphereColors.muted,
+                    onTap: _onLike,
                   ),
                   _MatchAction(
                     icon: Icons.chat_bubble_outline_rounded,
                     label: 'Comment',
+                    onTap: _onComment,
                   ),
                   _MatchAction(
                     icon: Icons.insights_rounded,
                     label: 'Predict',
+                    onTap: _onPredict,
                   ),
                   _MatchAction(
                     icon: Icons.share_outlined,
                     label: 'Share',
+                    onTap: _onShare,
                   ),
                 ],
               ),
@@ -184,6 +244,124 @@ class MatchCard extends StatelessWidget {
     );
   }
 
+  // ── Action handlers ──────────────────────────────────────────────────────
+
+  Future<void> _onLike() async {
+    if (_likeBusy) return;
+    if (!likeLimiter.allow('match-${widget.match.id}')) {
+      _toast('Too many actions — wait a moment.');
+      return;
+    }
+    final m = widget.match;
+    final sb = Supabase.instance.client;
+    final uid = sb.auth.currentUser?.id;
+
+    setState(() {
+      _liked = !_liked;
+      _likeBusy = true;
+    });
+
+    try {
+      if (m.postId == null || m.postId!.isEmpty || uid == null) {
+        // No linked post (or not signed in) — keep the local toggle only.
+        _toast(_liked ? 'Liked ${m.homeTeamName} vs ${m.awayTeamName}' : 'Like removed');
+        return;
+      }
+      if (_liked) {
+        await sb.from('PostLike').upsert({
+          'postId': m.postId,
+          'userId': uid,
+          'createdAt': DateTime.now().toIso8601String(),
+        });
+      } else {
+        await sb
+            .from('PostLike')
+            .delete()
+            .eq('postId', m.postId!)
+            .eq('userId', uid);
+      }
+      // Recount so the post counter stays in sync.
+      await const SocialRepository().recountPostCounters(m.postId!);
+      _toast(_liked ? 'Liked' : 'Like removed');
+    } catch (e) {
+      // Roll back the optimistic toggle on failure.
+      if (mounted) setState(() => _liked = !_liked);
+      _toast(friendlyError(e));
+    } finally {
+      if (mounted) setState(() => _likeBusy = false);
+    }
+  }
+
+  void _onComment() {
+    final m = widget.match;
+    if (!commentLimiter.allow('match-${m.id}')) {
+      _toast('Too many actions — wait a moment.');
+      return;
+    }
+    // No dedicated comment sheet exists for matches yet — surface a clear,
+    // actionable message rather than being a no-op.
+    _toast('Comments coming soon for this match');
+  }
+
+  void _onPredict() {
+    final m = widget.match;
+    if (!voteLimiter.allow('match-${m.id}')) {
+      _toast('Too many actions — wait a moment.');
+      return;
+    }
+    // No dedicated prediction screen exists yet — surface a clear, actionable
+    // message rather than being a no-op.
+    _toast('Predictions coming soon for ${m.homeTeamName} vs ${m.awayTeamName}');
+  }
+
+  Future<void> _onShare() async {
+    final m = widget.match;
+    if (!shareLimiter.allow('match-${m.id}')) {
+      _toast('Too many actions — wait a moment.');
+      return;
+    }
+    final text = _shareSummary(m);
+    try {
+      await Share.share(text, subject: 'SportSphere · Match');
+      // Record the share if there's a linked post (best-effort).
+      final postId = m.postId;
+      final uid = Supabase.instance.client.auth.currentUser?.id;
+      if (postId != null && postId.isNotEmpty && uid != null) {
+        try {
+          await Supabase.instance.client.from('PostShare').upsert({
+            'postId': postId,
+            'userId': uid,
+            'createdAt': DateTime.now().toIso8601String(),
+          });
+          await const SocialRepository().recountPostCounters(postId);
+        } catch (_) {
+          // Counter sync is best-effort — the share itself already succeeded.
+        }
+      }
+    } catch (e) {
+      _toast(friendlyError(e));
+    }
+  }
+
+  String _shareSummary(MatchModel m) {
+    final df = DateFormat('d MMM, h:mm a');
+    final lines = <String>[
+      '${m.homeTeamName} ${m.score} ${m.awayTeamName}',
+      m.leagueName,
+    ];
+    if (m.venue.isNotEmpty) lines.add('📍 ${m.venue}');
+    lines.add('Kickoff ${df.format(m.startTime)}');
+    lines.add('On SportSphere');
+    return lines.join('\n');
+  }
+
+  void _toast(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), duration: const Duration(seconds: 2)),
+    );
+  }
+
   void _showReminderSheet(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
@@ -191,25 +369,130 @@ class MatchCard extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (_) => const _AlertSheet(),
+      builder: (_) => _AlertSheet(matchId: widget.match.id),
+    );
+  }
+
+  Color _statusBadgeColor(MatchModel m) {
+    final s = m.parsedStatus;
+    if (s.isLive) return SportSphereColors.sportGreen;
+    if (s.isFinished) return SportSphereColors.muted;
+    if (s.isPostponedOrCancelled) return SportSphereColors.sportOrange;
+    if (s == MatchStatus.scheduled) return SportSphereColors.electricBlue;
+    return SportSphereColors.muted;
+  }
+}
+
+// ── Kickoff / venue subtitle ───────────────────────────────────────────────
+
+class _KickoffVenueRow extends StatelessWidget {
+  final MatchModel match;
+  const _KickoffVenueRow({required this.match});
+
+  @override
+  Widget build(BuildContext context) {
+    final df = DateFormat('h:mm a');
+    final parts = <String>[];
+    parts.add('Kickoff ${df.format(match.startTime)}');
+    if (match.venue.isNotEmpty) parts.add(match.venue);
+    return Row(
+      children: [
+        Icon(Icons.access_time_rounded,
+            size: 12, color: SportSphereColors.muted.withValues(alpha: 0.8)),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            parts.join('  •  '),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: SportSphereColors.muted.withValues(alpha: 0.9),
+              fontSize: 11,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
 
-// ── Alert sheet (stateful toggles) ────────────────────────────────────────────
+// ── Alert sheet (stateful toggles, persisted to FlutterSecureStorage) ──────
 
 class _AlertSheet extends StatefulWidget {
-  const _AlertSheet();
+  final String matchId;
+  const _AlertSheet({required this.matchId});
 
   @override
   State<_AlertSheet> createState() => _AlertSheetState();
 }
 
 class _AlertSheetState extends State<_AlertSheet> {
+  static final _storage = FlutterSecureStorage();
+
   bool _matchStart = true;
   bool _goals = true;
   bool _redCards = false;
   bool _halfFullTime = true;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExisting();
+  }
+
+  Future<void> _loadExisting() async {
+    try {
+      final raw = await _storage.read(key: '$_kAlertStoragePrefix${widget.matchId}');
+      if (raw == null || raw.isEmpty) return;
+      final decoded = jsonDecode(raw);
+      if (decoded is Map) {
+        setState(() {
+          _matchStart = decoded['matchStart'] as bool? ?? _matchStart;
+          _goals = decoded['goals'] as bool? ?? _goals;
+          _redCards = decoded['redCards'] as bool? ?? _redCards;
+          _halfFullTime = decoded['halfFullTime'] as bool? ?? _halfFullTime;
+        });
+      }
+    } catch (_) {
+      // Best-effort — leave defaults.
+    }
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    final payload = jsonEncode({
+      'matchId': widget.matchId,
+      'matchStart': _matchStart,
+      'goals': _goals,
+      'redCards': _redCards,
+      'halfFullTime': _halfFullTime,
+      'updatedAt': DateTime.now().toIso8601String(),
+    });
+    try {
+      await _storage.write(
+        key: '$_kAlertStoragePrefix${widget.matchId}',
+        value: payload,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Alert saved')),
+      );
+      Navigator.pop(context);
+    } on PlatformException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(friendlyError(e))),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(friendlyError(e))),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -225,6 +508,14 @@ class _AlertSheetState extends State<_AlertSheet> {
               color: Colors.white,
               fontSize: 20,
               fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Stored locally on this device.',
+            style: TextStyle(
+              color: SportSphereColors.muted,
+              fontSize: 12,
             ),
           ),
           const SizedBox(height: 20),
@@ -255,11 +546,20 @@ class _AlertSheetState extends State<_AlertSheet> {
               label: 'Save alert settings',
               button: true,
               child: FilledButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: _saving ? null : _save,
                 style: FilledButton.styleFrom(
                   backgroundColor: SportSphereColors.electricBlue,
                 ),
-                child: const Text('Save Settings'),
+                child: _saving
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Save Settings'),
               ),
             ),
           ),
@@ -297,7 +597,7 @@ class _Toggle extends StatelessWidget {
   }
 }
 
-// ── Team avatar ────────────────────────────────────────────────────────────────
+// ── Team avatar (uses cached_network_image when available) ─────────────────
 
 class _TeamAvatar extends StatelessWidget {
   final String logo;
@@ -305,7 +605,7 @@ class _TeamAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasUrl = logo.startsWith('http');
+    final hasUrl = logo.startsWith('http://') || logo.startsWith('https://');
     return Container(
       width: 50,
       height: 50,
@@ -316,10 +616,15 @@ class _TeamAvatar extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: hasUrl
-          ? Image.network(
-              logo,
+          ? CachedNetworkImage(
+              imageUrl: logo,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Icon(
+              placeholder: (_, __) => const Icon(
+                Icons.shield,
+                color: SportSphereColors.muted,
+                size: 30,
+              ),
+              errorWidget: (_, __, ___) => const Icon(
                 Icons.shield,
                 color: SportSphereColors.muted,
                 size: 30,
@@ -330,12 +635,19 @@ class _TeamAvatar extends StatelessWidget {
   }
 }
 
-// ── Match action ───────────────────────────────────────────────────────────────
+// ── Match action ───────────────────────────────────────────────────────────
 
 class _MatchAction extends StatelessWidget {
   final IconData icon;
   final String label;
-  const _MatchAction({required this.icon, required this.label});
+  final Color iconColor;
+  final VoidCallback? onTap;
+  const _MatchAction({
+    required this.icon,
+    required this.label,
+    this.iconColor = SportSphereColors.muted,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -343,13 +655,13 @@ class _MatchAction extends StatelessWidget {
       label: label,
       button: true,
       child: InkWell(
-        onTap: () {},
+        onTap: onTap,
         borderRadius: BorderRadius.circular(8),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
           child: Row(
             children: [
-              Icon(icon, color: SportSphereColors.muted, size: 20),
+              Icon(icon, color: iconColor, size: 20),
               const SizedBox(width: 4),
               Text(
                 label,

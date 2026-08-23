@@ -1,4 +1,5 @@
 import '../../../core/admin/app_admin.dart';
+import '../../../core/branding.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -80,14 +81,21 @@ class ProfileLoader {
     } catch (_) {}
 
     final role = (row?['role'] as String? ?? '').toLowerCase();
-    final isOfficial = key == 'sportsphere' ||
-        key == 'sportsphere_official' ||
-        key == 'sportsphere_app' ||
-        key == 'playify' ||
-        key == 'playify_official' ||
-        key == 'playify_app' ||
+    // #4.5 — Use kOfficialLegacyHandles so the list is maintained in a single
+    // place (lib/core/branding.dart) and covers every Playify alias including
+    // 'playifyofficial' (no underscore).
+    final isOfficial = kOfficialLegacyHandles.contains(key) ||
         role == 'admin' ||
         role == 'official';
+
+    // #3.3 — Surface the admin flag and raw role on FanProfileModel so
+    // consumers can role-gate UI (e.g. hide the Become PRO button) without
+    // re-querying the DB.
+    final isAdminRole = role == 'admin' ||
+        role == 'official' ||
+        role == 'organization' ||
+        role == 'moderator';
+    final isAdmin = isAdminRole || AppAdmin.isSessionAdmin;
 
     final profileId = row?['id']?.toString() ?? '';
     final authId = _sb.auth.currentUser?.id?.toString() ?? '';
@@ -148,6 +156,8 @@ class ProfileLoader {
         isVerified: true,
         isOwnProfile: authId.isNotEmpty &&
             (profileId == authId || AppAdmin.isSessionAdmin),
+        isAdmin: isAdmin,
+        role: role.isEmpty ? 'admin' : role,
       );
     }
 
@@ -203,6 +213,8 @@ class ProfileLoader {
       isVerified: (row?['is_verified'] as bool?) == true ||
           (row?['isVerified'] as bool?) == true,
       isOwnProfile: authId.isNotEmpty && profileId == authId,
+      isAdmin: isAdmin,
+      role: role.isEmpty ? 'fan' : role,
     );
   }
 

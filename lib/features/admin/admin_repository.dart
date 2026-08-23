@@ -102,6 +102,46 @@ class AdminRepository {
 
   Future<void> deleteCompetition(String id) async {
     await _sb.from('League').delete().eq('id', id);
+    try { await _sb.from('Competition').delete().eq('id', id); } catch (_) {}
+  }
+
+  /// #5.1 — Partial update for an existing Competition row. Mirrors the dual
+  /// write used by [createCompetition]: League (camelCase) + Competition
+  /// (snake_case). Only non-null fields are written.
+  Future<void> updateCompetition({
+    required String id,
+    String? name,
+    String? logoUrl,
+    String? season,
+    String? sportSlug,
+  }) async {
+    final leaguePatch = <String, dynamic>{'updatedAt': DateTime.now().toIso8601String()};
+    if (name != null) leaguePatch['name'] = name;
+    if (logoUrl != null) leaguePatch['logoUrl'] = logoUrl;
+    if (season != null) leaguePatch['season'] = season;
+
+    final compPatch = <String, dynamic>{'updated_at': DateTime.now().toIso8601String()};
+    if (name != null) compPatch['name'] = name;
+    if (logoUrl != null) compPatch['logo_url'] = logoUrl;
+    if (season != null) compPatch['season'] = season;
+    if (sportSlug != null) compPatch['sport_slug'] = sportSlug;
+
+    if (leaguePatch.length > 1) {
+      try {
+        await _sb.from('League').update(leaguePatch).eq('id', id);
+      } catch (e) {
+        debugPrint('updateCompetition League($id): $e');
+        rethrow;
+      }
+    }
+    if (compPatch.length > 1) {
+      try {
+        await _sb.from('Competition').update(compPatch).eq('id', id);
+      } catch (e) {
+        // Competition table is optional; log and continue.
+        debugPrint('updateCompetition Competition($id): $e');
+      }
+    }
   }
 
   // ── Teams ──────────────────────────────────────────────────────────────────
@@ -161,6 +201,48 @@ class AdminRepository {
     await _sb.from('Team').update({'leagueId': leagueId, 'updatedAt': DateTime.now().toIso8601String()}).eq('id', teamId);
   }
 
+  /// #5.1 — Partial update for an existing Team row. Only non-null fields are
+  /// written. Mirrors the column naming used by [createTeam] (camelCase).
+  Future<void> updateTeam({
+    required String id,
+    String? name,
+    String? shortName,
+    String? logoUrl,
+    String? primaryColor,
+    String? country,
+    String? venue,
+    String? leagueId,
+  }) async {
+    final patch = <String, dynamic>{'updatedAt': DateTime.now().toIso8601String()};
+    if (name != null) patch['name'] = name;
+    if (shortName != null) patch['shortName'] = shortName;
+    if (logoUrl != null) patch['logoUrl'] = logoUrl;
+    if (country != null) patch['country'] = country;
+    if (venue != null) patch['venue'] = venue;
+    if (leagueId != null) patch['leagueId'] = leagueId;
+    if (primaryColor != null && primaryColor.isNotEmpty) {
+      patch['primaryColor'] = primaryColor;
+    }
+    if (patch.length <= 1) {
+      debugPrint('updateTeam: no fields to update for $id');
+      return;
+    }
+    try {
+      await _sb.from('Team').update(patch).eq('id', id);
+    } catch (e) {
+      // Try without primaryColor (column may be missing if migration not applied)
+      if (primaryColor != null && primaryColor.isNotEmpty) {
+        patch.remove('primaryColor');
+        try {
+          await _sb.from('Team').update(patch).eq('id', id);
+          return;
+        } catch (_) {}
+      }
+      debugPrint('updateTeam($id): $e');
+      rethrow;
+    }
+  }
+
   Future<void> deleteTeam(String id) async {
     await _sb.from('Team').delete().eq('id', id);
   }
@@ -198,6 +280,41 @@ class AdminRepository {
     await _sb.from('Player').delete().eq('id', id);
   }
 
+  /// #5.1 — Partial update for an existing Player row. Only non-null fields
+  /// are written. Mirrors the column naming used by [createPlayer]
+  /// (camelCase: position, nationality, teamId, shirtNumber, photoUrl, dateOfBirth).
+  Future<void> updatePlayer({
+    required String id,
+    String? name,
+    String? position,
+    String? nationality,
+    DateTime? dateOfBirth,
+    String? photoUrl,
+    String? teamId,
+    int? shirtNumber,
+  }) async {
+    final patch = <String, dynamic>{'updatedAt': DateTime.now().toIso8601String()};
+    if (name != null) patch['name'] = name;
+    if (position != null) patch['position'] = position;
+    if (nationality != null) patch['nationality'] = nationality;
+    if (photoUrl != null) patch['photoUrl'] = photoUrl;
+    if (teamId != null) patch['teamId'] = teamId;
+    if (shirtNumber != null) patch['shirtNumber'] = shirtNumber;
+    if (dateOfBirth != null) {
+      patch['dateOfBirth'] = dateOfBirth.toIso8601String();
+    }
+    if (patch.length <= 1) {
+      debugPrint('updatePlayer: no fields to update for $id');
+      return;
+    }
+    try {
+      await _sb.from('Player').update(patch).eq('id', id);
+    } catch (e) {
+      debugPrint('updatePlayer($id): $e');
+      rethrow;
+    }
+  }
+
   // ── Coaches ────────────────────────────────────────────────────────────────
 
   Future<List<Map<String, dynamic>>> listCoaches({String? teamId}) async {
@@ -224,6 +341,35 @@ class AdminRepository {
 
   Future<void> deleteCoach(String id) async {
     await _sb.from('Coach').delete().eq('id', id);
+  }
+
+  /// #5.1 — Partial update for an existing Coach row. Only non-null fields
+  /// are written. Mirrors the column naming used by [createCoach]
+  /// (camelCase: role, nationality, teamId, photoUrl).
+  Future<void> updateCoach({
+    required String id,
+    String? name,
+    String? nationality,
+    String? role,
+    String? teamId,
+    String? photoUrl,
+  }) async {
+    final patch = <String, dynamic>{'updatedAt': DateTime.now().toIso8601String()};
+    if (name != null) patch['name'] = name;
+    if (nationality != null) patch['nationality'] = nationality;
+    if (role != null) patch['role'] = role;
+    if (teamId != null) patch['teamId'] = teamId;
+    if (photoUrl != null) patch['photoUrl'] = photoUrl;
+    if (patch.length <= 1) {
+      debugPrint('updateCoach: no fields to update for $id');
+      return;
+    }
+    try {
+      await _sb.from('Coach').update(patch).eq('id', id);
+    } catch (e) {
+      debugPrint('updateCoach($id): $e');
+      rethrow;
+    }
   }
 
   // ── Matches ────────────────────────────────────────────────────────────────

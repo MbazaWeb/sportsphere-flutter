@@ -47,6 +47,7 @@ class RoleProfileModel {
     this.isClaimable = false,
     this.entityId,
     this.profileType,
+    this.avatarUrl,
     this.coverIcon = Icons.person_rounded,
     this.members = const [],
     this.membersTitle = 'Members',
@@ -69,6 +70,7 @@ class RoleProfileModel {
   final bool isClaimable;
   final String? entityId;
   final String? profileType;
+  final String? avatarUrl;
   final IconData coverIcon;
   final List<RoleStat> headerStats;
   final List<AboutField> aboutFields;

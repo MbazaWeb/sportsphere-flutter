@@ -14,6 +14,7 @@ import '../../../features/auth/presentation/auth_controller.dart';
 import '../scores/presentation/admin_live_control.dart';
 import 'admin_repository.dart';
 import '../../../core/utils/friendly_error.dart';
+import '../profile/presentation/edit_profile_sheet.dart' show showEntityEditSheet, EntityType;
 
 final _repo = AdminRepository();
 
@@ -258,18 +259,26 @@ class _CompetitionsTabState extends State<_CompetitionsTab> with SingleTickerPro
         _EList(items:_comps,icon:Icons.emoji_events_rounded,color:const Color(0xFFFFD700),
           addLabel:'Add Competition',onAdd:()=>_showCreateCompetition(context).then((_)=>_load()),
           sub:(c)=>'${c['country']??''}  ·  ${c['type']??''}  ·  ${c['season']??''}',
+          entityType:EntityType.competition,
+          onEdited:_load,
           onDelete:(id) async {await _repo.deleteCompetition(id);_load();}),
         _EList(items:_teams,icon:Icons.groups_rounded,color:const Color(0xFF9B6DFF),
           addLabel:'Add Team',onAdd:()=>_showCreateTeam(context,_comps).then((_)=>_load()),
           sub:(t)=>'${t['country']??''}  ·  ${t['city']??''}',
+          entityType:EntityType.team,
+          onEdited:_load,
           onDelete:(id) async {await _repo.deleteTeam(id);_load();}),
         _EList(items:_players,icon:Icons.person_rounded,color:SportSphereColors.sportOrange,
           addLabel:'Add Player',onAdd:()=>_showCreatePlayer(context,_teams).then((_)=>_load()),
           sub:(p)=>'${p['position']??''}  ·  #${p['shirtNumber']??'-'}',
+          entityType:EntityType.player,
+          onEdited:_load,
           onDelete:(id) async {await _repo.deletePlayer(id);_load();}),
         _EList(items:_coaches,icon:Icons.sports_rounded,color:const Color(0xFF00C896),
           addLabel:'Add Coach',onAdd:()=>_showCreateCoach(context,_teams).then((_)=>_load()),
           sub:(c)=>'${c['role']??''}  ·  ${c['nationality']??''}',
+          entityType:EntityType.coach,
+          onEdited:_load,
           onDelete:(id) async {await _repo.deleteCoach(id);_load();}),
       ])),
     ]);
@@ -280,19 +289,57 @@ class _EList extends StatelessWidget {
   final String addLabel; final VoidCallback onAdd;
   final String Function(Map<String,dynamic>) sub;
   final Future<void> Function(String) onDelete;
+  /// Optional — when set, an "Edit" entry appears in the row popup menu and
+  /// opens [showEntityEditSheet] prefilled with the row's data.
+  final EntityType? entityType;
+  /// Called after a successful edit (typically reloads the list).
+  final Future<void> Function()? onEdited;
   const _EList({required this.items,required this.icon,required this.color,
-      required this.addLabel,required this.onAdd,required this.sub,required this.onDelete});
+      required this.addLabel,required this.onAdd,required this.sub,required this.onDelete,
+      this.entityType, this.onEdited});
   @override Widget build(BuildContext context)=>Column(children:[
     _AddBar(addLabel,onAdd),
     Expanded(child:items.isEmpty?const _Empty('Nothing here yet'):ListView.separated(
       padding:const EdgeInsets.fromLTRB(16,0,16,40),itemCount:items.length,separatorBuilder:(_,__)=>const _Div(),
-      itemBuilder:(_,i){final e=items[i];return ListTile(
-        contentPadding:const EdgeInsets.symmetric(vertical:4),
-        leading:Container(width:36,height:36,decoration:BoxDecoration(shape:BoxShape.circle,color:color.withValues(alpha:0.12)),child:Icon(icon,color:color,size:18)),
-        title:Text(e['name']??'',style:const TextStyle(color:SportSphereColors.white,fontWeight:FontWeight.w700,fontSize:13)),
-        subtitle:Text(sub(e),style:const TextStyle(color:SportSphereColors.muted,fontSize:11)),
-        trailing:IconButton(icon:const Icon(Icons.delete_outline_rounded,color:SportSphereColors.danger,size:20),onPressed:()=>onDelete(e['id'].toString())),
-      );},
+      itemBuilder:(_,i){
+        final e=items[i];
+        return ListTile(
+          contentPadding:const EdgeInsets.symmetric(vertical:4),
+          leading:Container(width:36,height:36,decoration:BoxDecoration(shape:BoxShape.circle,color:color.withValues(alpha:0.12)),child:Icon(icon,color:color,size:18)),
+          title:Text(e['name']??'',style:const TextStyle(color:SportSphereColors.white,fontWeight:FontWeight.w700,fontSize:13)),
+          subtitle:Text(sub(e),style:const TextStyle(color:SportSphereColors.muted,fontSize:11)),
+          trailing:PopupMenuButton<String>(
+            color:SportSphereColors.surface,
+            icon:const Icon(Icons.more_vert_rounded,color:SportSphereColors.muted),
+            onSelected:(v) async {
+              if(v=='edit' && entityType != null) {
+                await showEntityEditSheet(
+                  context,
+                  entityType: entityType!,
+                  entityId: e['id'].toString(),
+                  initialData: e,
+                );
+                if(onEdited != null) await onEdited!();
+              } else if(v=='delete') {
+                await onDelete(e['id'].toString());
+              }
+            },
+            itemBuilder:(_)=>[
+              if(entityType != null)
+                const PopupMenuItem(value:'edit',child:Row(children:[
+                  Icon(Icons.edit_outlined,color:SportSphereColors.electricBlue,size:18),
+                  SizedBox(width:10),
+                  Text('Edit',style:TextStyle(color:SportSphereColors.white)),
+                ])),
+              const PopupMenuItem(value:'delete',child:Row(children:[
+                Icon(Icons.delete_outline_rounded,color:SportSphereColors.danger,size:18),
+                SizedBox(width:10),
+                Text('Delete',style:TextStyle(color:SportSphereColors.danger)),
+              ])),
+            ],
+          ),
+        );
+      },
     )),
   ]);
 }
@@ -310,6 +357,10 @@ class _MatchesTabState extends ConsumerState<_MatchesTab> {
   @override Widget build(BuildContext context){
     return Column(children:[
       Padding(padding:const EdgeInsets.fromLTRB(16,12,16,8),child:Row(children:[
+        // #8.9 — Live Match Control panel itself is owned by Agent S1
+        // (lib/features/scores/presentation/admin_live_control.dart).
+        // Adding a "push to feed" button there is out of scope for S5.
+        // The per-match popup below already offers "Post to Feed" as a fallback.
         Expanded(child:FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:const Color(0xFFE31B23)),
           icon:const Icon(Icons.sensors_rounded,size:16),label:const Text('Live Control'),
           onPressed:()=>openAdminLiveControl(context,ref).then((_)=>_load()))),
@@ -332,9 +383,15 @@ class _MatchesTabState extends ConsumerState<_MatchesTab> {
                 onSelected:(v) async {
                   if(v=='edit') _showEditMatch(context,m);
                   if(v=='delete'){await _repo.deleteMatch(m['id'].toString());_load();}
+                  if(v=='feed') await _showPostMatchToFeed(context,m);
+                  if(v=='poll') await _showCreatePollForMatch(context,m).then((_)=>_load());
+                  if(v=='pred') await _showCreatePredictionForMatch(context,m).then((_)=>_load());
                 },
                 itemBuilder:(_)=>[
                   const PopupMenuItem(value:'edit',child:Text('Edit Result',style:TextStyle(color:SportSphereColors.white))),
+                  const PopupMenuItem(value:'feed',child:Text('Post to Feed',style:TextStyle(color:SportSphereColors.electricBlue))),
+                  const PopupMenuItem(value:'poll',child:Text('Create Poll',style:TextStyle(color:SportSphereColors.sportGreen))),
+                  const PopupMenuItem(value:'pred',child:Text('Create Prediction',style:TextStyle(color:SportSphereColors.sportOrange))),
                   const PopupMenuItem(value:'delete',child:Text('Delete',style:TextStyle(color:SportSphereColors.danger))),
                 ],
               ),
@@ -1135,6 +1192,10 @@ Future<void> _showCreateMatch(BuildContext ctx) async {
         refCtrl=TextEditingController(), roundCtrl=TextEditingController();
   DateTime kickoff=DateTime.now().add(const Duration(days:1));
   Map<String,dynamic>? homeTeam, awayTeam;
+  // #8.1 — Post to Feed toggle. When true, after createMatch returns its id,
+  // we also insert a Post row (postType='match') linking to the new match
+  // via the new `matchId` column added by migration 20260824010000.
+  bool postToFeed = true;
 
   showModalBottomSheet<void>(context:ctx, isScrollControlled:true,
     backgroundColor:GrassForm.sheetBg,
@@ -1190,6 +1251,20 @@ Future<void> _showCreateMatch(BuildContext ctx) async {
             if(t==null) return;
             setL(()=>kickoff=DateTime(d.year,d.month,d.day,t.hour,t.minute));
           }),
+
+        // #8.1 — Post to Feed checkbox
+        SwitchListTile(
+          value: postToFeed,
+          onChanged: (v) => setL(() => postToFeed = v ?? postToFeed),
+          title: const Text('Post to Feed',
+              style: TextStyle(color: SportSphereColors.white, fontSize: 14)),
+          subtitle: const Text(
+              'Auto-create a feed Post (type=match) linking to this fixture',
+              style: TextStyle(color: SportSphereColors.muted, fontSize: 11)),
+          activeColor: SportSphereColors.sportGreen,
+          contentPadding: EdgeInsets.zero,
+        ),
+
         const SizedBox(height:16),
         SizedBox(width:double.infinity, child:FilledButton(
           style:FilledButton.styleFrom(backgroundColor:SportSphereColors.sportGreen, padding:const EdgeInsets.symmetric(vertical:14)),
@@ -1201,7 +1276,7 @@ Future<void> _showCreateMatch(BuildContext ctx) async {
               return;
             }
             try {
-              await _repo.createMatch(
+              final matchId = await _repo.createMatch(
                 homeTeam:home, awayTeam:away,
                 league:leagueCtrl.text.trim(),
                 kickoffAt:kickoff,
@@ -1209,6 +1284,37 @@ Future<void> _showCreateMatch(BuildContext ctx) async {
                 homeBadge:homeTeam?['logoUrl']?.toString(),
                 awayBadge:awayTeam?['logoUrl']?.toString(),
                 season:seasonCtrl.text.trim().isEmpty?null:seasonCtrl.text.trim());
+              // #8.1 — Optionally push a Post row linked via matchId.
+              // #8.7 — No dedicated sub_post / parent_post table exists; the
+              // migration 20260824010000 adds `matchId` to Post and Poll, which
+              // is the linking mechanism between a fixture and its derived
+              // posts (match/poll/prediction). See:
+              //   supabase/migrations/20260824010000_fix_all_remaining_db_issues.sql
+              if (postToFeed) {
+                final uid = Supabase.instance.client.auth.currentUser?.id;
+                if (uid != null) {
+                  try {
+                    await Supabase.instance.client.from('Post').insert({
+                      'id': 'post-match-$matchId',
+                      'userId': uid,
+                      'postType': 'match',
+                      'content': '$home vs $away — ${leagueCtrl.text.trim()}',
+                      'matchId': matchId, // new column from migration 20260824010000
+                      'mediaUrls': const [],
+                      'hashtags': const [],
+                      'sportTag': 'football',
+                      'isBreaking': false,
+                      'likeCount': 0,
+                      'commentCount': 0,
+                      'shareCount': 0,
+                      'createdAt': DateTime.now().toIso8601String(),
+                      'updatedAt': DateTime.now().toIso8601String(),
+                    });
+                  } catch (e) {
+                    debugPrint('createMatch postToFeed: $e');
+                  }
+                }
+              }
               if(c.mounted) Navigator.pop(c);
             } catch(e) { if(c.mounted) ScaffoldMessenger.of(c).showSnackBar(SnackBar(content:Text(friendlyError(e)))); }
           },
@@ -1293,6 +1399,7 @@ Future<void> _showNewsCompose(BuildContext ctx) {
 // ── Create Post ────────────────────────────────────────────────────────────────
 Future<void> _showCreatePost(BuildContext ctx) async {
   final teams = await _repo.listTeams();
+  final matches = await _repo.listMatches(limit: 30);
   if (!ctx.mounted) return;
   final textCtrl = TextEditingController();
   final formKey = GlobalKey<FormState>();
@@ -1301,6 +1408,22 @@ Future<void> _showCreatePost(BuildContext ctx) async {
   String? playerId;
   bool uploading = false;
   List<String> mediaUrls = [];
+
+  // #8.3 — Poll state (question + dynamic option list + optional match link)
+  final pollQuestionCtrl = TextEditingController();
+  final List<TextEditingController> pollOptionCtrls = [
+    TextEditingController(),
+    TextEditingController(),
+  ];
+
+  // #8.3 — Prediction state (match link + predicted winner + score)
+  String? predMatchId;
+  String predWinner = 'home';
+  final predHomeCtrl = TextEditingController(text: '1');
+  final predAwayCtrl = TextEditingController(text: '1');
+
+  // #8.3 — Optional match link for polls (also reused by predictions)
+  String? pollMatchId;
 
   return showModalBottomSheet<void>(
     context: ctx,
@@ -1352,6 +1475,14 @@ Future<void> _showCreatePost(BuildContext ctx) async {
                           value: 'welcome',
                           child: Text('Welcome team / become a fan',
                               style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(
+                          value: 'poll',
+                          child: Text('Poll',
+                              style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(
+                          value: 'prediction',
+                          child: Text('Prediction',
+                              style: TextStyle(color: Colors.white))),
                     ],
                     onChanged: (v) => setL(() => postType = v ?? postType),
                   ),
@@ -1399,11 +1530,172 @@ Future<void> _showCreatePost(BuildContext ctx) async {
                         ),
                       ),
                   ],
+                  // #8.3 — Poll fields
+                  if (postType == 'poll') ...[
+                    _AdminField(
+                      controller: pollQuestionCtrl,
+                      label: 'Question *',
+                      maxLines: 2,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Enter a question'
+                          : null,
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8, bottom: 4),
+                      child: Text('Options (min 2, max 6)',
+                          style: TextStyle(
+                              color: SportSphereColors.muted, fontSize: 12)),
+                    ),
+                    for (var i = 0; i < pollOptionCtrls.length; i++)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(children: [
+                          Expanded(
+                            child: _AdminField(
+                              controller: pollOptionCtrls[i],
+                              label: 'Option ${i + 1}',
+                            ),
+                          ),
+                          if (pollOptionCtrls.length > 2)
+                            IconButton(
+                              icon: const Icon(Icons.remove_circle_outline,
+                                  color: SportSphereColors.danger, size: 20),
+                              onPressed: () => setL(() {
+                                pollOptionCtrls[i].dispose();
+                                pollOptionCtrls.removeAt(i);
+                              }),
+                            ),
+                        ]),
+                      ),
+                    if (pollOptionCtrls.length < 6)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          icon: const Icon(Icons.add, size: 16),
+                          label: const Text('Add option'),
+                          onPressed: () => setL(() =>
+                              pollOptionCtrls.add(TextEditingController())),
+                        ),
+                      ),
+                    if (matches.isNotEmpty)
+                      DropdownButtonFormField<String?>(
+                        value: pollMatchId,
+                        dropdownColor: SportSphereColors.surface,
+                        decoration: const InputDecoration(
+                            labelText: 'Link to match (optional)',
+                            labelStyle:
+                                TextStyle(color: SportSphereColors.muted)),
+                        items: [
+                          const DropdownMenuItem(
+                              value: null,
+                              child: Text('None',
+                                  style: TextStyle(
+                                      color: SportSphereColors.muted))),
+                          ...matches.map((m) => DropdownMenuItem(
+                                value: m['id'].toString(),
+                                child: Text(
+                                    '${m['homeTeam']} vs ${m['awayTeam']}',
+                                    style: const TextStyle(
+                                        color: SportSphereColors.white)),
+                              )),
+                        ],
+                        onChanged: (v) => setL(() => pollMatchId = v),
+                      ),
+                  ],
+                  // #8.3 — Prediction fields
+                  if (postType == 'prediction') ...[
+                    if (matches.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 8, bottom: 8),
+                        child: Text(
+                            'No matches available — prediction will be saved without a match link.',
+                            style: TextStyle(
+                                color: SportSphereColors.muted, fontSize: 12)),
+                      )
+                    else
+                      DropdownButtonFormField<String?>(
+                        value: predMatchId,
+                        dropdownColor: SportSphereColors.surface,
+                        decoration: const InputDecoration(
+                            labelText: 'Match *',
+                            labelStyle:
+                                TextStyle(color: SportSphereColors.muted)),
+                        items: [
+                          const DropdownMenuItem(
+                              value: null,
+                              child: Text('Select match',
+                                  style: TextStyle(
+                                      color: SportSphereColors.muted))),
+                          ...matches.map((m) => DropdownMenuItem(
+                                value: m['id'].toString(),
+                                child: Text(
+                                    '${m['homeTeam']} vs ${m['awayTeam']}',
+                                    style: const TextStyle(
+                                        color: SportSphereColors.white)),
+                              )),
+                        ],
+                        onChanged: (v) => setL(() => predMatchId = v),
+                      ),
+                    const Padding(
+                      padding: EdgeInsets.only(top: 12, bottom: 4),
+                      child: Text('Predicted winner',
+                          style: TextStyle(
+                              color: SportSphereColors.muted, fontSize: 12)),
+                    ),
+                    Wrap(spacing: 8, children: [
+                      ChoiceChip(
+                        label: const Text('Home'),
+                        selected: predWinner == 'home',
+                        onSelected: (_) => setL(() => predWinner = 'home'),
+                      ),
+                      ChoiceChip(
+                        label: const Text('Draw'),
+                        selected: predWinner == 'draw',
+                        onSelected: (_) => setL(() => predWinner = 'draw'),
+                      ),
+                      ChoiceChip(
+                        label: const Text('Away'),
+                        selected: predWinner == 'away',
+                        onSelected: (_) => setL(() => predWinner = 'away'),
+                      ),
+                    ]),
+                    const SizedBox(height: 8),
+                    Row(children: [
+                      Expanded(
+                        child: _AdminField(
+                          controller: predHomeCtrl,
+                          label: 'Home score',
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        child: Text(':',
+                            style: TextStyle(
+                                color: SportSphereColors.white,
+                                fontSize: 20)),
+                      ),
+                      Expanded(
+                        child: _AdminField(
+                          controller: predAwayCtrl,
+                          label: 'Away score',
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                    ]),
+                  ],
                   _AdminField(
                     controller: textCtrl,
-                    label: 'Content *',
+                    label: postType == 'poll'
+                        ? 'Body (optional, shown with the poll)'
+                        : postType == 'prediction'
+                            ? 'Note (optional)'
+                            : 'Content *',
                     maxLines: 5,
                     validator: (v) {
+                      if (postType == 'poll' || postType == 'prediction') {
+                        return null;
+                      }
                       if ((v == null || v.trim().isEmpty) && mediaUrls.isEmpty) {
                         return 'Write something or add media';
                       }
@@ -1476,6 +1768,134 @@ Future<void> _showCreatePost(BuildContext ctx) async {
                           );
                           return;
                         }
+                        if (postType == 'poll') {
+                          final q = pollQuestionCtrl.text.trim();
+                          final opts = pollOptionCtrls
+                              .map((ctrl) => ctrl.text.trim())
+                              .where((s) => s.isNotEmpty)
+                              .toList();
+                          if (q.isEmpty) {
+                            ScaffoldMessenger.of(c).showSnackBar(
+                              const SnackBar(content: Text('Enter a question')),
+                            );
+                            return;
+                          }
+                          if (opts.length < 2) {
+                            ScaffoldMessenger.of(c).showSnackBar(
+                              const SnackBar(
+                                  content: Text('Poll needs at least 2 options')),
+                            );
+                            return;
+                          }
+                          try {
+                            final uid = Supabase.instance.client.auth.currentUser?.id;
+                            if (uid == null) throw StateError('Sign in required');
+                            final ts = DateTime.now().millisecondsSinceEpoch;
+                            final postId = 'post-poll-$ts';
+                            // #8.3 — Post + Poll row. `matchId` is the new
+                            // linking column added by migration 20260824010000.
+                            await Supabase.instance.client.from('Post').insert({
+                              'id': postId,
+                              'userId': uid,
+                              'postType': 'poll',
+                              'content': q,
+                              'mediaUrls': const [],
+                              'hashtags': const [],
+                              'sportTag': 'football',
+                              if (pollMatchId != null) 'matchId': pollMatchId,
+                              'likeCount': 0,
+                              'commentCount': 0,
+                              'shareCount': 0,
+                              'createdAt': DateTime.now().toIso8601String(),
+                              'updatedAt': DateTime.now().toIso8601String(),
+                            });
+                            final pollId = 'poll-$ts';
+                            await Supabase.instance.client.from('Poll').insert({
+                              'id': pollId,
+                              'postId': postId,
+                              'question': q,
+                              'options': opts,
+                              'totalVotes': 0,
+                              if (pollMatchId != null) 'matchId': pollMatchId,
+                              'createdAt': DateTime.now().toIso8601String(),
+                            });
+                            if (c.mounted) Navigator.pop(c);
+                          } catch (e) {
+                            if (c.mounted) {
+                              ScaffoldMessenger.of(c).showSnackBar(
+                                SnackBar(content: Text(friendlyError(e))),
+                              );
+                            }
+                          }
+                          return;
+                        }
+                        if (postType == 'prediction') {
+                          if (predMatchId == null && matches.isNotEmpty) {
+                            ScaffoldMessenger.of(c).showSnackBar(
+                              const SnackBar(content: Text('Select a match')),
+                            );
+                            return;
+                          }
+                          try {
+                            final uid = Supabase.instance.client.auth.currentUser?.id;
+                            if (uid == null) throw StateError('Sign in required');
+                            // Resolve team names from selected match (if any)
+                            String homeTeam = '';
+                            String awayTeam = '';
+                            if (predMatchId != null) {
+                              final m = matches.firstWhere(
+                                (m) => m['id'].toString() == predMatchId,
+                                orElse: () => <String, dynamic>{},
+                              );
+                              homeTeam = (m['homeTeam'] ?? '').toString();
+                              awayTeam = (m['awayTeam'] ?? '').toString();
+                            }
+                            final ph = int.tryParse(predHomeCtrl.text.trim()) ?? 0;
+                            final pa = int.tryParse(predAwayCtrl.text.trim()) ?? 0;
+                            final note = textCtrl.text.trim();
+                            final content = note.isNotEmpty
+                                ? note
+                                : 'Prediction: $homeTeam $ph-$pa $awayTeam ($predWinner)';
+                            final ts = DateTime.now().millisecondsSinceEpoch;
+                            final postId = 'post-pred-$ts';
+                            // #8.3 — Post + Prediction row.
+                            await Supabase.instance.client.from('Post').insert({
+                              'id': postId,
+                              'userId': uid,
+                              'postType': 'prediction',
+                              'content': content,
+                              'mediaUrls': const [],
+                              'hashtags': const [],
+                              'sportTag': 'football',
+                              if (predMatchId != null) 'matchId': predMatchId,
+                              'likeCount': 0,
+                              'commentCount': 0,
+                              'shareCount': 0,
+                              'createdAt': DateTime.now().toIso8601String(),
+                              'updatedAt': DateTime.now().toIso8601String(),
+                            });
+                            await Supabase.instance.client.from('Prediction').insert({
+                              'id': 'pred-$ts',
+                              'userId': uid,
+                              'matchId': predMatchId,
+                              'postId': postId,
+                              'homeTeam': homeTeam,
+                              'awayTeam': awayTeam,
+                              'predictedHome': ph,
+                              'predictedAway': pa,
+                              'confidence': predWinner,
+                              'createdAt': DateTime.now().toIso8601String(),
+                            });
+                            if (c.mounted) Navigator.pop(c);
+                          } catch (e) {
+                            if (c.mounted) {
+                              ScaffoldMessenger.of(c).showSnackBar(
+                                SnackBar(content: Text(friendlyError(e))),
+                              );
+                            }
+                          }
+                          return;
+                        }
                         try {
                           var pt = postType;
                           if (pt == 'text' && mediaUrls.isNotEmpty) {
@@ -1510,6 +1930,387 @@ Future<void> _showCreatePost(BuildContext ctx) async {
       },
     ),
   );
+}
+
+// ── Per-match quick actions (#8.6) ────────────────────────────────────────────
+// These three helpers are invoked from the per-match popup menu in _MatchesTab.
+// They pre-fill match context (teams, league, matchId) so admins can quickly
+// push a feed Post / Poll / Prediction linked to a fixture.
+
+/// Push a feed Post (postType='match') linked to an existing Match row.
+Future<void> _showPostMatchToFeed(BuildContext ctx, Map<String, dynamic> m) async {
+  final bodyCtrl = TextEditingController(
+      text: '${m['homeTeam']} vs ${m['awayTeam']} — ${m['league'] ?? ''}');
+  bool confirmed = false;
+  await showModalBottomSheet<void>(
+    context: ctx,
+    isScrollControlled: true,
+    backgroundColor: GrassForm.sheetBg,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: (_) => StatefulBuilder(
+      builder: (c, setL) => Padding(
+        padding: EdgeInsets.fromLTRB(
+            20, 20, 20, MediaQuery.of(c).viewInsets.bottom + 20),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Post Match to Feed',
+                  style: TextStyle(
+                      color: SportSphereColors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800)),
+              const SizedBox(height: 12),
+              _AdminField(
+                controller: bodyCtrl,
+                label: 'Body *',
+                maxLines: 4,
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                      backgroundColor: SportSphereColors.electricBlue,
+                      padding: const EdgeInsets.symmetric(vertical: 14)),
+                  onPressed: confirmed
+                      ? null
+                      : () async {
+                          setL(() => confirmed = true);
+                          try {
+                            final uid = Supabase.instance.client.auth.currentUser?.id;
+                            if (uid == null) throw StateError('Sign in required');
+                            final matchId = m['id']?.toString() ?? '';
+                            await Supabase.instance.client.from('Post').insert({
+                              'id': 'post-match-$matchId',
+                              'userId': uid,
+                              'postType': 'match',
+                              'content': bodyCtrl.text.trim(),
+                              'matchId': matchId,
+                              'mediaUrls': const [],
+                              'hashtags': const [],
+                              'sportTag': 'football',
+                              'isBreaking': false,
+                              'likeCount': 0,
+                              'commentCount': 0,
+                              'shareCount': 0,
+                              'createdAt': DateTime.now().toIso8601String(),
+                              'updatedAt': DateTime.now().toIso8601String(),
+                            });
+                            if (c.mounted) {
+                              ScaffoldMessenger.of(c).showSnackBar(const SnackBar(
+                                  content: Text('Posted to feed')));
+                              Navigator.pop(c);
+                            }
+                          } catch (e) {
+                            if (c.mounted) {
+                              ScaffoldMessenger.of(c).showSnackBar(
+                                  SnackBar(content: Text(friendlyError(e))));
+                            }
+                            setL(() => confirmed = false);
+                          }
+                        },
+                  child: const Text('Post'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// Open a quick poll composer pre-filled with the match's title.
+/// Writes both Post (postType=poll) and Poll rows linked via matchId.
+Future<void> _showCreatePollForMatch(
+    BuildContext ctx, Map<String, dynamic> m) async {
+  final qCtrl = TextEditingController(
+      text: 'Who wins? ${m['homeTeam']} vs ${m['awayTeam']}');
+  final optCtrls = <TextEditingController>[
+    TextEditingController(text: '${m['homeTeam'] ?? 'Home'}'),
+    TextEditingController(text: '${m['awayTeam'] ?? 'Away'}'),
+    TextEditingController(text: 'Draw'),
+  ];
+  bool posting = false;
+  await showModalBottomSheet<void>(
+    context: ctx,
+    isScrollControlled: true,
+    backgroundColor: GrassForm.sheetBg,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: (_) => StatefulBuilder(
+      builder: (c, setL) => Padding(
+        padding: EdgeInsets.fromLTRB(
+            20, 20, 20, MediaQuery.of(c).viewInsets.bottom + 20),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Create Poll',
+                  style: TextStyle(
+                      color: SportSphereColors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800)),
+              const SizedBox(height: 12),
+              _AdminField(controller: qCtrl, label: 'Question *', maxLines: 2),
+              const Padding(
+                padding: EdgeInsets.only(top: 8, bottom: 4),
+                child: Text('Options',
+                    style: TextStyle(
+                        color: SportSphereColors.muted, fontSize: 12)),
+              ),
+              for (var i = 0; i < optCtrls.length; i++)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(children: [
+                    Expanded(
+                      child: _AdminField(
+                          controller: optCtrls[i],
+                          label: 'Option ${i + 1}'),
+                    ),
+                    if (optCtrls.length > 2)
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline,
+                            color: SportSphereColors.danger, size: 20),
+                        onPressed: () => setL(() {
+                          optCtrls[i].dispose();
+                          optCtrls.removeAt(i);
+                        }),
+                      ),
+                  ]),
+                ),
+              if (optCtrls.length < 6)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text('Add option'),
+                    onPressed: () =>
+                        setL(() => optCtrls.add(TextEditingController())),
+                  ),
+                ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                      backgroundColor: SportSphereColors.sportGreen,
+                      padding: const EdgeInsets.symmetric(vertical: 14)),
+                  onPressed: posting
+                      ? null
+                      : () async {
+                          final q = qCtrl.text.trim();
+                          final opts = optCtrls
+                              .map((ctrl) => ctrl.text.trim())
+                              .where((s) => s.isNotEmpty)
+                              .toList();
+                          if (q.isEmpty || opts.length < 2) {
+                            ScaffoldMessenger.of(c).showSnackBar(const SnackBar(
+                                content: Text(
+                                    'Question and at least 2 options required')));
+                            return;
+                          }
+                          setL(() => posting = true);
+                          try {
+                            final uid =
+                                Supabase.instance.client.auth.currentUser?.id;
+                            if (uid == null) throw StateError('Sign in required');
+                            final matchId = m['id']?.toString();
+                            final ts = DateTime.now().millisecondsSinceEpoch;
+                            final postId = 'post-poll-match-$ts';
+                            await Supabase.instance.client.from('Post').insert({
+                              'id': postId,
+                              'userId': uid,
+                              'postType': 'poll',
+                              'content': q,
+                              'mediaUrls': const [],
+                              'hashtags': const [],
+                              'sportTag': 'football',
+                              if (matchId != null) 'matchId': matchId,
+                              'likeCount': 0,
+                              'commentCount': 0,
+                              'shareCount': 0,
+                              'createdAt': DateTime.now().toIso8601String(),
+                              'updatedAt': DateTime.now().toIso8601String(),
+                            });
+                            await Supabase.instance.client.from('Poll').insert({
+                              'id': 'poll-match-$ts',
+                              'postId': postId,
+                              'question': q,
+                              'options': opts,
+                              'totalVotes': 0,
+                              if (matchId != null) 'matchId': matchId,
+                              'createdAt': DateTime.now().toIso8601String(),
+                            });
+                            if (c.mounted) Navigator.pop(c);
+                          } catch (e) {
+                            if (c.mounted) {
+                              ScaffoldMessenger.of(c).showSnackBar(
+                                SnackBar(content: Text(friendlyError(e))),
+                              );
+                            }
+                            setL(() => posting = false);
+                          }
+                        },
+                  child: const Text('Publish Poll'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+  for (final ctrl in optCtrls) {
+    ctrl.dispose();
+  }
+  qCtrl.dispose();
+}
+
+/// Open a quick prediction composer pre-filled with the match's teams.
+/// Writes both Post (postType=prediction) and Prediction rows linked via matchId.
+Future<void> _showCreatePredictionForMatch(
+    BuildContext ctx, Map<String, dynamic> m) async {
+  final homeCtrl = TextEditingController(text: '1');
+  final awayCtrl = TextEditingController(text: '1');
+  String winner = 'home';
+  bool posting = false;
+  await showModalBottomSheet<void>(
+    context: ctx,
+    isScrollControlled: true,
+    backgroundColor: GrassForm.sheetBg,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: (_) => StatefulBuilder(
+      builder: (c, setL) => Padding(
+        padding: EdgeInsets.fromLTRB(
+            20, 20, 20, MediaQuery.of(c).viewInsets.bottom + 20),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Predict: ${m['homeTeam']} vs ${m['awayTeam']}',
+                style: const TextStyle(
+                    color: SportSphereColors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 12),
+              Row(children: [
+                Expanded(
+                    child: _AdminField(
+                        controller: homeCtrl,
+                        label: '${m['homeTeam'] ?? 'Home'} score',
+                        keyboardType: TextInputType.number)),
+                const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(':',
+                        style: TextStyle(
+                            color: SportSphereColors.white, fontSize: 20))),
+                Expanded(
+                    child: _AdminField(
+                        controller: awayCtrl,
+                        label: '${m['awayTeam'] ?? 'Away'} score',
+                        keyboardType: TextInputType.number)),
+              ]),
+              const SizedBox(height: 8),
+              Wrap(spacing: 8, children: [
+                ChoiceChip(
+                  label: Text('${m['homeTeam'] ?? 'Home'}'),
+                  selected: winner == 'home',
+                  onSelected: (_) => setL(() => winner = 'home'),
+                ),
+                ChoiceChip(
+                  label: const Text('Draw'),
+                  selected: winner == 'draw',
+                  onSelected: (_) => setL(() => winner = 'draw'),
+                ),
+                ChoiceChip(
+                  label: Text('${m['awayTeam'] ?? 'Away'}'),
+                  selected: winner == 'away',
+                  onSelected: (_) => setL(() => winner = 'away'),
+                ),
+              ]),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                      backgroundColor: SportSphereColors.sportOrange,
+                      padding: const EdgeInsets.symmetric(vertical: 14)),
+                  onPressed: posting
+                      ? null
+                      : () async {
+                          setL(() => posting = true);
+                          try {
+                            final uid =
+                                Supabase.instance.client.auth.currentUser?.id;
+                            if (uid == null) throw StateError('Sign in required');
+                            final matchId = m['id']?.toString();
+                            final homeTeam = (m['homeTeam'] ?? '').toString();
+                            final awayTeam = (m['awayTeam'] ?? '').toString();
+                            final ph = int.tryParse(homeCtrl.text.trim()) ?? 0;
+                            final pa = int.tryParse(awayCtrl.text.trim()) ?? 0;
+                            final content =
+                                'Prediction: $homeTeam $ph-$pa $awayTeam ($winner)';
+                            final ts = DateTime.now().millisecondsSinceEpoch;
+                            final postId = 'post-pred-match-$ts';
+                            await Supabase.instance.client.from('Post').insert({
+                              'id': postId,
+                              'userId': uid,
+                              'postType': 'prediction',
+                              'content': content,
+                              'mediaUrls': const [],
+                              'hashtags': const [],
+                              'sportTag': 'football',
+                              if (matchId != null) 'matchId': matchId,
+                              'likeCount': 0,
+                              'commentCount': 0,
+                              'shareCount': 0,
+                              'createdAt': DateTime.now().toIso8601String(),
+                              'updatedAt': DateTime.now().toIso8601String(),
+                            });
+                            await Supabase.instance.client
+                                .from('Prediction')
+                                .insert({
+                              'id': 'pred-match-$ts',
+                              'userId': uid,
+                              'matchId': matchId,
+                              'postId': postId,
+                              'homeTeam': homeTeam,
+                              'awayTeam': awayTeam,
+                              'predictedHome': ph,
+                              'predictedAway': pa,
+                              'confidence': winner,
+                              'createdAt': DateTime.now().toIso8601String(),
+                            });
+                            if (c.mounted) Navigator.pop(c);
+                          } catch (e) {
+                            if (c.mounted) {
+                              ScaffoldMessenger.of(c).showSnackBar(
+                                SnackBar(content: Text(friendlyError(e))),
+                              );
+                            }
+                            setL(() => posting = false);
+                          }
+                        },
+                  child: const Text('Publish Prediction'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+  homeCtrl.dispose();
+  awayCtrl.dispose();
 }
 
 // ── Upload Button widget ───────────────────────────────────────────────────────

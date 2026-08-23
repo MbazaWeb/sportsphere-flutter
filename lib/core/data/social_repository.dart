@@ -236,10 +236,14 @@ class SocialRepository {
     if (uid == null) throw StateError('Please sign in');
     try {
       await _sb.from('PostLike').delete().eq('postId', postId);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('deletePost: PostLike cleanup failed: $e');
+    }
     try {
       await _sb.from('Comment').delete().eq('postId', postId);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('deletePost: Comment cleanup failed: $e');
+    }
     await _sb.from('Post').delete().eq('id', postId);
   }
 
@@ -255,21 +259,57 @@ class SocialRepository {
           'userId': uid,
           'createdAt': DateTime.now().toIso8601String(),
         });
+        await incrementPostCounter(postId, 'likeCount', 1);
       } else {
         await _sb
             .from('PostLike')
             .delete()
             .eq('postId', postId)
             .eq('userId', uid);
+        await incrementPostCounter(postId, 'likeCount', -1);
       }
-      await recountPostCounters(postId);
     } catch (e) {
       debugPrint('Failed to toggle like: $e');
       rethrow;
     }
   }
 
-  /// Recompute like/comment/share from source tables (fixes drift).
+  /// Atomically bump a post counter column via the
+  /// `increment_post_counter` RPC (single round-trip).
+  ///
+  /// [column] must be one of `likeCount`, `commentCount`, `shareCount`,
+  /// `viewCount` — the RPC rejects anything else. If the RPC fails (e.g.
+  /// network blip), we fall back to a full [recountPostCounters] so the
+  /// counter still converges instead of silently drifting.
+  Future<void> incrementPostCounter(
+    String postId,
+    String column,
+    int delta,
+  ) async {
+    assert(
+      const {'likeCount', 'commentCount', 'shareCount', 'viewCount'}
+          .contains(column),
+      'invalid post counter column: $column',
+    );
+    try {
+      await _sb.rpc('increment_post_counter', params: {
+        'p_post_id': postId,
+        'p_column': column,
+        'p_delta': delta,
+      });
+    } catch (e) {
+      debugPrint('incrementPostCounter($column, $delta) failed for '
+          '$postId, falling back to full recount: $e');
+      await recountPostCounters(postId);
+    }
+  }
+
+  /// Recompute like/comment/share from source tables (repair path).
+  ///
+  /// This is intentionally a full recount from scratch — used by the
+  /// [incrementPostCounter] fallback and by admin "repair" flows. For
+  /// normal +/-1 increments on like/comment/share toggles, prefer
+  /// [incrementPostCounter] so we don't burn 4 round-trips per action.
   Future<void> recountPostCounters(String postId) async {
     try {
       final likes = await _sb
@@ -334,7 +374,7 @@ class SocialRepository {
           .delete()
           .eq('postId', postId)
           .eq('userId', uid);
-      await recountPostCounters(postId);
+      await incrementPostCounter(postId, 'shareCount', -1);
       return false;
     }
     await _sb.from('PostShare').upsert({
@@ -342,7 +382,7 @@ class SocialRepository {
       'userId': uid,
       'createdAt': DateTime.now().toIso8601String(),
     });
-    await recountPostCounters(postId);
+    await incrementPostCounter(postId, 'shareCount', 1);
     return true;
   }
 
@@ -356,6 +396,25 @@ class SocialRepository {
         .eq('userId', uid)
         .maybeSingle();
     return row != null;
+  }
+
+  /// Whether the current user has liked a post. (#7.6 — was missing; callers
+  /// had to query PostLike directly. Now exposed as a clean API.)
+  Future<bool> hasLiked(String postId) async {
+    final uid = _uid;
+    if (uid == null) return false;
+    try {
+      final row = await _sb
+          .from('PostLike')
+          .select()
+          .eq('postId', postId)
+          .eq('userId', uid)
+          .maybeSingle();
+      return row != null;
+    } catch (e) {
+      debugPrint('hasLiked($postId): $e');
+      return false;
+    }
   }
 
   /// Get comments for a post
@@ -405,7 +464,7 @@ class SocialRepository {
       'createdAt': DateTime.now().toIso8601String(),
     });
 
-    await recountPostCounters(postId);
+    await incrementPostCounter(postId, 'commentCount', 1);
   }
 
   // ============================================================
@@ -485,7 +544,9 @@ class SocialRepository {
         if (isAdmin) {
           return List<String>.from(kAllSports);
         }
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('mySportSlugs: admin metadata check failed: $e');
+      }
 
       final rows = await _sb
           .from('UserSport')

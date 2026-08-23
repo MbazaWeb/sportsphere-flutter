@@ -29,7 +29,9 @@ class _ProfileScreen extends ConsumerWidget {
         FanProfileModel profile;
         if (snap.hasData) {
           profile = snap.data!;
-          // Force own profile chrome on this tab
+          // Force own profile chrome on this tab.
+          // #3.3 — Preserve the isAdmin / role flags from the loader so the
+          // "Become PRO" button is correctly hidden for admin accounts.
           profile = FanProfileModel(
             firstName: isAdmin ? 'Playify' : profile.firstName,
             lastName: isAdmin ? '' : profile.lastName,
@@ -52,6 +54,8 @@ class _ProfileScreen extends ConsumerWidget {
             coverAsset: profile.coverAsset ?? user.coverUrl,
             isVerified: true,
             isOwnProfile: true,
+            isAdmin: isAdmin || profile.isAdmin,
+            role: isAdmin ? 'admin' : profile.role,
           );
         } else {
           profile = FanProfileModel(
@@ -74,6 +78,8 @@ class _ProfileScreen extends ConsumerWidget {
             coverAsset: user.coverUrl,
             isVerified: true,
             isOwnProfile: true,
+            isAdmin: isAdmin,
+            role: user.role,
           );
         }
 

@@ -220,10 +220,18 @@ Future<PlayerProfileModel> lookupPlayerProfile(String handle) async {
     contractStatus: (player?['contractStatus'] as String?) ??
         ((player?['isActive'] as bool?) == false ? 'Inactive' : 'Active'),
     accentColor: const Color(0xFF009DFF),
-    postCount: (user?['postCount'] as int?) ?? 0,
-    fanCount: (user?['fanCount'] as int?) ?? 0,
-    followerCount: (user?['followerCount'] as int?) ?? 0,
-    followingCount: (user?['followingCount'] as int?) ?? 0,
+    postCount: (user?['postCount'] as int?) ??
+        (user?['post_count'] as int?) ??
+        0,
+    fanCount: (user?['fanCount'] as int?) ??
+        (user?['fan_count'] as int?) ??
+        0,
+    followerCount: (user?['followerCount'] as int?) ??
+        (user?['follower_count'] as int?) ??
+        0,
+    followingCount: (user?['followingCount'] as int?) ??
+        (user?['following_count'] as int?) ??
+        0,
     career: career,
     seasonStats: seasonStats,
     allTimeGoals: agg['goals'] ?? (player?['goals'] as int?) ?? 0,

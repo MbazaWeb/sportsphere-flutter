@@ -2,11 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/admin/app_admin.dart';
+import '../../../../core/data/social_graph.dart';
 import '../../../../core/theme/colors.dart';
 import '../../shared/profile_widgets.dart';
 import '../../../shop/models/shop_models.dart';
 import '../../../shop/presentation/shop_tab.dart';
+import '../../presentation/edit_profile_sheet.dart'
+    show showEntityEditSheet, EntityType;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MODELS
@@ -83,12 +88,26 @@ class TeamProfileModel {
     required this.followingCount,
     required this.squad,
     required this.seasonStats,
+    this.id,
+    this.accountUserId,
+    this.shortName,
+    this.primaryColorHex,
+    this.leagueId,
     this.logoAsset,
     this.coverAsset,
     this.isVerified = true,
     this.isOwnProfile = false,
     this.joinedDate,
   });
+
+  /// SportSphere Team row id (e.g. "team-123"). Null when the lookup did not
+  /// resolve the underlying DB record (admin-only edit relies on this).
+  final String? id;
+  /// Linked auth User.id for the team's account (used by SocialGraph).
+  final String? accountUserId;
+  final String? shortName;
+  final String? primaryColorHex;
+  final String? leagueId;
 
   final String name;
   final String handle;
@@ -141,12 +160,94 @@ class _TeamProfileViewState extends State<TeamProfileView>
     with SingleTickerProviderStateMixin {
   late TabController _tabCtrl;
   bool _following = false;
+  bool _isFan = false;
+  bool _busyFollow = false;
+  bool _busyFan = false;
+  final _graph = SocialGraph();
 
   @override
   void initState() {
     super.initState();
     _tabCtrl = TabController(length: 5, vsync: this);
     _tabCtrl.addListener(() => setState(() {}));
+    _loadSocial();
+  }
+
+  /// #7.2 / #7.3 — resolve the team's social target (accountUserId if known,
+  /// otherwise resolve handle via SocialGraph) and pull the current viewer's
+  /// follow + fan status.
+  Future<void> _loadSocial() async {
+    final me = _graph.currentUid;
+    if (me == null) return;
+    try {
+      final id = p.accountUserId ?? await _graph.resolveId(p.handle);
+      if (id == null) return;
+      final f = await _graph.isFollowing(me, id);
+      final n = await _graph.isFan(me, id);
+      if (mounted) setState(() { _following = f; _isFan = n; });
+    } catch (e) {
+      debugPrint('team _loadSocial: $e');
+    }
+  }
+
+  /// Resolve the social target id (accountUserId preferred, else handle lookup).
+  /// Returns null if the target cannot be resolved.
+  Future<String?> _resolveTarget() async {
+    if (p.accountUserId != null && p.accountUserId!.isNotEmpty) {
+      return p.accountUserId;
+    }
+    return _graph.resolveId(p.handle);
+  }
+
+  Future<void> _toggleFollow() async {
+    if (_busyFollow) return;
+    HapticFeedback.lightImpact();
+    final next = !_following;
+    setState(() { _following = next; _busyFollow = true; });
+    try {
+      final id = await _resolveTarget();
+      if (id == null) throw StateError('team profile not found');
+      await _graph.follow(id, on: next);
+    } catch (e) {
+      debugPrint('team follow: $e');
+      if (mounted) {
+        setState(() => _following = !next);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not ${next ? 'follow' : 'unfollow'}: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busyFollow = false);
+    }
+  }
+
+  Future<void> _toggleFan() async {
+    if (_busyFan) return;
+    HapticFeedback.mediumImpact();
+    final next = !_isFan;
+    setState(() { _isFan = next; _busyFan = true; });
+    try {
+      final id = await _resolveTarget();
+      if (id == null) throw StateError('team profile not found');
+      await _graph.fan(id, on: next);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(next
+              ? 'You are now a ${p.name} fan'
+              : 'Removed fan status'),
+        ));
+      }
+    } catch (e) {
+      debugPrint('team fan: $e');
+      if (mounted) {
+        setState(() => _isFan = !next);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not ${next ? 'become a fan' : 'unfan'}: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busyFan = false);
+    }
   }
 
   @override
@@ -167,10 +268,11 @@ class _TeamProfileViewState extends State<TeamProfileView>
             child: _TeamHeader(
               profile: p,
               following: _following,
-              onFollow: () {
-                HapticFeedback.lightImpact();
-                setState(() => _following = !_following);
-              },
+              isFan: _isFan,
+              busyFollow: _busyFollow,
+              busyFan: _busyFan,
+              onFollow: _toggleFollow,
+              onBecomeFan: _toggleFan,
               onBack: () => Navigator.of(context).maybePop(),
               onShare: () {},
               onMore: () => _showMore(context),
@@ -206,22 +308,81 @@ class _TeamProfileViewState extends State<TeamProfileView>
     );
   }
 
+  /// #5.3 — Admin-only "Edit Profile" entry. Hidden for non-admin viewers.
+  /// Falls back to looking up the Team row by handle when [TeamProfileModel.id]
+  /// is missing (lookup functions in data/* are owned by another agent).
+  Future<void> _openAdminEdit(BuildContext context) async {
+    Navigator.pop(context); // dismiss the more-sheet
+    String? teamId = p.id;
+    Map<String, dynamic> initial = <String, dynamic>{
+      'name': p.name,
+      'shortName': p.shortName ?? '',
+      'primaryColor': p.primaryColorHex ?? '',
+      'country': p.country,
+      'venue': p.stadium,
+      'leagueId': p.leagueId ?? '',
+      'logoUrl': p.logoAsset ?? '',
+    };
+    if (teamId == null || teamId.isEmpty) {
+      // Resolve by handle/slug.
+      try {
+        final sb = Supabase.instance.client;
+        final key = p.handle.replaceAll('@', '').trim();
+        final row = await sb
+            .from('Team')
+            .select()
+            .or('id.eq.$key,id.eq.tm-$key,slug.eq.${key.replaceAll('_', '-')}')
+            .maybeSingle();
+        if (row != null) {
+          teamId = row['id']?.toString();
+          // Merge in any extra fields from the DB row.
+          initial = Map<String, dynamic>.from(row);
+        }
+      } catch (e) {
+        debugPrint('team admin edit lookup: $e');
+      }
+    }
+    if (teamId == null || teamId.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not resolve team record — edit via Admin Dashboard instead.'),
+          ),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+    await showEntityEditSheet(
+      context,
+      entityType: EntityType.team,
+      entityId: teamId,
+      initialData: initial,
+    );
+  }
+
   void _showMore(BuildContext context) {
+    final isAdmin = AppAdmin.isSessionAdmin;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (_) => ProfileMoreSheet(
         isOwnProfile: p.isOwnProfile,
-        options: p.isOwnProfile
-            ? [
-                ProfileMoreOption(icon: Icons.edit_outlined, label: 'Edit Profile', onTap: () => Navigator.pop(context)),
-                ProfileMoreOption(icon: Icons.share_outlined, label: 'Share Profile', onTap: () => Navigator.pop(context)),
-                ProfileMoreOption(icon: Icons.qr_code_rounded, label: 'QR Code', onTap: () => Navigator.pop(context)),
-              ]
-            : [
-                ProfileMoreOption(icon: Icons.share_outlined, label: 'Share Profile', onTap: () => Navigator.pop(context)),
-                ProfileMoreOption(icon: Icons.flag_outlined, label: 'Report', onTap: () => Navigator.pop(context), destructive: true),
-              ],
+        options: [
+          // #5.3 — "Edit Profile" entry only for admins (replaces the dead
+          // Navigator.pop(context) that previously closed the sheet).
+          if (isAdmin)
+            ProfileMoreOption(
+              icon: Icons.edit_outlined,
+              label: 'Edit Profile',
+              onTap: () => _openAdminEdit(context),
+            ),
+          ProfileMoreOption(icon: Icons.share_outlined, label: 'Share Profile', onTap: () => Navigator.pop(context)),
+          if (p.isOwnProfile)
+            ProfileMoreOption(icon: Icons.qr_code_rounded, label: 'QR Code', onTap: () => Navigator.pop(context)),
+          if (!p.isOwnProfile)
+            ProfileMoreOption(icon: Icons.flag_outlined, label: 'Report', onTap: () => Navigator.pop(context), destructive: true),
+        ],
       ),
     );
   }
@@ -234,7 +395,11 @@ class _TeamProfileViewState extends State<TeamProfileView>
 class _TeamHeader extends StatelessWidget {
   final TeamProfileModel profile;
   final bool following;
+  final bool isFan;
+  final bool busyFollow;
+  final bool busyFan;
   final VoidCallback onFollow;
+  final VoidCallback onBecomeFan;
   final VoidCallback onBack;
   final VoidCallback onShare;
   final VoidCallback onMore;
@@ -243,7 +408,11 @@ class _TeamHeader extends StatelessWidget {
   const _TeamHeader({
     required this.profile,
     required this.following,
+    required this.isFan,
+    required this.busyFollow,
+    required this.busyFan,
     required this.onFollow,
+    required this.onBecomeFan,
     required this.onBack,
     required this.onShare,
     required this.onMore,
@@ -461,14 +630,18 @@ class _TeamHeader extends StatelessWidget {
 
         const SizedBox(height: 14),
 
-        // ── Follow button ────────────────────────────────────
+        // ── Follow + Become a Fan buttons (#7.2 / #7.3) ───────
         if (!profile.isOwnProfile)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
             child: _FollowRow(
               following: following,
+              isFan: isFan,
+              busyFollow: busyFollow,
+              busyFan: busyFan,
               accent: accent,
               onFollow: onFollow,
+              onBecomeFan: onBecomeFan,
             ),
           ),
 
@@ -478,17 +651,25 @@ class _TeamHeader extends StatelessWidget {
   }
 }
 
-// ── Follow row ─────────────────────────────────────────────────────────────────
+// ── Follow + Fan row ───────────────────────────────────────────────────────────
 
 class _FollowRow extends StatelessWidget {
   final bool following;
+  final bool isFan;
+  final bool busyFollow;
+  final bool busyFan;
   final Color accent;
   final VoidCallback onFollow;
+  final VoidCallback onBecomeFan;
 
   const _FollowRow({
     required this.following,
+    required this.isFan,
+    required this.busyFollow,
+    required this.busyFan,
     required this.accent,
     required this.onFollow,
+    required this.onBecomeFan,
   });
 
   @override
@@ -501,7 +682,7 @@ class _FollowRow extends StatelessWidget {
             label: following ? 'Following this team' : 'Follow this team',
             button: true,
             child: GestureDetector(
-              onTap: onFollow,
+              onTap: busyFollow ? null : onFollow,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
                 height: 42,
@@ -534,16 +715,89 @@ class _FollowRow extends StatelessWidget {
                         ],
                 ),
                 child: Center(
-                  child: Text(
-                    following ? 'Following' : 'Follow',
-                    style: TextStyle(
-                      color: following
-                          ? SportSphereColors.muted
-                          : Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                  child: busyFollow
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          following ? 'Following' : 'Follow',
+                          style: TextStyle(
+                            color: following
+                                ? SportSphereColors.muted
+                                : Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+
+        // Become a Fan / Unfan (#7.3)
+        Expanded(
+          child: Semantics(
+            label: isFan ? 'Already a fan — tap to unfan' : 'Become a fan',
+            button: true,
+            child: GestureDetector(
+              onTap: busyFan ? null : onBecomeFan,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                height: 42,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(21),
+                  color: isFan
+                      ? accent.withValues(alpha: 0.18)
+                      : accent,
+                  border: isFan
+                      ? Border.all(color: accent.withValues(alpha: 0.6))
+                      : null,
+                  boxShadow: isFan
+                      ? null
+                      : [
+                          BoxShadow(
+                            color: accent.withValues(alpha: 0.30),
+                            blurRadius: 14,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                ),
+                child: Center(
+                  child: busyFan
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isFan ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              isFan ? 'Fan' : 'Become a Fan',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
                 ),
               ),
             ),

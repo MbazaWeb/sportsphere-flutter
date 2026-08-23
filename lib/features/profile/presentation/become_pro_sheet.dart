@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/admin/app_admin.dart';
 import '../../../core/theme/colors.dart';
 import '../../auth/presentation/auth_controller.dart';
 
@@ -58,6 +59,15 @@ class _BecomeProSheetState extends ConsumerState<BecomeProSheet> {
   void dispose() { _entity.dispose(); _notes.dispose(); super.dispose(); }
 
   Future<void> _submit() async {
+    // #3.2 — Admin / official / org / moderator accounts already have
+    // privileged access. They should NOT be able to submit a PRO request
+    // to themselves (it would create a confusing pending row in the admin
+    // queue and would never be approvable). Bail out immediately.
+    if (AppAdmin.isSessionAdmin) {
+      if (mounted) Navigator.of(context).pop();
+      return;
+    }
+
     final role = _selected;
     if (role == null) return;
 

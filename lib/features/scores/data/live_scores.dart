@@ -2,44 +2,86 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/data/nbc_club_badges.dart';
 import '../domain/models/match_model.dart';
+import '../domain/models/match_status.dart';
+import 'scores_repository.dart' show kMaxMatchesPerFetch;
 
+/// Builds a [MatchModel] from a raw Supabase `Match` row.
+///
+/// This is the **single shared row mapper** for the scores feature — the
+/// repository and any ad-hoc helper that needs to convert a row should call
+/// this. It uses [formatScore] / [kLiveStatuses] / [kFinishedStatuses] from
+/// [match_status.dart] so the score and live-decision vocabularies cannot
+/// drift between files.
 MatchModel matchFromRow(Map<String, dynamic> row) {
-  final kick = DateTime.tryParse(row['kickoffAt']?.toString() ?? '') ?? DateTime.now();
+  final kick =
+      DateTime.tryParse(row['kickoffAt']?.toString() ?? '') ?? DateTime.now();
   final hs = row['homeScore'];
   final ascore = row['awayScore'];
   final status = (row['status'] as String?) ?? 'scheduled';
+  final statusLower = status.toLowerCase();
   final home = row['homeTeam'] as String? ?? '';
   final away = row['awayTeam'] as String? ?? '';
-  final score = (hs == null && ascore == null)
-      ? '-'
-      : '${hs ?? 0} - ${ascore ?? 0}';
+  final venue = (row['venue'] as String?)?.trim() ?? '';
+  final minute = row['minute'] is num ? (row['minute'] as num).toInt() : null;
+  final sportSlug =
+      ((row['sport_slug'] as String?) ?? (row['sportSlug'] as String?) ?? 'football')
+          .trim();
+  final postId = (row['postId'] as String?)?.trim();
+
+  // ── Single live heuristic ───────────────────────────────────────────────
+  // A match is LIVE only if:
+  //   - its status is explicitly in [kLiveStatuses], OR
+  //   - its status is NOT in {finished, postponed, cancelled} AND now is in
+  //     [kickoff, kickoff + 110 min].
+  // We do NOT mutate the displayed status text — the UI shows the actual
+  // status string. The `isLive` flag only drives the green pill / pulse.
   final now = DateTime.now();
-  final live = status.toLowerCase() == 'live' ||
-      (!now.isBefore(kick) &&
-          now.isBefore(kick.add(const Duration(minutes: 110))) &&
-          status != 'FT' &&
-          status != 'postponed');
+  final inWindow = !now.isBefore(kick) &&
+      now.isBefore(kick.add(const Duration(minutes: 110)));
+  final isLive = kLiveStatuses.contains(statusLower) ||
+      (inWindow &&
+          !kFinishedStatuses.contains(statusLower) &&
+          !kPostponedStatuses.contains(statusLower));
+
+  // ── Single score formatter ──────────────────────────────────────────────
+  final score = formatScore(
+    hs is num ? hs.toInt() : null,
+    ascore is num ? ascore.toInt() : null,
+  );
+
+  // Status text — keep the raw status (do NOT override with "LIVE" — the
+  // badge on the card uses [MatchModel.isLive]).
+  final statusText = status.isEmpty ? 'scheduled' : status;
+
   return MatchModel(
-    id: row['id'] as String,
+    id: (row['id'] as String?) ?? 'match',
     homeTeamName: home,
     awayTeamName: away,
-    homeTeamLogo: (row['homeBadge'] as String?) ?? NbcClubBadges.forName(home),
-    awayTeamLogo: (row['awayBadge'] as String?) ?? NbcClubBadges.forName(away),
+    homeTeamLogo:
+        (row['homeBadge'] as String?)?.trim() ?? NbcClubBadges.forName(home),
+    awayTeamLogo:
+        (row['awayBadge'] as String?)?.trim() ?? NbcClubBadges.forName(away),
     leagueName: row['league'] as String? ?? '',
-    leagueLogo: NbcClubBadges.forName(row['league'] as String? ?? ''),
-    score: status == 'scheduled' ? '-' : score,
-    status: status,
+    // No league-logo lookup exists in the codebase yet — leave empty rather
+    // than misusing NbcClubBadges (which only knows club crests).
+    leagueLogo: '',
+    score: score,
+    status: statusText,
     startTime: kick.toLocal(),
-    isLive: live,
+    isLive: isLive,
+    sportSlug: sportSlug.isEmpty ? 'football' : sportSlug,
+    venue: venue,
+    postId: (postId != null && postId.isNotEmpty) ? postId : null,
+    minute: minute,
   );
 }
 
-Future<List<MatchModel>> fetchLiveMatches() async {
+Future<List<MatchModel>> fetchLiveMatches({int limit = kMaxMatchesPerFetch}) async {
   final rows = await Supabase.instance.client
       .from('Match')
       .select()
       .order('kickoffAt')
-      .limit(400);
+      .limit(limit);
   return [for (final r in rows as List) matchFromRow(Map<String, dynamic>.from(r))];
 }
 
@@ -55,13 +97,20 @@ List<MatchModel> filterDay(List<MatchModel> all, DateTime day) => all
 
 List<MatchModel> filterUpcoming(List<MatchModel> all, DateTime? day) {
   final now = DateTime.now();
-  final list = all.where((m) => m.startTime.isAfter(now) && m.status != 'FT').toList();
+  final list = all
+      .where((m) =>
+          m.startTime.isAfter(now) &&
+          !isFinishedStatus(m.status) &&
+          !isPostponedStatus(m.status))
+      .toList();
   if (day == null) return list;
   return filterDay(list, day);
 }
 
 List<MatchModel> filterResults(List<MatchModel> all, DateTime? day) {
-  final list = all.where((m) => m.status == 'FT' || m.status == 'postponed').toList();
+  final list = all
+      .where((m) => isFinishedStatus(m.status) || isPostponedStatus(m.status))
+      .toList();
   if (day == null) return list;
   return filterDay(list, day);
 }

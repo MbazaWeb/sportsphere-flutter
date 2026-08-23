@@ -1,8 +1,15 @@
+import 'dart:convert';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/data/nbc_club_badges.dart';
 import '../domain/models/match_model.dart';
+import '../domain/models/match_status.dart';
 import '../domain/models/standing_model.dart';
+
+/// Cap on the number of rows fetched per paged query. Tune with care —
+/// Supabase/PostgREST has a 1000-row hard ceiling per request.
+const int kMaxMatchesPerFetch = 200;
 
 /// Live scores / standings from Supabase only (no hardcoded fixtures).
 class ScoresRepository {
@@ -10,23 +17,40 @@ class ScoresRepository {
 
   SupabaseClient get _sb => Supabase.instance.client;
 
-  Future<List<MatchModel>> getLive() async {
+  // ─────────────────────────────────────────────────────────────────────────
+  // Live / Today / Upcoming / Results
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// All matches currently in play.
+  ///
+  /// Two-tier filter (unified vocab via [kLiveStatuses] /
+  /// [kFinishedStatuses] / [kPostponedStatuses]):
+  ///   1. SQL: `status in (live, in_play, ht, 1h, 2h)`
+  ///   2. Fallback: any match whose status is NOT in (finished ∪ postponed)
+  ///      AND whose kickoff is within the last 110 minutes.
+  Future<List<MatchModel>> getLive({int limit = kMaxMatchesPerFetch}) async {
+    final liveOr = kLiveStatuses.map((s) => 'status.eq.$s').join(',');
     final rows = await _sb
         .from('Match')
         .select()
-        .or('status.eq.live,status.eq.in_play,status.eq.ht')
-        .order('kickoffAt');
+        .or(liveOr)
+        .order('kickoffAt')
+        .limit(limit);
     final list = _mapRows(rows as List);
     if (list.isNotEmpty) return list;
+
     final now = DateTime.now().toUtc();
-    final all = await _fetchAll();
+    final all = await _fetchAll(limit: limit);
     return all.where((m) {
+      if (isFinishedStatus(m.status) || isPostponedStatus(m.status)) {
+        return false;
+      }
       final end = m.startTime.add(const Duration(minutes: 110));
       return !now.isBefore(m.startTime) && now.isBefore(end);
     }).toList();
   }
 
-  Future<List<MatchModel>> getToday() async {
+  Future<List<MatchModel>> getToday({int limit = kMaxMatchesPerFetch}) async {
     final now = DateTime.now().toUtc();
     final start = DateTime.utc(now.year, now.month, now.day);
     final end = start.add(const Duration(days: 1));
@@ -35,17 +59,22 @@ class ScoresRepository {
         .select()
         .gte('kickoffAt', start.toIso8601String())
         .lt('kickoffAt', end.toIso8601String())
-        .order('kickoffAt');
+        .order('kickoffAt')
+        .limit(limit);
     return _mapRows(rows as List);
   }
 
-  Future<List<MatchModel>> getUpcoming({DateTime? day}) async {
+  Future<List<MatchModel>> getUpcoming({
+    DateTime? day,
+    int limit = kMaxMatchesPerFetch,
+  }) async {
     final now = DateTime.now().toUtc();
     final rows = await _sb
         .from('Match')
         .select()
         .gte('kickoffAt', now.toIso8601String())
-        .order('kickoffAt');
+        .order('kickoffAt')
+        .limit(limit);
     var list = _mapRows(rows as List);
     if (day != null) {
       list = list
@@ -58,16 +87,21 @@ class ScoresRepository {
     return list;
   }
 
-  Future<List<MatchModel>> getResults({DateTime? day}) async {
+  Future<List<MatchModel>> getResults({
+    DateTime? day,
+    int limit = kMaxMatchesPerFetch,
+  }) async {
+    final finishedOr = kFinishedStatuses.map((s) => 'status.eq.$s').join(',');
     final rows = await _sb
         .from('Match')
         .select()
-        .or('status.eq.finished,status.eq.ft,status.eq.completed,status.eq.FT')
-        .order('kickoffAt', ascending: false);
+        .or(finishedOr)
+        .order('kickoffAt', ascending: false)
+        .limit(limit);
     var list = _mapRows(rows as List);
     if (list.isEmpty) {
       final now = DateTime.now().toUtc();
-      final all = await _fetchAll();
+      final all = await _fetchAll(limit: limit);
       list = all
           .where((m) => m.startTime.add(const Duration(minutes: 110)).isBefore(now))
           .toList()
@@ -83,6 +117,16 @@ class ScoresRepository {
     }
     return list;
   }
+
+  Future<List<MatchModel>> _fetchAll({int limit = kMaxMatchesPerFetch}) async {
+    final rows =
+        await _sb.from('Match').select().order('kickoffAt').limit(limit);
+    return _mapRows(rows as List);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Leagues / teams
+  // ─────────────────────────────────────────────────────────────────────────
 
   Future<List<String>> listLeagues({String? sportSlug}) async {
     final rows = await _sb
@@ -112,44 +156,53 @@ class ScoresRepository {
     return [for (final r in rows as List) Map<String, dynamic>.from(r as Map)];
   }
 
-  /// Standings from admin-finished matches only (homeScore/awayScore set).
-  Future<List<StandingRow>> getStandings({required String league}) async {
+  // ─────────────────────────────────────────────────────────────────────────
+  // Standings
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Standings computed from admin-finished matches only.
+  ///
+  /// Sport-aware:
+  ///   * football / hockey / rugby → 3 pts/win, 1 pt/draw, draws column shown.
+  ///   * basketball / tennis / volleyball / … → 2 pts/win, 0 pts/draw, draws
+  ///     always 0 (no draws column meaningful).
+  ///
+  /// `league` is matched EXACTLY against the `league` column (case-insensitive
+  /// `.ilike()` with no wildcards). The previous fuzzy `.contains()` logic
+  /// matched "Premier" to "Premiership" and other false positives.
+  Future<List<StandingRow>> getStandings({
+    required String league,
+    String sportSlug = 'football',
+  }) async {
     final rows = await _sb.from('Match').select(
         'homeTeam,awayTeam,homeScore,awayScore,status,homeBadge,awayBadge,league');
 
     final stats = <String, _Acc>{};
     final logos = <String, String>{};
+    final hasDraws = sportHasDraws(sportSlug);
+    final winPts = winPointsForSport(sportSlug);
+    final drawPts = drawPointsForSport(sportSlug);
+    final leagueLower = league.toLowerCase().trim();
 
     for (final raw in rows as List) {
       final r = Map<String, dynamic>.from(raw as Map);
-      final leagueName = (r['league'] as String?) ?? '';
-      if (league.isNotEmpty &&
-          !leagueName.toLowerCase().contains(league.toLowerCase()) &&
-          !league.toLowerCase().contains(leagueName.toLowerCase())) {
-        // Allow NBC Premier League ↔ Ligi Kuu Bara alias
-        final aliases = {
-          'nbc premier league': 'ligi kuu bara',
-          'ligi kuu bara': 'nbc premier league',
-        };
-        final a = league.toLowerCase();
-        final b = leagueName.toLowerCase();
-        final ok = aliases[a] == b || aliases[b] == a;
-        if (!ok) continue;
-      }
+      final leagueName = ((r['league'] as String?) ?? '').toLowerCase().trim();
+
+      // Exact (case-insensitive) match on league name.
+      if (leagueLower.isNotEmpty && leagueName != leagueLower) continue;
+
       final status = ((r['status'] as String?) ?? '').toLowerCase();
+      if (!kFinishedStatuses.contains(status)) continue;
+
       final hs = r['homeScore'];
       final ascore = r['awayScore'];
       if (hs == null || ascore == null) continue;
-      if (!(status == 'finished' ||
-          status == 'ft' ||
-          status == 'completed' ||
-          status == 'full_time')) {
-        continue;
-      }
+
       final home = (r['homeTeam'] as String?) ?? 'Home';
       final away = (r['awayTeam'] as String?) ?? 'Away';
       final h = (hs as num).toInt();
       final a = (ascore as num).toInt();
+
       stats.putIfAbsent(home, _Acc.new);
       stats.putIfAbsent(away, _Acc.new);
       final hb = (r['homeBadge'] as String?) ?? '';
@@ -166,16 +219,20 @@ class ScoresRepository {
       if (h > a) {
         stats[home]!.won++;
         stats[away]!.lost++;
-        stats[home]!.pts += 3;
+        stats[home]!.pts += winPts;
       } else if (h < a) {
         stats[away]!.won++;
         stats[home]!.lost++;
-        stats[away]!.pts += 3;
-      } else {
+        stats[away]!.pts += winPts;
+      } else if (hasDraws) {
         stats[home]!.drawn++;
         stats[away]!.drawn++;
-        stats[home]!.pts++;
-        stats[away]!.pts++;
+        stats[home]!.pts += drawPts;
+        stats[away]!.pts += drawPts;
+      } else {
+        // Sport without draws — shouldn't happen, but be safe.
+        stats[home]!.drawn++;
+        stats[away]!.drawn++;
       }
     }
 
@@ -203,10 +260,9 @@ class ScoresRepository {
     return list;
   }
 
-  Future<List<MatchModel>> _fetchAll() async {
-    final rows = await _sb.from('Match').select().order('kickoffAt');
-    return _mapRows(rows as List);
-  }
+  // ─────────────────────────────────────────────────────────────────────────
+  // Row mapping
+  // ─────────────────────────────────────────────────────────────────────────
 
   List<MatchModel> _mapRows(List rows) => [
         for (final r in rows) _fromRow(Map<String, dynamic>.from(r as Map)),
@@ -221,28 +277,37 @@ class ScoresRepository {
     final kick =
         DateTime.tryParse((r['kickoffAt'] as String?) ?? '')?.toLocal() ??
             DateTime.now();
-    final isLive = statusRaw == 'live' ||
-        statusRaw == 'in_play' ||
-        statusRaw == 'ht' ||
-        statusRaw == '1h' ||
-        statusRaw == '2h';
-    var score = '-';
-    if (homeScore != null && awayScore != null) {
-      score = '$homeScore-$awayScore';
-    }
-    late final String status;
+    final venue = (r['venue'] as String?)?.trim() ?? '';
+    final minute = r['minute'] is num ? (r['minute'] as num).toInt() : null;
+    final postId = (r['postId'] as String?)?.trim();
+    final sportSlug =
+        ((r['sport_slug'] as String?) ?? (r['sportSlug'] as String?) ?? 'football')
+            .trim();
+
+    // Unify the "is live" decision across the entire feature.
+    final isLive = kLiveStatuses.contains(statusRaw);
+
+    // One formatter, used everywhere — never two divergent ones.
+    final score = formatScore(
+      homeScore is num ? homeScore.toInt() : null,
+      awayScore is num ? awayScore.toInt() : null,
+    );
+
+    // Status badge text — keep showing the actual status, do NOT override it
+    // with a synthetic "LIVE" pill (the [isLive] flag handles that on the UI
+    // side). Round info comes from `events` (a jsonb list per schema, but some
+    // legacy rows still write a Map).
+    final String status;
     if (isLive) {
-      final min = r['minute'];
-      status = min != null ? "$min'" : 'LIVE';
-    } else if (statusRaw == 'finished' ||
-        statusRaw == 'ft' ||
-        statusRaw == 'completed') {
+      status = minute != null ? "$minute'" : 'LIVE';
+    } else if (kFinishedStatuses.contains(statusRaw)) {
       status = 'FT';
-    } else if (r['events'] is Map && (r['events'] as Map)['round'] != null) {
-      status = 'R${(r['events'] as Map)['round']}';
+    } else if (_extractRound(r['events']) != null) {
+      status = 'R${_extractRound(r['events'])}';
     } else {
-      status = statusRaw;
+      status = statusRaw.isEmpty ? 'scheduled' : statusRaw;
     }
+
     final league = (r['league'] as String?) ?? 'League';
     final homeLogo = (r['homeBadge'] as String?)?.trim();
     final awayLogo = (r['awayBadge'] as String?)?.trim();
@@ -262,8 +327,49 @@ class ScoresRepository {
       status: status,
       startTime: kick,
       isLive: isLive,
+      sportSlug: sportSlug.isEmpty ? 'football' : sportSlug,
+      venue: venue,
+      postId: (postId != null && postId.isNotEmpty) ? postId : null,
+      minute: minute,
     );
   }
+
+  /// `events` is jsonb. Schema default is `'[]'` (a List), but some legacy
+  /// writers may still push a Map. Handle both — return the first integer-like
+  /// `round` value found, or null.
+  static int? _extractRound(Object? events) {
+    if (events == null) return null;
+    try {
+      if (events is Map) {
+        final round = events['round'];
+        if (round is num) return round.toInt();
+        if (round is String) return int.tryParse(round);
+        return null;
+      }
+      if (events is List) {
+        for (final e in events) {
+          if (e is Map) {
+            final round = e['round'];
+            if (round is num) return round.toInt();
+            if (round is String) return int.tryParse(round);
+          }
+        }
+      }
+      // Fallback: events stored as a JSON string.
+      if (events is String && events.isNotEmpty) {
+        final decoded = jsonDecode(events);
+        if (decoded is Map) return _extractRound(decoded);
+        if (decoded is List) return _extractRound(decoded);
+      }
+    } catch (_) {
+      // Malformed jsonb — never throw inside the row mapper.
+    }
+    return null;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Admin mutations
+  // ─────────────────────────────────────────────────────────────────────────
 
   /// Admin: set final score and mark finished.
   Future<void> updateMatchResult({
@@ -293,20 +399,22 @@ class ScoresRepository {
     if (homeScore != null) patch['homeScore'] = homeScore;
     if (awayScore != null) patch['awayScore'] = awayScore;
     if (status != null) patch['status'] = status;
-    if (minute != null) {
-      try {
-        patch['minute'] = minute;
-      } catch (_) {}
-    }
+    if (minute != null) patch['minute'] = minute;
     await _sb.from('Match').update(patch).eq('id', matchId);
   }
 
-  Future<List<Map<String, dynamic>>> listMatchesForAdmin({int limit = 40}) async {
+  /// Admin: paginated list of matches for the live-control sheet.
+  ///
+  /// `offset` is 0-based; the query selects a window of `[offset, offset+limit)`.
+  Future<List<Map<String, dynamic>>> listMatchesForAdmin({
+    int limit = 40,
+    int offset = 0,
+  }) async {
     final rows = await _sb
         .from('Match')
         .select('id,homeTeam,awayTeam,homeScore,awayScore,status,kickoffAt,minute')
         .order('kickoffAt', ascending: false)
-        .limit(limit);
+        .range(offset, offset + limit - 1);
     return [for (final r in rows as List) Map<String, dynamic>.from(r as Map)];
   }
 

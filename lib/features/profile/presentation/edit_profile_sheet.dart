@@ -12,6 +12,7 @@ import '../../../core/utils/form_validators.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../../core/utils/friendly_error.dart';
+import '../../admin/admin_repository.dart';
 
 Future<void> showEditProfileSheet(BuildContext context, UserProfile user) {
   return showModalBottomSheet<void>(
@@ -531,6 +532,375 @@ Future<void> showChangePasswordDialog(BuildContext context, WidgetRef ref) async
   if (context.mounted) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(updated ? 'Password updated' : 'Unable to update password')),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ENTITY EDIT SHEET  —  admin-only editor for Team / Competition / Player / Coach
+// (Issue #5.7 — pre-fills fields from a data map, calls AdminRepository.updateX)
+// ══════════════════════════════════════════════════════════════════════════════
+
+/// Supported entity types for [EntityEditSheet].
+enum EntityType { team, competition, player, coach }
+
+extension EntityTypeX on EntityType {
+  String get label {
+    switch (this) {
+      case EntityType.team: return 'Team';
+      case EntityType.competition: return 'Competition';
+      case EntityType.player: return 'Player';
+      case EntityType.coach: return 'Coach';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case EntityType.team: return Icons.groups_rounded;
+      case EntityType.competition: return Icons.emoji_events_rounded;
+      case EntityType.player: return Icons.person_rounded;
+      case EntityType.coach: return Icons.sports_rounded;
+    }
+  }
+}
+
+/// Convenience helper used by profile screens and admin dashboard.
+/// Pops the sheet and returns `true` when the entity was saved successfully.
+Future<bool> showEntityEditSheet(
+  BuildContext context, {
+  required EntityType entityType,
+  required String entityId,
+  required Map<String, dynamic> initialData,
+}) async {
+  final saved = await showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: GrassForm.sheetBg,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) => EntityEditSheet(
+      entityType: entityType,
+      entityId: entityId,
+      initialData: initialData,
+    ),
+  );
+  return saved ?? false;
+}
+
+class EntityEditSheet extends StatefulWidget {
+  final EntityType entityType;
+  final String entityId;
+  final Map<String, dynamic> initialData;
+
+  const EntityEditSheet({
+    super.key,
+    required this.entityType,
+    required this.entityId,
+    required this.initialData,
+  });
+
+  @override
+  State<EntityEditSheet> createState() => _EntityEditSheetState();
+}
+
+class _EntityEditSheetState extends State<EntityEditSheet> {
+  final _repo = AdminRepository();
+  final _social = SocialRepository();
+  final _picker = ImagePicker();
+  bool _saving = false;
+
+  // Controllers per field — only the ones needed by the active entity type
+  // are populated, the rest stay empty.
+  late final TextEditingController _name;
+  late final TextEditingController _shortName;
+  late final TextEditingController _logoUrl;
+  late final TextEditingController _primaryColor;
+  late final TextEditingController _country;
+  late final TextEditingController _venue;
+  late final TextEditingController _season;
+  late final TextEditingController _sportSlug;
+  late final TextEditingController _position;
+  late final TextEditingController _nationality;
+  late final TextEditingController _photoUrl;
+  late final TextEditingController _shirtNumber;
+  late final TextEditingController _role;
+  late final TextEditingController _teamId;
+
+  DateTime? _dateOfBirth;
+
+  @override
+  void initState() {
+    super.initState();
+    final d = widget.initialData;
+    _name = TextEditingController(text: _asString(d['name']));
+    _shortName = TextEditingController(text: _asString(d['shortName']));
+    _logoUrl = TextEditingController(text: _asString(d['logoUrl'] ?? d['logo_url']));
+    _primaryColor = TextEditingController(
+        text: _asString(d['primaryColor']));
+    _country = TextEditingController(text: _asString(d['country']));
+    _venue = TextEditingController(text: _asString(d['venue']));
+    _season = TextEditingController(text: _asString(d['season']));
+    _sportSlug = TextEditingController(text: _asString(d['sportSlug'] ?? d['sport_slug']));
+    _position = TextEditingController(text: _asString(d['position']));
+    _nationality = TextEditingController(text: _asString(d['nationality']));
+    _photoUrl = TextEditingController(text: _asString(d['photoUrl'] ?? d['photo_url']));
+    _shirtNumber = TextEditingController(text: _asString(d['shirtNumber']));
+    _role = TextEditingController(text: _asString(d['role']));
+    _teamId = TextEditingController(text: _asString(d['teamId'] ?? d['team_id']));
+    final dobRaw = d['dateOfBirth'] ?? d['date_of_birth'];
+    if (dobRaw is String && dobRaw.isNotEmpty) {
+      _dateOfBirth = DateTime.tryParse(dobRaw);
+    }
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _shortName.dispose();
+    _logoUrl.dispose();
+    _primaryColor.dispose();
+    _country.dispose();
+    _venue.dispose();
+    _season.dispose();
+    _sportSlug.dispose();
+    _position.dispose();
+    _nationality.dispose();
+    _photoUrl.dispose();
+    _shirtNumber.dispose();
+    _role.dispose();
+    _teamId.dispose();
+    super.dispose();
+  }
+
+  String _asString(dynamic v) => v == null ? '' : v.toString();
+
+  Future<void> _pickImage(TextEditingController target, {String folder = 'admin'}) async {
+    final f = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    if (f == null) return;
+    setState(() => _saving = true);
+    try {
+      final url = await _social.uploadPickedFile(bucket: 'media', folder: folder, file: f);
+      setState(() => target.text = url);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(friendlyError(e))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      switch (widget.entityType) {
+        case EntityType.team:
+          await _repo.updateTeam(
+            id: widget.entityId,
+            name: _name.text.trim().isEmpty ? null : _name.text.trim(),
+            shortName: _shortName.text.trim().isEmpty ? null : _shortName.text.trim(),
+            logoUrl: _logoUrl.text.trim().isEmpty ? null : _logoUrl.text.trim(),
+            primaryColor: _primaryColor.text.trim().isEmpty ? null : _primaryColor.text.trim(),
+            country: _country.text.trim().isEmpty ? null : _country.text.trim(),
+            venue: _venue.text.trim().isEmpty ? null : _venue.text.trim(),
+            leagueId: _teamId.text.trim().isEmpty ? null : _teamId.text.trim(),
+          );
+          break;
+        case EntityType.competition:
+          await _repo.updateCompetition(
+            id: widget.entityId,
+            name: _name.text.trim().isEmpty ? null : _name.text.trim(),
+            logoUrl: _logoUrl.text.trim().isEmpty ? null : _logoUrl.text.trim(),
+            season: _season.text.trim().isEmpty ? null : _season.text.trim(),
+            sportSlug: _sportSlug.text.trim().isEmpty ? null : _sportSlug.text.trim(),
+          );
+          break;
+        case EntityType.player:
+          await _repo.updatePlayer(
+            id: widget.entityId,
+            name: _name.text.trim().isEmpty ? null : _name.text.trim(),
+            position: _position.text.trim().isEmpty ? null : _position.text.trim(),
+            nationality: _nationality.text.trim().isEmpty ? null : _nationality.text.trim(),
+            dateOfBirth: _dateOfBirth,
+            photoUrl: _photoUrl.text.trim().isEmpty ? null : _photoUrl.text.trim(),
+            teamId: _teamId.text.trim().isEmpty ? null : _teamId.text.trim(),
+            shirtNumber: int.tryParse(_shirtNumber.text.trim()),
+          );
+          break;
+        case EntityType.coach:
+          await _repo.updateCoach(
+            id: widget.entityId,
+            name: _name.text.trim().isEmpty ? null : _name.text.trim(),
+            nationality: _nationality.text.trim().isEmpty ? null : _nationality.text.trim(),
+            role: _role.text.trim().isEmpty ? null : _role.text.trim(),
+            teamId: _teamId.text.trim().isEmpty ? null : _teamId.text.trim(),
+            photoUrl: _photoUrl.text.trim().isEmpty ? null : _photoUrl.text.trim(),
+          );
+          break;
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${widget.entityType.label} updated')),
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(friendlyError(e))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 16,
+        bottom: MediaQuery.viewInsetsOf(context).bottom + 24,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            GrassFormHeader(
+              title: 'Edit ${widget.entityType.label}',
+              subtitle: 'Admin-only — update entity record',
+              icon: widget.entityType.icon,
+            ),
+            const SizedBox(height: 14),
+            ..._fieldsForType(),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _saving ? null : _save,
+                style: FilledButton.styleFrom(
+                  backgroundColor: GrassForm.greenBright,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: Text(_saving ? 'Saving…' : 'Save'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _fieldsForType() {
+    switch (widget.entityType) {
+      case EntityType.team:
+        return [
+          GrassTextField(controller: _name, label: 'Name *'),
+          GrassTextField(controller: _shortName, label: 'Short name (e.g. SIM, YAN)'),
+          GrassTextField(controller: _primaryColor, label: 'Primary color (e.g. #E31B23)'),
+          GrassTextField(controller: _country, label: 'Country'),
+          GrassTextField(controller: _venue, label: 'Stadium / Venue'),
+          GrassTextField(controller: _teamId, label: 'League / Competition ID'),
+          _UploadRow(controller: _logoUrl, label: 'Upload logo', onTap: () => _pickImage(_logoUrl, folder: 'logos')),
+        ];
+
+      case EntityType.competition:
+        return [
+          GrassTextField(controller: _name, label: 'Competition Name *'),
+          GrassTextField(controller: _season, label: 'Season (e.g. 2026/27)'),
+          GrassTextField(controller: _sportSlug, label: 'Sport slug (e.g. football)'),
+          _UploadRow(controller: _logoUrl, label: 'Upload logo', onTap: () => _pickImage(_logoUrl, folder: 'logos')),
+        ];
+
+      case EntityType.player:
+        return [
+          GrassTextField(controller: _name, label: 'Display name *'),
+          GrassTextField(controller: _position, label: 'Position (e.g. Forward)'),
+          GrassTextField(controller: _nationality, label: 'Nationality'),
+          GrassTextField(controller: _shirtNumber, label: 'Shirt #', keyboardType: TextInputType.number),
+          GrassTextField(controller: _teamId, label: 'Team ID'),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              _dateOfBirth == null
+                  ? 'Date of birth (optional)'
+                  : 'DOB: ${_dateOfBirth!.year}-${_dateOfBirth!.month.toString().padLeft(2, '0')}-${_dateOfBirth!.day.toString().padLeft(2, '0')}',
+              style: TextStyle(
+                color: _dateOfBirth == null ? SportSphereColors.muted : SportSphereColors.white,
+                fontSize: 13,
+              ),
+            ),
+            trailing: const Icon(Icons.calendar_today_rounded,
+                color: SportSphereColors.electricBlue, size: 18),
+            onTap: () async {
+              final d = await showDatePicker(
+                context: context,
+                initialDate: _dateOfBirth ?? DateTime(1998, 1, 1),
+                firstDate: DateTime(1950),
+                lastDate: DateTime.now(),
+              );
+              if (d != null) setState(() => _dateOfBirth = d);
+            },
+          ),
+          _UploadRow(controller: _photoUrl, label: 'Upload photo', onTap: () => _pickImage(_photoUrl, folder: 'players')),
+        ];
+
+      case EntityType.coach:
+        return [
+          GrassTextField(controller: _name, label: 'Display name *'),
+          GrassTextField(controller: _nationality, label: 'Nationality'),
+          GrassTextField(controller: _role, label: 'Role (e.g. head_coach)'),
+          GrassTextField(controller: _teamId, label: 'Team ID'),
+          _UploadRow(controller: _photoUrl, label: 'Upload photo', onTap: () => _pickImage(_photoUrl, folder: 'coaches')),
+        ];
+    }
+  }
+}
+
+/// Small helper row that previews a stored URL and offers an upload button.
+class _UploadRow extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final VoidCallback onTap;
+  const _UploadRow({
+    required this.controller,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: GrassTextField(controller: controller, label: 'Media URL'),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton.icon(
+            onPressed: onTap,
+            icon: const Icon(Icons.upload_rounded, size: 16),
+            label: Text(label, style: const TextStyle(fontSize: 12)),
+          ),
+        ],
+      ),
     );
   }
 }

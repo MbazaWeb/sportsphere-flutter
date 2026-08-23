@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/admin/app_admin.dart';
+import '../../../../core/branding.dart';
+import '../../../../core/data/social_graph.dart';
 import '../../../../core/theme/colors.dart';
 import '../../presentation/edit_profile_sheet.dart';
 import '../../presentation/become_pro_sheet.dart';
@@ -34,6 +37,8 @@ class FanProfileModel {
     this.coverAsset,
     this.isVerified = false,
     this.isOwnProfile = false,
+    this.isAdmin = false,
+    this.role = 'fan',
   });
 
   final String firstName;
@@ -53,6 +58,14 @@ class FanProfileModel {
   final String? coverAsset;
   final bool isVerified;
   final bool isOwnProfile;
+
+  /// True when this account is an app administrator (role admin/official/
+  /// organization/moderator, or matches an admin email). Consumers use this
+  /// to role-gate UI like the "Become PRO" button (#3.3).
+  final bool isAdmin;
+
+  /// Raw role string from the DB ('fan' | 'player' | 'admin' | 'official' | …).
+  final String role;
 
   String get displayName => '$firstName $lastName';
   String get atHandle => '@$handle';
@@ -85,12 +98,65 @@ class _FanProfileViewState extends State<FanProfileView>
     with SingleTickerProviderStateMixin {
   late TabController _tabCtrl;
   bool _following = false;
+  bool _followBusy = false;
 
   @override
   void initState() {
     super.initState();
     _tabCtrl = TabController(length: 2, vsync: this);
     _tabCtrl.addListener(() => setState(() {}));
+    // Seed the follow toggle from the server (#7.1): we don't want the UI
+    // showing "Follow" when the user already follows the target.
+    if (!widget.profile.isOwnProfile) {
+      _seedFollowState();
+    }
+  }
+
+  Future<void> _seedFollowState() async {
+    try {
+      final me = Supabase.instance.client.auth.currentUser?.id;
+      if (me == null) return;
+      final targetHandle =
+          widget.profile.handle.replaceAll('@', '').trim();
+      final graph = SocialGraph();
+      final targetId = await graph.resolveId(targetHandle);
+      if (targetId == null) return;
+      final ok = await graph.isFollowing(me, targetId);
+      if (mounted) setState(() => _following = ok);
+    } catch (e) {
+      debugPrint('[FanProfile] _seedFollowState error: $e');
+    }
+  }
+
+  /// Toggle follow state — persists to Supabase via SocialGraph, then updates
+  /// UI locally. Wrapped in try/catch so a network failure doesn't leave the
+  /// button in a flipped state. (#7.1)
+  Future<void> _toggleFollow() async {
+    if (_followBusy) return;
+    HapticFeedback.lightImpact();
+    final wasFollowing = _following;
+    setState(() {
+      _followBusy = true;
+      _following = !wasFollowing;
+    });
+    try {
+      final me = Supabase.instance.client.auth.currentUser?.id;
+      if (me == null) {
+        // Not signed in — revert UI and bail.
+        if (mounted) setState(() => _following = wasFollowing);
+        return;
+      }
+      final graph = SocialGraph();
+      final targetId = await graph.resolveId(
+          widget.profile.handle.replaceAll('@', '').trim());
+      if (targetId == null) throw StateError('profile not found');
+      await graph.follow(targetId, on: !wasFollowing);
+    } catch (e) {
+      debugPrint('[FanProfile] _toggleFollow error: $e');
+      if (mounted) setState(() => _following = wasFollowing);
+    } finally {
+      if (mounted) setState(() => _followBusy = false);
+    }
   }
 
   @override
@@ -111,10 +177,8 @@ class _FanProfileViewState extends State<FanProfileView>
             child: _ProfileHeader(
               profile: p,
               following: _following,
-              onFollow: () {
-                HapticFeedback.lightImpact();
-                setState(() => _following = !_following);
-              },
+              followBusy: _followBusy,
+              onFollow: _toggleFollow,
               onBack: () => Navigator.of(context).maybePop(),
               onMore: () => _showMoreSheet(context),
               onInfo: () => _tabCtrl.animateTo(1),
@@ -154,7 +218,8 @@ class _FanProfileViewState extends State<FanProfileView>
 class _ProfileHeader extends StatelessWidget {
   final FanProfileModel profile;
   final bool following;
-  final VoidCallback onFollow;
+  final bool followBusy;
+  final Future<void> Function() onFollow;
   final VoidCallback onBack;
   final VoidCallback onMore;
   final VoidCallback onInfo;
@@ -166,6 +231,7 @@ class _ProfileHeader extends StatelessWidget {
     required this.onBack,
     required this.onMore,
     required this.onInfo,
+    this.followBusy = false,
   });
 
   @override
@@ -349,6 +415,7 @@ class _ProfileHeader extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
             child: _ActionButtons(
               following: following,
+              followBusy: followBusy,
               onFollow: onFollow,
               fanOfAccent: profile.fanOfAccent,
             ),
@@ -358,7 +425,10 @@ class _ProfileHeader extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
             child: _EditProfileButton(),
           ),
-        if (profile.isOwnProfile)
+        // Hide "Become PRO" for admin / official / org / moderator accounts
+        // (#3.1): they already have privileged roles and should not be able
+        // to submit a PRO request to themselves.
+        if (profile.isOwnProfile && !profile.isAdmin)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
             child: _BecomeProButton(),
@@ -560,12 +630,14 @@ class _Divider extends StatelessWidget {
 
 class _ActionButtons extends StatelessWidget {
   final bool following;
-  final VoidCallback onFollow;
+  final bool followBusy;
+  final Future<void> Function() onFollow;
   final Color fanOfAccent;
   const _ActionButtons({
     required this.following,
     required this.onFollow,
     required this.fanOfAccent,
+    this.followBusy = false,
   });
 
   @override
@@ -574,7 +646,7 @@ class _ActionButtons extends StatelessWidget {
       children: [
         Expanded(
           child: GestureDetector(
-            onTap: onFollow,
+            onTap: followBusy ? null : () => onFollow(),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 220),
               height: 40,
@@ -608,16 +680,25 @@ class _ActionButtons extends StatelessWidget {
                       ],
               ),
               child: Center(
-                child: Text(
-                  following ? 'Following' : 'Follow',
-                  style: TextStyle(
-                    color: following
-                        ? SportSphereColors.muted
-                        : Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                child: followBusy
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        following ? 'Following' : 'Follow',
+                        style: TextStyle(
+                          color: following
+                              ? SportSphereColors.muted
+                              : Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
               ),
             ),
           ),
@@ -802,38 +883,45 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
       final handle = widget.profile.handle.replaceAll('@', '').trim();
       final ids = <String>{};
 
-      // Resolve every possible author id for this handle
-      try {
-        final userRow = await Supabase.instance.client
-            .from('User')
-            .select('id')
-            .eq('handle', handle)
-            .maybeSingle();
-        final id = userRow?['id']?.toString();
-        if (id != null && id.isNotEmpty) ids.add(id);
-      } catch (_) {}
-
-      try {
-        final profileRow = await Supabase.instance.client
-            .from('profiles')
-            .select('id')
-            .eq('handle', handle)
-            .maybeSingle();
-        final id = profileRow?['id']?.toString();
-        if (id != null && id.isNotEmpty) ids.add(id);
-      } catch (_) {}
-
-      // Own profile: also include auth uid (createPost uses auth.currentUser.id)
-      if (widget.profile.isOwnProfile) {
-        final authId = Supabase.instance.client.auth.currentUser?.id;
-        if (authId != null) ids.add(authId);
+      // Resolve every possible author id for this handle.
+      //
+      // For the official Playify account (#4.4) we additionally gather the
+      // user ids behind ALL legacy handles in `kOfficialLegacyHandles` —
+      // posts were reassigned to the canonical uid by migration
+      // 20260824010000_fix_all_remaining_db_issues.sql, but legacy rows in
+      // `User` may still exist on stale environments, and viewing e.g.
+      // @sportsphere_official should still show the unified feed.
+      final isOfficialView = isOfficialHandle(handle);
+      final handlesToLookup = <String>{handle};
+      if (isOfficialView) {
+        handlesToLookup.addAll(kOfficialLegacyHandles);
       }
 
-      // Official SportSphere account: try known handles + current admin session
-      final h = handle.toLowerCase();
-      if (h == 'sportsphere' ||
-          h == 'sportsphere_official' ||
-          h == 'sportsphere_app') {
+      for (final h in handlesToLookup) {
+        try {
+          final userRows = await Supabase.instance.client
+              .from('User')
+              .select('id')
+              .ilike('handle', h);
+          for (final r in userRows as List) {
+            final id = (r as Map)['id']?.toString();
+            if (id != null && id.isNotEmpty) ids.add(id);
+          }
+        } catch (_) {}
+        try {
+          final profileRows = await Supabase.instance.client
+              .from('profiles')
+              .select('id')
+              .ilike('handle', h);
+          for (final r in profileRows as List) {
+            final id = (r as Map)['id']?.toString();
+            if (id != null && id.isNotEmpty) ids.add(id);
+          }
+        } catch (_) {}
+      }
+
+      // Own profile: also include auth uid (createPost uses auth.currentUser.id)
+      if (widget.profile.isOwnProfile || isOfficialView) {
         final authId = Supabase.instance.client.auth.currentUser?.id;
         if (authId != null) ids.add(authId);
       }
@@ -937,12 +1025,58 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
           final comments = (p['commentCount'] as int?) ?? 0;
           final createdAt = DateTime.tryParse(p['createdAt'] ?? '');
           final timeAgo = createdAt != null ? _formatAgo(createdAt) : '';
-          // mediaUrls is stored as jsonb array in Post table
+          // mediaUrls is stored as jsonb array in Post table.
+          // (#2.1) We pass the FULL list of URLs through to ProfilePostCard
+          // instead of just `hasImage` / `imageCount` flags — the previous
+          // implementation dropped the URLs and ProfilePostCard could never
+          // actually render the user's media.
           List<String> mediaUrls = [];
           try {
             final raw = p['mediaUrls'];
-            if (raw is List) mediaUrls = raw.map((e) => e.toString()).toList();
+            if (raw is List) {
+              mediaUrls = raw
+                  .map((e) => e.toString())
+                  .where((s) => s.isNotEmpty)
+                  .toList();
+            } else if (raw is String && raw.isNotEmpty) {
+              // Some legacy rows store a comma-separated string.
+              mediaUrls = raw
+                  .split(',')
+                  .map((s) => s.trim())
+                  .where((s) => s.isNotEmpty)
+                  .toList();
+            }
           } catch (_) {}
+
+          // Older rows may carry a single `imageUrl` / `videoUrl` column
+          // instead of the array — fold those in.
+          try {
+            final singleImage = p['imageUrl']?.toString();
+            if (singleImage != null &&
+                singleImage.isNotEmpty &&
+                !mediaUrls.contains(singleImage)) {
+              mediaUrls.insert(0, singleImage);
+            }
+            final singleVideo = p['videoUrl']?.toString();
+            if (singleVideo != null &&
+                singleVideo.isNotEmpty &&
+                !mediaUrls.contains(singleVideo)) {
+              mediaUrls.add(singleVideo);
+            }
+          } catch (_) {}
+
+          // If row has no media URLs, force text-only (skip media section).
+          // If the post is explicitly typed 'video' or 'media' with URLs,
+          // surface that as a hint; otherwise leave null and let
+          // ProfilePost.effectiveMediaType infer from URL extensions.
+          final ProfileMediaType? mediaType;
+          if (mediaUrls.isEmpty) {
+            mediaType = ProfileMediaType.text;
+          } else if (type == 'video') {
+            mediaType = ProfileMediaType.video;
+          } else {
+            mediaType = null;
+          }
 
           return ProfilePostCard(
             post: ProfilePost(
@@ -952,8 +1086,8 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
               likes: likes,
               comments: comments,
               shares: (p['shareCount'] as int?) ?? 0,
-              hasImage: mediaUrls.isNotEmpty || type == 'media',
-              imageCount: mediaUrls.length,
+              mediaUrls: mediaUrls,
+              mediaType: mediaType,
             ),
             authorName: widget.profile.displayName,
             authorHandle: widget.profile.atHandle,
