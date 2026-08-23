@@ -129,6 +129,7 @@ class _SpotlightItem {
   final String? predAway;
   final int? predHomeScore;
   final int? predAwayScore;
+  final String? myPrediction;  // "homeScore-awayScore" if current user already predicted
 
   const _SpotlightItem({
     required this.type,
@@ -153,6 +154,7 @@ class _SpotlightItem {
     this.predAway,
     this.predHomeScore,
     this.predAwayScore,
+    this.myPrediction,
   });
 
   String get profilePath {
@@ -456,6 +458,24 @@ class _SportlightsTabState extends State<SportlightsTab> {
               predHs = pred['predictedHome'] as int?;
               predAs = pred['predictedAway'] as int?;
             }
+            // Load current user's prediction for this post
+            final me2 = Supabase.instance.client.auth.currentUser?.id;
+            if (me2 != null) {
+              try {
+                final myPred = await Supabase.instance.client
+                    .from('Prediction')
+                    .select('predictedHome, predictedAway')
+                    .eq('postId', r['id'])
+                    .eq('userId', me2)
+                    .maybeSingle();
+                if (myPred != null) {
+                  final ph = myPred['predictedHome'];
+                  final pa = myPred['predictedAway'];
+                  predHs ??= ph as int?;
+                  predAs ??= pa as int?;
+                }
+              } catch (_) {}
+            }
           } catch (e) {
             debugPrint('prediction load: $e');
           }
@@ -486,6 +506,9 @@ class _SportlightsTabState extends State<SportlightsTab> {
           predAway: predAway,
           predHomeScore: predHs,
           predAwayScore: predAs,
+          myPrediction: (predHs != null && predAs != null &&
+              Supabase.instance.client.auth.currentUser != null)
+              ? '$predHs-$predAs' : null,
         ));
       }
 
@@ -1057,7 +1080,44 @@ class _PollContentState extends State<_PollContent> {
       setState(() => _voted = i);
       return;
     }
-    if (_voted != null || _busy) return;
+    if (_busy) return;
+
+    // If tapping the already-voted option → un-vote
+    if (_voted == i) {
+      setState(() => _busy = true);
+      try {
+        final uid = Supabase.instance.client.auth.currentUser?.id;
+        if (uid != null) {
+          await Supabase.instance.client
+              .from('PollVote')
+              .delete()
+              .eq('pollId', pollId)
+              .eq('userId', uid);
+          // Decrement totalVotes on Poll
+          try {
+            await Supabase.instance.client.rpc('increment_poll_votes', params: {
+              'p_poll_id': pollId,
+              'p_user_id': uid,
+              'p_option_index': -1, // signal removal
+            });
+          } catch (_) {}
+        }
+        final fresh = await _social.pollOptionCounts(pollId);
+        if (mounted) {
+          setState(() {
+            _voted = null;
+            _counts = fresh;
+            _total = fresh.values.fold<int>(0, (a, b) => a + b);
+            _busy = false;
+          });
+        }
+      } catch (e) {
+        if (mounted) setState(() => _busy = false);
+      }
+      return;
+    }
+
+    if (_voted != null) return; // already voted on different option
     setState(() => _busy = true);
     try {
       await _social.votePoll(pollId, i);
@@ -1123,7 +1183,7 @@ class _PollContentState extends State<_PollContent> {
               percentage: pct[i],
               voted: _voted == i,
               revealed: _voted != null,
-              onTap: _voted == null && !_busy ? () => _onVote(i) : null,
+              onTap: !_busy ? () => _onVote(i) : null,
             ),
             if (i < options.length - 1) const SizedBox(height: 10),
           ],
@@ -1299,6 +1359,24 @@ class _PredictionContent extends StatelessWidget {
               ),
             ),
           ),
+          if (item.myPrediction != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF7FD820).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFF7FD820).withValues(alpha: 0.4)),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.check_circle_rounded, color: Color(0xFF7FD820), size: 14),
+                const SizedBox(width: 6),
+                Text('You predicted ${item.myPrediction!.replaceAll('-', ' - ')}',
+                    style: const TextStyle(color: Color(0xFF7FD820),
+                        fontSize: 12, fontWeight: FontWeight.w600)),
+              ]),
+            ),
+          ],
         ],
       ),
     );
