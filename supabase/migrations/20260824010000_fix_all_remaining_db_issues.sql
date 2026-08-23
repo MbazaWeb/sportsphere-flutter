@@ -420,6 +420,12 @@ create policy "VerificationRequest_auth_insert" on public."VerificationRequest"
   with check (auth.uid()::text = "userId");
 
 -- 6d. #9.17 — Follow self-follow CHECK (PascalCase table)
+-- First delete any existing self-follow rows (where followerId = followingId),
+-- otherwise the CHECK constraint will fail to add. These rows are always bugs
+-- (a user cannot meaningfully follow themselves) so deleting them is safe.
+delete from public."Follow"
+where "followerId" = "followingId";
+
 do $$
 begin
   if not exists (
