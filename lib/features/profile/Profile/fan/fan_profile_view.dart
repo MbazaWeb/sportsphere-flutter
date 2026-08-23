@@ -1122,15 +1122,14 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
       final handle = widget.profile.handle.replaceAll('@', '').trim();
       final ids = <String>{};
 
-      // Resolve user id from User table by handle
-      try {
-        final rows = await Supabase.instance.client
-            .from('User').select('id').ilike('handle', handle);
-        for (final r in rows as List) {
-          final id = (r as Map)['id']?.toString();
-          if (id != null) ids.add(id);
-        }
-      } catch (_) {}
+      // Always include the current auth uid — Post.userId stores auth UUIDs
+      // For own profile this is definitive; for others we still add it as fallback
+      final authId = Supabase.instance.client.auth.currentUser?.id;
+      if (widget.profile.isOwnProfile && authId != null) {
+        ids.add(authId);
+      }
+
+      // Resolve from profiles table by handle (returns uuid matching Post.userId)
       try {
         final rows = await Supabase.instance.client
             .from('profiles').select('id').ilike('handle', handle);
@@ -1140,11 +1139,15 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
         }
       } catch (_) {}
 
-      // Always include auth uid for own profile
-      if (widget.profile.isOwnProfile) {
-        final authId = Supabase.instance.client.auth.currentUser?.id;
-        if (authId != null) ids.add(authId);
-      }
+      // Resolve from User table by handle (text ids)
+      try {
+        final rows = await Supabase.instance.client
+            .from('User').select('id').ilike('handle', handle);
+        for (final r in rows as List) {
+          final id = (r as Map)['id']?.toString();
+          if (id != null) ids.add(id);
+        }
+      } catch (_) {}
 
       if (ids.isEmpty) {
         if (mounted) setState(() => _loading = false);

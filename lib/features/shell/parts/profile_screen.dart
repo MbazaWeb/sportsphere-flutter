@@ -13,6 +13,7 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
   // to other tab state changes). The future is invalidated whenever the
   // resolved handle changes.
   String? _cachedHandle;
+  int _profileVersion = 0; // increments after edit to force re-resolve
   late Future<FanProfileModel> _profileFuture;
 
   Future<FanProfileModel> _resolveFuture() {
@@ -65,8 +66,11 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
 
     // Re-resolve only when the handle changes — this preserves the cached
     // future across unrelated rebuilds (e.g. when other tabs setState).
-    if (_cachedHandle != handle) {
-      _cachedHandle = handle;
+    // Re-resolve when handle, avatar, or bio changes.
+    // refreshProfile() updates user object → new avatarUrl → new cacheKey → fresh future.
+    final cacheKey = '$handle:${user.avatarUrl}:$_profileVersion';
+    if (_cachedHandle != cacheKey) {
+      _cachedHandle = cacheKey;
       _profileFuture = _resolveFuture();
     }
 
@@ -97,7 +101,11 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
                 : user.postCount,
             followerCount: profile.followerCount,
             followingCount: profile.followingCount,
-            avatarAsset: profile.avatarAsset ?? user.avatarUrl ?? 'assets/images/Playify_logo.png',
+            avatarAsset: profile.avatarAsset?.isNotEmpty == true
+                ? profile.avatarAsset
+                : (user.avatarUrl?.isNotEmpty == true
+                    ? user.avatarUrl
+                    : 'assets/images/Playify_logo.png'),
             coverAsset: profile.coverAsset ?? user.coverUrl,
             isVerified: true,
             isOwnProfile: true,
