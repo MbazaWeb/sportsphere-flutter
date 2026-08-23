@@ -612,7 +612,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
           predAwayScore: predAs,
           myPrediction: (predHs != null && predAs != null &&
               Supabase.instance.client.auth.currentUser != null)
-              ? '$predHs-$predAs' : null,
+              ? (predHs! > predAs! ? 'home' : predHs! < predAs! ? 'away' : 'draw') : null,
           predMatchId: predMatchId,
           // ── Match card fields (previously fetched but not passed — fixed) ──
           homeTeam: mHome,
@@ -1565,40 +1565,32 @@ class _PredictionContent extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
           ],
-          const SizedBox(height: 18),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _PredictionTeam(name: home.toUpperCase()),
-              Text(
-                'VS',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.5),
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              _PredictionTeam(name: away.toUpperCase()),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.25),
-              borderRadius: BorderRadius.circular(14),
+          const SizedBox(height: 12),
+          // Team context — small and compact
+          if (home.isNotEmpty && away.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(children: [
+                Expanded(child: Text(home, textAlign: TextAlign.left,
+                    style: const TextStyle(color: Colors.white54, fontSize: 11),
+                    maxLines: 1, overflow: TextOverflow.ellipsis)),
+                const Padding(padding: EdgeInsets.symmetric(horizontal: 6),
+                  child: Text('vs', style: TextStyle(color: Colors.white38, fontSize: 11))),
+                Expanded(child: Text(away, textAlign: TextAlign.right,
+                    style: const TextStyle(color: Colors.white54, fontSize: 11),
+                    maxLines: 1, overflow: TextOverflow.ellipsis)),
+              ]),
             ),
-            child: Text(
-              '$hs  -  $as_',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 4,
-              ),
-            ),
-          ),
+          // HOME | X | AWAY outcome display
+          Row(children: [
+            _OutcomePill(label: 'HOME', active: false),
+            const SizedBox(width: 8),
+            _OutcomePill(label: 'X',   active: false),
+            const SizedBox(width: 8),
+            _OutcomePill(label: 'AWAY', active: false),
+          ]),
+          const SizedBox(height: 14),
           if (item.myPrediction != null) ...[
-            const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
@@ -1609,7 +1601,7 @@ class _PredictionContent extends StatelessWidget {
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 const Icon(Icons.check_circle_rounded, color: Color(0xFF7FD820), size: 14),
                 const SizedBox(width: 6),
-                Text('You predicted ${item.myPrediction!.replaceAll('-', ' - ')}',
+                Text('You predicted ${_outcomeLabel(item.myPrediction!)}',
                     style: const TextStyle(color: Color(0xFF7FD820),
                         fontSize: 12, fontWeight: FontWeight.w600)),
               ]),
@@ -1618,6 +1610,52 @@ class _PredictionContent extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Maps stored outcome value or 'X-Y' score string to display label.
+String _outcomeLabel(String raw) {
+  if (raw == 'home') return 'HOME';
+  if (raw == 'draw') return 'X (Draw)';
+  if (raw == 'away') return 'AWAY';
+  // Legacy 'N-N' format — derive from scores
+  final parts = raw.split('-');
+  if (parts.length == 2) {
+    final h = int.tryParse(parts[0]) ?? 0;
+    final a = int.tryParse(parts[1]) ?? 0;
+    if (h > a) return 'HOME';
+    if (h < a) return 'AWAY';
+    return 'X (Draw)';
+  }
+  return raw.toUpperCase();
+}
+
+class _OutcomePill extends StatelessWidget {
+  final String label;
+  final bool active;
+  final Color? activeColor;
+  const _OutcomePill({required this.label, required this.active, this.activeColor});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = activeColor ?? (label == 'X' ? SportSphereColors.sportOrange : SportSphereColors.sportGreen);
+    return Expanded(child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: BoxDecoration(
+        color: active ? color.withValues(alpha: 0.18) : Colors.black.withValues(alpha: 0.20),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: active ? color : Colors.white.withValues(alpha: 0.10),
+          width: active ? 2 : 1,
+        ),
+      ),
+      child: Text(label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: active ? color : Colors.white.withValues(alpha: 0.45),
+            fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.5,
+          )),
+    ));
   }
 }
 

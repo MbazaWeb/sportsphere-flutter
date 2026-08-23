@@ -177,14 +177,24 @@ class SocialRepository {
     String? matchId,
     String? note,
     String confidence = 'medium',
-    String? outcome,
+    String? outcome, // 'home' | 'draw' | 'away' — derived from scores if null
   }) async {
+    // Always derive canonical outcome from scores — never store team names
+    final derivedOutcome = outcome?.isNotEmpty == true ? outcome!
+        : predictedHome > predictedAway ? 'home'
+        : predictedHome < predictedAway ? 'away'
+        : 'draw';
+
+    // Content uses outcome label, not scores
+    final outcomeLabel = derivedOutcome == 'home' ? 'HOME'
+        : derivedOutcome == 'away' ? 'AWAY' : 'X (Draw)';
     final content = note?.trim().isNotEmpty == true
         ? note!.trim()
-        : 'Prediction: $homeTeam $predictedHome-$predictedAway $awayTeam';
+        : 'I predict $outcomeLabel — $homeTeam vs $awayTeam';
+
     final postId = await createPost(content: content, postType: 'prediction');
     final id = 'pred-${DateTime.now().millisecondsSinceEpoch}';
-    final insert = <String, dynamic>{
+    await _sb.from('Prediction').insert({
       'id': id,
       'userId': _uid,
       'matchId': matchId,
@@ -193,13 +203,10 @@ class SocialRepository {
       'awayTeam': awayTeam,
       'predictedHome': predictedHome,
       'predictedAway': predictedAway,
+      'outcome': derivedOutcome, // always stored as 'home'|'draw'|'away'
       'confidence': confidence,
       'createdAt': DateTime.now().toUtc().toIso8601String(),
-    };
-    if (outcome != null && outcome.isNotEmpty) {
-      insert['outcome'] = outcome;
-    }
-    await _sb.from('Prediction').insert(insert);
+    });
     return postId;
   }
 

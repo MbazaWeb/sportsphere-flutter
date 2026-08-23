@@ -1612,55 +1612,36 @@ class _PredictionPanel extends StatelessWidget {
 
         const SizedBox(height: 14),
 
-        // ── Match score prediction ─────────────────────────────────────────
+        // ── Match outcome prediction: HOME | X | AWAY ──────────────────────
         if (predType == 'match') ...[
-          Row(children: [
-            Expanded(child: Column(children: [
-              Icon(Icons.shield_rounded, color: SportSphereColors.white70, size: 32),
-              const SizedBox(height: 6),
-              Text(
-                homeCtrl.text.isEmpty ? 'Home' : homeCtrl.text,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: SportSphereColors.white,
-                    fontSize: 12, fontWeight: FontWeight.w700),
-                maxLines: 2, overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 8),
-              _ScoreStepper(value: homeScore, onChanged: onHomeScoreChanged),
-            ])),
+          const SizedBox(height: 4),
+          // Show selected match teams as context (read-only)
+          if (selectedMatch != null)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Column(children: [
-                Text('VS', style: TextStyle(
-                    color: SportSphereColors.white38,
-                    fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1)),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: SportSphereColors.black.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text('$homeScore - $awayScore',
-                    style: const TextStyle(color: SportSphereColors.white,
-                        fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 2)),
-                ),
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Expanded(child: Text(selectedMatch!['homeTeam'] ?? 'Home',
+                    textAlign: TextAlign.left,
+                    style: const TextStyle(color: SportSphereColors.muted, fontSize: 11),
+                    maxLines: 1, overflow: TextOverflow.ellipsis)),
+                const Text('vs', style: TextStyle(color: SportSphereColors.muted, fontSize: 11)),
+                Expanded(child: Text(selectedMatch!['awayTeam'] ?? 'Away',
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(color: SportSphereColors.muted, fontSize: 11),
+                    maxLines: 1, overflow: TextOverflow.ellipsis)),
               ]),
             ),
-            Expanded(child: Column(children: [
-              Icon(Icons.shield_outlined, color: SportSphereColors.white70, size: 32),
-              const SizedBox(height: 6),
-              Text(
-                awayCtrl.text.isEmpty ? 'Away' : awayCtrl.text,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: SportSphereColors.white,
-                    fontSize: 12, fontWeight: FontWeight.w700),
-                maxLines: 2, overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 8),
-              _ScoreStepper(value: awayScore, onChanged: onAwayScoreChanged),
-            ])),
-          ]),
+          // HOME | X | AWAY outcome buttons
+          _OutcomeSelector(
+            selected: homeScore == 1 && awayScore == 0 ? 'home'
+                : homeScore == 0 && awayScore == 1 ? 'away'
+                : homeScore == 0 && awayScore == 0 ? 'draw' : null,
+            onSelected: (outcome) {
+              if (outcome == 'home')  { onHomeScoreChanged(1); onAwayScoreChanged(0); }
+              if (outcome == 'draw')  { onHomeScoreChanged(0); onAwayScoreChanged(0); }
+              if (outcome == 'away')  { onHomeScoreChanged(0); onAwayScoreChanged(1); }
+            },
+          ),
         ],
 
         // ── Player event prediction ────────────────────────────────────────
@@ -1846,6 +1827,60 @@ class _PredictionPanel extends StatelessWidget {
         );
       }),
     );
+  }
+}
+
+// ── Outcome Selector: HOME | X | AWAY ────────────────────────────────────────
+class _OutcomeSelector extends StatelessWidget {
+  final String? selected; // 'home' | 'draw' | 'away' | null
+  final ValueChanged<String> onSelected;
+  const _OutcomeSelector({required this.selected, required this.onSelected});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(children: [
+      _OutcomeBtn(label: 'HOME',  value: 'home', selected: selected, onTap: onSelected),
+      const SizedBox(width: 8),
+      _OutcomeBtn(label: 'X',     value: 'draw', selected: selected, onTap: onSelected),
+      const SizedBox(width: 8),
+      _OutcomeBtn(label: 'AWAY',  value: 'away', selected: selected, onTap: onSelected),
+    ]);
+  }
+}
+
+class _OutcomeBtn extends StatelessWidget {
+  final String label;
+  final String value;
+  final String? selected;
+  final ValueChanged<String> onTap;
+  const _OutcomeBtn({required this.label, required this.value,
+      required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final active = selected == value;
+    final color = value == 'draw' ? SportSphereColors.sportOrange : SportSphereColors.sportGreen;
+    return Expanded(child: GestureDetector(
+      onTap: () => onTap(value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        decoration: BoxDecoration(
+          color: active ? color.withValues(alpha: 0.18) : SportSphereColors.black.withValues(alpha: 0.25),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: active ? color : SportSphereColors.white.withValues(alpha: 0.12),
+            width: active ? 2 : 1,
+          ),
+        ),
+        child: Text(label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: active ? color : SportSphereColors.white.withValues(alpha: 0.55),
+            fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1.5,
+          )),
+      ),
+    ));
   }
 }
 
