@@ -425,13 +425,14 @@ class _ProfileHeader extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
             child: _EditProfileButton(),
           ),
-        // Hide "Become PRO" for admin / official / org / moderator accounts
-        // (#3.1): they already have privileged roles and should not be able
-        // to submit a PRO request to themselves.
-        if (profile.isOwnProfile && !profile.isAdmin)
+        // PART H (rules 25-27): "Become Pro" is removed from the main profile
+        // face. It now lives inside the Profile Settings sheet (see _SettingsButton
+        // below). For admin / official / org / moderator accounts, PRO is hidden
+        // entirely (they already have privileged roles).
+        if (profile.isOwnProfile)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-            child: _BecomeProButton(),
+            child: _SettingsButton(profile: profile),
           ),
         const SizedBox(height: 4),
       ],
@@ -793,6 +794,247 @@ class _BecomeProButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SETTINGS BUTTON + SETTINGS SHEET
+// ══════════════════════════════════════════════════════════════════════════════
+// PART G (rules 23-24) + PART H (rules 25-27):
+//   - Profile provides a Settings entry.
+//   - "Become Pro" lives inside Settings, NOT on the main profile face.
+//   - Only options actually supported by the current app are shown — no
+//     fake settings that do nothing.
+
+class _SettingsButton extends StatelessWidget {
+  final FanProfileModel profile;
+  const _SettingsButton({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _showSettingsSheet(context),
+      child: Container(
+        width: double.infinity,
+        height: 40,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: Colors.white.withValues(alpha: 0.06),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+        ),
+        child: const Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.settings_rounded, color: SportSphereColors.white, size: 16),
+              SizedBox(width: 6),
+              Text('Settings',
+                  style: TextStyle(
+                      color: SportSphereColors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showSettingsSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF071422),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                child: Row(
+                  children: [
+                    const Icon(Icons.settings_rounded, color: SportSphereColors.white),
+                    const SizedBox(width: 10),
+                    const Text('Settings',
+                        style: TextStyle(
+                            color: SportSphereColors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800)),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(sheetCtx),
+                      child: const Icon(Icons.close_rounded,
+                          color: SportSphereColors.muted, size: 22),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(color: Colors.white10, height: 1),
+
+              // ── Account ──
+              _SettingsTile(
+                icon: Icons.person_outline_rounded,
+                label: 'Account',
+                subtitle: 'Edit profile, handle, email',
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  // Re-use the existing Edit Profile flow
+                  _openEditProfile(context);
+                },
+              ),
+
+              // ── Become Pro (hidden for admins/officials — see rule 27) ──
+              if (!profile.isAdmin)
+                _SettingsTile(
+                  icon: Icons.star_rounded,
+                  iconColor: const Color(0xFFFFD700),
+                  label: 'Become PRO',
+                  subtitle: 'Apply for a Pro account',
+                  onTap: () {
+                    Navigator.pop(sheetCtx);
+                    showBecomeProSheet(context);
+                  },
+                ),
+
+              // ── Notifications (placeholder — no real notification prefs UI exists yet) ──
+              _SettingsTile(
+                icon: Icons.notifications_outlined,
+                label: 'Notifications',
+                subtitle: 'Push notification preferences',
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Notification preferences coming soon'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+              ),
+
+              // ── Privacy ──
+              _SettingsTile(
+                icon: Icons.lock_outline_rounded,
+                label: 'Privacy',
+                subtitle: 'Who can see your posts and profile',
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Privacy settings coming soon'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+              ),
+
+              // ── Security ──
+              _SettingsTile(
+                icon: Icons.security_outlined,
+                label: 'Security',
+                subtitle: 'Password and account security',
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Security settings coming soon'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+              ),
+
+              const Divider(color: Colors.white10, height: 1),
+
+              // ── Logout ──
+              _SettingsTile(
+                icon: Icons.logout_rounded,
+                iconColor: const Color(0xFFFF3B30),
+                label: 'Log out',
+                subtitle: 'Sign out of your account',
+                onTap: () async {
+                  Navigator.pop(sheetCtx);
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (d) => AlertDialog(
+                      backgroundColor: const Color(0xFF071422),
+                      title: const Text('Log out?',
+                          style: TextStyle(color: SportSphereColors.white)),
+                      content: const Text('You will be signed out of this account.',
+                          style: TextStyle(color: SportSphereColors.muted)),
+                      actions: [
+                        TextButton(
+                            onPressed: () => Navigator.pop(d, false),
+                            child: const Text('Cancel')),
+                        TextButton(
+                            onPressed: () => Navigator.pop(d, true),
+                            child: const Text('Log out',
+                                style: TextStyle(color: Color(0xFFFF3B30)))),
+                      ],
+                    ),
+                  );
+                  if (confirmed == true && context.mounted) {
+                    // Use the same auth controller flow that the rest of the app uses
+                    final container = ProviderScope.containerOf(context, listen: false);
+                    await container.read(authControllerProvider.notifier).signOut();
+                  }
+                },
+              ),
+
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openEditProfile(BuildContext context) async {
+    // The Edit Profile sheet requires a ConsumerWidget context to read the
+    // auth controller. We use ProviderScope.containerOf to get the user
+    // without needing a WidgetRef.
+    final container = ProviderScope.containerOf(context, listen: false);
+    final user = container.read(authControllerProvider).user;
+    if (user != null) {
+      await showEditProfileSheet(context, user);
+      await container.read(authControllerProvider.notifier).refreshProfile();
+    }
+  }
+}
+
+class _SettingsTile extends StatelessWidget {
+  final IconData icon;
+  final Color? iconColor;
+  final String label;
+  final String? subtitle;
+  final VoidCallback? onTap;
+  const _SettingsTile({
+    required this.icon,
+    this.iconColor,
+    required this.label,
+    this.subtitle,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon, color: iconColor ?? const Color(0xFF168CFF)),
+      title: Text(label,
+          style: const TextStyle(
+              color: SportSphereColors.white, fontWeight: FontWeight.w600)),
+      subtitle: subtitle != null
+          ? Text(subtitle!,
+              style: const TextStyle(color: SportSphereColors.muted, fontSize: 12))
+          : null,
+      trailing: const Icon(Icons.chevron_right_rounded, color: SportSphereColors.muted),
+      onTap: onTap,
     );
   }
 }

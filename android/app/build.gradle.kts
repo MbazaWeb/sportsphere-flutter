@@ -35,8 +35,9 @@ android {
 
     // ── Run D8 dexer out-of-process so it gets its own JVM heap ───────────
     // Without this, D8 shares the Gradle JVM heap and OOMs on low-RAM machines.
+    // 1024m is the safe minimum for a multi-ABI release APK with multidex.
     dexOptions {
-        javaMaxHeapSize = "512m"
+        javaMaxHeapSize = "1024m"
         preDexLibraries = false
     }
 

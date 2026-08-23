@@ -11,6 +11,7 @@ import '../../data/scores_repository.dart';
 import '../../domain/models/match_model.dart';
 import '../../domain/models/match_status.dart';
 import '../../domain/models/standing_model.dart';
+import '../../../shell/nav_provider.dart';
 import '../admin_live_control.dart';
 import '../providers/scores_provider.dart';
 import '../widgets/match_card.dart';
@@ -402,7 +403,7 @@ class _TodayMatchList extends ConsumerWidget {
 
 // ── Match list body (handles loading / error / data + refresh) ─────────────
 
-class _MatchListBody extends ConsumerWidget {
+class _MatchListBody extends ConsumerStatefulWidget {
   final FutureProvider<List<MatchModel>> provider;
   final String emptyTitle;
   final String emptyHint;
@@ -413,8 +414,72 @@ class _MatchListBody extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(provider);
+  ConsumerState<_MatchListBody> createState() => _MatchListBodyState();
+}
+
+class _MatchListBodyState extends ConsumerState<_MatchListBody> {
+  final ScrollController _scrollCtrl = ScrollController();
+  // Per-item keys so we can measure their position to scroll into view.
+  final Map<String, GlobalKey> _matchKeys = {};
+  // Tracks the currently highlighted match so the MatchCard can show a
+  // subtle glow / border (consumed by MatchCard via its `highlighted` flag —
+  // see MatchCard impl). For now we just trigger a brief scroll + snackbar.
+  String? _highlightedId;
+
+  @override
+  void dispose() {
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  void _scrollToMatch(String matchId) {
+    final key = _matchKeys[matchId];
+    if (key == null) {
+      // Match not in the current list view (maybe wrong tab / date filter).
+      // Show a snackbar so the user gets feedback.
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Match not in today\'s list — try the Upcoming or Results tabs.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+    final ctx = key.currentContext;
+    if (ctx == null) return;
+    Scrollable.ensureVisible(
+      ctx,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeOutCubic,
+      alignment: 0.35, // place the card about a third from the top
+    );
+    if (mounted) {
+      setState(() => _highlightedId = matchId);
+      // Clear highlight after a few seconds.
+      Future.delayed(const Duration(seconds: 4), () {
+        if (mounted) setState(() => _highlightedId = null);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Watch pendingMatchIdProvider — if a widget (Spotlight card) requested
+    // navigation to a specific match, scroll it into view and clear the
+    // pending state so it doesn't replay on every rebuild.
+    final pendingId = ref.watch(pendingMatchIdProvider);
+    if (pendingId != null && pendingId.isNotEmpty) {
+      // Clear first so we don't loop.
+      ref.read(pendingMatchIdProvider.notifier).clear();
+      // Defer the scroll until the ListView has rendered its children.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToMatch(pendingId);
+      });
+    }
+
+    final async = ref.watch(widget.provider);
     return async.when(
       loading: () => const _MatchListSkeleton(),
       error: (e, _) => Center(
@@ -444,7 +509,7 @@ class _MatchListBody extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
               TextButton(
-                onPressed: () => ref.invalidate(provider),
+                onPressed: () => ref.invalidate(widget.provider),
                 child: const Text('Retry'),
               ),
             ],
@@ -452,40 +517,48 @@ class _MatchListBody extends ConsumerWidget {
         ),
       ),
       data: (matches) => matches.isEmpty
-          ? _EmptyMatches(title: emptyTitle, hint: emptyHint)
+          ? _EmptyMatches(title: widget.emptyTitle, hint: widget.emptyHint)
           : RefreshIndicator(
               color: SportSphereColors.electricBlue,
               onRefresh: () async {
-                ref.invalidate(provider);
+                ref.invalidate(widget.provider);
                 // Wait for the new future to settle so the indicator stays
                 // visible until the refresh is done.
-                await ref.read(provider.future);
+                await ref.read(widget.provider.future);
               },
               child: ListView.separated(
+                controller: _scrollCtrl,
                 // Even when empty we want the RefreshIndicator to be
                 // draggable — `alwaysScrollableScrollPhysics` ensures that.
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
                 itemCount: matches.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, i) => MatchCard(
-                  match: matches[i],
-                  // Match detail / team profile pages are not implemented in
-                  // this feature yet — surface a clear message instead of
-                  // being a silent no-op.
-                  onCardTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Match details coming soon'),
-                      duration: Duration(seconds: 1),
+                itemBuilder: (context, i) {
+                  final m = matches[i];
+                  final gkey = _matchKeys.putIfAbsent(m.id, () => GlobalKey());
+                  return KeyedSubtree(
+                    key: gkey,
+                    child: MatchCard(
+                      match: m,
+                      // Match detail / team profile pages are not implemented in
+                      // this feature yet — surface a clear message instead of
+                      // being a silent no-op.
+                      onCardTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Match details coming soon'),
+                          duration: Duration(seconds: 1),
+                        ),
+                      ),
+                      onTeamTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Team profiles coming soon'),
+                          duration: Duration(seconds: 1),
+                        ),
+                      ),
                     ),
-                  ),
-                  onTeamTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Team profiles coming soon'),
-                      duration: Duration(seconds: 1),
-                    ),
-                  ),
-                ),
+                  );
+                },
               ),
             ),
     );

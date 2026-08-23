@@ -14,6 +14,7 @@ import '../../../core/utils/form_validators.dart';
 import '../../../features/auth/presentation/auth_controller.dart';
 import '../scores/presentation/admin_live_control.dart';
 import 'admin_repository.dart';
+import 'bulk_upload_screen.dart';
 import '../../../core/utils/friendly_error.dart';
 import '../profile/presentation/edit_profile_sheet.dart' show showEntityEditSheet, EntityType;
 
@@ -137,8 +138,8 @@ class _OverviewTab extends ConsumerWidget {
         _ActionCard(Icons.groups_rounded,const Color(0xFF9B6DFF),'Create Team','Add a new club or national team',()=>_showCreateTeam(context,null)),
         _ActionCard(Icons.add_circle_rounded,SportSphereColors.sportGreen,'Schedule Fixture','Add a new match to the calendar',()=>_showCreateMatch(context)),
         _ActionCard(Icons.newspaper_rounded,SportSphereColors.sportOrange,'Post News Article','Publish breaking news or updates',()=>_showNewsCompose(context)),
+        _ActionCard(Icons.upload_rounded,const Color(0xFF9B6DFF),'Bulk Upload','Upload teams, players or fixtures from Excel',()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>BulkUploadScreen(onDone:onRefresh)))),
         _ActionCard(Icons.person_add_rounded,SportSphereColors.electricBlue,'Create User','Add a new user account',()=>_showCreateUser(context)),
-        _ActionCard(Icons.upload_file_rounded,const Color(0xFF22C55E),'Bulk Upload','Import fixtures, teams & players via CSV',()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const BulkUploadScreen()))),
     ]));
   }
 }
@@ -272,6 +273,11 @@ class _CompetitionsTabState extends State<_CompetitionsTab> with SingleTickerPro
   @override
   Widget build(BuildContext context) {
     return Column(children:[
+      Padding(padding:const EdgeInsets.fromLTRB(16,8,16,4),child:Align(alignment:Alignment.centerRight,child:
+        FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:SportSphereColors.electricBlue,padding:const EdgeInsets.symmetric(horizontal:12,vertical:8)),
+          icon:const Icon(Icons.upload_rounded,size:15),label:const Text('Bulk Upload Teams / Players',style:TextStyle(fontSize:11)),
+          onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>BulkUploadScreen(onDone:_load)))),
+      )),
       TabBar(controller:_sub,labelColor:SportSphereColors.white,unselectedLabelColor:SportSphereColors.muted,
         indicatorColor:const Color(0xFFFFD700),labelStyle:const TextStyle(fontSize:11,fontWeight:FontWeight.w700),
         tabs:const[Tab(text:'Competitions'),Tab(text:'Teams'),Tab(text:'Players'),Tab(text:'Coaches')]),
@@ -388,6 +394,10 @@ class _MatchesTabState extends ConsumerState<_MatchesTab> {
         Expanded(child:FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:SportSphereColors.sportGreen),
           icon:const Icon(Icons.add,size:16),label:const Text('Add Fixture'),
           onPressed:()=>_showCreateMatch(context).then((_)=>_load()))),
+        const SizedBox(width:8),
+        Expanded(child:FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:SportSphereColors.electricBlue),
+          icon:const Icon(Icons.upload_rounded,size:16),label:const Text('Bulk Upload'),
+          onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>BulkUploadScreen(onDone:_load)))))
       ])),
       Expanded(child:_loading?const _Loader():_matches.isEmpty?const _Empty('No matches yet'):
         RefreshIndicator(onRefresh:_load,color:SportSphereColors.electricBlue,child:ListView.separated(

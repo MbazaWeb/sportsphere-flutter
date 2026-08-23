@@ -372,35 +372,25 @@ class SocialGraph {
     if (targetId == uid) {
       throw StateError('You cannot fan yourself');
     }
+    if (targetId.isEmpty) {
+      throw StateError('Cannot fan — target id is empty');
+    }
 
     try {
-      // Try fans table first (uuid-based, profiles only)
-      // If targetId is not a uuid in profiles, fall back to Follow table
-      bool usedFansTable = false;
+      // PART D: fans table is the canonical user→team fan relationship.
+      // target_id is the team's accountUserId (a User/profile id), NOT a
+      // Team.id. The previous code had a broken fallback that inserted a row
+      // with a non-existent `id` column into the Follow table — that path
+      // always failed silently and hid the real error (wrong target id, RLS
+      // denial, or missing accountUserId on the team). Removed.
       if (on) {
-        try {
-          await _sb.from('fans').upsert({
-            'fan_id': uid,
-            'target_id': targetId,
-          });
-          usedFansTable = true;
-        } catch (_) {
-          // profiles table may not have this target — use Follow as fallback
-          await _sb.from('Follow').upsert({
-            'id': 'follow-${uid.substring(0, 8)}-${targetId.substring(0, 8)}-${DateTime.now().millisecondsSinceEpoch}',
-            'followerId': uid,
-            'followingId': targetId,
-          });
-        }
+        await _sb.from('fans').upsert({
+          'fan_id': uid,
+          'target_id': targetId,
+        });
       } else {
-        try {
-          await _sb.from('fans').delete()
-              .eq('fan_id', uid).eq('target_id', targetId);
-          usedFansTable = true;
-        } catch (_) {
-          await _sb.from('Follow').delete()
-              .eq('followerId', uid).eq('followingId', targetId);
-        }
+        await _sb.from('fans').delete()
+            .eq('fan_id', uid).eq('target_id', targetId);
       }
 
       await refreshCounts(targetId);

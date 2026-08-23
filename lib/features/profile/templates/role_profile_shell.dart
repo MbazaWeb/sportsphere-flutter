@@ -254,6 +254,7 @@ class _RoleProfileShellState extends ConsumerState<RoleProfileShell>
               onMore: _showMoreSheet,
               onMembers: _showMembersSheet,
               onShop: p.shop == null ? null : () => _tabCtrl.animateTo(tabs.length - 1),
+              onEditProfile: _showEditProfile,
               onClaim: (!p.isOwnProfile && p.isClaimable)
                   ? () => showClaimProfileSheet(
                         context,
@@ -329,6 +330,7 @@ class _Header extends StatelessWidget {
   final VoidCallback onMore;
   final VoidCallback onMembers;
   final VoidCallback? onShop;
+  final VoidCallback? onEditProfile;
   const _Header({
     required this.p,
     required this.following,
@@ -342,6 +344,7 @@ class _Header extends StatelessWidget {
     required this.onMore,
     required this.onMembers,
     this.onShop,
+    this.onEditProfile,
   });
 
   @override
@@ -447,7 +450,40 @@ class _Header extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  if (showFan) ...[
+                  // #6.10 — Hide Follow / Become a fan / Claim buttons when the
+                  // viewer is the profile owner. Showing these on the user's own
+                  // profile is confusing (tapping Follow surfaces "You can't
+                  // follow yourself"). Instead, on own profile, show a single
+                  // "Edit profile" CTA so the Row is never empty.
+                  if (p.isOwnProfile) ...[
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => onEditProfile?.call(),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          height: 46,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(23),
+                            color: p.accent,
+                          ),
+                          child: Center(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.edit_rounded, color: Colors.white, size: 18),
+                                const SizedBox(width: 8),
+                                Text('Edit profile',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                    )),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ] else if (showFan) ...[
                     Expanded(
                       flex: 3,
                       child: GestureDetector(
