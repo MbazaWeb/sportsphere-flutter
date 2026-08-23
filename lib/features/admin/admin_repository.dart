@@ -522,6 +522,131 @@ class AdminRepository {
     await _sb.from('Post').delete().eq('id', id);
   }
 
+  // ── Bulk Upload ──────────────────────────────────────────────────────────
+
+  /// Bulk-create teams from a list of row maps.
+  /// Each row must contain: `name` (String), `country` (String).
+  /// Optional: `city`, `leagueId`, `venue`, `foundedYear`, `primaryColor`.
+  /// Returns the number of rows successfully inserted.
+  Future<int> bulkCreateTeams(List<Map<String, dynamic>> rows) async {
+    final now = DateTime.now().toIso8601String();
+    final batch = <Map<String, dynamic>>[];
+    for (final r in rows) {
+      final name = (r['name'] as String?)?.trim() ?? '';
+      final country = (r['country'] as String?)?.trim() ?? '';
+      if (name.isEmpty || country.isEmpty) continue;
+      final slug = name.toLowerCase().replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), '');
+      final id = 'team-${DateTime.now().millisecondsSinceEpoch}-${batch.length}';
+      batch.add({
+        'id': id, 'name': name, 'slug': '${slug}_$id',
+        'country': country,
+        if (r['city'] != null) 'city': (r['city'] as String).trim(),
+        if (r['leagueId'] != null) 'leagueId': (r['leagueId'] as String).trim(),
+        if (r['venue'] != null) 'venue': (r['venue'] as String).trim(),
+        if (r['foundedYear'] != null) 'foundedYear': int.tryParse(r['foundedYear'].toString()) ?? 0,
+        'source': 'admin', 'verified': true, 'isActive': true,
+        'createdAt': now, 'updatedAt': now,
+      });
+    }
+    if (batch.isEmpty) return 0;
+    // Insert in chunks of 50 (PostgREST default limit)
+    int inserted = 0;
+    for (var i = 0; i < batch.length; i += 50) {
+      final chunk = batch.sublist(i, i + 50 > batch.length ? batch.length : i + 50);
+      await _admin.from('Team').insert(chunk);
+      inserted += chunk.length;
+    }
+    return inserted;
+  }
+
+  /// Bulk-create players from a list of row maps.
+  /// Each row must contain: `name` (String), `position` (String).
+  /// Optional: `teamId`, `nationality`, `shirtNumber`.
+  /// Returns the number of rows successfully inserted.
+  Future<int> bulkCreatePlayers(List<Map<String, dynamic>> rows) async {
+    final now = DateTime.now().toIso8601String();
+    final batch = <Map<String, dynamic>>[];
+    for (final r in rows) {
+      final name = (r['name'] as String?)?.trim() ?? '';
+      final position = (r['position'] as String?)?.trim() ?? '';
+      if (name.isEmpty || position.isEmpty) continue;
+      final slug = '${name.toLowerCase().replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}';
+      final id = 'player-${DateTime.now().millisecondsSinceEpoch}-${batch.length}';
+      final parts = name.trim().split(' ');
+      final firstName = parts.first;
+      final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+      batch.add({
+        'id': id, 'name': name, 'firstName': firstName, 'lastName': lastName,
+        'slug': slug, 'position': position, 'sport_slug': 'football',
+        if (r['teamId'] != null && (r['teamId'] as String).trim().isNotEmpty)
+          'teamId': (r['teamId'] as String).trim(),
+        if (r['nationality'] != null) 'nationality': (r['nationality'] as String).trim(),
+        if (r['shirtNumber'] != null) 'shirtNumber': int.tryParse(r['shirtNumber'].toString()) ?? 0,
+        'isActive': true, 'verified': false, 'createdAt': now, 'updatedAt': now,
+      });
+    }
+    if (batch.isEmpty) return 0;
+    int inserted = 0;
+    for (var i = 0; i < batch.length; i += 50) {
+      final chunk = batch.sublist(i, i + 50 > batch.length ? batch.length : i + 50);
+      await _admin.from('Player').insert(chunk);
+      inserted += chunk.length;
+    }
+    return inserted;
+  }
+
+  /// Bulk-create fixtures from a list of row maps.
+  /// Each row must contain: `homeTeam` (String), `awayTeam` (String),
+  ///   `league` (String), `kickoffAt` (String, ISO 8601 or 'yyyy-MM-dd HH:mm').
+  /// Optional: `venue`, `season`.
+  /// Returns the number of rows successfully inserted.
+  Future<int> bulkCreateFixtures(List<Map<String, dynamic>> rows) async {
+    final now = DateTime.now().toIso8601String();
+    final batch = <Map<String, dynamic>>[];
+    // Look up team badges for logo enrichment
+    final allTeams = await listTeams();
+    final teamBadges = <String, String>{};
+    for (final t in allTeams) {
+      final n = (t['name'] as String?)?.trim().toLowerCase() ?? '';
+      final logo = (t['logoUrl'] as String?) ?? '';
+      if (n.isNotEmpty && logo.isNotEmpty) teamBadges[n] = logo;
+    }
+    for (final r in rows) {
+      final home = (r['homeTeam'] as String?)?.trim() ?? '';
+      final away = (r['awayTeam'] as String?)?.trim() ?? '';
+      final league = (r['league'] as String?)?.trim() ?? '';
+      if (home.isEmpty || away.isEmpty || league.isEmpty) continue;
+      // Parse kickoff
+      DateTime? kickoff;
+      final rawDate = (r['kickoffAt'] as String?)?.trim() ?? '';
+      if (rawDate.isNotEmpty) {
+        kickoff = DateTime.tryParse(rawDate);
+        // Try 'yyyy-MM-dd HH:mm' format if ISO parsing fails
+        kickoff ??= DateTime.tryParse(rawDate.replaceAll(' ', 'T'));
+      }
+      kickoff ??= DateTime.now().add(Duration(days: batch.length + 1));
+      final id = 'match-${DateTime.now().millisecondsSinceEpoch}-${batch.length}';
+      batch.add({
+        'id': id, 'homeTeam': home, 'awayTeam': away, 'league': league,
+        'kickoffAt': kickoff.toUtc().toIso8601String(),
+        'status': 'upcoming', 'homeScore': 0, 'awayScore': 0,
+        if (r['venue'] != null) 'venue': (r['venue'] as String).trim(),
+        'homeBadge': teamBadges[home.toLowerCase()] ?? '',
+        'awayBadge': teamBadges[away.toLowerCase()] ?? '',
+        if (r['season'] != null) 'season': (r['season'] as String).trim(),
+        'createdAt': now,
+      });
+    }
+    if (batch.isEmpty) return 0;
+    int inserted = 0;
+    for (var i = 0; i < batch.length; i += 50) {
+      final chunk = batch.sublist(i, i + 50 > batch.length ? batch.length : i + 50);
+      await _admin.from('Match').insert(chunk);
+      inserted += chunk.length;
+    }
+    return inserted;
+  }
+
   // ── Stats counts ───────────────────────────────────────────────────────────
 
   Future<int> _safeCount(String table, {String? role}) async {

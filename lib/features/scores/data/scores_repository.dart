@@ -136,6 +136,33 @@ class ScoresRepository {
   // ─────────────────────────────────────────────────────────────────────────
 
   Future<List<String>> listLeagues({String? sportSlug}) async {
+    // FIX: Standings were empty because the old query pulled league names
+    // from the League table (League.name) but getStandings() filters on
+    // Match.league — two independent text columns that often differ.
+    // Now we query distinct league values directly from finished Match rows
+    // so the dropdown and the standings filter are guaranteed to match.
+    try {
+      // Query all matches (no status filter) to avoid case-sensitivity issues.
+      // Standings computation already filters by kFinishedStatuses in-memory.
+      final matchRows = await _sb
+          .from('Match')
+          .select('league')
+          .limit(500);
+      final seen = <String>{};
+      final names = <String>[];
+      for (final r in matchRows as List) {
+        final m = Map<String, dynamic>.from(r as Map);
+        final name = (m['league'] as String?)?.trim();
+        if (name != null && name.isNotEmpty && seen.add(name.toLowerCase())) {
+          names.add(name);
+        }
+      }
+      names.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      if (names.isNotEmpty) return names;
+    } catch (_) {
+      // Fallback below
+    }
+    // Fallback: if no finished matches exist yet, pull from League table.
     final rows = await _sb
         .from('League')
         .select('name,sport_slug,isActive')
