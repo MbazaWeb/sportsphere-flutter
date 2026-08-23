@@ -169,7 +169,6 @@ class _CreateComposerState extends State<_CreateComposer>
       }
     } catch (_) {}
   }
-  }
 
   Future<void> _loadMatches() async {
     try {
@@ -548,14 +547,12 @@ class _CreateComposerState extends State<_CreateComposer>
                     },
                     onAddTeam: (name) {
                       if (_pollOptions.length < 6) {
-                        setState(() => _pollOptions
-                            .add(TextEditingController(text: name)));
+                        setState(() => _pollOptions.add(TextEditingController(text: name)));
                       }
                     },
                     onAddPlayer: (name) {
                       if (_pollOptions.length < 6) {
-                        setState(() => _pollOptions
-                            .add(TextEditingController(text: name)));
+                        setState(() => _pollOptions.add(TextEditingController(text: name)));
                       }
                     },
                   ),
@@ -1340,7 +1337,7 @@ class _PollPanelState extends State<_PollPanel> {
                 children: [
                   Expanded(
                     child: _PanelField(
-                      controller: widget.widget.options[i],
+                      controller: widget.options[i],
                       hint: 'Option ${i + 1}',
                       icon: Icons.circle_outlined,
                     ),
@@ -1348,7 +1345,7 @@ class _PollPanelState extends State<_PollPanel> {
                   if (widget.options.length > 2) ...[
                     const SizedBox(width: 8),
                     GestureDetector(
-                      onTap: () => widget.widget.onRemoveOption(i),
+                      onTap: () => widget.onRemoveOption(i),
                       child: Icon(
                         Icons.remove_circle_outline_rounded,
                         color: SportSphereColors.danger.withValues(alpha: 0.75),
@@ -1360,7 +1357,6 @@ class _PollPanelState extends State<_PollPanel> {
               ),
             );
           }),
-
           if (widget.options.length < 6)
             GestureDetector(
               onTap: widget.onAddOption,
@@ -1380,25 +1376,31 @@ class _PollPanelState extends State<_PollPanel> {
                 ),
               ),
             ),
-
-          // Quick-add from DB
           if (widget.options.length < 6 && (widget.teams.isNotEmpty || widget.players.isNotEmpty)) ...[
             const SizedBox(height: 8),
             Wrap(spacing: 8, children: [
-              if (widget.teams.isNotEmpty)
-                _PollQuickAdd(
-                  label: '+ Team',
-                  icon: Icons.groups_rounded,
-                  color: const Color(0xFF9B6DFF),
-                  onTap: (context) => _pickTeamForPoll(context),
+              if (widget.teams.isNotEmpty) GestureDetector(
+                onTap: () => _showTeamPicker(context),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(color: const Color(0xFF9B6DFF).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFF9B6DFF).withValues(alpha: 0.35))),
+                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.groups_rounded, color: Color(0xFF9B6DFF), size: 14), SizedBox(width: 5),
+                    Text('+ Team', style: TextStyle(color: Color(0xFF9B6DFF), fontSize: 12, fontWeight: FontWeight.w600))]),
                 ),
-              if (widget.players.isNotEmpty)
-                _PollQuickAdd(
-                  label: '+ Player',
-                  icon: Icons.person_rounded,
-                  color: SportSphereColors.sportOrange,
-                  onTap: (context) => _pickPlayerForPoll(context),
+              ),
+              if (widget.players.isNotEmpty) GestureDetector(
+                onTap: () => _showPlayerPicker(context),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(color: SportSphereColors.sportOrange.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20), border: Border.all(color: SportSphereColors.sportOrange.withValues(alpha: 0.35))),
+                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.person_rounded, color: SportSphereColors.sportOrange, size: 14), SizedBox(width: 5),
+                    Text('+ Player', style: TextStyle(color: SportSphereColors.sportOrange, fontSize: 12, fontWeight: FontWeight.w600))]),
                 ),
+              ),
             ]),
           ],
           const SizedBox(height: 14),
@@ -1436,123 +1438,67 @@ class _PollPanelState extends State<_PollPanel> {
     );
   }
 
-  void _pickTeamForPoll(BuildContext context) {
+  void _showTeamPicker(BuildContext ctx) {
     showModalBottomSheet<void>(
-      context: context,
+      context: ctx,
       backgroundColor: const Color(0xFF061525),
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
-      builder: (_) => DraggableScrollableSheet(
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (c) => DraggableScrollableSheet(
         initialChildSize: 0.6, minChildSize: 0.3, maxChildSize: 0.85, expand: false,
         builder: (_, sc) => Column(children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 16, 20, 12),
-            child: Text('Add Team to Poll',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
-          ),
-          Expanded(child: ListView.builder(
-            controller: sc,
-            itemCount: widget.teams.length,
+          const Padding(padding: EdgeInsets.fromLTRB(20,16,20,12),
+            child: Text('Add Team to Poll', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16))),
+          Expanded(child: ListView.builder(controller: sc, itemCount: widget.teams.length,
             itemBuilder: (_, i) {
               final t = widget.teams[i];
               return ListTile(
                 leading: const Icon(Icons.groups_rounded, color: Color(0xFF9B6DFF)),
-                title: Text(t['name']?.toString() ?? '',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                onTap: () { Navigator.pop(context); widget.onAddTeam(t['name']?.toString() ?? ''); },
+                title: Text(t['name']?.toString() ?? '', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                onTap: () { Navigator.pop(c); widget.onAddTeam(t['name']?.toString() ?? ''); },
               );
-            },
-          )),
+            })),
         ]),
       ),
     );
   }
 
-  void _pickPlayerForPoll(BuildContext context) {
+  void _showPlayerPicker(BuildContext ctx) {
     final searchCtrl = TextEditingController();
     showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
+      context: ctx, isScrollControlled: true,
       backgroundColor: const Color(0xFF061525),
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
       builder: (_) => StatefulBuilder(builder: (bCtx, bSet) {
         final q = searchCtrl.text.toLowerCase();
-        final filtered = players.where((p) =>
-            (p['name'] as String? ?? '').toLowerCase().contains(q)).toList();
+        final filtered = widget.players.where((p) => (p['name'] as String? ?? '').toLowerCase().contains(q)).toList();
         return DraggableScrollableSheet(
           initialChildSize: 0.7, minChildSize: 0.3, maxChildSize: 0.9, expand: false,
           builder: (_, sc) => Column(children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
-              child: Text('Add Player to Poll',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: TextField(
-                controller: searchCtrl,
-                style: const TextStyle(color: Colors.white),
-                onChanged: (_) => bSet(() {}),
-                decoration: InputDecoration(
-                  hintText: 'Search players...',
-                  hintStyle: const TextStyle(color: Colors.white54),
+            const Padding(padding: EdgeInsets.fromLTRB(20,16,20,8),
+              child: Text('Add Player to Poll', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16))),
+            Padding(padding: const EdgeInsets.fromLTRB(16,0,16,8),
+              child: TextField(controller: searchCtrl, style: const TextStyle(color: Colors.white),
+                onChanged: (_) => bSet((){}),
+                decoration: InputDecoration(hintText: 'Search players...', hintStyle: const TextStyle(color: Colors.white54),
                   prefixIcon: const Icon(Icons.search_rounded, color: Colors.white54, size: 20),
                   filled: true, fillColor: const Color(0xFF0B1626),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  isDense: true,
-                ),
-              ),
-            ),
-            Expanded(child: ListView.builder(
-              controller: sc,
-              itemCount: filtered.length,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), isDense: true))),
+            Expanded(child: ListView.builder(controller: sc, itemCount: filtered.length,
               itemBuilder: (_, i) {
                 final p = filtered[i];
                 return ListTile(
                   leading: const Icon(Icons.person_rounded, color: Color(0xFFFF8A00)),
-                  title: Text(p['name']?.toString() ?? '',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                  subtitle: Text(p['position']?.toString() ?? '',
-                      style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                  title: Text(p['name']?.toString() ?? '', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                  subtitle: Text(p['position']?.toString() ?? '', style: const TextStyle(color: Colors.white54, fontSize: 12)),
                   onTap: () { Navigator.pop(bCtx); widget.onAddPlayer(p['name']?.toString() ?? ''); },
                 );
-              },
-            )),
+              })),
           ]),
         );
       }),
     );
   }
 }
-
-class _PollQuickAdd extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color color;
-  final void Function(BuildContext) onTap;
-  const _PollQuickAdd({required this.label, required this.icon, required this.color, required this.onTap});
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: () => onTap(context),
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.30)),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, color: color, size: 14),
-        const SizedBox(width: 5),
-        Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
-      ]),
-    ),
-  );
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// PREDICTION PANEL
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _PredictionPanel extends StatelessWidget {
