@@ -983,7 +983,7 @@ class _SettingsButton extends StatelessWidget {
                     // Use the same auth controller flow that the rest of the app uses
                     final container = ProviderScope.containerOf(context, listen: false);
                     await container.read(authControllerProvider.notifier).signOut();
-                  }
+                    if (context.mounted) context.go('/login');
                 },
               ),
 

@@ -171,7 +171,11 @@ class AuthController extends Notifier<AuthState> {
 
   // ── Sign out ───────────────────────────────────────────────────────────────
   Future<void> signOut() async {
-    await ref.read(authRepositoryProvider).signOut();
+    try {
+      await ref.read(authRepositoryProvider).signOut();
+    } catch (_) {
+      // Even if network signOut fails, clear local state
+    }
     state = const AuthState(status: AuthStatus.guest);
   }
 
