@@ -618,17 +618,7 @@ class _ProfilePostCardState extends State<ProfilePostCard> {
                     );
                   },
                 ),
-                const SizedBox(width: 20),
-                _EngagementBtn(
-                  icon: Icons.insights_rounded,
-                  label: 'Predict',
-                  semantics: 'Predict',
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Predictions coming soon')),
-                    );
-                  },
-                ),
+                // Predict button removed — only shown on prediction-type posts in feed
                 const Spacer(),
                 _EngagementBtn(
                   icon: Icons.ios_share_rounded,

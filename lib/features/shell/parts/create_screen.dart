@@ -450,7 +450,14 @@ class _CreateComposerState extends State<_CreateComposer>
         _disappearsIn = null;
         _tags.clear();
         _toolbarExpanded = false;
+        _selectedMatch = null;
+        _selectedMatchId = null;
+        _selectedPlayer = null;
+        _predType = 'match';
       });
+
+      // Navigate to home feed so user sees their new post
+      context.go('/home');
     }
   }
 

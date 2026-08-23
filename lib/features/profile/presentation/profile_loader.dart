@@ -150,8 +150,9 @@ class ProfileLoader {
         followerCount: followerCount,
         followingCount: followingCount,
         avatarAsset:
-            (row?['avatar_url'] as String?) ?? (row?['avatarUrl'] as String?),
-        coverAsset:
+            (row?['avatar_url'] as String?) ??
+            (row?['avatarUrl'] as String?) ??
+            'assets/images/Playify_logo.png', // fallback for official account
             (row?['cover_url'] as String?) ?? (row?['coverUrl'] as String?),
         isVerified: true,
         isOwnProfile: authId.isNotEmpty &&

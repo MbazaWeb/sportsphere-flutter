@@ -2450,18 +2450,17 @@ class _ActionRowState extends State<_ActionRow> {
       );
     }
 
-    // ── Prediction ───────────────────────────────────────────
+    // ── Prediction — only show on prediction-type posts ────────────────────
     if (type == _SpotlightType.prediction) {
       return _TwoButtons(
         primary: _Btn(
-          label: 'Predict',
+          label: 'Make Prediction',
           icon: Icons.analytics_outlined,
           color: accent,
           onTap: () {
-            // Navigate to create screen pre-filled with prediction tab
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Tap ＋ to create your own prediction'),
+                content: Text('Tap + to create your own prediction'),
                 duration: Duration(seconds: 2),
               ),
             );
@@ -2472,16 +2471,7 @@ class _ActionRowState extends State<_ActionRow> {
           icon: Icons.sports_soccer_outlined,
           color: accent,
           outlined: true,
-          onTap: () {
-            // Navigate to scores tab
-            context.go('/home');
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Check Scores tab for match details'),
-                duration: Duration(seconds: 2),
-              ),
-            );
-          },
+          onTap: () => context.go('/home'),
         ),
       );
     }

@@ -97,7 +97,7 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
                 : user.postCount,
             followerCount: profile.followerCount,
             followingCount: profile.followingCount,
-            avatarAsset: profile.avatarAsset ?? user.avatarUrl,
+            avatarAsset: profile.avatarAsset ?? user.avatarUrl ?? 'assets/images/Playify_logo.png',
             coverAsset: profile.coverAsset ?? user.coverUrl,
             isVerified: true,
             isOwnProfile: true,
