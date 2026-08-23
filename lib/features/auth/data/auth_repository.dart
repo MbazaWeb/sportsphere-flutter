@@ -88,6 +88,12 @@ class AuthRepository {
     await _supabase.auth.signOut();
   }
 
+  /// Drop local session only (no network). Used when JWT is expired/invalid so
+  /// public reads can proceed with the anon key as a true guest.
+  Future<void> signOutLocal() async {
+    await _supabase.auth.signOut(scope: SignOutScope.local);
+  }
+
   // ── Hydrate profile ────────────────────────────────────────────────────────
   Future<UserProfile?> hydrateProfile() async {
     final session = currentSession;

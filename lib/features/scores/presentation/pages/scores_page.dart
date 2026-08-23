@@ -418,25 +418,37 @@ class _MatchListBody extends ConsumerWidget {
     return async.when(
       loading: () => const _MatchListSkeleton(),
       error: (e, _) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.wifi_off_rounded,
-              color: SportSphereColors.muted,
-              size: 42,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Could not load matches',
-              style: const TextStyle(color: SportSphereColors.muted),
-            ),
-            const SizedBox(height: 12),
-            TextButton(
-              onPressed: () => ref.invalidate(provider),
-              child: const Text('Retry'),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.wifi_off_rounded,
+                color: SportSphereColors.muted,
+                size: 42,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Could not load matches',
+                style: TextStyle(
+                  color: SportSphereColors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                friendlyError(e, fallback: 'Check your connection and try again. Guests can view scores without signing in.'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: SportSphereColors.muted, fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => ref.invalidate(provider),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
         ),
       ),
       data: (matches) => matches.isEmpty
@@ -645,9 +657,29 @@ class _StandingsViewState extends State<_StandingsView> {
                 }
                 if (snap.hasError) {
                   return Center(
-                    child: Text(
-                      'Could not load standings',
-                      style: const TextStyle(color: SportSphereColors.muted),
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            'Could not load standings',
+                            style: TextStyle(
+                              color: SportSphereColors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            friendlyError(
+                              snap.error!,
+                              fallback: 'Pull to retry. Guests can view standings without signing in.',
+                            ),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: SportSphereColors.muted, fontSize: 13),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 }

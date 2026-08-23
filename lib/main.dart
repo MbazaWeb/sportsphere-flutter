@@ -38,6 +38,10 @@ Future<void> main() async {
 }
 
 Future<void> _initOptionalServices() async {
+  // Always clear expired JWTs first so guests (and public reads) are not
+  // blocked by a stale token left in local storage.
+  await _ensureValidSession();
+
   // Initialize Firebase (required for FCM). No-op if config is missing.
   try {
     await Firebase.initializeApp().timeout(const Duration(seconds: 8));
@@ -45,7 +49,6 @@ Future<void> _initOptionalServices() async {
     debugPrint('Firebase init skipped (no config): $e');
     return;
   }
-  await _ensureValidSession();
   try {
     await LocalNotificationService.instance
         .init()

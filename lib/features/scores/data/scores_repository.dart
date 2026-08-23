@@ -17,6 +17,27 @@ class ScoresRepository {
 
   SupabaseClient get _sb => Supabase.instance.client;
 
+  /// Public Match reads must work for guests. If a stale JWT is still attached,
+  /// PostgREST returns JWT/session errors — clear local session and retry once.
+  Future<T> _public<T>(Future<T> Function() run) async {
+    try {
+      return await run();
+    } catch (e) {
+      final msg = e.toString().toLowerCase();
+      final authish = msg.contains('jwt') ||
+          msg.contains('session') ||
+          msg.contains('401') ||
+          msg.contains('expired') ||
+          msg.contains('not authenticated') ||
+          msg.contains('unauthorized');
+      if (!authish) rethrow;
+      try {
+        await _sb.auth.signOut(scope: SignOutScope.local);
+      } catch (_) {}
+      return await run();
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // Live / Today / Upcoming / Results
   // ─────────────────────────────────────────────────────────────────────────
@@ -29,45 +50,50 @@ class ScoresRepository {
   ///   2. Fallback: any match whose status is NOT in (finished ∪ postponed)
   ///      AND whose kickoff is within the last 110 minutes.
   Future<List<MatchModel>> getLive({int limit = kMaxMatchesPerFetch}) async {
-    final liveOr = kLiveStatuses.map((s) => 'status.eq.$s').join(',');
-    final rows = await _sb
-        .from('Match')
-        .select()
-        .or(liveOr)
-        .order('kickoffAt')
-        .limit(limit);
-    final list = _mapRows(rows as List);
-    if (list.isNotEmpty) return list;
+    return _public(() async {
+      final liveOr = kLiveStatuses.map((s) => 'status.eq.$s').join(',');
+      final rows = await _sb
+          .from('Match')
+          .select()
+          .or(liveOr)
+          .order('kickoffAt')
+          .limit(limit);
+      final list = _mapRows(rows as List);
+      if (list.isNotEmpty) return list;
 
-    final now = DateTime.now().toUtc();
-    final all = await _fetchAll(limit: limit);
-    return all.where((m) {
-      if (isFinishedStatus(m.status) || isPostponedStatus(m.status)) {
-        return false;
-      }
-      final end = m.startTime.add(const Duration(minutes: 110));
-      return !now.isBefore(m.startTime) && now.isBefore(end);
-    }).toList();
+      final now = DateTime.now().toUtc();
+      final all = await _fetchAll(limit: limit);
+      return all.where((m) {
+        if (isFinishedStatus(m.status) || isPostponedStatus(m.status)) {
+          return false;
+        }
+        final end = m.startTime.add(const Duration(minutes: 110));
+        return !now.isBefore(m.startTime) && now.isBefore(end);
+      }).toList();
+    });
   }
 
   Future<List<MatchModel>> getToday({int limit = kMaxMatchesPerFetch}) async {
-    final now = DateTime.now().toUtc();
-    final start = DateTime.utc(now.year, now.month, now.day);
-    final end = start.add(const Duration(days: 1));
-    final rows = await _sb
-        .from('Match')
-        .select()
-        .gte('kickoffAt', start.toIso8601String())
-        .lt('kickoffAt', end.toIso8601String())
-        .order('kickoffAt')
-        .limit(limit);
-    return _mapRows(rows as List);
+    return _public(() async {
+      final now = DateTime.now().toUtc();
+      final start = DateTime.utc(now.year, now.month, now.day);
+      final end = start.add(const Duration(days: 1));
+      final rows = await _sb
+          .from('Match')
+          .select()
+          .gte('kickoffAt', start.toIso8601String())
+          .lt('kickoffAt', end.toIso8601String())
+          .order('kickoffAt')
+          .limit(limit);
+      return _mapRows(rows as List);
+    });
   }
 
   Future<List<MatchModel>> getUpcoming({
     DateTime? day,
     int limit = kMaxMatchesPerFetch,
   }) async {
+    return _public(() async {
     final now = DateTime.now().toUtc();
     final rows = await _sb
         .from('Match')
@@ -85,12 +111,14 @@ class ScoresRepository {
           .toList();
     }
     return list;
+    });
   }
 
   Future<List<MatchModel>> getResults({
     DateTime? day,
     int limit = kMaxMatchesPerFetch,
   }) async {
+    return _public(() async {
     final finishedOr = kFinishedStatuses.map((s) => 'status.eq.$s').join(',');
     final rows = await _sb
         .from('Match')
@@ -116,12 +144,15 @@ class ScoresRepository {
           .toList();
     }
     return list;
+    });
   }
 
   Future<List<MatchModel>> _fetchAll({int limit = kMaxMatchesPerFetch}) async {
-    final rows =
-        await _sb.from('Match').select().order('kickoffAt').limit(limit);
-    return _mapRows(rows as List);
+    return _public(() async {
+      final rows =
+          await _sb.from('Match').select().order('kickoffAt').limit(limit);
+      return _mapRows(rows as List);
+    });
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -174,6 +205,7 @@ class ScoresRepository {
     required String league,
     String sportSlug = 'football',
   }) async {
+    return _public(() async {
     // Push the league filter to SQL so we don't download the entire Match
     // table just to discard most of it in memory (H6). The in-memory
     // leagueName check below is kept as a defensive safety net for any
@@ -268,6 +300,7 @@ class ScoresRepository {
       return b.goalsFor.compareTo(a.goalsFor);
     });
     return list;
+      });
   }
 
   // ─────────────────────────────────────────────────────────────────────────

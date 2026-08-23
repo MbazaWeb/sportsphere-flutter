@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/auth_repository.dart';
 import '../domain/auth_state.dart';
 import '../../../core/utils/friendly_error.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // PROVIDERS
@@ -74,6 +75,12 @@ class AuthController extends Notifier<AuthState> {
       );
     } catch (e) {
       debugPrint('[AuthController._hydrate] failed: $e');
+      // Critical: drop the bad JWT from local storage. Leaving it attached
+      // makes every public PostgREST call fail with "JWT expired" while the
+      // UI still thinks we are a guest — empty Spotlights / Scores for everyone.
+      try {
+        await repo.signOutLocal();
+      } catch (_) {}
       state = const AuthState(status: AuthStatus.guest);
     }
   }
