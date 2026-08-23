@@ -1,7 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../features/auth/domain/auth_state.dart';
-import '../branding.dart';
 
 /// In-app admin: Playify Official account + explicit admin role.
 class AppAdmin {
@@ -18,19 +17,17 @@ class AppAdmin {
 
   static bool isAdminUser(UserProfile? user) {
     if (user == null) return false;
-    // Check by email first (most reliable without an id field)
+    // Email-based check is safe — Supabase auth verifies emails before they
+    // become usable. Handle-based check was removed because handles can be
+    // squat (anyone who registers with handle='playify_app' was being treated
+    // as admin, see scan issue #9.10).
     if (user.email == 'sportsphere.app@sportsphere.com' ||
         user.email == 'playify@playify.com') return true;
-    final handle = user.handle.replaceAll('@', '').toLowerCase();
-    if (handle == kOfficialHandle ||
-        handle == 'sportsphere' ||
-        handle == 'sportsphere_official' ||
-        handle == 'sportsphere_app' ||
-        handle == 'playify' ||
-        handle == 'playify_official' ||
-        handle == 'playify_app') return true;
     final role = user.role.toLowerCase();
-    if (role == 'admin' || role == 'official' || role == 'organization' || role == 'moderator') {
+    if (role == 'admin' ||
+        role == 'official' ||
+        role == 'organization' ||
+        role == 'moderator') {
       return true;
     }
     return false;
@@ -43,16 +40,14 @@ class AppAdmin {
     final em = (u.email ?? '').toLowerCase();
     if (em == 'playify@playify.com' ||
         em == 'sportsphere.app@sportsphere.com') return true;
+    // Handle-based check intentionally removed (#9.10): handles can be squat.
+    // Role is the source of truth and is set explicitly by the database.
     final meta = u.userMetadata ?? {};
-    final handle = '${meta['handle'] ?? ''}'.toLowerCase().replaceAll('@', '');
-    if (handle == kOfficialHandle ||
-        handle == 'sportsphere' ||
-        handle == 'sportsphere_app' ||
-        handle == 'playify' ||
-        handle == 'playify_official' ||
-        handle == 'playify_app') return true;
     final role = '${meta['role'] ?? ''}'.toLowerCase();
-    if (role == 'admin' || role == 'official' || role == 'organization' || role == 'moderator') {
+    if (role == 'admin' ||
+        role == 'official' ||
+        role == 'organization' ||
+        role == 'moderator') {
       return true;
     }
     return false;
@@ -64,21 +59,19 @@ class AppAdmin {
     final uid = Supabase.instance.client.auth.currentUser?.id;
     if (uid == null) return false;
     if (_adminUids.contains(uid)) return true;
+    // Handle-based check intentionally removed (#9.10): handles can be squat.
+    // Role is the source of truth and is set explicitly by the database.
     try {
       final row = await Supabase.instance.client
           .from('profiles')
           .select('handle,role')
           .eq('id', uid)
           .maybeSingle();
-      final handle = '${row?['handle'] ?? ''}'.toLowerCase();
       final role = '${row?['role'] ?? ''}'.toLowerCase();
-      if (handle == kOfficialHandle ||
-          handle == 'sportsphere' ||
-          handle == 'sportsphere_app' ||
-        handle == 'playify' ||
-        handle == 'playify_official' ||
-        handle == 'playify_app') return true;
-      if (role == 'admin' || role == 'official' || role == 'organization' || role == 'moderator') {
+      if (role == 'admin' ||
+          role == 'official' ||
+          role == 'organization' ||
+          role == 'moderator') {
         return true;
       }
     } catch (_) {}
@@ -88,15 +81,11 @@ class AppAdmin {
           .select('handle,role')
           .eq('id', uid)
           .maybeSingle();
-      final handle = '${row?['handle'] ?? ''}'.toLowerCase();
       final role = '${row?['role'] ?? ''}'.toLowerCase();
-      if (handle == kOfficialHandle ||
-          handle == 'sportsphere' ||
-          handle == 'sportsphere_app' ||
-        handle == 'playify' ||
-        handle == 'playify_official' ||
-        handle == 'playify_app') return true;
-      if (role == 'admin' || role == 'official' || role == 'organization' || role == 'moderator') {
+      if (role == 'admin' ||
+          role == 'official' ||
+          role == 'organization' ||
+          role == 'moderator') {
         return true;
       }
     } catch (_) {}
