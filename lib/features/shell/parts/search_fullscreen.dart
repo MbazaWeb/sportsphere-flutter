@@ -79,8 +79,8 @@ class _FullScreenSearchState extends State<_FullScreenSearch> {
     try {
       final teams = await sb
           .from('Team')
-          .select('id, name, country, city, logoUrl')
-          .or('name.ilike.$pattern,country.ilike.$pattern,city.ilike.$pattern')
+          .select('id, name, slug, country, city, logoUrl, shortName')
+          .or('name.ilike.$pattern,slug.ilike.$pattern,city.ilike.$pattern,country.ilike.$pattern,shortName.ilike.$pattern')
           .limit(15);
       for (final r in teams as List) {
         final m = Map<String, dynamic>.from(r as Map);

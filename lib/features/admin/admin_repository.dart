@@ -284,12 +284,15 @@ class AdminRepository {
 
   Future<List<Map<String, dynamic>>> listPlayers({String? teamId}) async {
     try {
-      final q = _sb.from('Player').select('id, name, position, nationality, teamId, shirtNumber, goals, assists');
+      final q = _sb.from('Player').select('id, name, position, nationality, teamId, shirtNumber');
       final rows = teamId != null
           ? await q.eq('teamId', teamId).order('name').limit(100)
           : await q.order('name').limit(100);
       return List<Map<String, dynamic>>.from(rows as List);
-    } catch (e) { return []; }
+    } catch (e) {
+      debugPrint('listPlayers error: $e');
+      return [];
+    }
   }
 
   Future<void> createPlayer({required String name, required String position, required String teamId, String? nationality, int? shirtNumber}) async {
