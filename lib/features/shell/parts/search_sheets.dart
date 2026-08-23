@@ -82,8 +82,6 @@ class _SearchSheetState extends State<_SearchSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final results = _SearchData.search(_query);
-
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
@@ -775,6 +773,7 @@ class _MessageSheetState extends State<_MessageSheet> {
   }
 }
 
+// ignore: unused_element
 class _ActivitySheet extends StatelessWidget {
   final String title;
   final IconData icon;

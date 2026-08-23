@@ -340,6 +340,7 @@ class _CommunityContentState extends State<_CommunityContent> {
 
 
 
+// ignore: unused_element
 class _SimpleCard extends StatelessWidget {
   final String title;
   final String subtitle;

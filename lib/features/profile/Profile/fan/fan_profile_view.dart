@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../../core/admin/app_admin.dart';
 import '../../../../core/branding.dart';
 import '../../../../core/data/social_graph.dart';
 import '../../../../core/theme/colors.dart';

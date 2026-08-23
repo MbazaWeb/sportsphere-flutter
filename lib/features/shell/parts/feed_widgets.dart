@@ -18,6 +18,7 @@ class _InvisibleScrollBehavior extends ScrollBehavior {
   }
 }
 
+// ignore: unused_element
 class _Stories extends StatelessWidget {
   const _Stories();
 
@@ -100,6 +101,7 @@ class _Stories extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _PostCard extends StatelessWidget {
   final String username;
   final String handle;
@@ -122,6 +124,7 @@ class _PostCard extends StatelessWidget {
     required this.likes,
     required this.comments,
     required this.reposts,
+    // ignore: unused_element_parameter
     this.featured = false,
   });
 

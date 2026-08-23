@@ -105,7 +105,6 @@ class _CreateComposerState extends State<_CreateComposer>
   late final TextEditingController _predAwayCtrl;
   int _predHomeScore = 1;
   int _predAwayScore = 1;
-  List<Map<String, dynamic>> _teams = [];
   List<Map<String, dynamic>> _matches = [];
   List<Map<String, dynamic>> _players = [];
   String? _selectedMatchId;
@@ -153,20 +152,9 @@ class _CreateComposerState extends State<_CreateComposer>
     _toolbarAnim = CurvedAnimation(parent: _toolbarCtrl, curve: Curves.easeOutCubic);
 
     _textCtrl.addListener(() => setState(() {}));
-    // Pre-load teams, matches, players for prediction/poll dropdowns
-    _loadTeams();
+    // Pre-load matches + players for prediction/poll dropdowns
     _loadMatches();
     _loadPlayers();
-  }
-
-  Future<void> _loadTeams() async {
-    try {
-      final rows = await Supabase.instance.client
-          .from('Team').select('id,name').order('name').limit(200);
-      if (mounted) {
-        setState(() => _teams = List<Map<String, dynamic>>.from(rows as List));
-      }
-    } catch (_) {}
   }
 
   Future<void> _loadMatches() async {
@@ -2536,15 +2524,11 @@ class _PanelField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
   final IconData icon;
-  final ValueChanged<String>? onChanged;
-  final TextAlign textAlign;
 
   const _PanelField({
     required this.controller,
     required this.hint,
     required this.icon,
-    this.onChanged,
-    this.textAlign = TextAlign.start,
   });
 
   @override
@@ -2557,8 +2541,6 @@ class _PanelField extends StatelessWidget {
       ),
       child: TextField(
         controller: controller,
-        onChanged: onChanged,
-        textAlign: textAlign,
         style: const TextStyle(
           color: SportSphereColors.white,
           fontSize: 13,

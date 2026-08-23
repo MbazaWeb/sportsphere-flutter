@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/theme/colors.dart';
 import '../../../core/widgets/grass_form.dart';
 import '../../../core/utils/form_validators.dart';
 import '../../../core/utils/friendly_error.dart';
@@ -68,7 +67,6 @@ class _ClaimProfileSheetState extends ConsumerState<ClaimProfileSheet> {
   final _phone = TextEditingController();
   final _notes = TextEditingController();
   bool _saving = false;
-  final _formKey = GlobalKey<FormState>();
 
   @override
   void initState() {
@@ -218,19 +216,6 @@ class _ClaimProfileSheetState extends ConsumerState<ClaimProfileSheet> {
     );
   }
 
-  Widget _field(
-    String label,
-    TextEditingController c,
-    TextInputType type, {
-    int maxLines = 1,
-  }) {
-    return GrassTextField(
-      controller: c,
-      label: label,
-      maxLines: maxLines,
-      keyboardType: type,
-    );
-  }
 }
 
 /// Compact claim action used on profile headers.

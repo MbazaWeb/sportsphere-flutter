@@ -348,23 +348,6 @@ class _LogoSection extends StatelessWidget {
     );
   }
 
-  Widget _wordmark(String t, Color c, double size, double spacing) => Text(
-        t,
-        style: TextStyle(
-          color: c,
-          fontSize: size,
-          fontWeight: FontWeight.w900,
-          letterSpacing: spacing,
-          height: 1,
-          shadows: [
-            Shadow(
-              color: c.withValues(alpha: 0.4),
-              blurRadius: 16,
-            ),
-          ],
-        ),
-      );
-
   Widget _tagWord(String t, Color c) => Text(
         t,
         style: TextStyle(

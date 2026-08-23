@@ -452,7 +452,7 @@ class _ContentTabState extends State<_ContentTab> {
     Expanded(child:_loading?const _Loader():_posts.isEmpty?const _Empty('No posts yet'):
       RefreshIndicator(onRefresh:_load,color:SportSphereColors.electricBlue,child:ListView.separated(
         padding:const EdgeInsets.fromLTRB(16,0,16,40),itemCount:_posts.length,separatorBuilder:(_,__)=>const _Div(),
-        itemBuilder:(_,i){final p=_posts[i];final content=p['content']as String??'';final type=p['postType']??'text';
+        itemBuilder:(_,i){final p=_posts[i];final content=(p['content']as String?)??'';final type=p['postType']??'text';
           return ListTile(contentPadding:const EdgeInsets.symmetric(vertical:4),
             leading:Container(width:36,height:36,decoration:BoxDecoration(shape:BoxShape.circle,color:SportSphereColors.sportGreen.withValues(alpha:0.12)),
                 child:Icon(type=='poll'?Icons.poll_rounded:type=='prediction'?Icons.insights_rounded:Icons.article_rounded,color:SportSphereColors.sportGreen,size:18)),
@@ -1255,7 +1255,7 @@ Future<void> _showCreateMatch(BuildContext ctx) async {
         // #8.1 — Post to Feed checkbox
         SwitchListTile(
           value: postToFeed,
-          onChanged: (v) => setL(() => postToFeed = v ?? postToFeed),
+          onChanged: (v) => setL(() => postToFeed = v),
           title: const Text('Post to Feed',
               style: TextStyle(color: SportSphereColors.white, fontSize: 14)),
           subtitle: const Text(
@@ -1405,7 +1405,6 @@ Future<void> _showCreatePost(BuildContext ctx) async {
   final formKey = GlobalKey<FormState>();
   String postType = 'text';
   String? teamId;
-  String? playerId;
   bool uploading = false;
   List<String> mediaUrls = [];
 
