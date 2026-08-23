@@ -141,17 +141,17 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
       return;
     }
     setState(() => _saving = true);
-    final ok = await ref.read(authControllerProvider.notifier).updateProfile({
-          'first_name': _first.text.trim(),
-          'last_name': _last.text.trim(),
-          'handle': _handle.text.trim(),
-          'country': _selectedCountryName ?? _country.text.trim(),
-          'dob': _dob.toIso8601String(),
-          'bio': _bio.text.trim(),
-          'avatar_url': _avatarUrl,
-          'cover_url': _coverUrl,
-          'theme_color': _theme,
-        });
+    final ok = await ref.read(authControllerProvider.notifier).updateProfile(
+          firstName: _first.text.trim(),
+          lastName: _last.text.trim(),
+          handle: _handle.text.trim(),
+          country: _selectedCountryName ?? _country.text.trim(),
+          dateOfBirth: _dob,
+          bio: _bio.text.trim(),
+          avatarUrl: _avatarUrl,
+          coverUrl: _coverUrl,
+          themeColor: _theme,
+        );
     if (!mounted) return;
     setState(() => _saving = false);
     try {
@@ -351,7 +351,13 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
 }
 
 // Change-password dialog used from profile settings.
+//
+// C6 — The dialog now collects the CURRENT password (required) in
+// addition to the new password + confirmation. The previous dialog
+// passed an empty string for the current password, which the old
+// repository silently accepted.
 Future<void> showChangePasswordDialog(BuildContext context, WidgetRef ref) async {
+  final cur = TextEditingController();
   final a = TextEditingController();
   final b = TextEditingController();
   final ok = await showDialog<bool>(
@@ -362,6 +368,15 @@ Future<void> showChangePasswordDialog(BuildContext context, WidgetRef ref) async
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          TextField(
+            controller: cur,
+            obscureText: true,
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              labelText: 'Current password',
+              labelStyle: TextStyle(color: Colors.white54),
+            ),
+          ),
           TextField(
             controller: a,
             obscureText: true,
@@ -389,6 +404,14 @@ Future<void> showChangePasswordDialog(BuildContext context, WidgetRef ref) async
     ),
   );
   if (ok != true) return;
+  if (cur.text.isEmpty) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter your current password')),
+      );
+    }
+    return;
+  }
   if (a.text != b.text) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -397,9 +420,17 @@ Future<void> showChangePasswordDialog(BuildContext context, WidgetRef ref) async
     }
     return;
   }
+  if (a.text.isEmpty) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('New password cannot be empty')),
+      );
+    }
+    return;
+  }
   final updated = await ref
       .read(authControllerProvider.notifier)
-      .changePassword('', a.text);
+      .changePassword(cur.text, a.text);
   if (context.mounted) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(updated ? 'Password updated' : 'Unable to update password')),

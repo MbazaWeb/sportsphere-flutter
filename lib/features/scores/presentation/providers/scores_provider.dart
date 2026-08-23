@@ -123,10 +123,19 @@ Future<List<MatchModel>> _source() async {
     return await fetchLiveMatches();
   } catch (_) {
     final repo = const ScoresRepository();
-    final a = await repo.getLive();
-    final b = await repo.getToday();
-    final c = await repo.getUpcoming();
-    final d = await repo.getResults();
+    // M16 — The previous implementation awaited the four queries one after
+    // another. They're independent reads against the same table, so run
+    // them in parallel via Future.wait — this collapses ~4× RTT into ~1×.
+    final results = await Future.wait([
+      repo.getLive(),
+      repo.getToday(),
+      repo.getUpcoming(),
+      repo.getResults(),
+    ]);
+    final a = results[0];
+    final b = results[1];
+    final c = results[2];
+    final d = results[3];
     final seen = <String>{};
     final out = <MatchModel>[];
     for (final m in [...a, ...b, ...c, ...d]) {

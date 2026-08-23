@@ -28,9 +28,30 @@ class AdminRepository {
   }
 
   Future<void> deleteUser(String uid) async {
-    try { await _sb.from('User').delete().eq('id', uid); } catch (_) {}
-    try { await _sb.from('profiles').delete().eq('id', uid); } catch (_) {}
-    try { await _sb.auth.admin.deleteUser(uid); } catch (_) {}
+    // C8 — Do NOT use the client-side `_sb.auth.admin.deleteUser(...)`.
+    // `auth.admin` requires the Supabase service role key, which must never
+    // ship in the mobile client. Calling it from the client either fails
+    // (anon key lacks admin scope) or, worse, leaks the service role key.
+    //
+    // Instead, invoke the `admin-delete-user` Edge Function. That function
+    // runs server-side with the service role key and deletes the auth.user
+    // row + any related profile / legacy User rows. The Edge Function is
+    // created by the EDGE task agent.
+    try {
+      final res = await _sb.functions.invoke(
+        'admin-delete-user',
+        body: {'uid': uid},
+      );
+      if (res.status != 200) {
+        throw Exception('Failed to delete user: ${res.data}');
+      }
+    } catch (e) {
+      // Surface the error so the admin UI can warn the operator. A
+      // silently-swallowed failure here would leave an orphaned auth user
+      // that the admin thinks was deleted.
+      debugPrint('deleteUser edge function failed for $uid: $e');
+      rethrow;
+    }
   }
 
   Future<void> createUser({required String email, required String password, required String role, required String handle, required String firstName, required String lastName}) async {

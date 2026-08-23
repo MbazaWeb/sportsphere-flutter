@@ -106,22 +106,24 @@ class SocialRepository {
     return postId;
   }
 
+  /// Cast (or change) a vote on a poll.
+  ///
+  /// Atomic: delegates to the `increment_poll_votes` RPC, which inserts the
+  /// `PollVote` row and bumps `Poll.totalVotes` in a single SQL transaction.
+  /// Replaces the previous read-then-write pattern that lost updates under
+  /// concurrent votes (H1).
   Future<void> votePoll(String pollId, int optionIdx) async {
     final uid = _uid;
     if (uid == null) throw StateError('Sign in to vote');
-    await _sb.from('PollVote').upsert({
-      'id': 'pv-$pollId-$uid',
-      'pollId': pollId,
-      'userId': uid,
-      'optionIdx': optionIdx,
-      'createdAt': DateTime.now().toIso8601String(),
-    });
     try {
-      final row = await _sb.from('Poll').select('totalVotes').eq('id', pollId).maybeSingle();
-      final n = ((row?['totalVotes'] as int?) ?? 0) + 1;
-      await _sb.from('Poll').update({'totalVotes': n}).eq('id', pollId);
+      await _sb.rpc('increment_poll_votes', params: {
+        'p_poll_id': pollId,
+        'p_user_id': uid,
+        'p_option_index': optionIdx,
+      });
     } catch (e) {
-      debugPrint('poll vote count: $e');
+      debugPrint('votePoll($pollId, $optionIdx) RPC failed: $e');
+      rethrow;
     }
   }
 

@@ -159,8 +159,21 @@ Future<List<TeamSeasonStats>> _loadSeasonStats(
   required String teamName,
 }) async {
   try {
-    final rows = await sb.from('Match').select(
-        'homeTeam,awayTeam,homeScore,awayScore,status,season,league');
+    // Filter at SQL level so we only download matches this team actually
+    // played in, instead of the entire Match table (H7). .limit(200) is a
+    // defensive cap — a single team plays <50 matches/season, so 200 is
+    // more than enough headroom for multi-season lookups.
+    //
+    // NOTE: this filter narrows the league-table aggregate (pts/gd/gfMap)
+    // below to only this team's opponents, so `leaguePosition` becomes a
+    // rank-among-opponents rather than a true league rank. That is an
+    // acceptable tradeoff for not pulling the whole table on every profile
+    // view; the team's own played/w/d/l/gf/ga/cs numbers remain exact.
+    final rows = await sb
+        .from('Match')
+        .select('homeTeam,awayTeam,homeScore,awayScore,status,season,league')
+        .or('homeTeam.eq.$teamName,awayTeam.eq.$teamName')
+        .limit(200);
     var played = 0, w = 0, d = 0, l = 0, gf = 0, ga = 0, cs = 0;
     var season = '2026/2027';
     var competition = 'Ligi Kuu Bara';

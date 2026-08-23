@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/auth_repository.dart';
@@ -36,7 +38,18 @@ class AuthController extends Notifier<AuthState> {
 
     // Has a persisted session: start as unknown (splash holds) while the
     // profile hydrates asynchronously.
-    Future<void>(() => _hydrate());
+    //
+    // M1 — Defer _hydrate() to a post-frame callback so any state mutation
+    // happens AFTER the current build phase completes. Calling it
+    // fire-and-forget inside build() could mutate `state` while a widget
+    // tree is mid-build, triggering a setState-during-build assertion.
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      // Guard: the provider may have been disposed between the build() call
+      // and the post-frame callback firing (e.g. fast nav). Bail out silently.
+      if (ref.mounted) {
+        _hydrate();
+      }
+    });
     return const AuthState();
   }
 
@@ -60,6 +73,7 @@ class AuthController extends Notifier<AuthState> {
         user: profile,
       );
     } catch (e) {
+      debugPrint('[AuthController._hydrate] failed: $e');
       state = const AuthState(status: AuthStatus.guest);
     }
   }
@@ -92,6 +106,12 @@ class AuthController extends Notifier<AuthState> {
   }
 
   // ── Register ───────────────────────────────────────────────────────────────
+  ///
+  /// C1 — A password is ALWAYS required. The previous implementation fell
+  /// back to a hardcoded password (`'SportSphere2024!'`) when the caller
+  /// passed an empty string, which silently created accounts with a known
+  /// password. We now throw [ArgumentError] up front — the UI must collect
+  /// and validate a password before calling this.
   Future<bool> register({
     required String firstName,
     required String lastName,
@@ -101,6 +121,14 @@ class AuthController extends Notifier<AuthState> {
     required DateTime dob,
     String password = '',
   }) async {
+    if (password.isEmpty) {
+      debugPrint('[AuthController.register] rejected: empty password');
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: 'Password is required',
+      );
+      return false;
+    }
     state = state.copyWith(isLoading: true, errorMessage: _keep);
     try {
       final user = await ref.read(authRepositoryProvider).register(
@@ -110,7 +138,7 @@ class AuthController extends Notifier<AuthState> {
             handle: handle,
             country: country,
             dob: dob,
-            password: password.isEmpty ? 'SportSphere2024!' : password,
+            password: password,
           );
       state = AuthState(
         status: AuthStatus.authenticated,
@@ -195,15 +223,51 @@ class AuthController extends Notifier<AuthState> {
       }
       return profile;
     } catch (e) {
+      debugPrint('[AuthController.refreshProfile] failed: $e');
       return null;
     }
   }
 
   // -- Update profile ---------------------------------------------------
-  Future<bool> updateProfile(Map<String, dynamic> data) async {
+  ///
+  /// C7 — Now takes whitelisted named params instead of a raw Map. The
+  /// underlying [AuthRepository.updateProfile] only writes the explicitly
+  /// supported profile columns — callers can no longer smuggle in
+  /// `role` / `is_verified` / arbitrary keys.
+  Future<bool> updateProfile({
+    String? firstName,
+    String? lastName,
+    String? handle,
+    String? country,
+    String? bio,
+    DateTime? dateOfBirth,
+    String? avatarUrl,
+    String? coverUrl,
+    String? themeColor,
+  }) async {
     state = state.copyWith(isLoading: true, errorMessage: _keep);
     try {
-      final updated = await ref.read(authRepositoryProvider).updateProfile(data);
+      final repo = ref.read(authRepositoryProvider);
+      final userId = repo.currentSession?.user.id;
+      if (userId == null) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: 'Not signed in',
+        );
+        return false;
+      }
+      final updated = await repo.updateProfile(
+            userId: userId,
+            firstName: firstName,
+            lastName: lastName,
+            handle: handle,
+            country: country,
+            bio: bio,
+            dateOfBirth: dateOfBirth,
+            avatarUrl: avatarUrl,
+            coverUrl: coverUrl,
+            themeColor: themeColor,
+          );
       if (updated != null) {
         state = AuthState(
           status: AuthStatus.authenticated,
@@ -225,10 +289,20 @@ class AuthController extends Notifier<AuthState> {
   }
 
   // -- Change password --------------------------------------------------
-  Future<bool> changePassword(String currentPassword, String newPassword) async {
+  ///
+  /// C6 — Now requires the current password. [AuthRepository.changePassword]
+  /// re-authenticates with the current credentials before updating, so a
+  /// stolen session token alone is not enough to take over the account.
+  Future<bool> changePassword(
+    String currentPassword,
+    String newPassword,
+  ) async {
     state = state.copyWith(isLoading: true, errorMessage: _keep);
     try {
-      await ref.read(authRepositoryProvider).changePassword(currentPassword, newPassword);
+      await ref.read(authRepositoryProvider).changePassword(
+            currentPassword: currentPassword,
+            newPassword: newPassword,
+          );
       state = state.copyWith(isLoading: false);
       return true;
     } catch (e) {

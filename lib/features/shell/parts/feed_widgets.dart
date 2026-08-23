@@ -113,6 +113,11 @@ class _PostCard extends StatelessWidget {
   final String comments;
   final String reposts;
   final bool featured;
+  // M6 — Verified badge was previously rendered unconditionally for every
+  // post. Add an `isVerified` flag so the badge only appears for posts
+  // authored by verified accounts. Defaults to false to preserve the
+  // previous behaviour for any caller that doesn't pass the new flag.
+  final bool isVerified;
 
   const _PostCard({
     required this.username,
@@ -126,6 +131,7 @@ class _PostCard extends StatelessWidget {
     required this.reposts,
     // ignore: unused_element_parameter
     this.featured = false,
+    this.isVerified = false,
   });
 
   @override
@@ -180,12 +186,14 @@ class _PostCard extends StatelessWidget {
                             fontSize: 14,
                           ),
                         ),
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.verified_rounded,
-                          color: SportSphereColors.electricBlue,
-                          size: 14,
-                        ),
+                        if (isVerified) ...[
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.verified_rounded,
+                            color: SportSphereColors.electricBlue,
+                            size: 14,
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 2),

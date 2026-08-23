@@ -149,21 +149,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
 
       // ─── PROTECTED ROUTES ──────────────────────────────────
+      // H4 — The previous implementation created a FutureBuilder inline
+      // inside each pageBuilder, which re-invoked `ProfileLoader.load*Profile`
+      // on every GoRouter rebuild (e.g. on auth state changes). Each rebuild
+      // started a fresh fetch and wiped the existing snapshot. We now wrap
+      // each future-driven page in a StatefulWidget that caches the Future
+      // in `initState` so the FutureBuilder only subscribes once per route
+      // instance. See `_FanProfilePage`, `_PlayerProfilePage`,
+      // `_TeamProfilePage`, `_RoleProfilePage` below.
       GoRoute(
         path: AppRoutes.profile,
         pageBuilder: (_, state) {
           final handle = state.pathParameters['handle'] ?? '';
           return RouteTransitions.slideUp(
             state.pageKey,
-            FutureBuilder(
-              future: ProfileLoader.loadFanProfile(handle),
-              builder: (context, snap) {
-                if (!snap.hasData) {
-                  return const Scaffold(body: Center(child: CircularProgressIndicator()));
-                }
-                return FanProfileView(profile: snap.data!);
-              },
-            ),
+            _FanProfilePage(handle: handle),
           );
         },
       ),
@@ -173,15 +173,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           final handle = state.pathParameters['handle'] ?? '';
           return RouteTransitions.slideUp(
             state.pageKey,
-            FutureBuilder(
-              future: ProfileLoader.loadPlayerProfile(handle),
-              builder: (context, snap) {
-                if (!snap.hasData) {
-                  return const Scaffold(body: Center(child: CircularProgressIndicator()));
-                }
-                return PlayerProfileView(profile: snap.data!);
-              },
-            ),
+            _PlayerProfilePage(handle: handle),
           );
         },
       ),
@@ -191,15 +183,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           final handle = state.pathParameters['handle'] ?? '';
           return RouteTransitions.slideUp(
             state.pageKey,
-            FutureBuilder(
-              future: ProfileLoader.loadTeamProfile(handle),
-              builder: (context, snap) {
-                if (!snap.hasData) {
-                  return const Scaffold(body: Center(child: CircularProgressIndicator()));
-                }
-                return TeamProfileView(profile: snap.data!);
-              },
-            ),
+            _TeamProfilePage(handle: handle),
           );
         },
       ),
@@ -210,15 +194,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           final handle = state.pathParameters['handle'] ?? role;
           return RouteTransitions.slideUp(
             state.pageKey,
-            FutureBuilder(
-              future: ProfileLoader.loadRoleProfile(role, handle),
-              builder: (context, snap) {
-                if (!snap.hasData) {
-                  return const Scaffold(body: Center(child: CircularProgressIndicator()));
-                }
-                return RoleProfileShell(profile: snap.data!);
-              },
-            ),
+            _RoleProfilePage(role: role, handle: handle),
           );
         },
       ),
@@ -273,5 +249,138 @@ String? _redirectLogic(Ref ref, GoRouterState state) {
 class _AuthListenable extends ChangeNotifier {
   _AuthListenable(Ref ref) {
     ref.listen(authControllerProvider, (_, __) => notifyListeners());
+  }
+}
+
+// ============================================================
+// PROFILE PAGE WRAPPERS (H4)
+// ─────────────────────────────────────────────────────────────
+// Each wrapper caches the loader Future in `initState` so the
+// FutureBuilder only subscribes once per route instance — even
+// when the GoRouter pageBuilder fires again on auth refreshes.
+// ============================================================
+
+class _FanProfilePage extends StatefulWidget {
+  final String handle;
+  const _FanProfilePage({required this.handle});
+  @override
+  State<_FanProfilePage> createState() => _FanProfilePageState();
+}
+
+class _FanProfilePageState extends State<_FanProfilePage> {
+  late final Future<FanProfileModel> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = ProfileLoader.loadFanProfile(widget.handle);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<FanProfileModel>(
+      future: _future,
+      builder: (context, snap) {
+        if (!snap.hasData) {
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
+        }
+        return FanProfileView(profile: snap.data!);
+      },
+    );
+  }
+}
+
+class _PlayerProfilePage extends StatefulWidget {
+  final String handle;
+  const _PlayerProfilePage({required this.handle});
+  @override
+  State<_PlayerProfilePage> createState() => _PlayerProfilePageState();
+}
+
+class _PlayerProfilePageState extends State<_PlayerProfilePage> {
+  late final Future<PlayerProfileModel> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = ProfileLoader.loadPlayerProfile(widget.handle);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<PlayerProfileModel>(
+      future: _future,
+      builder: (context, snap) {
+        if (!snap.hasData) {
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
+        }
+        return PlayerProfileView(profile: snap.data!);
+      },
+    );
+  }
+}
+
+class _TeamProfilePage extends StatefulWidget {
+  final String handle;
+  const _TeamProfilePage({required this.handle});
+  @override
+  State<_TeamProfilePage> createState() => _TeamProfilePageState();
+}
+
+class _TeamProfilePageState extends State<_TeamProfilePage> {
+  late final Future<TeamProfileModel> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = ProfileLoader.loadTeamProfile(widget.handle);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<TeamProfileModel>(
+      future: _future,
+      builder: (context, snap) {
+        if (!snap.hasData) {
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
+        }
+        return TeamProfileView(profile: snap.data!);
+      },
+    );
+  }
+}
+
+class _RoleProfilePage extends StatefulWidget {
+  final String role;
+  final String handle;
+  const _RoleProfilePage({required this.role, required this.handle});
+  @override
+  State<_RoleProfilePage> createState() => _RoleProfilePageState();
+}
+
+class _RoleProfilePageState extends State<_RoleProfilePage> {
+  late final Future<RoleProfileModel> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = ProfileLoader.loadRoleProfile(widget.role, widget.handle);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<RoleProfileModel>(
+      future: _future,
+      builder: (context, snap) {
+        if (!snap.hasData) {
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
+        }
+        return RoleProfileShell(profile: snap.data!);
+      },
+    );
   }
 }

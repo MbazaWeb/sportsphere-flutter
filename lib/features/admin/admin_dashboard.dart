@@ -226,7 +226,21 @@ class _UsersTabState extends State<_UsersTab> {
       content:Text('Permanently delete $name?',style:const TextStyle(color:SportSphereColors.muted)),
       actions:[
         TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Cancel')),
-        TextButton(onPressed:() async {Navigator.pop(ctx);await _repo.deleteUser(uid);_load(_search.text.trim());},
+        TextButton(onPressed:() async {
+          Navigator.pop(ctx);
+          // C8 — deleteUser now invokes an Edge Function and rethrows on
+          // failure so the operator is warned about half-deleted users.
+          try {
+            await _repo.deleteUser(uid);
+          } catch (e) {
+            if (ctx.mounted) {
+              ScaffoldMessenger.of(ctx).showSnackBar(
+                SnackBar(content: Text('Failed to delete user: $e')),
+              );
+            }
+          }
+          _load(_search.text.trim());
+        },
             child:const Text('Delete',style:TextStyle(color:SportSphereColors.danger))),
       ],
     ));

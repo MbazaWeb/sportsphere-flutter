@@ -46,6 +46,15 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
         widget.line.item.priceTzs == 0 ? 10000 : widget.line.item.priceTzs;
   }
 
+  // M15 — Dispose the phone number TextEditingController so we don't leak
+  // listeners (and the controller's internal state) when the bottom sheet
+  // closes.
+  @override
+  void dispose() {
+    _phoneCtrl.dispose();
+    super.dispose();
+  }
+
   int get _unit => widget.line.item.kind == ShopItemKind.donation
       ? _donateAmount
       : widget.line.item.priceTzs;

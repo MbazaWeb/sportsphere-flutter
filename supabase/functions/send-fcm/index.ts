@@ -1,13 +1,42 @@
 // Sends push notifications via FCM HTTP v1 API using a Firebase service account.
 // Required secret: FIREBASE_SERVICE_ACCOUNT_JSON (the full service-account key JSON).
+//
+// Security (C2 + M18):
+//   - Caller MUST present a valid JWT in the Authorization header.
+//   - Caller may only send FCM to themselves (user_id == caller.id),
+//     OR they must be an app admin (is_app_admin() returns true).
+//   - CORS Origin is whitelisted via the ALLOWED_ORIGINS env var.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// ─── CORS helpers ─────────────────────────────────────────────────────────────
+function getAllowedOrigin(req: Request): string | null {
+  const origin = req.headers.get("Origin");
+  if (!origin) return null;
+  const raw = Deno.env.get("ALLOWED_ORIGINS") ?? "";
+  const allowed = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  return allowed.includes(origin) ? origin : null;
+}
 
+function corsHeaders(req: Request): Record<string, string> {
+  const origin = getAllowedOrigin(req);
+  const h: Record<string, string> = {
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+  if (origin) h["Access-Control-Allow-Origin"] = origin;
+  return h;
+}
+
+function json(body: unknown, status: number, req: Request): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+  });
+}
+
+// ─── FCM helpers ──────────────────────────────────────────────────────────────
 function b64url(input: Uint8Array | string): string {
   const bytes = typeof input === "string" ? new TextEncoder().encode(input) : input;
   let bin = "";
@@ -71,36 +100,75 @@ async function getAccessToken(sa: Record<string, string>): Promise<string> {
   return json.access_token;
 }
 
+// ─── Handler ──────────────────────────────────────────────────────────────────
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
-  try {
-    const { user_id, title, body, data } = await req.json();
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(req) });
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+  try {
+    // ── Auth check (C2) ──
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    if (!token) {
+      return json({ error: "Missing Authorization header" }, 401, req);
+    }
+
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+
+    const { data: userData, error: userErr } = await userClient.auth.getUser(token);
+    if (userErr || !userData?.user) {
+      console.error("send-fcm: invalid token", userErr?.message);
+      return json({ error: "Invalid or expired token" }, 401, req);
+    }
+    const callerUid = userData.user.id;
+
+    // ── Parse body ──
+    const { user_id, title, body, data } = await req.json();
+    if (!user_id || typeof user_id !== "string") {
+      return json({ error: "user_id required" }, 400, req);
+    }
+
+    // ── Authorization: caller must own the target user_id, OR be an admin ──
+    let isAdmin = false;
+    try {
+      const { data: adminFlag } = await userClient.rpc("is_app_admin");
+      isAdmin = Boolean(adminFlag);
+    } catch (e) {
+      console.error("send-fcm: is_app_admin check failed", String(e));
+    }
+
+    if (user_id !== callerUid && !isAdmin) {
+      return json({ error: "Forbidden: can only send FCM to your own devices" }, 403, req);
+    }
+
+    // ── Load Firebase service account ──
     const saRaw = Deno.env.get("FIREBASE_SERVICE_ACCOUNT_JSON") ?? "";
     if (!saRaw) {
-      return new Response(JSON.stringify({ error: "FIREBASE_SERVICE_ACCOUNT_JSON not set" }), {
-        status: 503,
-        headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return json({ error: "FIREBASE_SERVICE_ACCOUNT_JSON not set" }, 503, req);
     }
-    // Accepts raw JSON or base64-encoded JSON.
     const saJson = saRaw.trimStart().startsWith("{")
       ? saRaw
       : new TextDecoder().decode(Uint8Array.from(atob(saRaw), (c) => c.charCodeAt(0)));
     const sa = JSON.parse(saJson);
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
+    // ── Service-role client to read device tokens (bypasses RLS) ──
+    const adminClient = createClient(
+      supabaseUrl,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
-    const { data: tokens, error } = await supabase
+
+    const { data: tokens, error } = await adminClient
       .from("device_tokens")
       .select("token")
       .eq("user_id", user_id);
     if (error) throw new Error(error.message);
 
     const accessToken = await getAccessToken(sa);
-    const results = [];
+    const results: unknown[] = [];
     let sent = 0;
 
     for (const row of tokens ?? []) {
@@ -124,19 +192,15 @@ serve(async (req) => {
           }),
         },
       );
-      const json = await res.json();
+      const jsonBody = await res.json();
       if (res.ok) sent++;
-      else console.error(`FCM error for token: ${JSON.stringify(json)}`);
-      results.push(json);
+      else console.error(`FCM error for token: ${JSON.stringify(jsonBody)}`);
+      results.push(jsonBody);
     }
 
-    return new Response(JSON.stringify({ sent, results }), {
-      headers: { ...cors, "Content-Type": "application/json" },
-    });
+    return json({ sent, results }, 200, req);
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), {
-      status: 500,
-      headers: { ...cors, "Content-Type": "application/json" },
-    });
+    console.error("send-fcm error:", String(e));
+    return json({ error: String(e) }, 500, req);
   }
 });

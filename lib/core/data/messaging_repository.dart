@@ -220,10 +220,17 @@ class MessagingRepository {
     final query = q.trim().replaceAll('@', '');
     if (query.length < 2) return [];
     try {
+      // M9 — Sanitize the user input before interpolating into the PostgREST
+      // `or()` filter. Without this, characters like `,` `(` `)` could be
+      // used to inject additional filter clauses (e.g. an attacker could
+      // submit a query that breaks out of the `ilike.%...%` and appends an
+      // arbitrary filter clause). Stripping those characters makes the
+      // interpolated value safe to embed inside one `ilike` segment.
+      final safe = _sanitizeFilter(query);
       final rows = await _sb
           .from('User')
           .select('id, name, handle, avatarUrl')
-          .or('handle.ilike.%$query%,name.ilike.%$query%')
+          .or('handle.ilike.%$safe%,name.ilike.%$safe%')
           .limit(20);
       return [
         for (final r in rows as List) Map<String, dynamic>.from(r as Map)
@@ -232,5 +239,19 @@ class MessagingRepository {
       debugPrint('searchUsers: $e');
       return [];
     }
+  }
+
+  /// Strips PostgREST meta-characters from a user-supplied filter value so
+  /// it can be safely embedded inside an `ilike.%<value>%` segment.
+  ///
+  /// Removes `,` `(` `)` (which separate / group filter clauses) and `.`
+  /// (which separates the operator from the column name in PostgREST's
+  /// `<column>.<op>.<value>` syntax). Also trims leading / trailing
+  /// whitespace and collapses internal whitespace to single spaces.
+  static String _sanitizeFilter(String input) {
+    return input
+        .replaceAll(RegExp(r'[,()]'), '')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
   }
 }

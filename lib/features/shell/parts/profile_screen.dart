@@ -1,10 +1,51 @@
 part of '../app_shell.dart';
 
-class _ProfileScreen extends ConsumerWidget {
+class _ProfileScreen extends ConsumerStatefulWidget {
   const _ProfileScreen();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
+  // H5 — Cache the profile Future per (handle) so the FutureBuilder does not
+  // re-fire on every rebuild (e.g. when the parent shell re-fires build due
+  // to other tab state changes). The future is invalidated whenever the
+  // resolved handle changes.
+  String? _cachedHandle;
+  late Future<FanProfileModel> _profileFuture;
+
+  Future<FanProfileModel> _resolveFuture() {
+    final auth = ref.read(authControllerProvider);
+    final user = auth.user;
+    if (user == null) {
+      // Never actually awaited — the build() short-circuits when user == null.
+      // Still return a fully-formed model so the Future type-checks.
+      return Future.value(FanProfileModel(
+        firstName: '',
+        lastName: '',
+        handle: '',
+        fanOf: '',
+        fanOfAccent: SportSphereColors.electricBlue,
+        bio: '',
+        sport: '',
+        location: '',
+        joinedDate: DateTime.now(),
+        postCount: 0,
+        followerCount: 0,
+        followingCount: 0,
+      ));
+    }
+    final isAdmin = AppAdmin.isAdminUser(user);
+    final handle = isAdmin
+        ? 'playify'
+        : user.handle.replaceAll('@', '').trim();
+    final effective = handle.isEmpty ? user.handle : handle;
+    return ProfileLoader.loadFanProfile(effective);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
     final user = auth.user;
 
@@ -22,9 +63,15 @@ class _ProfileScreen extends ConsumerWidget {
         ? 'playify'
         : user.handle.replaceAll('@', '').trim();
 
-    return FutureBuilder(
-      future: ProfileLoader.loadFanProfile(
-          handle.isEmpty ? user.handle : handle),
+    // Re-resolve only when the handle changes — this preserves the cached
+    // future across unrelated rebuilds (e.g. when other tabs setState).
+    if (_cachedHandle != handle) {
+      _cachedHandle = handle;
+      _profileFuture = _resolveFuture();
+    }
+
+    return FutureBuilder<FanProfileModel>(
+      future: _profileFuture,
       builder: (context, snap) {
         FanProfileModel profile;
         if (snap.hasData) {

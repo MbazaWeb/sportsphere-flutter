@@ -106,18 +106,17 @@ class NewsRepository {
   ///
   /// The DB triggers (`trg_news_like_count`, `trg_news_comment_count`) and
   /// the `bump_news_share` RPC maintain `likeCount` / `commentCount` /
-  /// `shareCount` automatically; this call is a verification + cache-bust
-  /// hook that gives the trigger time to commit before the UI re-reads.
+  /// `shareCount` automatically; this call was previously a verification
+  /// fetch that immediately selected the counters back and threw the result
+  /// away (M17 — the result was discarded by callers anyway). The trigger
+  /// commits atomically inside the same statement as the upsert/delete, so
+  /// the read-back served no synchronization purpose. We now keep the
+  /// method as a no-op for API parity with `SocialRepository.refreshCounts`
+  /// — callers that still invoke it pay no extra round-trip.
   Future<void> refreshNewsCounts(String newsId) async {
-    try {
-      await _sb
-          .from('NewsItem')
-          .select('likeCount, commentCount, shareCount')
-          .eq('id', newsId)
-          .maybeSingle();
-    } catch (e) {
-      debugPrint('NewsRepository.refreshNewsCounts($newsId): $e');
-    }
+    // Intentionally empty — see method docs. The DB trigger maintains the
+    // counter atomically and callers re-read via [likeCount] when they
+    // need the fresh value.
   }
 
   Future<void> toggleLike(String newsId, {required bool like}) async {

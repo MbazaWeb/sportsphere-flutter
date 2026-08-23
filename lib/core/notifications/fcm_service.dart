@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -12,6 +14,13 @@ class FcmService {
   static final instance = FcmService._();
 
   bool _initialized = false;
+
+  // M14 — Hold the StreamSubscription for `onTokenRefresh` so we can cancel
+  // it when the service is no longer needed. Without this the listener
+  // leaks forever once [initAndRegister] has run.
+  StreamSubscription<String>? _tokenRefreshSub;
+  // Foreground message stream — also cancelled in [dispose].
+  StreamSubscription<RemoteMessage>? _onMessageSub;
 
   Future<void> initAndRegister() async {
     if (kIsWeb || _initialized) return;
@@ -42,13 +51,17 @@ class FcmService {
         debugPrint('FCM: token registered');
       }
 
-      // Listen for token refreshes
-      messaging.onTokenRefresh.listen((newToken) {
+      // Listen for token refreshes — store the subscription so we can cancel
+      // it in [dispose]. Re-registering the same listener on a re-init would
+      // create duplicate upserts.
+      _tokenRefreshSub?.cancel();
+      _tokenRefreshSub = messaging.onTokenRefresh.listen((newToken) {
         registerToken(newToken, platform: defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android');
       });
 
-      // Handle foreground messages
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      // Handle foreground messages — also tracked for cleanup.
+      _onMessageSub?.cancel();
+      _onMessageSub = FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         debugPrint('FCM foreground: ${message.notification?.title}');
         // The notifications_provider already handles in-app display
         // via Supabase realtime. This ensures foreground FCM is logged.
@@ -59,6 +72,19 @@ class FcmService {
     } catch (e) {
       debugPrint('FCM init error (config may be missing): $e');
     }
+  }
+
+  /// Cancels the `onTokenRefresh` and `onMessage` stream subscriptions.
+  ///
+  /// Safe to call multiple times. Currently invoked from the app lifecycle
+  /// dispose path (e.g. when the user signs out and we want to tear down
+  /// FCM before the next session).
+  void dispose() {
+    _tokenRefreshSub?.cancel();
+    _tokenRefreshSub = null;
+    _onMessageSub?.cancel();
+    _onMessageSub = null;
+    _initialized = false;
   }
 
   Future<void> registerToken(String token, {String platform = 'android'}) async {

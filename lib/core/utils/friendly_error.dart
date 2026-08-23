@@ -35,12 +35,16 @@ String friendlyError(Object? error, {String fallback = 'Something went wrong. Pl
   }
 
   // ── Auth: wrong password / user ──────────────────────────────────────────
+  // M7 — Removed the duplicate 'email not confirmed' needle from this list.
+  // The "Please confirm your email" message is owned by the dedicated block
+  // below (`'email not confirmed'`, `'email_not_confirmed'`). Keeping it in
+  // this list too caused the wrong copy ("Incorrect email/username or
+  // password") to surface when a user tried to sign in before confirming.
   if (_matches(lower, const [
     'invalid login credentials',
     'invalid_credentials',
     'wrong password',
     'incorrect password',
-    'email not confirmed',
     'invalid email or password',
     'user not found',
     'invalid_grant',

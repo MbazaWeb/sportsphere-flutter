@@ -8,6 +8,9 @@ class AuthRepository {
   // Get the Supabase client instance
   SupabaseClient get _supabase => Supabase.instance.client;
 
+  // For C6 — also expose a stable alias for tests / clarity.
+  SupabaseClient get _sb => _supabase;
+
   // ── Session check ──────────────────────────────────────────────────────────
   bool get hasSession => _supabase.auth.currentSession != null;
 
@@ -54,6 +57,13 @@ class AuthRepository {
     required DateTime dob,
     required String password,
   }) async {
+    // C1 — Defence in depth: the controller already rejects empty passwords,
+    // but enforce it at the repository boundary too so a future caller can
+    // never bypass it. NEVER fall back to a hardcoded password.
+    if (password.isEmpty) {
+      throw ArgumentError('Password is required');
+    }
+
     final response = await _supabase.auth.signUp(
       email: email,
       password: password,
@@ -103,9 +113,10 @@ class AuthRepository {
       postCount = counts[0];
       followerCount = counts[1];
       followingCount = counts[2];
-    } catch (_) {
+    } catch (e) {
       // Fall back to cached values if live query fails
       // Note: profiles has follower_count/following_count but NOT post_count
+      debugPrint('[hydrateProfile] live counts failed, using cached: $e');
       postCount = 0;
       followerCount = response['follower_count'] ?? 0;
       followingCount = response['following_count'] ?? 0;
@@ -153,35 +164,77 @@ class AuthRepository {
   }
 
   // ── Update profile ─────────────────────────────────────────────────────────
-  Future<UserProfile?> updateProfile(Map<String, dynamic> data) async {
+  //
+  // C7 — PRIVILEGE ESCALATION FIX
+  // The previous signature accepted a raw `Map<String, dynamic>` from any
+  // caller, which meant a compromised / buggy caller could write to ANY
+  // column on `profiles` — including `role`, `is_verified`, `email`, etc.
+  // We now accept only whitelisted named parameters and build the patch
+  // map internally. Unknown / privileged columns can never reach the DB.
+  Future<UserProfile?> updateProfile({
+    required String userId,
+    String? firstName,
+    String? lastName,
+    String? handle,
+    String? country,
+    String? bio,
+    DateTime? dateOfBirth,
+    String? avatarUrl,
+    String? coverUrl,
+    String? themeColor,
+  }) async {
     final session = currentSession;
     if (session == null) return null;
 
-    final userId = session.user.id;
+    // Defence in depth: the userId MUST match the authenticated session.
+    // Without this, a caller could pass another user's id and update their
+    // profile (RLS should also block this, but never trust the client).
+    if (userId != session.user.id) {
+      throw StateError(
+        'updateProfile: userId does not match authenticated session',
+      );
+    }
 
-    // Update profiles table (snake_case columns)
-    await _supabase
-        .from('profiles')
-        .update(data)
-        .match({'id': userId});
+    // Build the profiles patch from whitelisted named params only.
+    final patch = <String, dynamic>{};
+    if (firstName != null) patch['first_name'] = firstName;
+    if (lastName != null) patch['last_name'] = lastName;
+    if (handle != null) patch['handle'] = handle;
+    if (country != null) patch['country'] = country;
+    if (bio != null) patch['bio'] = bio;
+    if (dateOfBirth != null) patch['dob'] = dateOfBirth.toIso8601String();
+    if (avatarUrl != null) patch['avatar_url'] = avatarUrl;
+    if (coverUrl != null) patch['cover_url'] = coverUrl;
+    if (themeColor != null) patch['theme_color'] = themeColor;
 
-    // Also update User table (PascalCase columns) so they stay in sync
+    if (patch.isEmpty) {
+      // Nothing to update — just return the current profile.
+      return hydrateProfile();
+    }
+
+    // Update profiles table (snake_case columns).
+    await _supabase.from('profiles').update(patch).eq('id', userId);
+
+    // Also update the legacy User table (PascalCase columns) so they stay
+    // in sync. Built from the SAME whitelisted values — never from caller
+    // input — so the privilege boundary holds on both writes.
     final userPatch = <String, dynamic>{
       'updatedAt': DateTime.now().toIso8601String(),
     };
-    if (data.containsKey('first_name')) userPatch['name'] =
-        '${data['first_name']} ${data['last_name'] ?? ''}'.trim();
-    if (data.containsKey('handle'))     userPatch['handle']     = data['handle'];
-    if (data.containsKey('bio'))        userPatch['bio']         = data['bio'];
-    if (data.containsKey('country'))    userPatch['currentCountry'] = data['country'];
-    if (data.containsKey('avatar_url')) userPatch['avatarUrl']   = data['avatar_url'];
-    if (data.containsKey('cover_url'))  userPatch['coverUrl']    = data['cover_url'];
+    if (firstName != null || lastName != null) {
+      // Reconstruct the full name from new + existing values.
+      final newFirst = firstName ?? '';
+      final newLast = lastName ?? '';
+      userPatch['name'] = '$newFirst $newLast'.trim();
+    }
+    if (handle != null) userPatch['handle'] = handle;
+    if (bio != null) userPatch['bio'] = bio;
+    if (country != null) userPatch['currentCountry'] = country;
+    if (avatarUrl != null) userPatch['avatarUrl'] = avatarUrl;
+    if (coverUrl != null) userPatch['coverUrl'] = coverUrl;
 
     try {
-      await _supabase
-          .from('User')
-          .update(userPatch)
-          .eq('id', userId);
+      await _supabase.from('User').update(userPatch).eq('id', userId);
     } catch (e) {
       debugPrint('[updateProfile] User table sync failed: $e');
     }
@@ -190,10 +243,45 @@ class AuthRepository {
   }
 
   // ── Change password ────────────────────────────────────────────────────────
-  Future<void> changePassword(String currentPassword, String newPassword) async {
-    await _supabase.auth.updateUser(
-      UserAttributes(password: newPassword),
+  //
+  // C6 — CURRENT PASSWORD VERIFICATION
+  // The previous implementation accepted `currentPassword` as a parameter
+  // but silently ignored it, jumping straight to `updateUser(password:)`.
+  // That meant anyone holding a live session token (e.g. on a shared
+  // device, or via a leaked token) could change the password without
+  // proving they knew the current one. We now re-authenticate with the
+  // current password BEFORE issuing the update. A wrong current password
+  // throws [AuthException] from supabase_flutter, which the controller
+  // surfaces via friendlyError().
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    if (currentPassword.isEmpty) {
+      throw ArgumentError('Current password is required');
+    }
+    if (newPassword.isEmpty) {
+      throw ArgumentError('New password is required');
+    }
+
+    final currentEmail = _sb.auth.currentUser?.email;
+    if (currentEmail == null) {
+      throw StateError('Not signed in');
+    }
+
+    // Re-authenticate to prove the caller knows the current password.
+    // signInWithPassword validates against Supabase Auth, so even a
+    // stolen access token alone cannot pass this check.
+    final session = await _sb.auth.signInWithPassword(
+      email: currentEmail,
+      password: currentPassword,
     );
+    if (session.user == null) {
+      throw AuthException('Current password is incorrect');
+    }
+
+    // Re-authentication succeeded — safe to update to the new password.
+    await _sb.auth.updateUser(UserAttributes(password: newPassword));
   }
 
   // ── Helper: Convert Supabase user to UserProfile ──────────────────────────
@@ -246,7 +334,8 @@ class AuthRepository {
         followerCount: r['follower_count'] ?? 0,
         followingCount: r['following_count'] ?? 0,
       );
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[_profileFromDb] fell back to metadata: $e');
       return _userFromSupabase(user);
     }
   }

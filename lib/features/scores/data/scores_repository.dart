@@ -174,21 +174,31 @@ class ScoresRepository {
     required String league,
     String sportSlug = 'football',
   }) async {
-    final rows = await _sb.from('Match').select(
+    // Push the league filter to SQL so we don't download the entire Match
+    // table just to discard most of it in memory (H6). The in-memory
+    // leagueName check below is kept as a defensive safety net for any
+    // rows whose stored league value differs only by trailing whitespace.
+    // .limit(500) caps the download — well below the PostgREST 1000-row
+    // ceiling but large enough for a full season of matches in one league.
+    final leagueLower = league.toLowerCase().trim();
+    var query = _sb.from('Match').select(
         'homeTeam,awayTeam,homeScore,awayScore,status,homeBadge,awayBadge,league');
+    if (leagueLower.isNotEmpty) {
+      query = query.ilike('league', league);
+    }
+    final rows = await query.limit(500);
 
     final stats = <String, _Acc>{};
     final logos = <String, String>{};
     final hasDraws = sportHasDraws(sportSlug);
     final winPts = winPointsForSport(sportSlug);
     final drawPts = drawPointsForSport(sportSlug);
-    final leagueLower = league.toLowerCase().trim();
 
     for (final raw in rows as List) {
       final r = Map<String, dynamic>.from(raw as Map);
       final leagueName = ((r['league'] as String?) ?? '').toLowerCase().trim();
 
-      // Exact (case-insensitive) match on league name.
+      // Defensive in-memory safety net (see note above).
       if (leagueLower.isNotEmpty && leagueName != leagueLower) continue;
 
       final status = ((r['status'] as String?) ?? '').toLowerCase();

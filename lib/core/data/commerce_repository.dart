@@ -42,11 +42,22 @@ class CommerceRepository {
     return id;
   }
 
+  /// Mark an order as paid.
+  ///
+  /// Delegates to the `confirm_order_paid` RPC, which verifies that the
+  /// caller is the order's owner (or an admin) before flipping the status.
+  /// Replaces the previous unconditional `update` that let any user mark
+  /// any order paid (H3).
   Future<void> confirmOrderPaid(String orderId, {String? providerRef}) async {
-    await _sb.from('ShopOrder').update({
-      'status': 'paid',
-      if (providerRef != null) 'paymentRef': providerRef,
-    }).eq('id', orderId);
+    try {
+      await _sb.rpc('confirm_order_paid', params: {
+        'p_order_id': orderId,
+        'p_provider_ref': providerRef,
+      });
+    } catch (e) {
+      debugPrint('confirmOrderPaid($orderId) RPC failed: $e');
+      rethrow;
+    }
   }
 
   /// Calls Edge Function mpesa-stk-push (Daraja STK).
@@ -84,34 +95,44 @@ class CommerceRepository {
     return {'sold': sold, 'amountTzs': amount};
   }
 
+  /// Join a community.
+  ///
+  /// Atomic: delegates to the `join_community_atomic` RPC, which inserts the
+  /// `CommunityMember` row and increments `Community.memberCount` in a single
+  /// SQL transaction. Replaces the previous read-then-write pattern that lost
+  /// updates under concurrent joins (H2).
   Future<void> joinCommunity(String communityId) async {
     final uid = _uid;
     if (uid == null) throw StateError('Sign in to join');
-    await _sb.from('CommunityMember').upsert({
-      'communityId': communityId,
-      'userId': uid,
-      'role': 'member',
-      'joinedAt': DateTime.now().toIso8601String(),
-    });
     try {
-      final row = await _sb
-          .from('Community')
-          .select('memberCount')
-          .eq('id', communityId)
-          .maybeSingle();
-      final n = ((row?['memberCount'] as int?) ?? 0) + 1;
-      await _sb.from('Community').update({'memberCount': n}).eq('id', communityId);
-    } catch (_) {}
+      await _sb.rpc('join_community_atomic', params: {
+        'p_community_id': communityId,
+        'p_user_id': uid,
+      });
+    } catch (e) {
+      debugPrint('joinCommunity($communityId) RPC failed: $e');
+      rethrow;
+    }
   }
 
+  /// Leave a community.
+  ///
+  /// Atomic: delegates to the `leave_community_atomic` RPC, which deletes the
+  /// `CommunityMember` row and decrements `Community.memberCount` in a single
+  /// SQL transaction. Replaces the previous delete-only path that left
+  /// `memberCount` stale (H8).
   Future<void> leaveCommunity(String communityId) async {
     final uid = _uid;
     if (uid == null) return;
-    await _sb
-        .from('CommunityMember')
-        .delete()
-        .eq('communityId', communityId)
-        .eq('userId', uid);
+    try {
+      await _sb.rpc('leave_community_atomic', params: {
+        'p_community_id': communityId,
+        'p_user_id': uid,
+      });
+    } catch (e) {
+      debugPrint('leaveCommunity($communityId) RPC failed: $e');
+      rethrow;
+    }
   }
 
   Future<bool> isMember(String communityId) async {
