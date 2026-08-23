@@ -29,7 +29,7 @@ class _RoleProfileShellState extends ConsumerState<RoleProfileShell>
   late TabController _tabCtrl;
   bool _following = false;
   bool _isFan = false;
-  final _graph = SocialGraph();
+  final _graph = const SocialGraph();
   RoleProfileModel get p => widget.profile;
 
   /// #6.2 — Officials (admin/Playify) should NOT show a "Become a Fan" button.
@@ -90,10 +90,12 @@ class _RoleProfileShellState extends ConsumerState<RoleProfileShell>
       if (id == null || id.isEmpty) return;
       final f = await _graph.isFollowing(me, id);
       final n = _allowsFan ? await _graph.isFan(me, id) : false;
-      if (mounted) setState(() {
-        _following = f;
-        _isFan = n;
-      });
+      if (mounted) {
+        setState(() {
+          _following = f;
+          _isFan = n;
+        });
+      }
     } catch (e) {
       debugPrint('_loadSocial: $e');
     }

@@ -19,12 +19,12 @@ class AdminRepository {
 
   Future<void> updateUserRole(String uid, String role) async {
     await _sb.from('profiles').update({'role': role}).eq('id', uid);
-    try { await _sb.from('User').update({"role": role}).eq("id", uid); } catch (_) {}
+    try { await _sb.from('User').update({'role': role}).eq('id', uid); } catch (_) {}
   }
 
   Future<void> verifyUser(String uid, bool verified) async {
     await _sb.from('profiles').update({'is_verified': verified}).eq('id', uid);
-    try { await _sb.from('User').update({"isVerified": verified}).eq("id", uid); } catch (_) {}
+    try { await _sb.from('User').update({'isVerified': verified}).eq('id', uid); } catch (_) {}
   }
 
   Future<void> deleteUser(String uid) async {

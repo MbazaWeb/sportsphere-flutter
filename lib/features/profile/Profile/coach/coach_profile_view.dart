@@ -16,12 +16,12 @@ import '../../presentation/edit_profile_sheet.dart'
 
 class CoachProfileView extends StatefulWidget {
   /// Coach row id (e.g. "coach-123"). When null, [handle] is used.
+  const CoachProfileView({super.key, this.coachId, this.handle});
   final String? coachId;
   /// Slug or display handle used to look up the Coach row when the id
   /// is unknown.
   final String? handle;
 
-  const CoachProfileView({super.key, this.coachId, this.handle});
 
   @override
   State<CoachProfileView> createState() => _CoachProfileViewState();
@@ -275,9 +275,9 @@ class _CoachProfileViewState extends State<CoachProfileView>
 // ── Identity card ──────────────────────────────────────────────────────────────
 
 class _IdentityCard extends StatelessWidget {
+  const _IdentityCard({required this.coach, this.team});
   final Map<String, dynamic> coach;
   final Map<String, dynamic>? team;
-  const _IdentityCard({required this.coach, this.team});
 
   String _s(dynamic v) => v == null ? '' : v.toString();
 
@@ -365,9 +365,9 @@ class _IdentityCard extends StatelessWidget {
 // ── About tab ─────────────────────────────────────────────────────────────────
 
 class _AboutTab extends StatelessWidget {
+  const _AboutTab({required this.coach, this.team});
   final Map<String, dynamic> coach;
   final Map<String, dynamic>? team;
-  const _AboutTab({required this.coach, this.team});
 
   String _s(dynamic v) => v == null ? '' : v.toString();
 
@@ -436,8 +436,8 @@ class _AboutTab extends StatelessWidget {
 // ── Stats tab ─────────────────────────────────────────────────────────────────
 
 class _StatsTab extends StatelessWidget {
-  final Map<String, dynamic> coach;
   const _StatsTab({required this.coach});
+  final Map<String, dynamic> coach;
 
   String _s(dynamic v) => v == null ? '' : v.toString();
 
@@ -482,7 +482,7 @@ class _StatsTab extends StatelessWidget {
                 color: SportSphereColors.muted,
                 fontSize: 12)),
         const SizedBox(height: 4),
-        Text(
+        const Text(
           'Detailed coach statistics (matches managed, win rate, trophies) '
           'will appear here once the analytics pipeline populates them.',
           style: const TextStyle(color: SportSphereColors.muted, fontSize: 12),
@@ -498,10 +498,10 @@ class _StatsTab extends StatelessWidget {
 }
 
 class _StatTile extends StatelessWidget {
+  const _StatTile(this.label, this.value, this.icon, this.color);
   final String label, value;
   final IconData icon;
   final Color color;
-  const _StatTile(this.label, this.value, this.icon, this.color);
 
   @override
   Widget build(BuildContext context) => Container(
@@ -537,8 +537,8 @@ class _StatTile extends StatelessWidget {
 // ── Squad tab ─────────────────────────────────────────────────────────────────
 
 class _SquadTab extends StatelessWidget {
-  final List<Map<String, dynamic>> players;
   const _SquadTab({required this.players});
+  final List<Map<String, dynamic>> players;
 
   @override
   Widget build(BuildContext context) {

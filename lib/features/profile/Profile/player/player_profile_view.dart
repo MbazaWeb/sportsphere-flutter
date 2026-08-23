@@ -163,7 +163,9 @@ class PlayerProfileModel {
     final now = DateTime.now();
     int age = now.year - dob.year;
     if (now.month < dob.month ||
-        (now.month == dob.month && now.day < dob.day)) age--;
+        (now.month == dob.month && now.day < dob.day)) {
+      age--;
+    }
     return age;
   }
 }
@@ -173,9 +175,9 @@ class PlayerProfileModel {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class PlayerProfileView extends StatefulWidget {
+  const PlayerProfileView({
   final PlayerProfileModel profile;
 
-  const PlayerProfileView({
     super.key,
     required this.profile,
   });
@@ -189,7 +191,7 @@ class _PlayerProfileViewState extends State<PlayerProfileView>
   late TabController _tabCtrl;
   bool _following = false;
   bool _isFan = false;
-  final _graph = SocialGraph();
+  final _graph = const SocialGraph();
 
   @override
   void initState() {
@@ -360,6 +362,7 @@ class _PlayerProfileViewState extends State<PlayerProfileView>
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _PlayerHeader extends StatelessWidget {
+  const _PlayerHeader({
   final PlayerProfileModel profile;
   final bool following;
   final bool isFan;
@@ -370,7 +373,6 @@ class _PlayerHeader extends StatelessWidget {
   final VoidCallback onMore;
   final VoidCallback onInfo;
 
-  const _PlayerHeader({
     required this.profile,
     required this.following,
     required this.isFan,
@@ -467,7 +469,7 @@ class _PlayerHeader extends StatelessWidget {
           ],
         ),
 
-        SizedBox(height: avatarR * 0.45 + 10),
+        const SizedBox(height: avatarR * 0.45 + 10),
 
         // ── Identity ──────────────────────────────────────────
         Padding(
@@ -517,7 +519,7 @@ class _PlayerHeader extends StatelessWidget {
                       runSpacing: 6,
                       children: [
                         // Player badge — purple, text only
-                        RoleBadge(
+                        const RoleBadge(
                           label: 'Player',
                           color: const Color(0xFF9B6DFF),
                         ),
@@ -719,10 +721,10 @@ class _PlayerHeader extends StatelessWidget {
 // ── Club pill ──────────────────────────────────────────────────────────────────
 
 class _ClubPill extends StatelessWidget {
+  const _ClubPill({required this.club, required this.accent, required this.number});
   final String club;
   final Color accent;
   final int number;
-  const _ClubPill({required this.club, required this.accent, required this.number});
 
   @override
   Widget build(BuildContext context) {
@@ -757,8 +759,8 @@ class _ClubPill extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _PlayerTabBar extends StatelessWidget {
-  final TabController controller;
   const _PlayerTabBar({required this.controller});
+  final TabController controller;
 
   @override
   Widget build(BuildContext context) {
@@ -817,8 +819,8 @@ class _PlayerTabBar extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _SportlightsTab extends StatefulWidget {
-  final PlayerProfileModel profile;
   const _SportlightsTab({required this.profile});
+  final PlayerProfileModel profile;
 
   @override
   State<_SportlightsTab> createState() => _SportlightsTabState();
@@ -982,8 +984,8 @@ class _SportlightsTabState extends State<_SportlightsTab> {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _AboutTab extends StatelessWidget {
-  final PlayerProfileModel profile;
   const _AboutTab({required this.profile});
+  final PlayerProfileModel profile;
 
   @override
   Widget build(BuildContext context) {
@@ -1111,8 +1113,8 @@ class _AboutTab extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _StatsTab extends StatefulWidget {
-  final PlayerProfileModel profile;
   const _StatsTab({required this.profile});
+  final PlayerProfileModel profile;
 
   @override
   State<_StatsTab> createState() => _StatsTabState();
@@ -1196,14 +1198,14 @@ class _StatsTabState extends State<_StatsTab> {
         const SizedBox(height: 20),
 
         // ── All-time career totals ─────────────────────────────
-        _SectionHeader(title: 'Career Totals', season: 'All Time'),
+        const _SectionHeader(title: 'Career Totals', season: 'All Time'),
         const SizedBox(height: 12),
         _CareerTotalsGrid(profile: p),
 
         const SizedBox(height: 20),
 
         // ── Career timeline ───────────────────────────────────
-        _SectionHeader(title: 'Career', season: ''),
+        const _SectionHeader(title: 'Career', season: ''),
         const SizedBox(height: 12),
         _CareerTimeline(career: p.career, accent: p.accentColor),
       ],
@@ -1214,12 +1216,12 @@ class _StatsTabState extends State<_StatsTab> {
 // ── Filter pill ────────────────────────────────────────────────────────────────
 
 class _FilterPill extends StatelessWidget {
+  const _FilterPill({
   final String label;
   final String value;
   final List<String> options;
   final ValueChanged<String> onChanged;
 
-  const _FilterPill({
     required this.label,
     required this.value,
     required this.options,
@@ -1272,9 +1274,9 @@ class _FilterPill extends StatelessWidget {
 // ── Section header ─────────────────────────────────────────────────────────────
 
 class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.title, required this.season});
   final String title;
   final String season;
-  const _SectionHeader({required this.title, required this.season});
 
   @override
   Widget build(BuildContext context) {
@@ -1306,8 +1308,8 @@ class _SectionHeader extends StatelessWidget {
 // ── Season stats grid ──────────────────────────────────────────────────────────
 
 class _StatsGrid extends StatelessWidget {
-  final PlayerSeasonStats stats;
   const _StatsGrid({required this.stats});
+  final PlayerSeasonStats stats;
 
   @override
   Widget build(BuildContext context) {
@@ -1333,8 +1335,8 @@ class _StatsGrid extends StatelessWidget {
 // ── Career totals grid ─────────────────────────────────────────────────────────
 
 class _CareerTotalsGrid extends StatelessWidget {
-  final PlayerProfileModel profile;
   const _CareerTotalsGrid({required this.profile});
+  final PlayerProfileModel profile;
 
   @override
   Widget build(BuildContext context) {
@@ -1362,11 +1364,11 @@ class _CareerTotalsGrid extends StatelessWidget {
 }
 
 class _StatEntry {
+  const _StatEntry({
   final IconData icon;
   final Color iconColor;
   final String label;
   final String value;
-  const _StatEntry({
     required this.icon,
     required this.iconColor,
     required this.label,
@@ -1375,8 +1377,8 @@ class _StatEntry {
 }
 
 class _StatCard extends StatelessWidget {
-  final List<_StatEntry> entries;
   const _StatCard({required this.entries});
+  final List<_StatEntry> entries;
 
   @override
   Widget build(BuildContext context) {
@@ -1434,9 +1436,9 @@ class _StatCard extends StatelessWidget {
 // ── Career timeline ────────────────────────────────────────────────────────────
 
 class _CareerTimeline extends StatelessWidget {
+  const _CareerTimeline({required this.career, required this.accent});
   final List<PlayerCareerEntry> career;
   final Color accent;
-  const _CareerTimeline({required this.career, required this.accent});
 
   @override
   Widget build(BuildContext context) {
@@ -1464,12 +1466,12 @@ class _CareerTimeline extends StatelessWidget {
 }
 
 class _CareerRow extends StatelessWidget {
+  const _CareerRow({
   final PlayerCareerEntry entry;
   final Color accent;
   final bool isLast;
   final bool isFirst;
 
-  const _CareerRow({
     required this.entry,
     required this.accent,
     required this.isLast,
@@ -1579,9 +1581,9 @@ class _CareerRow extends StatelessWidget {
 }
 
 class _MiniStat extends StatelessWidget {
+  const _MiniStat({required this.label, required this.value});
   final String label;
   final String value;
-  const _MiniStat({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {

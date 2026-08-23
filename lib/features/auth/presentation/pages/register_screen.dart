@@ -164,7 +164,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.dark(
+            colorScheme: const ColorScheme.dark(
               primary: SportSphereColors.electricBlue,
               onPrimary: Colors.white,
               surface: SportSphereColors.surface2,
@@ -282,15 +282,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
       body: Stack(
         children: [
           // Ambient orbs
-          Positioned(
+          const Positioned(
             top: -100,
             right: -80,
-            child: _Orb(color: SportSphereColors.electricBlue, size: 340),
+            child: const _Orb(color: SportSphereColors.electricBlue, size: 340),
           ),
-          Positioned(
+          const Positioned(
             bottom: 80,
             left: -100,
-            child: _Orb(color: SportSphereColors.sportGreen, size: 280),
+            child: const _Orb(color: SportSphereColors.sportGreen, size: 280),
           ),
 
           SafeArea(
@@ -338,17 +338,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                     .withValues(alpha: 0.4),
                               ),
                             ),
-                            child: Row(
+                            child: const Row(
                               children: [
-                                Icon(
+                                const Icon(
                                   Icons.favorite_rounded,
                                   color: SportSphereColors.sportGreen,
                                   size: 14,
                                 ),
                                 const SizedBox(width: 5),
-                                Text(
+                                const Text(
                                   'Fan Account',
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     color: SportSphereColors.sportGreen,
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
@@ -585,9 +585,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                   children: [
                                     const TextSpan(
                                         text: 'Already have an account?  '),
-                                    TextSpan(
+                                    const TextSpan(
                                       text: 'Log In',
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         color:
                                             SportSphereColors.electricBlue,
                                         fontWeight: FontWeight.w700,
@@ -643,17 +643,6 @@ class _MiniLogo extends StatelessWidget {
 // ── Form field ─────────────────────────────────────────────────────────────────
 
 class _Field extends StatelessWidget {
-  final TextEditingController ctrl;
-  final String label;
-  final String hint;
-  final IconData icon;
-  final bool focused;
-  final ValueChanged<bool> onFocus;
-  final String? Function(String?)? validator;
-  final TextInputAction? action;
-  final TextInputType? keyboard;
-  final bool obscure;
-
   const _Field({
     required this.ctrl,
     required this.label,
@@ -666,6 +655,17 @@ class _Field extends StatelessWidget {
     this.keyboard,
     this.obscure = false,
   });
+
+  final TextEditingController ctrl;
+  final String label;
+  final String hint;
+  final IconData icon;
+  final bool focused;
+  final ValueChanged<bool> onFocus;
+  final String? Function(String?)? validator;
+  final TextInputAction? action;
+  final TextInputType? keyboard;
+  final bool obscure;
 
   @override
   Widget build(BuildContext context) {
@@ -737,6 +737,7 @@ class _Field extends StatelessWidget {
 // ── Tap-to-pick field (country / dob) ──────────────────────────────────────────
 
 class _TapField extends StatelessWidget {
+  const _TapField({
   final String label;
   final IconData icon;
   final String? value;
@@ -744,7 +745,6 @@ class _TapField extends StatelessWidget {
   final VoidCallback onTap;
   final bool hasError;
 
-  const _TapField({
     required this.label,
     required this.icon,
     required this.value,
@@ -811,7 +811,7 @@ class _TapField extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(
+            const Icon(
               Icons.chevron_right_rounded,
               color: SportSphereColors.muted,
               size: 20,
@@ -826,9 +826,9 @@ class _TapField extends StatelessWidget {
 // ── Country picker bottom sheet ────────────────────────────────────────────────
 
 class _CountryPicker extends StatefulWidget {
+  const _CountryPicker({this.selected, required this.onSelect});
   final String? selected;
   final ValueChanged<String> onSelect;
-  const _CountryPicker({this.selected, required this.onSelect});
 
   @override
   State<_CountryPicker> createState() => _CountryPickerState();
@@ -1005,7 +1005,7 @@ class _FanNote extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
+          const Icon(
             Icons.info_outline_rounded,
             color: SportSphereColors.sportGreen,
             size: 18,
@@ -1013,7 +1013,7 @@ class _FanNote extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              "You will start as a Fan - follow teams, vote in polls, predict matches and join communities. Upgrade to a Pro role anytime.",
+              'You will start as a Fan - follow teams, vote in polls, predict matches and join communities. Upgrade to a Pro role anytime.',
               style: TextStyle(
                 color: SportSphereColors.white.withValues(alpha: 0.82),
                 fontSize: 12.5,
@@ -1030,8 +1030,8 @@ class _FanNote extends StatelessWidget {
 // ── Shared widgets (duplicated from login for isolation) ───────────────────────
 
 class _GlassCard extends StatelessWidget {
-  final Widget child;
   const _GlassCard({required this.child});
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
@@ -1063,10 +1063,10 @@ class _GlassCard extends StatelessWidget {
 }
 
 class _PrimaryButton extends StatelessWidget {
+  const _PrimaryButton({
   final String label;
   final bool loading;
   final VoidCallback onTap;
-  const _PrimaryButton({
     required this.label,
     required this.loading,
     required this.onTap,
@@ -1129,9 +1129,9 @@ class _PrimaryButton extends StatelessWidget {
 }
 
 class _ErrorBanner extends StatelessWidget {
+  const _ErrorBanner({required this.message, required this.onDismiss});
   final String message;
   final VoidCallback onDismiss;
-  const _ErrorBanner({required this.message, required this.onDismiss});
 
   @override
   Widget build(BuildContext context) {
@@ -1185,17 +1185,17 @@ class _TermsText extends StatelessWidget {
         ),
         children: [
           const TextSpan(text: 'By continuing, you agree to our\n'),
-          TextSpan(
+          const TextSpan(
             text: 'Terms of Service',
-            style: TextStyle(
+            style: const TextStyle(
               color: SportSphereColors.electricBlue,
               fontWeight: FontWeight.w600,
             ),
           ),
           const TextSpan(text: '  and  '),
-          TextSpan(
+          const TextSpan(
             text: 'Privacy Policy',
-            style: TextStyle(
+            style: const TextStyle(
               color: SportSphereColors.electricBlue,
               fontWeight: FontWeight.w600,
             ),
@@ -1207,9 +1207,9 @@ class _TermsText extends StatelessWidget {
 }
 
 class _Orb extends StatelessWidget {
+  const _Orb({required this.color, required this.size});
   final Color color;
   final double size;
-  const _Orb({required this.color, required this.size});
 
   @override
   Widget build(BuildContext context) {

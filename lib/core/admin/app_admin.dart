@@ -22,7 +22,9 @@ class AppAdmin {
     // squat (anyone who registers with handle='playify_app' was being treated
     // as admin, see scan issue #9.10).
     if (user.email == 'sportsphere.app@sportsphere.com' ||
-        user.email == 'playify@playify.com') return true;
+        user.email == 'playify@playify.com') {
+      return true;
+    }
     final role = user.role.toLowerCase();
     if (role == 'admin' ||
         role == 'official' ||
@@ -39,7 +41,9 @@ class AppAdmin {
     if (_adminUids.contains(u.id)) return true;
     final em = (u.email ?? '').toLowerCase();
     if (em == 'playify@playify.com' ||
-        em == 'sportsphere.app@sportsphere.com') return true;
+        em == 'sportsphere.app@sportsphere.com') {
+      return true;
+    }
     // Handle-based check intentionally removed (#9.10): handles can be squat.
     // Role is the source of truth and is set explicitly by the database.
     final meta = u.userMetadata ?? {};

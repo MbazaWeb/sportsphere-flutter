@@ -117,7 +117,7 @@ class _FanProfileViewState extends State<FanProfileView>
       if (me == null) return;
       final targetHandle =
           widget.profile.handle.replaceAll('@', '').trim();
-      final graph = SocialGraph();
+      final graph = const SocialGraph();
       final targetId = await graph.resolveId(targetHandle);
       if (targetId == null) return;
       final ok = await graph.isFollowing(me, targetId);
@@ -145,7 +145,7 @@ class _FanProfileViewState extends State<FanProfileView>
         if (mounted) setState(() => _following = wasFollowing);
         return;
       }
-      final graph = SocialGraph();
+      final graph = const SocialGraph();
       final targetId = await graph.resolveId(
           widget.profile.handle.replaceAll('@', '').trim());
       if (targetId == null) throw StateError('profile not found');
@@ -235,8 +235,8 @@ class _ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final coverH = 180.0;
-    final avatarR = 44.0;
+    const coverH = 180.0;
+    const avatarR = 44.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -277,7 +277,7 @@ class _ProfileHeader extends StatelessWidget {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      SportSphereColors.background.withOpacity(0.95),
+                      SportSphereColors.background.withValues(alpha: 0.95),
                     ],
                   ),
                 ),
@@ -293,7 +293,7 @@ class _ProfileHeader extends StatelessWidget {
                   height: 36,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.black.withOpacity(0.45),
+                    color: Colors.black.withValues(alpha: 0.45),
                   ),
                   child: const Icon(
                     Icons.arrow_back_ios_new_rounded,
@@ -313,7 +313,7 @@ class _ProfileHeader extends StatelessWidget {
                   height: 36,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.black.withOpacity(0.45),
+                    color: Colors.black.withValues(alpha: 0.45),
                   ),
                   child: const Icon(
                     Icons.more_horiz_rounded,
@@ -388,9 +388,9 @@ class _ProfileHeader extends StatelessWidget {
                   height: 36,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.07),
+                    color: Colors.white.withValues(alpha: 0.07),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.12),
+                      color: Colors.white.withValues(alpha: 0.12),
                     ),
                   ),
                   child: const Icon(
@@ -451,7 +451,7 @@ class _CoverGradient extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [
             const Color(0xFF08111E),
-            accent.withOpacity(0.40),
+            accent.withValues(alpha: 0.40),
             const Color(0xFF030810),
           ],
         ),
@@ -460,7 +460,7 @@ class _CoverGradient extends StatelessWidget {
         child: Icon(
           Icons.groups_rounded,
           size: 72,
-          color: accent.withOpacity(0.18),
+          color: accent.withValues(alpha: 0.18),
         ),
       ),
     );
@@ -487,7 +487,7 @@ class _Avatar extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: accentColor.withOpacity(0.30),
+            color: accentColor.withValues(alpha: 0.30),
             blurRadius: 20,
             spreadRadius: 2,
           ),
@@ -519,8 +519,8 @@ class _AvatarFallback extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: accent.withOpacity(0.15),
-      child: Icon(Icons.person_rounded, color: accent.withOpacity(0.6), size: 40),
+      color: accent.withValues(alpha: 0.15),
+      child: Icon(Icons.person_rounded, color: accent.withValues(alpha: 0.6), size: 40),
     );
   }
 }
@@ -535,9 +535,9 @@ class _FanOfBadge extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
+        const Text(
           'Fan of ',
-          style: TextStyle(
+          style: const TextStyle(
             color: SportSphereColors.muted,
             fontSize: 13,
           ),
@@ -556,8 +556,8 @@ class _FanOfBadge extends StatelessWidget {
           height: 18,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: accent.withOpacity(0.15),
-            border: Border.all(color: accent.withOpacity(0.4)),
+            color: accent.withValues(alpha: 0.15),
+            border: Border.all(color: accent.withValues(alpha: 0.4)),
           ),
           child: Icon(Icons.shield_rounded, color: accent, size: 10),
         ),
@@ -622,7 +622,7 @@ class _Divider extends StatelessWidget {
       width: 1,
       height: 28,
       margin: const EdgeInsets.symmetric(horizontal: 20),
-      color: Colors.white.withOpacity(0.10),
+      color: Colors.white.withValues(alpha: 0.10),
     );
   }
 }
@@ -660,11 +660,11 @@ class _ActionButtons extends StatelessWidget {
                         ],
                       ),
                 color: following
-                    ? Colors.white.withOpacity(0.06)
+                    ? Colors.white.withValues(alpha: 0.06)
                     : null,
                 border: following
                     ? Border.all(
-                        color: Colors.white.withOpacity(0.18),
+                        color: Colors.white.withValues(alpha: 0.18),
                       )
                     : null,
                 boxShadow: following
@@ -672,7 +672,7 @@ class _ActionButtons extends StatelessWidget {
                     : [
                         BoxShadow(
                           color: SportSphereColors.electricBlue
-                              .withOpacity(0.30),
+                              .withValues(alpha: 0.30),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -710,9 +710,9 @@ class _ActionButtons extends StatelessWidget {
             width: 40,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.white.withOpacity(0.06),
+              color: Colors.white.withValues(alpha: 0.06),
               border: Border.all(
-                color: Colors.white.withOpacity(0.14),
+                color: Colors.white.withValues(alpha: 0.14),
               ),
             ),
             child: const Icon(
@@ -1195,7 +1195,7 @@ class _AboutSection extends StatelessWidget {
         color: const Color(0xD0071422),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: Colors.white.withOpacity(0.07),
+          color: Colors.white.withValues(alpha: 0.07),
         ),
       ),
       padding: const EdgeInsets.all(16),
@@ -1205,7 +1205,7 @@ class _AboutSection extends StatelessWidget {
           Text(
             title.toUpperCase(),
             style: TextStyle(
-              color: SportSphereColors.muted.withOpacity(0.7),
+              color: SportSphereColors.muted.withValues(alpha: 0.7),
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.1,
@@ -1249,7 +1249,7 @@ class _AboutRow extends StatelessWidget {
                 height: 32,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: iconColor.withOpacity(0.10),
+                  color: iconColor.withValues(alpha: 0.10),
                 ),
                 child: Icon(icon, color: iconColor, size: 16),
               ),
@@ -1277,7 +1277,7 @@ class _AboutRow extends StatelessWidget {
         if (!isLast)
           Divider(
             height: 1,
-            color: Colors.white.withOpacity(0.06),
+            color: Colors.white.withValues(alpha: 0.06),
           ),
       ],
     );
@@ -1326,7 +1326,7 @@ class _MoreSheet extends ConsumerWidget {
             height: 4,
             margin: const EdgeInsets.only(bottom: 18),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.18),
+              color: Colors.white.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(10),
             ),
           ),
@@ -1338,7 +1338,7 @@ class _MoreSheet extends ConsumerWidget {
             Container(
               height: 1,
               margin: const EdgeInsets.symmetric(horizontal: 8),
-              color: Colors.white.withOpacity(0.08),
+              color: Colors.white.withValues(alpha: 0.08),
             ),
             const SizedBox(height: 8),
             _SheetOption(

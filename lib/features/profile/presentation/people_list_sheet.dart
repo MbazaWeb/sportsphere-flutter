@@ -17,7 +17,7 @@ class PeopleListSheet extends StatefulWidget {
 }
 
 class _PeopleListSheetState extends State<PeopleListSheet> {
-  final _graph = SocialGraph();
+  final _graph = const SocialGraph();
   late Future<List<GraphPerson>> _future;
 
   /// Local cache of the latest fetched people — used for optimistic count

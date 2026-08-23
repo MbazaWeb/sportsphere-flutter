@@ -49,10 +49,12 @@ class _AdminProfileViewState extends ConsumerState<AdminProfileView>
         _sb.from('Team').select('id').then((r) => (r as List).length),
         _sb.from('NewsItem').select('id').then((r) => (r as List).length),
       ]);
-      if (mounted) setState(() {
-        _users = c[0]; _posts = c[1]; _matches = c[2]; _teams = c[3]; _news = c[4];
-        _statsLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _users = c[0]; _posts = c[1]; _matches = c[2]; _teams = c[3]; _news = c[4];
+          _statsLoading = false;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _statsLoading = false);
     }
@@ -61,10 +63,12 @@ class _AdminProfileViewState extends ConsumerState<AdminProfileView>
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authControllerProvider).user;
-    if (user == null) return const Scaffold(
-      backgroundColor: SportSphereColors.background,
-      body: Center(child: CircularProgressIndicator(color: SportSphereColors.electricBlue, strokeWidth: 2)),
-    );
+    if (user == null) {
+      return const Scaffold(
+        backgroundColor: SportSphereColors.background,
+        body: Center(child: CircularProgressIndicator(color: SportSphereColors.electricBlue, strokeWidth: 2)),
+      );
+    }
 
     return Scaffold(
       backgroundColor: SportSphereColors.background,

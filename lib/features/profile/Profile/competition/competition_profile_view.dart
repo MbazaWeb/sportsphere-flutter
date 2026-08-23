@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -15,13 +14,13 @@ import '../../presentation/edit_profile_sheet.dart'
 // ══════════════════════════════════════════════════════════════════════════════
 
 class CompetitionProfileView extends StatefulWidget {
+  const CompetitionProfileView({super.key, this.competitionId, this.handle});
+
   /// Competition row id (e.g. "league-123"). When null, [handle] is used.
   final String? competitionId;
   /// Slug or display handle used to look up the Competition row when the id
   /// is unknown (mirrors the lookup strategy used elsewhere in the app).
   final String? handle;
-
-  const CompetitionProfileView({super.key, this.competitionId, this.handle});
 
   @override
   State<CompetitionProfileView> createState() => _CompetitionProfileViewState();
@@ -285,8 +284,9 @@ class _CompetitionProfileViewState extends State<CompetitionProfileView>
 // ── Identity card ──────────────────────────────────────────────────────────────
 
 class _IdentityCard extends StatelessWidget {
-  final Map<String, dynamic> comp;
   const _IdentityCard({required this.comp});
+
+  final Map<String, dynamic> comp;
 
   String _s(dynamic v) => v == null ? '' : v.toString();
 
@@ -402,8 +402,9 @@ class _IdentityCard extends StatelessWidget {
 // ── About tab ─────────────────────────────────────────────────────────────────
 
 class _AboutTab extends StatelessWidget {
-  final Map<String, dynamic> comp;
   const _AboutTab({required this.comp});
+
+  final Map<String, dynamic> comp;
 
   String _s(dynamic v) => v == null ? '' : v.toString();
 
@@ -495,9 +496,10 @@ class _AboutTab extends StatelessWidget {
 // ── Stats tab ─────────────────────────────────────────────────────────────────
 
 class _StatsTab extends StatelessWidget {
+  const _StatsTab({required this.comp, required this.matches});
+
   final Map<String, dynamic> comp;
   final List<Map<String, dynamic>> matches;
-  const _StatsTab({required this.comp, required this.matches});
 
   @override
   Widget build(BuildContext context) {
@@ -550,10 +552,11 @@ class _StatsTab extends StatelessWidget {
 }
 
 class _StatTile extends StatelessWidget {
+  const _StatTile(this.label, this.value, this.icon, this.color);
+
   final String label, value;
   final IconData icon;
   final Color color;
-  const _StatTile(this.label, this.value, this.icon, this.color);
 
   @override
   Widget build(BuildContext context) => Container(
@@ -589,8 +592,9 @@ class _StatTile extends StatelessWidget {
 // ── Fixtures tab ──────────────────────────────────────────────────────────────
 
 class _FixturesTab extends StatelessWidget {
-  final List<Map<String, dynamic>> matches;
   const _FixturesTab({required this.matches});
+
+  final List<Map<String, dynamic>> matches;
 
   @override
   Widget build(BuildContext context) {

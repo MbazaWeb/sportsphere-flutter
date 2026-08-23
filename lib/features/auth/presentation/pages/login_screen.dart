@@ -238,9 +238,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                       ),
                                     );
                                   },
-                                  child: Text(
+                                  child: const Text(
                                     'Forgot password?',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       color: SportSphereColors.electricBlue,
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
@@ -702,7 +702,7 @@ class _ErrorBanner extends StatelessWidget {
           ),
           GestureDetector(
             onTap: onDismiss,
-            child: Icon(
+            child: const Icon(
               Icons.close_rounded,
               color: SportSphereColors.muted,
               size: 18,
@@ -729,17 +729,17 @@ class _TermsText extends StatelessWidget {
         ),
         children: [
           const TextSpan(text: 'By continuing, you agree to our\n'),
-          TextSpan(
+          const TextSpan(
             text: 'Terms of Service',
-            style: TextStyle(
+            style: const TextStyle(
               color: SportSphereColors.electricBlue,
               fontWeight: FontWeight.w600,
             ),
           ),
           const TextSpan(text: '  and  '),
-          TextSpan(
+          const TextSpan(
             text: 'Privacy Policy',
-            style: TextStyle(
+            style: const TextStyle(
               color: SportSphereColors.electricBlue,
               fontWeight: FontWeight.w600,
             ),

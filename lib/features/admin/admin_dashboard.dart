@@ -188,8 +188,12 @@ class _UsersTabState extends State<_UsersTab> {
                 onSelected:(v) async {
                   final uid=u['id'].toString();
                   if(v=='verify'){await _repo.verifyUser(uid,!verified);_load(_search.text.trim());}
-                  else if(v=='role') _showChangeRole(context,uid,role);
-                  else if(v=='delete') _confirmDelete(context,uid,name.isNotEmpty?name:handle);
+                  else if(v=='role') {
+                    _showChangeRole(context,uid,role);
+                  }
+                  else if(v=='delete') {
+                    _confirmDelete(context,uid,name.isNotEmpty?name:handle);
+                  }
                 },
                 itemBuilder:(_)=>[
                   PopupMenuItem(value:'verify',child:Text(verified?'Remove Verified':'Verify',style:const TextStyle(color:SportSphereColors.white))),

@@ -126,7 +126,7 @@ String friendlyError(Object? error, {String fallback = 'Something went wrong. Pl
   }
 
   // Strip common technical prefixes if message still looks human
-  var cleaned = raw
+  final cleaned = raw
       .replaceFirst(RegExp(r'^Exception:\s*'), '')
       .replaceFirst(RegExp(r'^ApiException\(\d+\):\s*'), '')
       .replaceFirst(RegExp(r'^AuthException\(.*?\):\s*'), '')

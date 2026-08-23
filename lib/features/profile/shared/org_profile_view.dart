@@ -73,10 +73,12 @@ class _OrgProfileViewState extends State<OrgProfileView> {
           .from('Post').select()
           .eq('userId', row['id'].toString())
           .order('createdAt', ascending: false).limit(30);
-      if (mounted) setState(() {
-        _posts = List<Map<String, dynamic>>.from(rows as List);
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _posts = List<Map<String, dynamic>>.from(rows as List);
+          _loading = false;
+        });
+      }
     } catch (_) { if (mounted) setState(() => _loading = false); }
   }
 

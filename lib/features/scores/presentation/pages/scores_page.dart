@@ -215,7 +215,7 @@ class _MatchListSkeletonState extends State<_MatchListSkeleton>
                 ),
               ),
               const SizedBox(height: 16),
-              Row(
+              const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: const [
                   _SkeletonAvatar(),
@@ -229,7 +229,7 @@ class _MatchListSkeletonState extends State<_MatchListSkeleton>
                 color: Colors.white.withValues(alpha: 0.06),
               ),
               const SizedBox(height: 12),
-              Row(
+              const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: const [
                   _SkeletonAction(),
@@ -254,7 +254,7 @@ class _SkeletonAvatar extends StatelessWidget {
           Container(
             width: 50,
             height: 50,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               shape: BoxShape.circle,
               color: SportSphereColors.surface2,
             ),
@@ -297,7 +297,7 @@ class _SkeletonAction extends StatelessWidget {
           Container(
             width: 16,
             height: 16,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: SportSphereColors.surface2,
               shape: BoxShape.circle,
             ),

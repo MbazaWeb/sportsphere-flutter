@@ -27,8 +27,8 @@ Future<void> showEditProfileSheet(BuildContext context, UserProfile user) {
 }
 
 class EditProfileSheet extends ConsumerStatefulWidget {
-  final UserProfile user;
   const EditProfileSheet({super.key, required this.user});
+  final UserProfile user;
 
   @override
   ConsumerState<EditProfileSheet> createState() => _EditProfileSheetState();
@@ -47,7 +47,7 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
   String? _coverUrl;
   bool _saving = false;
   final Set<String> _sports = {};
-  final _social = SocialRepository();
+  final _social = const SocialRepository();
   final _picker = ImagePicker();
 
   static const _themes = [
@@ -160,12 +160,15 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
       }
     } catch (_) {}
     if (ok) {
+      if (!context.mounted) return;
       Navigator.pop(context);
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Profile updated')),
       );
     } else {
       final err = ref.read(authControllerProvider).errorMessage;
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(err ?? 'Could not update profile')),
       );
@@ -491,16 +494,16 @@ Future<bool> showEntityEditSheet(
 }
 
 class EntityEditSheet extends StatefulWidget {
-  final EntityType entityType;
-  final String entityId;
-  final Map<String, dynamic> initialData;
-
   const EntityEditSheet({
     super.key,
     required this.entityType,
     required this.entityId,
     required this.initialData,
   });
+
+  final EntityType entityType;
+  final String entityId;
+  final Map<String, dynamic> initialData;
 
   @override
   State<EntityEditSheet> createState() => _EntityEditSheetState();
@@ -777,14 +780,15 @@ class _EntityEditSheetState extends State<EntityEditSheet> {
 
 /// Small helper row that previews a stored URL and offers an upload button.
 class _UploadRow extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final VoidCallback onTap;
   const _UploadRow({
     required this.controller,
     required this.label,
     required this.onTap,
   });
+
+  final TextEditingController controller;
+  final String label;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {

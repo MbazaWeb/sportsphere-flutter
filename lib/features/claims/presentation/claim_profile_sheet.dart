@@ -39,6 +39,7 @@ Future<void> showClaimProfileSheet(
 }
 
 class ClaimProfileSheet extends ConsumerStatefulWidget {
+  const ClaimProfileSheet({
   final String profileType;
   final String profileId;
   final String profileName;
@@ -47,7 +48,6 @@ class ClaimProfileSheet extends ConsumerStatefulWidget {
   final String? coachId;
   final String? leagueId;
 
-  const ClaimProfileSheet({
     super.key,
     required this.profileType,
     required this.profileId,
@@ -220,8 +220,8 @@ class _ClaimProfileSheetState extends ConsumerState<ClaimProfileSheet> {
 
 /// Compact claim action used on profile headers.
 class ClaimProfileButton extends StatelessWidget {
-  final VoidCallback onTap;
   const ClaimProfileButton({super.key, required this.onTap});
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {

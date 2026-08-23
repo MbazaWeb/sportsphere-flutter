@@ -149,8 +149,8 @@ class TeamProfileModel {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class TeamProfileView extends StatefulWidget {
-  final TeamProfileModel profile;
   const TeamProfileView({super.key, required this.profile});
+  final TeamProfileModel profile;
 
   @override
   State<TeamProfileView> createState() => _TeamProfileViewState();
@@ -163,7 +163,7 @@ class _TeamProfileViewState extends State<TeamProfileView>
   bool _isFan = false;
   bool _busyFollow = false;
   bool _busyFan = false;
-  final _graph = SocialGraph();
+  final _graph = const SocialGraph();
 
   @override
   void initState() {
@@ -393,6 +393,7 @@ class _TeamProfileViewState extends State<TeamProfileView>
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _TeamHeader extends StatelessWidget {
+  const _TeamHeader({
   final TeamProfileModel profile;
   final bool following;
   final bool isFan;
@@ -405,7 +406,6 @@ class _TeamHeader extends StatelessWidget {
   final VoidCallback onMore;
   final VoidCallback onInfo;
 
-  const _TeamHeader({
     required this.profile,
     required this.following,
     required this.isFan,
@@ -504,7 +504,7 @@ class _TeamHeader extends StatelessWidget {
           ],
         ),
 
-        SizedBox(height: logoR * 0.45 + 12),
+        const SizedBox(height: logoR * 0.45 + 12),
 
         // ── Identity ─────────────────────────────────────────
         Padding(
@@ -654,6 +654,7 @@ class _TeamHeader extends StatelessWidget {
 // ── Follow + Fan row ───────────────────────────────────────────────────────────
 
 class _FollowRow extends StatelessWidget {
+  const _FollowRow({
   final bool following;
   final bool isFan;
   final bool busyFollow;
@@ -662,7 +663,6 @@ class _FollowRow extends StatelessWidget {
   final VoidCallback onFollow;
   final VoidCallback onBecomeFan;
 
-  const _FollowRow({
     required this.following,
     required this.isFan,
     required this.busyFollow,
@@ -834,8 +834,8 @@ class _FollowRow extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _TeamTabBar extends StatelessWidget {
-  final TabController controller;
   const _TeamTabBar({required this.controller});
+  final TabController controller;
 
   @override
   Widget build(BuildContext context) {
@@ -904,8 +904,8 @@ class _TeamTabBar extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _SportlightsTab extends StatelessWidget {
-  final TeamProfileModel profile;
   const _SportlightsTab({required this.profile});
+  final TeamProfileModel profile;
 
   @override
   Widget build(BuildContext context) {
@@ -922,7 +922,7 @@ class _SportlightsTab extends StatelessWidget {
                 style: TextStyle(color: SportSphereColors.white,
                     fontSize: 18, fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
-            Text('Posts from \${profile.name} will appear here.',
+            const Text('Posts from \${profile.name} will appear here.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: SportSphereColors.muted, fontSize: 14)),
           ],
@@ -937,8 +937,8 @@ class _SportlightsTab extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _AboutTab extends StatelessWidget {
-  final TeamProfileModel profile;
   const _AboutTab({required this.profile});
+  final TeamProfileModel profile;
 
   @override
   Widget build(BuildContext context) {
@@ -1036,8 +1036,8 @@ class _AboutTab extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _SquadTab extends StatelessWidget {
-  final TeamProfileModel profile;
   const _SquadTab({required this.profile});
+  final TeamProfileModel profile;
 
   @override
   Widget build(BuildContext context) {
@@ -1073,11 +1073,11 @@ class _SquadTab extends StatelessWidget {
 }
 
 class _SquadSection extends StatelessWidget {
+  const _SquadSection({
   final String title;
   final List<SquadMember> members;
   final Color accent;
 
-  const _SquadSection({
     required this.title,
     required this.members,
     required this.accent,
@@ -1126,11 +1126,11 @@ class _SquadSection extends StatelessWidget {
 }
 
 class _SquadRow extends StatelessWidget {
+  const _SquadRow({
   final SquadMember member;
   final Color accent;
   final bool isLast;
 
-  const _SquadRow({
     required this.member,
     required this.accent,
     required this.isLast,
@@ -1280,8 +1280,8 @@ class _SquadRow extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _StatsTab extends StatefulWidget {
-  final TeamProfileModel profile;
   const _StatsTab({required this.profile});
+  final TeamProfileModel profile;
 
   @override
   State<_StatsTab> createState() => _StatsTabState();
@@ -1355,13 +1355,13 @@ class _StatsTabState extends State<_StatsTab> {
         const SizedBox(height: 18),
 
         // ── Result distribution ──────────────────────────────
-        _SectionLabel('Results'),
+        const _SectionLabel('Results'),
         const SizedBox(height: 10),
         _ResultBar(stats: stats),
         const SizedBox(height: 18),
 
         // ── Stats grid ───────────────────────────────────────
-        _SectionLabel('Season Statistics'),
+        const _SectionLabel('Season Statistics'),
         const SizedBox(height: 10),
         _TeamStatsGrid(stats: stats),
       ],
@@ -1372,10 +1372,10 @@ class _StatsTabState extends State<_StatsTab> {
 // ── Season dropdown ────────────────────────────────────────────────────────────
 
 class _SeasonDropdown extends StatelessWidget {
+  const _SeasonDropdown({
   final String value;
   final List<String> options;
   final ValueChanged<String> onChanged;
-  const _SeasonDropdown({
     required this.value,
     required this.options,
     required this.onChanged,
@@ -1415,9 +1415,9 @@ class _SeasonDropdown extends StatelessWidget {
 // ── League position banner ─────────────────────────────────────────────────────
 
 class _PositionBanner extends StatelessWidget {
+  const _PositionBanner({required this.stats, required this.accent});
   final TeamSeasonStats stats;
   final Color accent;
-  const _PositionBanner({required this.stats, required this.accent});
 
   @override
   Widget build(BuildContext context) {
@@ -1515,8 +1515,8 @@ class _PositionBanner extends StatelessWidget {
 // ── W/D/L result bar ───────────────────────────────────────────────────────────
 
 class _ResultBar extends StatelessWidget {
-  final TeamSeasonStats stats;
   const _ResultBar({required this.stats});
+  final TeamSeasonStats stats;
 
   @override
   Widget build(BuildContext context) {
@@ -1567,10 +1567,10 @@ class _ResultBar extends StatelessWidget {
 }
 
 class _ResultLabel extends StatelessWidget {
+  const _ResultLabel({
   final Color color;
   final String label;
   final int value;
-  const _ResultLabel({
     required this.color,
     required this.label,
     required this.value,
@@ -1589,7 +1589,7 @@ class _ResultLabel extends StatelessWidget {
         ),
         const SizedBox(width: 6),
         Text('$label $value',
-            style: TextStyle(
+            style: const TextStyle(
               color: SportSphereColors.muted,
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -1602,8 +1602,8 @@ class _ResultLabel extends StatelessWidget {
 // ── Team stats grid card ───────────────────────────────────────────────────────
 
 class _TeamStatsGrid extends StatelessWidget {
-  final TeamSeasonStats stats;
   const _TeamStatsGrid({required this.stats});
+  final TeamSeasonStats stats;
 
   @override
   Widget build(BuildContext context) {
@@ -1675,18 +1675,18 @@ class _TeamStatsGrid extends StatelessWidget {
 }
 
 class _Entry {
+  const _Entry(this.icon, this.color, this.label, this.value);
   final IconData icon;
   final Color color;
   final String label;
   final String value;
-  const _Entry(this.icon, this.color, this.label, this.value);
 }
 
 // ── Section label ──────────────────────────────────────────────────────────────
 
 class _SectionLabel extends StatelessWidget {
-  final String text;
   const _SectionLabel(this.text);
+  final String text;
 
   @override
   Widget build(BuildContext context) {
