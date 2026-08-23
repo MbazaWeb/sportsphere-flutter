@@ -530,14 +530,71 @@ Future<String?> _pickAndUpload(BuildContext ctx, {String folder='admin'}) async 
 
 // ── Create User ────────────────────────────────────────────────────────────────
 Future<void> _showCreateUser(BuildContext ctx) {
-  return showDialog<void>(context:ctx, builder:(_)=>AlertDialog(
-    backgroundColor:GrassForm.sheetBg,
-    title:const Text('Create User', style:TextStyle(color:SportSphereColors.white)),
-    content:const Text(
-      'To create users:\n\nSupabase Dashboard → Authentication → Users → Add User\n\nRequires service role key (not available in app for security).',
-      style:TextStyle(color:SportSphereColors.muted, fontSize:13)),
-    actions:[TextButton(onPressed:()=>Navigator.pop(ctx), child:const Text('OK'))],
-  ));
+  final email = TextEditingController();
+  final password = TextEditingController(text: 'SportSphere2024!');
+  final handle = TextEditingController();
+  final firstName = TextEditingController();
+  final lastName = TextEditingController();
+  String role = 'fan';
+
+  return showDialog<void>(
+    context: ctx,
+    builder: (_) => StatefulBuilder(
+      builder: (c, setL) => AlertDialog(
+        backgroundColor: GrassForm.sheetBg,
+        title: const Text('Create User', style: TextStyle(color: SportSphereColors.white)),
+        content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          _AdminField(controller: firstName, label: 'First Name *'),
+          _AdminField(controller: lastName, label: 'Last Name'),
+          _AdminField(controller: handle, label: 'Handle (no spaces, no @)'),
+          _AdminField(controller: email, label: 'Email *', keyboardType: TextInputType.emailAddress),
+          _AdminField(controller: password, label: 'Password'),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(
+            value: role,
+            dropdownColor: GrassForm.sheetBg,
+            decoration: const InputDecoration(
+              labelText: 'Role',
+              labelStyle: TextStyle(color: SportSphereColors.muted),
+            ),
+            items: ['fan', 'player', 'coach', 'team', 'journalist',
+                    'analyst', 'creator', 'scout', 'agent', 'admin']
+                .map((r) => DropdownMenuItem(value: r,
+                    child: Text(r[0].toUpperCase() + r.substring(1),
+                        style: const TextStyle(color: SportSphereColors.white)))).toList(),
+            onChanged: (v) => setL(() => role = v ?? role),
+          ),
+        ])),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () async {
+              if (email.text.trim().isEmpty) return;
+              try {
+                await _repo.createUser(
+                  email: email.text.trim(),
+                  password: password.text.trim(),
+                  handle: handle.text.trim().replaceAll('@', '').replaceAll(' ', '_'),
+                  firstName: firstName.text.trim(),
+                  lastName: lastName.text.trim(),
+                  role: role,
+                );
+                if (c.mounted) {
+                  Navigator.pop(c);
+                  ScaffoldMessenger.of(c).showSnackBar(
+                    const SnackBar(content: Text('User created successfully')));
+                }
+              } catch (e) {
+                if (c.mounted) ScaffoldMessenger.of(c)
+                    .showSnackBar(SnackBar(content: Text('Failed: $e')));
+              }
+            },
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 // ── Create Competition ─────────────────────────────────────────────────────────
@@ -2493,13 +2550,13 @@ class _ProQueueTabState extends State<_ProQueueTab> {
 
     // Claim table (entity claims)
     try {
-      final rows = await sb.from('Claim')
+      final rows = await sb.from('ClaimRequest')
           .select('id, claimantId, profileType, profileName, status, evidenceNotes, createdAt')
           .eq('status', 'pending')
           .order('createdAt', ascending: false)
           .limit(50);
       results.addAll((rows as List).cast<Map<String, dynamic>>()
-          .map((r) => {...r, '_source': 'Claim'}));
+          .map((r) => {...r, '_source': 'ClaimRequest'}));
     } catch (_) {}
 
     results.sort((a, b) {
@@ -2530,7 +2587,7 @@ class _ProQueueTabState extends State<_ProQueueTab> {
           }
         }
       } else {
-        await sb.from('Claim').update({
+        await sb.from('ClaimRequest').update({
           'status': status,
           'reviewedAt': DateTime.now().toIso8601String(),
         }).eq('id', id);

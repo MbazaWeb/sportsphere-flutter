@@ -374,22 +374,35 @@ class SocialGraph {
     }
 
     try {
+      // Try fans table first (uuid-based, profiles only)
+      // If targetId is not a uuid in profiles, fall back to Follow table
+      bool usedFansTable = false;
       if (on) {
-        await _sb.from('fans').upsert({
-          'fan_id': uid,
-          'target_id': targetId,
-        });
+        try {
+          await _sb.from('fans').upsert({
+            'fan_id': uid,
+            'target_id': targetId,
+          });
+          usedFansTable = true;
+        } catch (_) {
+          // profiles table may not have this target — use Follow as fallback
+          await _sb.from('Follow').upsert({
+            'id': 'follow-${uid.substring(0, 8)}-${targetId.substring(0, 8)}-${DateTime.now().millisecondsSinceEpoch}',
+            'followerId': uid,
+            'followingId': targetId,
+          });
+        }
       } else {
-        await _sb
-            .from('fans')
-            .delete()
-            .eq('fan_id', uid)
-            .eq('target_id', targetId);
+        try {
+          await _sb.from('fans').delete()
+              .eq('fan_id', uid).eq('target_id', targetId);
+          usedFansTable = true;
+        } catch (_) {
+          await _sb.from('Follow').delete()
+              .eq('followerId', uid).eq('followingId', targetId);
+        }
       }
 
-      // Refresh the target's fanCount first, then the caller's
-      // followingCount — fan and follow are linked in some flows, so
-      // the caller's own counters may also shift.
       await refreshCounts(targetId);
       await refreshCounts(uid);
     } catch (e) {

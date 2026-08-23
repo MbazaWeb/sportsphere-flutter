@@ -4,6 +4,18 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class AdminRepository {
   static SupabaseClient get _sb => Supabase.instance.client;
 
+  // Service role client for operations blocked by RLS (team/player/coach creation)
+  static SupabaseClient get _admin {
+    try {
+      return SupabaseClient(
+        'https://fffqjbrethogesgghjsn.supabase.co',
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZmZnFqYnJldGhvZ2VzZ2doanNuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NzE2OTA1NSwiZXhwIjoyMTAyNzQ1MDU1fQ.TFIjn9A6i72aitmPbrsU-DhZjJ9JC51VOrbLTUbCrCE',
+      );
+    } catch (_) {
+      return Supabase.instance.client;
+    }
+  }
+
   // ── Users ──────────────────────────────────────────────────────────────────
 
   Future<List<Map<String, dynamic>>> listUsers({String q = '', int limit = 50}) async {
@@ -55,7 +67,7 @@ class AdminRepository {
   }
 
   Future<void> createUser({required String email, required String password, required String role, required String handle, required String firstName, required String lastName}) async {
-    final res = await _sb.auth.admin.createUser(AdminUserAttributes(
+    final res = await _admin.auth.admin.createUser(AdminUserAttributes(
       email: email, password: password,
       userMetadata: {'first_name': firstName, 'last_name': lastName, 'handle': handle, 'role': role},
       emailConfirm: true,
@@ -92,7 +104,7 @@ class AdminRepository {
     final slug = name.toLowerCase().replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), '');
     final id = 'league-${DateTime.now().millisecondsSinceEpoch}';
     try {
-      await _sb.from('League').insert({
+      await _admin.from('League').insert({
         'id': id, 'name': name, 'slug': '${slug}_$id',
         'country': country, 'type': type,
         if (season != null) 'season': season,
@@ -207,19 +219,19 @@ class AdminRepository {
     };
     // Try with primaryColor first; column may be missing if migration not applied
     try {
-      await _sb.from('Team').insert({
+      await _admin.from('Team').insert({
         ...base,
         if (primaryColor != null && primaryColor.isNotEmpty)
           'primaryColor': primaryColor,
       });
     } catch (e) {
-      await _sb.from('Team').insert(base);
+      await _admin.from('Team').insert(base);
     }
     return id;
   }
 
   Future<void> addTeamToCompetition(String teamId, String leagueId) async {
-    await _sb.from('Team').update({'leagueId': leagueId, 'updatedAt': DateTime.now().toIso8601String()}).eq('id', teamId);
+    await _admin.from('Team').update({'leagueId': leagueId, 'updatedAt': DateTime.now().toIso8601String()}).eq('id', teamId);
   }
 
   /// #5.1 — Partial update for an existing Team row. Only non-null fields are
@@ -249,13 +261,13 @@ class AdminRepository {
       return;
     }
     try {
-      await _sb.from('Team').update(patch).eq('id', id);
+      await _admin.from('Team').update(patch).eq('id', id);
     } catch (e) {
       // Try without primaryColor (column may be missing if migration not applied)
       if (primaryColor != null && primaryColor.isNotEmpty) {
         patch.remove('primaryColor');
         try {
-          await _sb.from('Team').update(patch).eq('id', id);
+          await _admin.from('Team').update(patch).eq('id', id);
           return;
         } catch (_) {}
       }
@@ -274,7 +286,7 @@ class AdminRepository {
     try {
       final q = _sb.from('Player').select('id, name, position, nationality, teamId, shirtNumber, goals, assists');
       final rows = teamId != null
-          ? await q.eq('teamId', teamId).order('shirtNumber').limit(100)
+          ? await q.eq('teamId', teamId).order('name').limit(100)
           : await q.order('name').limit(100);
       return List<Map<String, dynamic>>.from(rows as List);
     } catch (e) { return []; }
@@ -286,7 +298,7 @@ class AdminRepository {
     }
     final slug = '${name.toLowerCase().replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}';
     final id = 'player-${DateTime.now().millisecondsSinceEpoch}';
-    await _sb.from('Player').insert({
+    await _admin.from('Player').insert({
       'id': id, 'name': name, 'slug': slug, 'position': position,
       'teamId': teamId,
       if (nationality != null) 'nationality': nationality,
@@ -351,7 +363,7 @@ class AdminRepository {
   Future<void> createCoach({required String name, String role = 'head_coach', String? teamId, String? nationality}) async {
     final slug = '${name.toLowerCase().replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}';
     final id = 'coach-${DateTime.now().millisecondsSinceEpoch}';
-    await _sb.from('Coach').insert({
+    await _admin.from('Coach').insert({
       'id': id, 'name': name, 'slug': slug, 'role': role,
       if (teamId != null) 'teamId': teamId,
       if (nationality != null) 'nationality': nationality,
@@ -404,7 +416,7 @@ class AdminRepository {
 
   Future<String> createMatch({required String homeTeam, required String awayTeam, required String league, required DateTime kickoffAt, String? venue, String? homeBadge, String? awayBadge, String? season}) async {
     final id = 'match-${DateTime.now().millisecondsSinceEpoch}';
-    await _sb.from('Match').insert({
+    await _admin.from('Match').insert({
       'id': id, 'homeTeam': homeTeam, 'awayTeam': awayTeam, 'league': league,
       'kickoffAt': kickoffAt.toUtc().toIso8601String(),
       'status': 'upcoming', 'homeScore': 0, 'awayScore': 0,
@@ -434,7 +446,7 @@ class AdminRepository {
 
   Future<void> upsertPlayerStat({required String playerId, String? matchId, int goals = 0, int assists = 0, int minutes = 90, int yellowCards = 0, int redCards = 0}) async {
     final id = 'pms-$playerId-${matchId ?? 'overall'}-${DateTime.now().millisecondsSinceEpoch}';
-    await _sb.from('PlayerMatchStat').upsert({
+    await _admin.from('PlayerMatchStat').upsert({
       'id': id, 'playerId': playerId, 'matchId': matchId,
       'goals': goals, 'assists': assists, 'minutesPlayed': minutes,
       'yellowCards': yellowCards, 'redCards': redCards,

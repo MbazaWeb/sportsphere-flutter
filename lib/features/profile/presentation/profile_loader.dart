@@ -161,7 +161,7 @@ class ProfileLoader {
       );
     }
 
-    var fanOf = 'Playify Fan';
+    var fanOf = '';  // empty — user must pick a team, no default
     try {
       if (profileId.isNotEmpty) {
         final fans =
