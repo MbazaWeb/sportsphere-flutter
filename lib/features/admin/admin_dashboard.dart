@@ -276,7 +276,7 @@ class _CompetitionsTabState extends State<_CompetitionsTab> with SingleTickerPro
       Padding(padding:const EdgeInsets.fromLTRB(16,8,16,4),child:Align(alignment:Alignment.centerRight,child:
         FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:SportSphereColors.electricBlue,padding:const EdgeInsets.symmetric(horizontal:12,vertical:8)),
           icon:const Icon(Icons.upload_rounded,size:15),label:const Text('Bulk Upload Teams / Players',style:TextStyle(fontSize:11)),
-          onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>BulkUploadScreen(onDone:_load)))))),
+          onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>BulkUploadScreen(onDone:_load))))),
       )),
       TabBar(controller:_sub,labelColor:SportSphereColors.white,unselectedLabelColor:SportSphereColors.muted,
         indicatorColor:const Color(0xFFFFD700),labelStyle:const TextStyle(fontSize:11,fontWeight:FontWeight.w700),
