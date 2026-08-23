@@ -990,17 +990,8 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
           } catch (_) {}
         }
 
-        // Determine SpotlightType
-        _SpotlightType type;
-        switch (postType) {
-          case 'poll': type = _SpotlightType.poll; break;
-          case 'prediction': type = _SpotlightType.prediction; break;
-          case 'video': type = _SpotlightType.video; break;
-          case 'media':
-            type = (asset != null && isVideoMediaUrl(asset))
-                ? _SpotlightType.video : _SpotlightType.official; break;
-          default: type = _SpotlightType.official;
-        }
+        // Determine SpotlightType using public helper from sportlights_tab
+        final type = spotlightTypeFromPostType(postType, assetUrl: asset);
 
         final createdAt = r['createdAt'] ?? r['created_at'];
         final dt = DateTime.tryParse(createdAt?.toString() ?? '')?.toLocal();

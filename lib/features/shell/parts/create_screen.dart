@@ -514,11 +514,13 @@ class _CreateComposerState extends State<_CreateComposer>
                   const SizedBox(height: 14),
                   _PollPanel(
                     options: _pollOptions,
+                    teams: _teams,
+                    players: _players,
                     duration: _pollDuration,
                     onDurationChanged: (d) =>
                         setState(() => _pollDuration = d),
                     onAddOption: () {
-                      if (_pollOptions.length < 4) {
+                      if (_pollOptions.length < 6) {
                         setState(() => _pollOptions
                             .add(TextEditingController()));
                       }
@@ -529,6 +531,18 @@ class _CreateComposerState extends State<_CreateComposer>
                           _pollOptions[i].dispose();
                           _pollOptions.removeAt(i);
                         });
+                      }
+                    },
+                    onAddTeam: (name) {
+                      if (_pollOptions.length < 6) {
+                        setState(() => _pollOptions
+                            .add(TextEditingController(text: name)));
+                      }
+                    },
+                    onAddPlayer: (name) {
+                      if (_pollOptions.length < 6) {
+                        setState(() => _pollOptions
+                            .add(TextEditingController(text: name)));
                       }
                     },
                   ),
@@ -1122,17 +1136,25 @@ class _MediaStrip extends StatelessWidget {
 
 class _PollPanel extends StatelessWidget {
   final List<TextEditingController> options;
+  final List<Map<String,dynamic>> teams;
+  final List<Map<String,dynamic>> players;
   final Duration duration;
   final ValueChanged<Duration> onDurationChanged;
   final VoidCallback onAddOption;
   final ValueChanged<int> onRemoveOption;
+  final ValueChanged<String> onAddTeam;
+  final ValueChanged<String> onAddPlayer;
 
   const _PollPanel({
     required this.options,
+    required this.teams,
+    required this.players,
     required this.duration,
     required this.onDurationChanged,
     required this.onAddOption,
     required this.onRemoveOption,
+    required this.onAddTeam,
+    required this.onAddPlayer,
   });
 
   static const _durations = [
@@ -1181,7 +1203,7 @@ class _PollPanel extends StatelessWidget {
             );
           }),
 
-          if (options.length < 4)
+          if (options.length < 6)
             GestureDetector(
               onTap: onAddOption,
               child: Container(
@@ -1219,6 +1241,26 @@ class _PollPanel extends StatelessWidget {
               ),
             ),
 
+          // Quick-add from DB
+          if (options.length < 6 && (teams.isNotEmpty || players.isNotEmpty)) ...[
+            const SizedBox(height: 8),
+            Wrap(spacing: 8, children: [
+              if (teams.isNotEmpty)
+                _PollQuickAdd(
+                  label: '+ Team',
+                  icon: Icons.groups_rounded,
+                  color: const Color(0xFF9B6DFF),
+                  onTap: (context) => _pickTeamForPoll(context),
+                ),
+              if (players.isNotEmpty)
+                _PollQuickAdd(
+                  label: '+ Player',
+                  icon: Icons.person_rounded,
+                  color: SportSphereColors.sportOrange,
+                  onTap: (context) => _pickPlayerForPoll(context),
+                ),
+            ]),
+          ],
           const SizedBox(height: 14),
           Text(
             'Poll duration',
@@ -1273,6 +1315,120 @@ class _PollPanel extends StatelessWidget {
       ),
     );
   }
+
+  void _pickTeamForPoll(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF061525),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.6, minChildSize: 0.3, maxChildSize: 0.85, expand: false,
+        builder: (_, sc) => Column(children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 16, 20, 12),
+            child: Text('Add Team to Poll',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+          ),
+          Expanded(child: ListView.builder(
+            controller: sc,
+            itemCount: teams.length,
+            itemBuilder: (_, i) {
+              final t = teams[i];
+              return ListTile(
+                leading: const Icon(Icons.groups_rounded, color: Color(0xFF9B6DFF)),
+                title: Text(t['name']?.toString() ?? '',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                onTap: () { Navigator.pop(context); onAddTeam(t['name']?.toString() ?? ''); },
+              );
+            },
+          )),
+        ]),
+      ),
+    );
+  }
+
+  void _pickPlayerForPoll(BuildContext context) {
+    final searchCtrl = TextEditingController();
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF061525),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (_) => StatefulBuilder(builder: (bCtx, bSet) {
+        final q = searchCtrl.text.toLowerCase();
+        final filtered = players.where((p) =>
+            (p['name'] as String? ?? '').toLowerCase().contains(q)).toList();
+        return DraggableScrollableSheet(
+          initialChildSize: 0.7, minChildSize: 0.3, maxChildSize: 0.9, expand: false,
+          builder: (_, sc) => Column(children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Text('Add Player to Poll',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: TextField(
+                controller: searchCtrl,
+                style: const TextStyle(color: Colors.white),
+                onChanged: (_) => bSet(() {}),
+                decoration: InputDecoration(
+                  hintText: 'Search players...',
+                  hintStyle: const TextStyle(color: Colors.white54),
+                  prefixIcon: const Icon(Icons.search_rounded, color: Colors.white54, size: 20),
+                  filled: true, fillColor: const Color(0xFF0B1626),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  isDense: true,
+                ),
+              ),
+            ),
+            Expanded(child: ListView.builder(
+              controller: sc,
+              itemCount: filtered.length,
+              itemBuilder: (_, i) {
+                final p = filtered[i];
+                return ListTile(
+                  leading: const Icon(Icons.person_rounded, color: Color(0xFFFF8A00)),
+                  title: Text(p['name']?.toString() ?? '',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                  subtitle: Text(p['position']?.toString() ?? '',
+                      style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                  onTap: () { Navigator.pop(bCtx); onAddPlayer(p['name']?.toString() ?? ''); },
+                );
+              },
+            )),
+          ]),
+        );
+      }),
+    );
+  }
+}
+
+class _PollQuickAdd extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final void Function(BuildContext) onTap;
+  const _PollQuickAdd({required this.label, required this.icon, required this.color, required this.onTap});
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: () => onTap(context),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.30)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, color: color, size: 14),
+        const SizedBox(width: 5),
+        Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+      ]),
+    ),
+  );
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

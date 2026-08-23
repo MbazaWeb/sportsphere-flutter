@@ -131,6 +131,7 @@ class SpotlightItem {
   final int? predHomeScore;
   final int? predAwayScore;
   final String? myPrediction;  // "homeScore-awayScore" if current user already predicted
+  final String? predMatchId;   // Match.id for "View Match" navigation
 
   const SpotlightItem({
     required this.type,
@@ -156,6 +157,7 @@ class SpotlightItem {
     this.predHomeScore,
     this.predAwayScore,
     this.myPrediction,
+    this.predMatchId,
   });
 
   String get profilePath {
@@ -203,6 +205,20 @@ class SpotlightItem {
 
 // ============================================================
 final _feedItems = <SpotlightItem>[];
+
+/// Public helper — converts a Post.postType string to the internal spotlight type.
+/// Use this from other files that import sportlights_tab.dart.
+_SpotlightType spotlightTypeFromPostType(String postType, {String? assetUrl}) {
+  switch (postType) {
+    case 'poll': return _SpotlightType.poll;
+    case 'prediction': return _SpotlightType.prediction;
+    case 'video': return _SpotlightType.video;
+    case 'media':
+      if (assetUrl != null && isVideoMediaUrl(assetUrl)) return _SpotlightType.video;
+      return _SpotlightType.official;
+    default: return _SpotlightType.official;
+  }
+}
 
 // ============================================================
 // MAIN WIDGET
@@ -510,6 +526,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
           myPrediction: (predHs != null && predAs != null &&
               Supabase.instance.client.auth.currentUser != null)
               ? '$predHs-$predAs' : null,
+          predMatchId: predMatchId,
         ));
       }
 
@@ -2544,28 +2561,30 @@ class _ActionRowState extends State<_ActionRow> {
       );
     }
 
-    // ── Prediction — only show on prediction-type posts ────────────────────
+    // ── Prediction — View Match only (no Predict button) ────────────────────
     if (type == _SpotlightType.prediction) {
-      return _TwoButtons(
-        primary: _Btn(
-          label: 'Make Prediction',
-          icon: Icons.analytics_outlined,
-          color: accent,
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Tap + to create your own prediction'),
-                duration: Duration(seconds: 2),
-              ),
-            );
-          },
-        ),
-        secondary: _Btn(
+      final matchId = widget.item.predMatchId;
+      return _OneButton(
+        child: _Btn(
           label: 'View Match',
           icon: Icons.sports_soccer_outlined,
           color: accent,
           outlined: true,
-          onTap: () => context.go('/home'),
+          onTap: () {
+            // Navigate to Scores tab (index 1)
+            context.go('/home');
+            // Use a post-frame callback to switch to scores tab
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Check the Scores tab for this match'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            });
+          },
         ),
       );
     }

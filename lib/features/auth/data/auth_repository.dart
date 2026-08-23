@@ -73,6 +73,8 @@ class AuthRepository {
         'handle': handle,
         'country': country,
         'dob': dob.toIso8601String(),
+        'avatar_url': 'assets/images/Playify_logo.png', // default Playify avatar
+        'role': 'fan',
       },
     );
 
@@ -131,7 +133,7 @@ class AuthRepository {
       dob: DateTime.tryParse(response['dob'] ?? '') ?? DateTime.now(),
       joinedDate: DateTime.tryParse(response['created_at'] ?? '') ?? DateTime.now(),
       role: response['role'] ?? 'fan',
-      avatarUrl: response['avatar_url'],
+      avatarUrl: response['avatar_url'] ?? 'assets/images/Playify_logo.png',
       coverUrl: response['cover_url'],
       isVerified: response['is_verified'] ?? false,
       themeColor: response['theme_color'] ?? '#168CFF',
@@ -324,7 +326,7 @@ class AuthRepository {
         dob: DateTime.tryParse(r['dob'] ?? '') ?? DateTime.now(),
         joinedDate: DateTime.tryParse(r['created_at'] ?? '') ?? DateTime.now(),
         role: r['role'] ?? 'fan',
-        avatarUrl: r['avatar_url'],
+        avatarUrl: r['avatar_url'] ?? 'assets/images/Playify_logo.png',
         coverUrl: r['cover_url'],
         isVerified: r['is_verified'] ?? false,
         themeColor: r['theme_color'] ?? '#168CFF',
