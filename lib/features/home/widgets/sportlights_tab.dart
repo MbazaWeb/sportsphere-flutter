@@ -143,6 +143,7 @@ class SpotlightItem {
   final String? matchKickoff;
   final String? homeBadge;
   final String? awayBadge;
+  final String? leagueBadge;
 
   const SpotlightItem({
     required this.type,
@@ -179,6 +180,7 @@ class SpotlightItem {
     this.matchKickoff,
     this.homeBadge,
     this.awayBadge,
+    this.leagueBadge,
   });
 
   String get profilePath {
@@ -526,7 +528,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
         // ── Match enrichment: fetch Match row via matchId ──
         String? mId;
         String? mHome, mAway, mHomeBadge, mAwayBadge;
-        String? mScore, mStatus, mLeague, mVenue;
+        String? mScore, mStatus, mLeague, mVenue, mLeagueBadge;
         DateTime? mKickoff;
         final matchIdRef = r['matchId']?.toString() ?? r['match_id']?.toString();
         if (postType == 'match' && matchIdRef != null) {
@@ -538,15 +540,16 @@ class _SportlightsTabState extends State<SportlightsTab> {
                 .maybeSingle();
             if (m != null) {
               mId = m['id']?.toString();
-              mHome = m['homeTeamName']?.toString() ?? m['home_team_name']?.toString();
-              mAway = m['awayTeamName']?.toString() ?? m['away_team_name']?.toString();
-              mHomeBadge = m['homeBadge']?.toString() ?? m['home_badge']?.toString();
-              mAwayBadge = m['awayBadge']?.toString() ?? m['away_badge']?.toString();
+              mHome = m['homeTeamName']?.toString() ?? m['home_team_name']?.toString() ?? m['homeTeam']?.toString();
+              mAway = m['awayTeamName']?.toString() ?? m['away_team_name']?.toString() ?? m['awayTeam']?.toString();
+              mHomeBadge = m['homeBadge']?.toString() ?? m['home_badge']?.toString() ?? m['homeLogo']?.toString();
+              mAwayBadge = m['awayBadge']?.toString() ?? m['away_badge']?.toString() ?? m['awayLogo']?.toString();
               final hs = m['homeScore']?.toString() ?? m['home_score']?.toString();
               final as2 = m['awayScore']?.toString() ?? m['away_score']?.toString();
               mScore = (hs != null && as2 != null) ? '$hs - $as2' : null;
               mStatus = m['status']?.toString();
-              mLeague = m['leagueName']?.toString() ?? m['league_name']?.toString();
+              mLeague = m['leagueName']?.toString() ?? m['league_name']?.toString() ?? m['league']?.toString();
+              mLeagueBadge = m['leagueBadge']?.toString() ?? m['league_badge']?.toString() ?? m['leagueLogo']?.toString();
               mVenue = m['venue']?.toString();
               final ko = m['kickoffAt'] ?? m['kickoff_at'];
               mKickoff = DateTime.tryParse(ko?.toString() ?? '');
@@ -562,6 +565,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
           handle: handle,
           targetUserId: targetUserId,
           postId: r['id']?.toString(),
+          matchId: mId ?? matchIdRef,
           role: roleLabel,
           age: _ageLabel(r['createdAt'] ?? r['created_at']),
           asset: asset,
@@ -585,6 +589,17 @@ class _SportlightsTabState extends State<SportlightsTab> {
               Supabase.instance.client.auth.currentUser != null)
               ? '$predHs-$predAs' : null,
           predMatchId: predMatchId,
+          // ── Match card fields (previously fetched but not passed — fixed) ──
+          homeTeam: mHome,
+          awayTeam: mAway,
+          matchScore: mScore,
+          matchStatus: mStatus,
+          matchLeague: mLeague,
+          matchVenue: mVenue,
+          matchKickoff: mKickoff?.toIso8601String(),
+          homeBadge: mHomeBadge,
+          awayBadge: mAwayBadge,
+          leagueBadge: mLeagueBadge,
         ));
       }
 
@@ -1576,15 +1591,147 @@ class _PredictionTeam extends StatelessWidget {
 }
 
 // ============================================================
-// MATCH CONTENT — shows fixture details in the feed card
+// MATCH CONTENT — full match card in the feed
 // ============================================================
+// Shows: league badge + league name, status pill,
+// home team avatar + name, score / VS, away team avatar + name,
+// venue + kickoff (date + time), and an auto-predict row
+// (Win / Draw / Lose) that submits a quick prediction via
+// SocialRepository.createPrediction().
 
-class _MatchContent extends StatelessWidget {
+class _MatchContent extends StatefulWidget {
   final SpotlightItem item;
   const _MatchContent({required this.item});
 
   @override
+  State<_MatchContent> createState() => _MatchContentState();
+}
+
+class _MatchContentState extends State<_MatchContent> {
+  /// 'home' | 'draw' | 'away' | null
+  String? _selected;
+  bool _submitting = false;
+
+  Future<void> _predict(String outcome) async {
+    if (_submitting) return;
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to predict')),
+      );
+      return;
+    }
+    setState(() {
+      _selected = outcome;
+      _submitting = true;
+    });
+
+    // Map outcome -> a representative scoreline (auto-predict).
+    // The user clicks Win / Draw / Lose; we submit a plausible scoreline.
+    final int home;
+    final int away;
+    switch (outcome) {
+      case 'home':
+        home = 2; away = 1;
+        break;
+      case 'draw':
+        home = 1; away = 1;
+        break;
+      case 'away':
+        home = 1; away = 2;
+        break;
+      default:
+        home = 0; away = 0;
+    }
+
+    final homeName = widget.item.homeTeam ?? 'Home';
+    final awayName = widget.item.awayTeam ?? 'Away';
+    final matchId = widget.item.matchId;
+
+    try {
+      await SocialRepository().createPrediction(
+        homeTeam: homeName,
+        awayTeam: awayName,
+        predictedHome: home,
+        predictedAway: away,
+        matchId: matchId,
+        note: outcome == 'home'
+            ? 'Auto: $homeName win'
+            : outcome == 'draw'
+                ? 'Auto: Draw'
+                : 'Auto: $awayName win',
+        confidence: 'medium',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            outcome == 'home'
+                ? 'Predicted $homeName win ($home-$away)'
+                : outcome == 'draw'
+                    ? 'Predicted a draw ($home-$away)'
+                    : 'Predicted $awayName win ($home-$away)',
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(friendlyError(e))),
+      );
+      // Revert selection on failure
+      setState(() => _selected = null);
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  Widget _predictChip({
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    final selected = _selected == value;
+    return Expanded(
+      child: GestureDetector(
+        onTap: _submitting ? null : () => _predict(value),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+          decoration: BoxDecoration(
+            color: selected ? color : color.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected ? color : color.withValues(alpha: 0.35),
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: selected ? Colors.white : color),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: selected ? Colors.white : color,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final item = widget.item;
     final home = item.homeTeam ?? 'Home';
     final away = item.awayTeam ?? 'Away';
     final score = item.matchScore;
@@ -1609,12 +1756,25 @@ class _MatchContent extends StatelessWidget {
       statusLabel = 'SCHEDULED';
     }
 
-    // Kickoff time formatter
-    String? kickoffLabel;
+    // Kickoff date + time formatter
+    String? kickoffDateLabel;
+    String? kickoffTimeLabel;
     if (kickoff != null) {
       final kdt = DateTime.tryParse(kickoff)?.toLocal();
       if (kdt != null) {
-        kickoffLabel = '${kdt.day}/${kdt.month} ${kdt.hour.toString().padLeft(2, '0')}:${kdt.minute.toString().padLeft(2, '0')}';
+        kickoffDateLabel = '${kdt.day.toString().padLeft(2, '0')}/${kdt.month.toString().padLeft(2, '0')}/${kdt.year}';
+        kickoffTimeLabel = '${kdt.hour.toString().padLeft(2, '0')}:${kdt.minute.toString().padLeft(2, '0')}';
+      }
+    }
+
+    // If the user already predicted (from server), seed the local selection
+    // so the chip highlights correctly on first paint.
+    if (_selected == null && item.myPrediction != null) {
+      final parts = item.myPrediction!.split('-');
+      if (parts.length == 2) {
+        final h = int.tryParse(parts[0].trim()) ?? 0;
+        final a = int.tryParse(parts[1].trim()) ?? 0;
+        _selected = h > a ? 'home' : (h == a ? 'draw' : 'away');
       }
     }
 
@@ -1631,14 +1791,28 @@ class _MatchContent extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(0),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // League + status row
+          // ── League badge + league name + status pill ──
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              if (item.leagueBadge != null && item.leagueBadge!.isNotEmpty) ...[
+                ClipOval(
+                  child: Image.network(
+                    item.leagueBadge!,
+                    width: 22, height: 22,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) =>
+                        const Icon(Icons.emoji_events_rounded, size: 18, color: Color(0xFFFFD700)),
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ] else if (league != null && league.isNotEmpty) ...[
+                const Icon(Icons.emoji_events_rounded, size: 16, color: Color(0xFFFFD700)),
+                const SizedBox(width: 6),
+              ],
               if (league != null && league.isNotEmpty)
                 Expanded(
                   child: Text(
@@ -1673,12 +1847,12 @@ class _MatchContent extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 18),
 
-          // Teams + Score
+          // ── Teams + Score ──
           Row(
             children: [
-              // Home team
+              // Home team avatar + name
               Expanded(
                 child: Column(
                   children: [
@@ -1693,7 +1867,7 @@ class _MatchContent extends StatelessWidget {
                       )
                     else
                       const Icon(Icons.shield_rounded, size: 44, color: Color(0xFF8FA3B8)),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Text(
                       home,
                       textAlign: TextAlign.center,
@@ -1701,7 +1875,7 @@ class _MatchContent extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: Color(0xFFF7FAFF),
-                        fontSize: 15,
+                        fontSize: 13,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -1709,7 +1883,7 @@ class _MatchContent extends StatelessWidget {
                 ),
               ),
 
-              // Score / time
+              // Score / VS
               SizedBox(
                 width: 80,
                 child: Column(
@@ -1719,7 +1893,7 @@ class _MatchContent extends StatelessWidget {
                         score,
                         style: TextStyle(
                           color: isLive ? const Color(0xFFFF3B30) : const Color(0xFFF7FAFF),
-                          fontSize: 28,
+                          fontSize: 26,
                           fontWeight: FontWeight.w900,
                           letterSpacing: 2,
                         ),
@@ -1729,7 +1903,7 @@ class _MatchContent extends StatelessWidget {
                         '0 - 0',
                         style: TextStyle(
                           color: Color(0xFFFF3B30),
-                          fontSize: 28,
+                          fontSize: 26,
                           fontWeight: FontWeight.w900,
                           letterSpacing: 2,
                         ),
@@ -1748,15 +1922,15 @@ class _MatchContent extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(
-                          status!,
-                          style: const TextStyle(color: Color(0xFFFF3B30), fontSize: 12, fontWeight: FontWeight.w600),
+                          status,
+                          style: const TextStyle(color: Color(0xFFFF3B30), fontSize: 11, fontWeight: FontWeight.w600),
                         ),
                       ),
                   ],
                 ),
               ),
 
-              // Away team
+              // Away team avatar + name
               Expanded(
                 child: Column(
                   children: [
@@ -1771,7 +1945,7 @@ class _MatchContent extends StatelessWidget {
                       )
                     else
                       const Icon(Icons.shield_rounded, size: 44, color: Color(0xFF8FA3B8)),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Text(
                       away,
                       textAlign: TextAlign.center,
@@ -1779,7 +1953,7 @@ class _MatchContent extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: Color(0xFFF7FAFF),
-                        fontSize: 15,
+                        fontSize: 13,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -1789,38 +1963,88 @@ class _MatchContent extends StatelessWidget {
             ],
           ),
 
-          // Venue + kickoff
-          if (venue != null || kickoffLabel != null) ...[
-            const SizedBox(height: 20),
+          // ── Venue + kickoff date + kickoff time ──
+          if (venue != null || kickoffDateLabel != null || kickoffTimeLabel != null) ...[
+            const SizedBox(height: 16),
             Divider(color: const Color(0xFF8FA3B8).withOpacity(0.15), height: 1),
-            const SizedBox(height: 14),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            const SizedBox(height: 10),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 14,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                if (venue != null && venue.isNotEmpty) ...[
-                  const Icon(Icons.stadium_rounded, size: 14, color: Color(0xFF8FA3B8)),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(
-                      venue,
-                      style: const TextStyle(color: Color(0xFF8FA3B8), fontSize: 12),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                if (venue != null && venue.isNotEmpty)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.stadium_rounded, size: 13, color: Color(0xFF8FA3B8)),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          venue,
+                          style: const TextStyle(color: Color(0xFF8FA3B8), fontSize: 11),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-                if (venue != null && kickoffLabel != null) const SizedBox(width: 16),
-                if (kickoffLabel != null) ...[
-                  const Icon(Icons.schedule_rounded, size: 14, color: Color(0xFF8FA3B8)),
-                  const SizedBox(width: 4),
-                  Text(
-                    kickoffLabel,
-                    style: const TextStyle(color: Color(0xFF8FA3B8), fontSize: 12),
+                if (kickoffDateLabel != null)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.calendar_today_rounded, size: 13, color: Color(0xFF8FA3B8)),
+                      const SizedBox(width: 4),
+                      Text(
+                        kickoffDateLabel,
+                        style: const TextStyle(color: Color(0xFF8FA3B8), fontSize: 11),
+                      ),
+                    ],
                   ),
-                ],
+                if (kickoffTimeLabel != null)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.schedule_rounded, size: 13, color: Color(0xFF8FA3B8)),
+                      const SizedBox(width: 4),
+                      Text(
+                        kickoffTimeLabel,
+                        style: const TextStyle(color: Color(0xFF8FA3B8), fontSize: 11),
+                      ),
+                    ],
+                  ),
               ],
             ),
           ],
-          const SizedBox(height: 8),
+
+          // ── Auto-predict row: Win / Draw / Lose ──
+          const SizedBox(height: 14),
+          Divider(color: const Color(0xFF8FA3B8).withOpacity(0.15), height: 1),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _predictChip(
+                label: '${home.length > 8 ? '${home.substring(0, 8)}…' : home} Win',
+                value: 'home',
+                icon: Icons.home_outlined,
+                color: const Color(0xFF34C759),
+              ),
+              const SizedBox(width: 8),
+              _predictChip(
+                label: 'Draw',
+                value: 'draw',
+                icon: Icons.swap_horiz_rounded,
+                color: const Color(0xFFFFD700),
+              ),
+              const SizedBox(width: 8),
+              _predictChip(
+                label: '${away.length > 8 ? '${away.substring(0, 8)}…' : away} Win',
+                value: 'away',
+                icon: Icons.flight_takeoff_outlined,
+                color: const Color(0xFFFF3B30),
+              ),
+            ],
+          ),
         ],
       ),
     );
