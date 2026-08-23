@@ -133,6 +133,16 @@ class SpotlightItem {
   final int? predAwayScore;
   final String? myPrediction;  // "homeScore-awayScore" if current user already predicted
   final String? predMatchId;   // Match.id for "View Match" navigation
+  // Match card fields (for _SpotlightType.match posts)
+  final String? homeTeam;
+  final String? awayTeam;
+  final String? matchScore;
+  final String? matchStatus;
+  final String? matchLeague;
+  final String? matchVenue;
+  final String? matchKickoff;
+  final String? homeBadge;
+  final String? awayBadge;
 
   const SpotlightItem({
     required this.type,
@@ -160,6 +170,15 @@ class SpotlightItem {
     this.predAwayScore,
     this.myPrediction,
     this.predMatchId,
+    this.homeTeam,
+    this.awayTeam,
+    this.matchScore,
+    this.matchStatus,
+    this.matchLeague,
+    this.matchVenue,
+    this.matchKickoff,
+    this.homeBadge,
+    this.awayBadge,
   });
 
   String get profilePath {
@@ -210,15 +229,15 @@ final _feedItems = <SpotlightItem>[];
 
 /// Public helper — converts a Post.postType string to the internal spotlight type.
 /// Use this from other files that import sportlights_tab.dart.
-_SpotlightType spotlightTypeFromPostType(String postType, {String? assetUrl}) {
+SpotlightType spotlightTypeFromPostType(String postType, {String? assetUrl}) {
   switch (postType) {
-    case 'poll': return _SpotlightType.poll;
-    case 'prediction': return _SpotlightType.prediction;
-    case 'video': return _SpotlightType.video;
+    case 'poll': return SpotlightType.poll;
+    case 'prediction': return SpotlightType.prediction;
+    case 'video': return SpotlightType.video;
     case 'media':
-      if (assetUrl != null && isVideoMediaUrl(assetUrl)) return _SpotlightType.video;
-      return _SpotlightType.official;
-    default: return _SpotlightType.official;
+      if (assetUrl != null && isVideoMediaUrl(assetUrl)) return SpotlightType.video;
+      return SpotlightType.official;
+    default: return SpotlightType.official;
   }
 }
 
@@ -424,6 +443,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
         Map<int, int>? pollCountsMap;
         String? predHome;
         String? predAway;
+        String? predMatchId;
         int? predHs;
         int? predAs;
 
@@ -2852,7 +2872,7 @@ class _ActionRowState extends State<_ActionRow> {
     }
 
     // ── Prediction — View Match only (no Predict button) ────────────────────
-    if (type == _SpotlightType.prediction) {
+    if (type == SpotlightType.prediction) {
       final matchId = widget.item.predMatchId;
       return _OneButton(
         child: _Btn(
