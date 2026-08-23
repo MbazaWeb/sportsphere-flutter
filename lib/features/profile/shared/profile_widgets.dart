@@ -90,8 +90,8 @@ class ProfilePost {
     this.imageCount = 1,
     this.hasVideo = false,
     this.imageUrl,
-  })  : mediaUrls = (mediaUrls.isEmpty && imageUrl != null && imageUrl!.isNotEmpty)
-            ? [imageUrl!]
+  })  : mediaUrls = (mediaUrls.isEmpty && imageUrl != null && imageUrl.isNotEmpty)
+            ? [imageUrl]
             : mediaUrls;
 
   /// Legacy constructor flag — ignored when [mediaUrls] is populated.
@@ -608,11 +608,38 @@ class _ProfilePostCardState extends State<ProfilePostCard> {
                   ),
                 ),
                 const SizedBox(width: 20),
-                _EngagementBtn(icon: Icons.chat_bubble_outline_rounded, label: formatCount(post.comments), semantics: 'Comment'),
+                _EngagementBtn(
+                  icon: Icons.chat_bubble_outline_rounded,
+                  label: formatCount(post.comments),
+                  semantics: 'Comment',
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Comments coming soon')),
+                    );
+                  },
+                ),
                 const SizedBox(width: 20),
-                _EngagementBtn(icon: Icons.insights_rounded, label: 'Predict', semantics: 'Predict'),
+                _EngagementBtn(
+                  icon: Icons.insights_rounded,
+                  label: 'Predict',
+                  semantics: 'Predict',
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Predictions coming soon')),
+                    );
+                  },
+                ),
                 const Spacer(),
-                _EngagementBtn(icon: Icons.ios_share_rounded, label: 'Share', semantics: 'Share'),
+                _EngagementBtn(
+                  icon: Icons.ios_share_rounded,
+                  label: 'Share',
+                  semantics: 'Share',
+                  onTap: () {
+                    Share.share(post.text.isEmpty
+                        ? 'Check out this post on Playify'
+                        : post.text);
+                  },
+                ),
               ],
             ),
           ],
@@ -652,17 +679,17 @@ class _AuthorAvatar extends StatelessWidget {
 }
 
 class _EngagementBtn extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String semantics;
-  final VoidCallback? onTap;
-
   const _EngagementBtn({
     required this.icon,
     required this.label,
     required this.semantics,
     this.onTap,
   });
+
+  final IconData icon;
+  final String label;
+  final String semantics;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {

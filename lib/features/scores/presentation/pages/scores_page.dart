@@ -320,7 +320,6 @@ class _LiveMatchList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(provider);
     return Column(
       children: [
         Padding(
@@ -1048,8 +1047,8 @@ class _DatedMatchList extends ConsumerWidget {
                         : base.subtract(const Duration(days: 1)),
                   );
                   if (picked != null) {
-                    ref.read(dateProvider.notifier).state =
-                        DateTime(picked.year, picked.month, picked.day);
+                    ref.read(dateProvider.notifier).update(
+                        DateTime(picked.year, picked.month, picked.day));
                   }
                 },
                 icon: const Icon(Icons.calendar_month_rounded, size: 16),
@@ -1072,7 +1071,7 @@ class _DatedMatchList extends ConsumerWidget {
                   d.day == selected.day;
               return GestureDetector(
                 onTap: () =>
-                    ref.read(dateProvider.notifier).state = d,
+                    ref.read(dateProvider.notifier).update(d),
                 child: Container(
                   width: 50,
                   decoration: BoxDecoration(

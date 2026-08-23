@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -39,10 +38,10 @@ Future<RoleProfileModel> lookupRoleProfile(String role, String handle) async {
       ...profileRow,
       // Preserve entity id/slug if the entity table provided them, since
       // role-specific profile rows use `userId` as the PK.
-      if (entity?['id'] != null) 'id': entity!['id'],
-      if (entity?['slug'] != null) 'slug': entity['slug'],
-      if (entity?['name'] != null) 'name': entity['name'],
-      if (entity?['accountUserId'] != null)
+      if (entity != null && entity['id'] != null) 'id': entity['id'],
+      if (entity != null && entity['slug'] != null) 'slug': entity['slug'],
+      if (entity != null && entity['name'] != null) 'name': entity['name'],
+      if (entity != null && entity['accountUserId'] != null)
         'accountUserId': entity['accountUserId'],
     };
   }
@@ -95,7 +94,7 @@ Future<RoleProfileModel> lookupRoleProfile(String role, String handle) async {
       _readInt(user, const ['followerCount', 'follower_count']);
   final followingCount =
       _readInt(user, const ['followingCount', 'following_count']);
-  final fanCount = _readInt(user, const ['fanCount', 'fan_count']) ??
+  final fanCount = _readInt(user, const ['fanCount', 'fan_count']) +
       _readInt(entity, const ['memberCount', 'member_count']);
 
   final avatarUrl = (user?['avatarUrl'] as String?) ??
@@ -494,7 +493,7 @@ Future<List<AboutField>> _aboutFields(
       if (entity?['memberCount'] != null) {
         add('Members', '${entity!['memberCount']}');
       } else if (entity?['member_count'] != null) {
-        add('Members', '${entity['member_count']}');
+        add('Members', '${entity!['member_count']}');
       }
       add('Supported team', entity?['supportedTeam'] as String?);
       break;

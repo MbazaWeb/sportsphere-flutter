@@ -21,6 +21,10 @@ class SportSphereColors {
   static const white = Color(0xFFF7FAFF);
   static const muted = Color(0xFF8FA3B8);
 
+  // Card / sheet surfaces
+  static const card    = Color(0xFF091C30);
+  static const card2   = Color(0xFF0E253C);
+
   // Semantic
   static const danger = Color(0xFFFF3B61);
 

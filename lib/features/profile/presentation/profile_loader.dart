@@ -98,7 +98,7 @@ class ProfileLoader {
     final isAdmin = isAdminRole || AppAdmin.isSessionAdmin;
 
     final profileId = row?['id']?.toString() ?? '';
-    final authId = _sb.auth.currentUser?.id?.toString() ?? '';
+    final authId = _sb.auth.currentUser?.id ?? '';
 
     // Live counts for every role (not only admin)
     var counts = await _liveCounts(profileId);

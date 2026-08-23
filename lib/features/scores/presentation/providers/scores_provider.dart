@@ -87,6 +87,8 @@ class UpcomingDate extends Notifier<DateTime> {
     final n = DateTime.now();
     return DateTime(n.year, n.month, n.day).add(const Duration(days: 1));
   }
+
+  void update(DateTime d) => state = d;
 }
 
 class ResultsDate extends Notifier<DateTime> {
@@ -95,6 +97,8 @@ class ResultsDate extends Notifier<DateTime> {
     final n = DateTime.now();
     return DateTime(n.year, n.month, n.day).subtract(const Duration(days: 1));
   }
+
+  void update(DateTime d) => state = d;
 }
 
 final upcomingDateProvider =

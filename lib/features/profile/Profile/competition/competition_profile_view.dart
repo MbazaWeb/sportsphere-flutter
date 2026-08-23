@@ -507,15 +507,15 @@ class _StatsTab extends StatelessWidget {
             '${m['status']}'.toLowerCase() == 'finished' ||
             '${m['status']}'.toLowerCase() == 'ft' ||
             '${m['status']}'.toLowerCase() == 'completed')
-        .length();
+        .length;
     final live = matches
         .where((m) => '${m['status']}'.toLowerCase() == 'live')
-        .length();
+        .length;
     final upcoming = matches
         .where((m) =>
             '${m['status']}'.toLowerCase() == 'upcoming' ||
             '${m['status']}'.toLowerCase() == 'scheduled')
-        .length();
+        .length;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
@@ -609,10 +609,9 @@ class _FixturesTab extends StatelessWidget {
         final m = matches[i];
         final home = m['homeTeam'] ?? '';
         final away = m['awayTeam'] ?? '';
-        final status = m['status'] ?? 'upcoming';
         final hs = m['homeScore'] ?? 0;
         final as = m['awayScore'] ?? 0;
-        final league = m['league'] ?? '';
+        final status = (m['status'] ?? 'upcoming').toString();
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 10),
           child: Row(
@@ -634,10 +633,18 @@ class _FixturesTab extends StatelessWidget {
                   color: SportSphereColors.electricBlue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text('$hs - $as',
-                    style: const TextStyle(
-                        color: SportSphereColors.electricBlue,
-                        fontWeight: FontWeight.w800)),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('$hs - $as',
+                        style: const TextStyle(
+                            color: SportSphereColors.electricBlue,
+                            fontWeight: FontWeight.w800)),
+                    Text(status,
+                        style: const TextStyle(
+                            color: SportSphereColors.muted, fontSize: 10)),
+                  ],
+                ),
               ),
               Expanded(
                 child: Text('$away',

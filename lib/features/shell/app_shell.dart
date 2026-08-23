@@ -1,14 +1,10 @@
-import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui';
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:video_player/video_player.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/theme/colors.dart';
@@ -21,15 +17,12 @@ import '../../features/auth/domain/auth_state.dart';
 import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/notifications/notifications_provider.dart';
 import '../../features/profile/Profile/fan/fan_profile_view.dart';
-import '../../features/profile/presentation/edit_profile_sheet.dart';
 import '../../features/profile/presentation/profile_loader.dart';
-import '../../features/admin/admin_dashboard.dart';
 import '../home/widgets/sportlights_tab.dart';
 import '../home/news/news_tab.dart';
 import '../scores/presentation/pages/scores_page.dart';
 import '../shop/models/shop_models.dart';
 import '../shop/presentation/shop_tab.dart';
-import 'media/media_tools.dart';
 import '../../core/utils/friendly_error.dart';
 
 part 'parts/home_screen.dart';

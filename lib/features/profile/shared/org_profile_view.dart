@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/colors.dart';
 import 'person_profile_view.dart' show PersonAboutField;
+export 'person_profile_view.dart' show PersonAboutField;
 
 // ── OrgProfileModel ────────────────────────────────────────────────────────────
 
