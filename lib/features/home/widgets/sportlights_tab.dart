@@ -1612,7 +1612,10 @@ class _MatchContent extends StatelessWidget {
     // Kickoff time formatter
     String? kickoffLabel;
     if (kickoff != null) {
-      kickoffLabel = '${kickoff.day}/${kickoff.month} ${kickoff.hour.toString().padLeft(2, '0')}:${kickoff.minute.toString().padLeft(2, '0')}';
+      final kdt = DateTime.tryParse(kickoff)?.toLocal();
+      if (kdt != null) {
+        kickoffLabel = '${kdt.day}/${kdt.month} ${kdt.hour.toString().padLeft(2, '0')}:${kdt.minute.toString().padLeft(2, '0')}';
+      }
     }
 
     return Container(

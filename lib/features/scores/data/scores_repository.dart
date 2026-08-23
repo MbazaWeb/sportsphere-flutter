@@ -201,7 +201,7 @@ class ScoresRepository {
     final winPts = winPointsForSport(sportSlug);
     final drawPts = drawPointsForSport(sportSlug);
 
-    for (final raw in rowList) {
+    for (final raw in rows) {
       final r = Map<String, dynamic>.from(raw as Map);
       final leagueName = ((r['league'] as String?) ?? '').toLowerCase().trim();
 

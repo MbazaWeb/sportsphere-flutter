@@ -106,6 +106,7 @@ class _CreateComposerState extends State<_CreateComposer>
   late final TextEditingController _predAwayCtrl;
   int _predHomeScore = 1;
   int _predAwayScore = 1;
+  List<Map<String, dynamic>> _teams = [];
   List<Map<String, dynamic>> _matches = [];
   List<Map<String, dynamic>> _players = [];
   String? _selectedMatchId;
@@ -154,8 +155,20 @@ class _CreateComposerState extends State<_CreateComposer>
 
     _textCtrl.addListener(() => setState(() {}));
     // Pre-load matches + players for prediction/poll dropdowns
+    _loadTeams();
     _loadMatches();
     _loadPlayers();
+  }
+
+  Future<void> _loadTeams() async {
+    try {
+      final rows = await Supabase.instance.client
+          .from('Team').select('id,name').order('name').limit(200);
+      if (mounted) {
+        setState(() => _teams = List<Map<String, dynamic>>.from(rows as List));
+      }
+    } catch (_) {}
+  }
   }
 
   Future<void> _loadMatches() async {
@@ -1327,7 +1340,7 @@ class _PollPanelState extends State<_PollPanel> {
                 children: [
                   Expanded(
                     child: _PanelField(
-                      controller: widget.options[i],
+                      controller: widget.widget.options[i],
                       hint: 'Option ${i + 1}',
                       icon: Icons.circle_outlined,
                     ),
@@ -1335,7 +1348,7 @@ class _PollPanelState extends State<_PollPanel> {
                   if (widget.options.length > 2) ...[
                     const SizedBox(width: 8),
                     GestureDetector(
-                      onTap: () => widget.onRemoveOption(i),
+                      onTap: () => widget.widget.onRemoveOption(i),
                       child: Icon(
                         Icons.remove_circle_outline_rounded,
                         color: SportSphereColors.danger.withValues(alpha: 0.75),
@@ -1348,7 +1361,7 @@ class _PollPanelState extends State<_PollPanel> {
             );
           }),
 
-          if (options.length < 6)
+          if (widget.options.length < 6)
             GestureDetector(
               onTap: widget.onAddOption,
               child: Container(
@@ -1372,7 +1385,7 @@ class _PollPanelState extends State<_PollPanel> {
           if (widget.options.length < 6 && (widget.teams.isNotEmpty || widget.players.isNotEmpty)) ...[
             const SizedBox(height: 8),
             Wrap(spacing: 8, children: [
-              if (teams.isNotEmpty)
+              if (widget.teams.isNotEmpty)
                 _PollQuickAdd(
                   label: '+ Team',
                   icon: Icons.groups_rounded,
@@ -1465,7 +1478,7 @@ class _PollPanelState extends State<_PollPanel> {
           borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
       builder: (_) => StatefulBuilder(builder: (bCtx, bSet) {
         final q = searchCtrl.text.toLowerCase();
-        final filtered = widget.players.where((p) =>
+        final filtered = players.where((p) =>
             (p['name'] as String? ?? '').toLowerCase().contains(q)).toList();
         return DraggableScrollableSheet(
           initialChildSize: 0.7, minChildSize: 0.3, maxChildSize: 0.9, expand: false,
@@ -1826,7 +1839,7 @@ class _PredictionPanel extends StatelessWidget {
           borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
       builder: (_) => StatefulBuilder(builder: (bCtx, bSet) {
         final query = searchCtrl.text.toLowerCase();
-        final filtered = widget.players.where((p) =>
+        final filtered = players.where((p) =>
             (p['name'] as String? ?? '').toLowerCase().contains(query)).toList();
         return DraggableScrollableSheet(
           initialChildSize: 0.7, minChildSize: 0.3, maxChildSize: 0.9, expand: false,

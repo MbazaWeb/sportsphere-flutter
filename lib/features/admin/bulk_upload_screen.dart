@@ -171,7 +171,7 @@ class _UploadSectionState extends State<_UploadSection> {
     setState(() { _uploading = true; _result = null; });
 
     try {
-      final picked = await FilePicker.platform.pickFiles(
+      final picked = await FilePicker().pickFiles(
         type: FileType.custom,
         allowedExtensions: ['csv', 'txt'],
         withData: true,
