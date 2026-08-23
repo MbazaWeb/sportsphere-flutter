@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:excel/excel.dart';
+import 'package:excel/excel.dart' hide Border;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -390,7 +390,7 @@ class _BulkUploadScreenState extends State<BulkUploadScreen>
         // ── Step guide ───────────────────────────────────────────────────
         if (rows.isEmpty) ...[
           const _Step(n: '1', text: 'Tap Download Template (top right) to get the Excel file'),
-          const _Step(n: '2', text: 'Fill in the data on the $sheetName sheet'),
+          _Step(n: '2', text: 'Fill in the data on the $sheetName sheet'),
           const _Step(n: '3', text: 'Tap Upload File to import your data'),
           const SizedBox(height: 14),
           SizedBox(width: double.infinity, child: OutlinedButton.icon(

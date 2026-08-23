@@ -2,8 +2,6 @@
 import 'dart:html' as html;
 import 'dart:typed_data';
 
-import 'package:file_picker/file_picker.dart';
-
 void downloadExcelFile(Uint8List bytes, String filename) {
   final blob = html.Blob([bytes],
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -15,10 +13,17 @@ void downloadExcelFile(Uint8List bytes, String filename) {
 }
 
 Future<List<int>?> pickExcelFile() async {
-  final result = await FilePicker.platform.pickFiles(
-    type: FileType.custom,
-    allowedExtensions: ['xlsx'],
-    withData: true,
-  );
-  return result?.files.first.bytes;
+  final completer = html.document.createElement('input') as html.FileUploadInputElement;
+  completer.accept = '.xlsx';
+  completer.click();
+  await completer.onChange.first;
+  final file = completer.files?.first;
+  if (file == null) return null;
+  final reader = html.FileReader();
+  reader.readAsArrayBuffer(file);
+  await reader.onLoad.first;
+  final result = reader.result;
+  if (result is List<int>) return result;
+  if (result is html.ByteBuffer) return result.asUint8List();
+  return null;
 }
