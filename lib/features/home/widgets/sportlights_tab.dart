@@ -20,6 +20,18 @@ import '../../../core/utils/friendly_error.dart';
 import '../../../core/utils/media_type.dart';
 
 // ============================================================
+// LOCAL EXTENSIONS
+// ============================================================
+
+extension _StringX on String {
+  /// Returns null if this string is empty or whitespace-only, else self.
+  String? get nullIfEmpty {
+    final t = trim();
+    return t.isEmpty ? null : t;
+  }
+}
+
+// ============================================================
 // ROLE CONFIGURATION
 // ============================================================
 //
@@ -145,6 +157,7 @@ class SpotlightItem {
   final String? homeBadge;
   final String? awayBadge;
   final String? leagueBadge;
+  final String? authorAvatarUrl;  // PART J (rule 38-42): real author avatar
 
   const SpotlightItem({
     required this.type,
@@ -182,6 +195,7 @@ class SpotlightItem {
     this.homeBadge,
     this.awayBadge,
     this.leagueBadge,
+    this.authorAvatarUrl,
   });
 
   String get profilePath {
@@ -312,6 +326,8 @@ class _SportlightsTabState extends State<SportlightsTab> {
   }
 
   /// Batch-load profiles for all author IDs in one query (avoids N+1 delay).
+  /// PART J (rule 38-42): also fetch avatar_url so the feed can show the
+  /// real author avatar instead of the Playify fallback.
   Future<Map<String, Map<String, dynamic>>> _batchProfiles(
       List<String> uids) async {
     final out = <String, Map<String, dynamic>>{};
@@ -320,7 +336,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
     try {
       final rows = await Supabase.instance.client
           .from('profiles')
-          .select('id, handle, first_name, last_name, role')
+          .select('id, handle, first_name, last_name, role, avatar_url')
           .inFilter('id', unique);
       for (final r in rows as List) {
         final m = Map<String, dynamic>.from(r as Map);
@@ -332,7 +348,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
       try {
         final rows = await Supabase.instance.client
             .from('User')
-            .select('id, handle, first_name, last_name, role, name')
+            .select('id, handle, first_name, last_name, role, name, avatarUrl, avatar_url')
             .inFilter('id', unique);
         for (final r in rows as List) {
           final m = Map<String, dynamic>.from(r as Map);
@@ -385,6 +401,10 @@ class _SportlightsTabState extends State<SportlightsTab> {
             (r['post_type'] as String?) ??
             'Official';
         var type = SpotlightType.official;
+        // PART J (rule 38-42): real author avatar from the profiles/User table.
+        // Falls back to null when no avatar is set — the _AuthorHeader widget
+        // handles null by showing a generic person icon (NOT the Playify avatar).
+        String? authorAvatarUrl;
 
         if (uid != null && profiles.containsKey(uid)) {
           final p = profiles[uid]!;
@@ -402,6 +422,10 @@ class _SportlightsTabState extends State<SportlightsTab> {
           }
           roleLabel = (p['role'] as String?) ?? roleLabel;
           type = _typeForRole(roleLabel);
+          // Read avatar from either schema (snake_case profiles.avatar_url or
+          // PascalCase User.avatarUrl).
+          authorAvatarUrl = (p['avatar_url'] as String?)?.trim().nullIfEmpty ??
+              (p['avatarUrl'] as String?)?.trim().nullIfEmpty;
         }
 
         final postType = (r['postType'] as String?) ??
@@ -601,6 +625,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
           homeBadge: mHomeBadge,
           awayBadge: mAwayBadge,
           leagueBadge: mLeagueBadge,
+          authorAvatarUrl: authorAvatarUrl,
         ));
       }
 
@@ -894,6 +919,16 @@ class _AuthorHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // PART J (rule 38-42): real author avatar.
+    //   - If item.authorAvatarUrl is set, show it.
+    //   - If the author is the "Playify Official" handle, show the Playify
+    //     avatar asset (kOfficialAvatarAsset).
+    //   - Otherwise, show a generic person icon — NOT the Playify avatar,
+    //     which would hide data-fetching problems.
+    final isOfficialAuthor = item.handle == 'playify' ||
+        item.author == 'Playify Official' ||
+        isOfficialHandle(item.handle);
+    final hasAvatar = (item.authorAvatarUrl ?? '').isNotEmpty;
     return GestureDetector(
       onTap: () => context.push(item.profilePath),
       behavior: HitTestBehavior.opaque,
@@ -907,19 +942,13 @@ class _AuthorHeader extends StatelessWidget {
             border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
           ),
           clipBehavior: Clip.antiAlias,
-          child: Image.network(
-                  kOfficialAvatarUrl,
+          child: hasAvatar
+              ? Image.network(
+                  item.authorAvatarUrl!,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Image.asset(
-                    kOfficialAvatarAsset,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      color: const Color(0xFF102033),
-                      alignment: Alignment.center,
-                      child: const Icon(Icons.sports_soccer, color: Colors.white70, size: 24),
-                    ),
-                  ),
-                ),
+                  errorBuilder: (_, __, ___) => _avatarFallback(isOfficialAuthor),
+                )
+              : _avatarFallback(isOfficialAuthor),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -983,6 +1012,29 @@ class _AuthorHeader extends StatelessWidget {
           ),
       ],
     ),
+    );
+  }
+
+  /// PART J (rule 41): correct avatar fallback hierarchy.
+  ///   - For Playify Official → Playify avatar asset.
+  ///   - For any other user with no avatar → generic person icon.
+  /// Never use the Playify avatar as a generic user fallback.
+  Widget _avatarFallback(bool isOfficialAuthor) {
+    if (isOfficialAuthor) {
+      return Image.asset(
+        kOfficialAvatarAsset,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _genericPersonFallback(),
+      );
+    }
+    return _genericPersonFallback();
+  }
+
+  Widget _genericPersonFallback() {
+    return Container(
+      color: const Color(0xFF102033),
+      alignment: Alignment.center,
+      child: const Icon(Icons.person_rounded, color: Colors.white70, size: 24),
     );
   }
 }
@@ -1663,6 +1715,7 @@ class _MatchContentState extends State<_MatchContent> {
                 ? 'Auto: Draw'
                 : 'Auto: $awayName win',
         confidence: 'medium',
+        outcome: outcome,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

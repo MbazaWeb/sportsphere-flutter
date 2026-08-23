@@ -160,6 +160,15 @@ class SocialRepository {
   }
 
   /// Durable prediction linked to optional match + post.
+  ///
+  /// PART K (rules 43-46):
+  ///   - [outcome] is the semantic prediction: 'home' | 'draw' | 'away'.
+  ///     Stored alongside predictedHome/predictedAway for backward compat.
+  ///   - The backend settles the prediction when the match ends (see
+  ///     migration 20260825030000_prediction_outcome_and_settlement.sql):
+  ///     home_score > away_score → 'home', == → 'draw', < → 'away'.
+  ///     The trigger sets Prediction.result + Prediction.isCorrect +
+  ///     Prediction.closedAt automatically.
   Future<String> createPrediction({
     required String homeTeam,
     required String awayTeam,
@@ -168,13 +177,14 @@ class SocialRepository {
     String? matchId,
     String? note,
     String confidence = 'medium',
+    String? outcome,
   }) async {
     final content = note?.trim().isNotEmpty == true
         ? note!.trim()
         : 'Prediction: $homeTeam $predictedHome-$predictedAway $awayTeam';
     final postId = await createPost(content: content, postType: 'prediction');
     final id = 'pred-${DateTime.now().millisecondsSinceEpoch}';
-    await _sb.from('Prediction').insert({
+    final insert = <String, dynamic>{
       'id': id,
       'userId': _uid,
       'matchId': matchId,
@@ -185,7 +195,11 @@ class SocialRepository {
       'predictedAway': predictedAway,
       'confidence': confidence,
       'createdAt': DateTime.now().toUtc().toIso8601String(),
-    });
+    };
+    if (outcome != null && outcome.isNotEmpty) {
+      insert['outcome'] = outcome;
+    }
+    await _sb.from('Prediction').insert(insert);
     return postId;
   }
 
