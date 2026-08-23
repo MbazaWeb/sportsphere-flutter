@@ -1481,12 +1481,7 @@ class _PollPanelState extends State<_PollPanel> {
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
       builder: (_) => StatefulBuilder(builder: (bCtx, bSet) {
         final q = searchCtrl.text.toLowerCase();
-<<<<<<< HEAD
         final filtered = widget.players.where((p) => (p['name'] as String? ?? '').toLowerCase().contains(q)).toList();
-=======
-        final filtered = widget.players.where((p) =>
-            (p['name'] as String? ?? '').toLowerCase().contains(q)).toList();
->>>>>>> origin/main
         return DraggableScrollableSheet(
           initialChildSize: 0.7, minChildSize: 0.3, maxChildSize: 0.9, expand: false,
           builder: (_, sc) => Column(children: [
