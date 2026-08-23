@@ -1161,7 +1161,7 @@ Future<void> _showCreatePlayer(BuildContext ctx, List<Map<String,dynamic>> teams
                               ? name.text.trim()
                               : fullName,
                           position: position,
-                          teamId: teamId!,
+                          teamId: teamId,
                           nationality: nationality,
                           shirtNumber: int.tryParse(shirt.text.trim()),
                         );

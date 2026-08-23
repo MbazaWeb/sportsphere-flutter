@@ -295,18 +295,40 @@ class AdminRepository {
     }
   }
 
-  Future<void> createPlayer({required String name, required String position, required String teamId, String? nationality, int? shirtNumber}) async {
-    if (teamId.trim().isEmpty) {
-      throw StateError('Player must belong to an existing club/team');
-    }
+  Future<void> createPlayer({
+    required String name,
+    required String position,
+    String? teamId,
+    String? nationality,
+    int? shirtNumber,
+    String? photoUrl,
+    DateTime? dateOfBirth,
+    int? heightCm,
+    int? weightKg,
+  }) async {
     final slug = '${name.toLowerCase().replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}';
     final id = 'player-${DateTime.now().millisecondsSinceEpoch}';
+    // Split name into firstName/lastName for the schema
+    final parts = name.trim().split(' ');
+    final firstName = parts.first;
+    final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
     await _admin.from('Player').insert({
-      'id': id, 'name': name, 'slug': slug, 'position': position,
-      'teamId': teamId,
+      'id': id,
+      'name': name,
+      'firstName': firstName,
+      'lastName': lastName,
+      'slug': slug,
+      'position': position,
+      'sport_slug': 'football',
+      if (teamId != null && teamId.isNotEmpty) 'teamId': teamId,
       if (nationality != null) 'nationality': nationality,
       if (shirtNumber != null) 'shirtNumber': shirtNumber,
-      'goals': 0, 'assists': 0,
+      if (photoUrl != null) 'photoUrl': photoUrl,
+      if (dateOfBirth != null) 'dateOfBirth': dateOfBirth.toIso8601String(),
+      if (heightCm != null) 'heightCm': heightCm,
+      if (weightKg != null) 'weightKg': weightKg,
+      'isActive': true,
+      'verified': false,
       'createdAt': DateTime.now().toIso8601String(),
       'updatedAt': DateTime.now().toIso8601String(),
     });
