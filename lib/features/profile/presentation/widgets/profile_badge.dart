@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/colors.dart';
 
 class ProfileBadge extends StatelessWidget {
-  const ProfileBadge({
   final String label;
   final Color? color;
 
+  const ProfileBadge({
     super.key,
     required this.label,
     this.color,

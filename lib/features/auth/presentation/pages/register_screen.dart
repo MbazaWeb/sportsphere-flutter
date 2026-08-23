@@ -737,7 +737,6 @@ class _Field extends StatelessWidget {
 // ── Tap-to-pick field (country / dob) ──────────────────────────────────────────
 
 class _TapField extends StatelessWidget {
-  const _TapField({
   final String label;
   final IconData icon;
   final String? value;
@@ -745,6 +744,7 @@ class _TapField extends StatelessWidget {
   final VoidCallback onTap;
   final bool hasError;
 
+  const _TapField({
     required this.label,
     required this.icon,
     required this.value,
@@ -1063,10 +1063,11 @@ class _GlassCard extends StatelessWidget {
 }
 
 class _PrimaryButton extends StatelessWidget {
-  const _PrimaryButton({
   final String label;
   final bool loading;
   final VoidCallback onTap;
+
+  const _PrimaryButton({
     required this.label,
     required this.loading,
     required this.onTap,

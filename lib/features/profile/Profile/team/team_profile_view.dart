@@ -393,7 +393,6 @@ class _TeamProfileViewState extends State<TeamProfileView>
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _TeamHeader extends StatelessWidget {
-  const _TeamHeader({
   final TeamProfileModel profile;
   final bool following;
   final bool isFan;
@@ -406,6 +405,7 @@ class _TeamHeader extends StatelessWidget {
   final VoidCallback onMore;
   final VoidCallback onInfo;
 
+  const _TeamHeader({
     required this.profile,
     required this.following,
     required this.isFan,
@@ -654,7 +654,6 @@ class _TeamHeader extends StatelessWidget {
 // ── Follow + Fan row ───────────────────────────────────────────────────────────
 
 class _FollowRow extends StatelessWidget {
-  const _FollowRow({
   final bool following;
   final bool isFan;
   final bool busyFollow;
@@ -663,6 +662,7 @@ class _FollowRow extends StatelessWidget {
   final VoidCallback onFollow;
   final VoidCallback onBecomeFan;
 
+  const _FollowRow({
     required this.following,
     required this.isFan,
     required this.busyFollow,
@@ -1073,11 +1073,11 @@ class _SquadTab extends StatelessWidget {
 }
 
 class _SquadSection extends StatelessWidget {
-  const _SquadSection({
   final String title;
   final List<SquadMember> members;
   final Color accent;
 
+  const _SquadSection({
     required this.title,
     required this.members,
     required this.accent,
@@ -1126,11 +1126,11 @@ class _SquadSection extends StatelessWidget {
 }
 
 class _SquadRow extends StatelessWidget {
-  const _SquadRow({
   final SquadMember member;
   final Color accent;
   final bool isLast;
 
+  const _SquadRow({
     required this.member,
     required this.accent,
     required this.isLast,
@@ -1372,10 +1372,11 @@ class _StatsTabState extends State<_StatsTab> {
 // ── Season dropdown ────────────────────────────────────────────────────────────
 
 class _SeasonDropdown extends StatelessWidget {
-  const _SeasonDropdown({
   final String value;
   final List<String> options;
   final ValueChanged<String> onChanged;
+
+  const _SeasonDropdown({
     required this.value,
     required this.options,
     required this.onChanged,
@@ -1567,10 +1568,11 @@ class _ResultBar extends StatelessWidget {
 }
 
 class _ResultLabel extends StatelessWidget {
-  const _ResultLabel({
   final Color color;
   final String label;
   final int value;
+
+  const _ResultLabel({
     required this.color,
     required this.label,
     required this.value,

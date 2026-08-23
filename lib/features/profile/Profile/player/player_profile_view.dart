@@ -175,9 +175,9 @@ class PlayerProfileModel {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class PlayerProfileView extends StatefulWidget {
-  const PlayerProfileView({
   final PlayerProfileModel profile;
 
+  const PlayerProfileView({
     super.key,
     required this.profile,
   });
@@ -362,7 +362,6 @@ class _PlayerProfileViewState extends State<PlayerProfileView>
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _PlayerHeader extends StatelessWidget {
-  const _PlayerHeader({
   final PlayerProfileModel profile;
   final bool following;
   final bool isFan;
@@ -373,6 +372,7 @@ class _PlayerHeader extends StatelessWidget {
   final VoidCallback onMore;
   final VoidCallback onInfo;
 
+  const _PlayerHeader({
     required this.profile,
     required this.following,
     required this.isFan,
@@ -1216,12 +1216,12 @@ class _StatsTabState extends State<_StatsTab> {
 // ── Filter pill ────────────────────────────────────────────────────────────────
 
 class _FilterPill extends StatelessWidget {
-  const _FilterPill({
   final String label;
   final String value;
   final List<String> options;
   final ValueChanged<String> onChanged;
 
+  const _FilterPill({
     required this.label,
     required this.value,
     required this.options,
@@ -1364,11 +1364,12 @@ class _CareerTotalsGrid extends StatelessWidget {
 }
 
 class _StatEntry {
-  const _StatEntry({
   final IconData icon;
   final Color iconColor;
   final String label;
   final String value;
+
+  const _StatEntry({
     required this.icon,
     required this.iconColor,
     required this.label,
@@ -1466,12 +1467,12 @@ class _CareerTimeline extends StatelessWidget {
 }
 
 class _CareerRow extends StatelessWidget {
-  const _CareerRow({
   final PlayerCareerEntry entry;
   final Color accent;
   final bool isLast;
   final bool isFirst;
 
+  const _CareerRow({
     required this.entry,
     required this.accent,
     required this.isLast,

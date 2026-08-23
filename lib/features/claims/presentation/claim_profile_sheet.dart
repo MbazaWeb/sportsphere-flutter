@@ -39,7 +39,6 @@ Future<void> showClaimProfileSheet(
 }
 
 class ClaimProfileSheet extends ConsumerStatefulWidget {
-  const ClaimProfileSheet({
   final String profileType;
   final String profileId;
   final String profileName;
@@ -48,6 +47,7 @@ class ClaimProfileSheet extends ConsumerStatefulWidget {
   final String? coachId;
   final String? leagueId;
 
+  const ClaimProfileSheet({
     super.key,
     required this.profileType,
     required this.profileId,
