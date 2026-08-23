@@ -93,6 +93,23 @@ String friendlyError(Object? error, {String fallback = 'Something went wrong. Pl
     return 'Please enter a valid email address.';
   }
 
+  // ── Permission / RLS — checked BEFORE session/JWT ──────────────────────
+  // A 403 from PostgREST RLS should say "permission" not "session expired".
+  // Previously this block was below the session check, so an RLS denial on a
+  // public table (e.g. Match, Post) that happened to contain the word
+  // "session" in the response body was misclassified as an auth expiry.
+  if (_matches(lower, const [
+    'permission denied',
+    'row-level security',
+    'new row violates',
+    'rls',
+    '403',
+    'forbidden',
+  ])) {
+    return 'You don’t have permission to do that.';
+  }
+
+  // ── Auth: session / JWT expiry ───────────────────────────────────────────
   if (_matches(lower, const [
     'session',
     'jwt',
@@ -102,17 +119,6 @@ String friendlyError(Object? error, {String fallback = 'Something went wrong. Pl
     '401',
   ])) {
     return 'Your session expired. Please sign in again.';
-  }
-
-  // ── Permission / server ──────────────────────────────────────────────────
-  if (_matches(lower, const [
-    'permission denied',
-    'row-level security',
-    'rls',
-    '403',
-    'forbidden',
-  ])) {
-    return 'You don’t have permission to do that.';
   }
 
   if (_matches(lower, const [

@@ -204,9 +204,6 @@ class SpotlightItem {
 }
 
 // ============================================================
-final _feedItems = <SpotlightItem>[];
-
-// ============================================================
 // MAIN WIDGET
 // ============================================================
 
@@ -557,8 +554,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
     super.dispose();
   }
 
-  List<SpotlightItem> get _items =>
-      _live.isEmpty ? _feedItems : [..._live, ..._feedItems];
+  List<SpotlightItem> get _items => _live;
 
   @override
   Widget build(BuildContext context) {

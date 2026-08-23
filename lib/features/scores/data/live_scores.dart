@@ -77,12 +77,37 @@ MatchModel matchFromRow(Map<String, dynamic> row) {
 }
 
 Future<List<MatchModel>> fetchLiveMatches({int limit = kMaxMatchesPerFetch}) async {
-  final rows = await Supabase.instance.client
-      .from('Match')
-      .select()
-      .order('kickoffAt')
-      .limit(limit);
-  return [for (final r in rows as List) matchFromRow(Map<String, dynamic>.from(r))];
+  return _publicFetch(() async {
+    final rows = await Supabase.instance.client
+        .from('Match')
+        .select()
+        .order('kickoffAt')
+        .limit(limit);
+    return [for (final r in rows as List) matchFromRow(Map<String, dynamic>.from(r))];
+  });
+}
+
+/// Clears a stale JWT and retries once — mirrors [ScoresRepository._public].
+///
+/// Public Match reads must work for guests. If a stale JWT is still attached,
+/// PostgREST returns JWT/session errors — clear local session and retry once.
+Future<T> _publicFetch<T>(Future<T> Function() run) async {
+  try {
+    return await run();
+  } catch (e) {
+    final msg = e.toString().toLowerCase();
+    final authish = msg.contains('jwt') ||
+        msg.contains('session') ||
+        msg.contains('401') ||
+        msg.contains('expired') ||
+        msg.contains('not authenticated') ||
+        msg.contains('unauthorized');
+    if (!authish) rethrow;
+    try {
+      await Supabase.instance.client.auth.signOut(scope: SignOutScope.local);
+    } catch (_) {}
+    return await run();
+  }
 }
 
 List<MatchModel> filterLive(List<MatchModel> all) =>
