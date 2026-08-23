@@ -132,6 +132,17 @@ class SpotlightItem {
   final int? predHomeScore;
   final int? predAwayScore;
   final String? myPrediction;  // "homeScore-awayScore" if current user already predicted
+  // ── Match-specific fields (populated when postType == 'match') ──
+  final String? matchId;
+  final String? homeTeam;
+  final String? awayTeam;
+  final String? homeBadge;
+  final String? awayBadge;
+  final String? matchScore;
+  final String? matchStatus;
+  final String? matchLeague;
+  final String? matchVenue;
+  final DateTime? matchKickoff;
 
   const SpotlightItem({
     required this.type,
@@ -158,6 +169,16 @@ class SpotlightItem {
     this.predHomeScore,
     this.predAwayScore,
     this.myPrediction,
+    this.matchId,
+    this.homeTeam,
+    this.awayTeam,
+    this.homeBadge,
+    this.awayBadge,
+    this.matchScore,
+    this.matchStatus,
+    this.matchLeague,
+    this.matchVenue,
+    this.matchKickoff,
   });
 
   String get profilePath {
@@ -372,6 +393,9 @@ class _SportlightsTabState extends State<SportlightsTab> {
         if (postType == 'live_coverage') {
           type = SpotlightType.liveCoverage;
           roleLabel = 'LIVE';
+        } else if (postType == 'match') {
+          type = _SpotlightType.match;
+          roleLabel = 'Match';
         } else if (postType == 'welcome' ||
             (teamTag != null &&
                 teamTag.isNotEmpty &&
@@ -481,7 +505,38 @@ class _SportlightsTabState extends State<SportlightsTab> {
           }
         }
 
-        final matchId = (r['matchId'] ?? r['match_id'])?.toString();
+        // ── Match enrichment: fetch Match row via matchId ──
+        String? mId;
+        String? mHome, mAway, mHomeBadge, mAwayBadge;
+        String? mScore, mStatus, mLeague, mVenue;
+        DateTime? mKickoff;
+        final matchIdRef = r['matchId']?.toString() ?? r['match_id']?.toString();
+        if (postType == 'match' && matchIdRef != null) {
+          try {
+            final m = await Supabase.instance.client
+                .from('Match')
+                .select()
+                .eq('id', matchIdRef)
+                .maybeSingle();
+            if (m != null) {
+              mId = m['id']?.toString();
+              mHome = m['homeTeamName']?.toString() ?? m['home_team_name']?.toString();
+              mAway = m['awayTeamName']?.toString() ?? m['away_team_name']?.toString();
+              mHomeBadge = m['homeBadge']?.toString() ?? m['home_badge']?.toString();
+              mAwayBadge = m['awayBadge']?.toString() ?? m['away_badge']?.toString();
+              final hs = m['homeScore']?.toString() ?? m['home_score']?.toString();
+              final as2 = m['awayScore']?.toString() ?? m['away_score']?.toString();
+              mScore = (hs != null && as2 != null) ? '$hs - $as2' : null;
+              mStatus = m['status']?.toString();
+              mLeague = m['leagueName']?.toString() ?? m['league_name']?.toString();
+              mVenue = m['venue']?.toString();
+              final ko = m['kickoffAt'] ?? m['kickoff_at'];
+              mKickoff = DateTime.tryParse(ko?.toString() ?? '');
+            }
+          } catch (e) {
+            debugPrint('match load: $e');
+          }
+        }
 
         items.add(SpotlightItem(
           type: type,
@@ -489,7 +544,6 @@ class _SportlightsTabState extends State<SportlightsTab> {
           handle: handle,
           targetUserId: targetUserId,
           postId: r['id']?.toString(),
-          matchId: matchId,
           role: roleLabel,
           age: _ageLabel(r['createdAt'] ?? r['created_at']),
           asset: asset,
@@ -512,6 +566,16 @@ class _SportlightsTabState extends State<SportlightsTab> {
           myPrediction: (predHs != null && predAs != null &&
               Supabase.instance.client.auth.currentUser != null)
               ? '$predHs-$predAs' : null,
+          matchId: mId,
+          homeTeam: mHome,
+          awayTeam: mAway,
+          homeBadge: mHomeBadge,
+          awayBadge: mAwayBadge,
+          matchScore: mScore,
+          matchStatus: mStatus,
+          matchLeague: mLeague,
+          matchVenue: mVenue,
+          matchKickoff: mKickoff,
         ));
       }
 
@@ -940,6 +1004,8 @@ class _MediaArea extends StatelessWidget {
         return _PredictionContent(item: item);
       case SpotlightType.video:
         return _VideoContent(item: item);
+      case _SpotlightType.match:
+        return _MatchContent(item: item);
       default:
         return _ImageContent(item: item);
     }
@@ -1499,6 +1565,257 @@ class _PredictionTeam extends StatelessWidget {
     );
   }
 }
+
+// ============================================================
+// MATCH CONTENT — shows fixture details in the feed card
+// ============================================================
+
+class _MatchContent extends StatelessWidget {
+  final _SpotlightItem item;
+  const _MatchContent({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final home = item.homeTeam ?? 'Home';
+    final away = item.awayTeam ?? 'Away';
+    final score = item.matchScore;
+    final status = item.matchStatus;
+    final league = item.matchLeague;
+    final venue = item.matchVenue;
+    final kickoff = item.matchKickoff;
+
+    // Status badge color
+    final statusLower = (status ?? '').toLowerCase();
+    final bool isLive = statusLower == 'live' || statusLower.contains('half');
+    final bool isFinished = statusLower == 'ft' || statusLower == 'finished' || statusLower == 'full time';
+    Color statusColor = const Color(0xFF8FA3B8);
+    String statusLabel = status?.toUpperCase() ?? 'SCHEDULED';
+    if (isLive) {
+      statusColor = const Color(0xFFFF3B30);
+      statusLabel = 'LIVE';
+    } else if (isFinished) {
+      statusColor = const Color(0xFF34C759);
+      statusLabel = 'FT';
+    } else if (statusLower == 'ns' || statusLower == 'not started' || status == null) {
+      statusLabel = 'SCHEDULED';
+    }
+
+    // Kickoff time formatter
+    String? kickoffLabel;
+    if (kickoff != null) {
+      kickoffLabel = '${kickoff.day}/${kickoff.month} ${kickoff.hour.toString().padLeft(2, '0')}:${kickoff.minute.toString().padLeft(2, '0')}';
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFF061321),
+            Color.lerp(const Color(0xFF061321), item.accent, 0.18)!,
+            const Color(0xFF02060D),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(0),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // League + status row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              if (league != null && league.isNotEmpty)
+                Expanded(
+                  child: Text(
+                    league,
+                    style: const TextStyle(
+                      color: Color(0xFF8FA3B8),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                )
+              else
+                const Spacer(),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  statusLabel,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Teams + Score
+          Row(
+            children: [
+              // Home team
+              Expanded(
+                child: Column(
+                  children: [
+                    if (item.homeBadge != null && item.homeBadge!.isNotEmpty)
+                      ClipOval(
+                        child: Image.network(
+                          item.homeBadge!,
+                          width: 44, height: 44,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Icon(Icons.shield_rounded, size: 44, color: Color(0xFF8FA3B8)),
+                        ),
+                      )
+                    else
+                      const Icon(Icons.shield_rounded, size: 44, color: Color(0xFF8FA3B8)),
+                    const SizedBox(height: 10),
+                    Text(
+                      home,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFFF7FAFF),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Score / time
+              SizedBox(
+                width: 80,
+                child: Column(
+                  children: [
+                    if (score != null)
+                      Text(
+                        score,
+                        style: TextStyle(
+                          color: isLive ? const Color(0xFFFF3B30) : const Color(0xFFF7FAFF),
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 2,
+                        ),
+                      )
+                    else if (isLive)
+                      const Text(
+                        '0 - 0',
+                        style: TextStyle(
+                          color: Color(0xFFFF3B30),
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 2,
+                        ),
+                      )
+                    else
+                      const Text(
+                        'VS',
+                        style: TextStyle(
+                          color: Color(0xFF8FA3B8),
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 3,
+                        ),
+                      ),
+                    if (isLive && status != null && !status.contains('live'))
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          status!,
+                          style: const TextStyle(color: Color(0xFFFF3B30), fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+
+              // Away team
+              Expanded(
+                child: Column(
+                  children: [
+                    if (item.awayBadge != null && item.awayBadge!.isNotEmpty)
+                      ClipOval(
+                        child: Image.network(
+                          item.awayBadge!,
+                          width: 44, height: 44,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Icon(Icons.shield_rounded, size: 44, color: Color(0xFF8FA3B8)),
+                        ),
+                      )
+                    else
+                      const Icon(Icons.shield_rounded, size: 44, color: Color(0xFF8FA3B8)),
+                    const SizedBox(height: 10),
+                    Text(
+                      away,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFFF7FAFF),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // Venue + kickoff
+          if (venue != null || kickoffLabel != null) ...[
+            const SizedBox(height: 20),
+            Divider(color: const Color(0xFF8FA3B8).withOpacity(0.15), height: 1),
+            const SizedBox(height: 14),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (venue != null && venue.isNotEmpty) ...[
+                  const Icon(Icons.stadium_rounded, size: 14, color: Color(0xFF8FA3B8)),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      venue,
+                      style: const TextStyle(color: Color(0xFF8FA3B8), fontSize: 12),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+                if (venue != null && kickoffLabel != null) const SizedBox(width: 16),
+                if (kickoffLabel != null) ...[
+                  const Icon(Icons.schedule_rounded, size: 14, color: Color(0xFF8FA3B8)),
+                  const SizedBox(width: 4),
+                  Text(
+                    kickoffLabel,
+                    style: const TextStyle(color: Color(0xFF8FA3B8), fontSize: 12),
+                  ),
+                ],
+              ],
+            ),
+          ],
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+}
+
+
 
 class _GeneratedContent extends StatelessWidget {
   final SpotlightItem item;
