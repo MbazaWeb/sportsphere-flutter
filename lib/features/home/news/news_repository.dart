@@ -55,14 +55,19 @@ class NewsRepository {
   SupabaseClient get _sb => Supabase.instance.client;
 
   Future<List<NewsArticle>> fetch({required String category}) async {
-    final rows = await _sb
-        .from('NewsItem')
-        .select()
-        .eq('status', 'published')
-        .eq('category', category)
-        .order('publishedAt', ascending: false)
-        .limit(40);
-    return [for (final r in rows as List) NewsArticle.fromRow(Map<String, dynamic>.from(r))];
+    try {
+      final rows = await _sb
+          .from('NewsItem')
+          .select()
+          .eq('status', 'published')
+          .eq('category', category)
+          .order('publishedAt', ascending: false)
+          .limit(40);
+      return [for (final r in rows as List) NewsArticle.fromRow(Map<String, dynamic>.from(r))];
+    } catch (e) {
+      debugPrint('[FEED] NewsItem query failed for category "$category": $e');
+      return const [];
+    }
   }
 
   String? get _uid => _sb.auth.currentUser?.id;

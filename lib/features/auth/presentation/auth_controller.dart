@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
+
 import '../data/auth_repository.dart';
 import '../domain/auth_state.dart';
 import '../../../core/utils/friendly_error.dart';
@@ -72,14 +74,19 @@ class AuthController extends Notifier<AuthState> {
         token: repo.currentSession?.accessToken,
         user: profile,
       );
-    } catch (e) {
-      debugPrint('[AuthController._hydrate] failed: $e');
-      // Critical: drop the bad JWT from local storage. Leaving it attached
-      // makes every public PostgREST call fail with "JWT expired" while the
-      // UI still thinks we are a guest — empty Spotlights / Scores for everyone.
+    } on AuthException catch (e) {
+      // AuthException means Supabase Auth confirmed the session is invalid.
+      // ONLY in this case do we clear the local session.
+      debugPrint('[AUTH] _hydrate: AuthException — clearing session: ${e.message}');
       try {
         await repo.signOutLocal();
       } catch (_) {}
+      state = const AuthState(status: AuthStatus.guest);
+    } catch (e) {
+      // Any other error (network, RLS, DB schema) does NOT mean the session
+      // is invalid. Become a guest for now but do NOT destroy the session
+      // — the user may be able to retry.
+      debugPrint('[AUTH] _hydrate: non-auth error, becoming guest without signOut: $e');
       state = const AuthState(status: AuthStatus.guest);
     }
   }

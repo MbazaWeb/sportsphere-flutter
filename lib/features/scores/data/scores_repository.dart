@@ -17,26 +17,12 @@ class ScoresRepository {
 
   SupabaseClient get _sb => Supabase.instance.client;
 
-  /// Public Match reads must work for guests. If a stale JWT is still attached,
-  /// PostgREST returns JWT/session errors — clear local session and retry once.
-  Future<T> _public<T>(Future<T> Function() run) async {
-    try {
-      return await run();
-    } catch (e) {
-      final msg = e.toString().toLowerCase();
-      final authish = msg.contains('jwt') ||
-          msg.contains('session') ||
-          msg.contains('401') ||
-          msg.contains('expired') ||
-          msg.contains('not authenticated') ||
-          msg.contains('unauthorized');
-      if (!authish) rethrow;
-      try {
-        await _sb.auth.signOut(scope: SignOutScope.local);
-      } catch (_) {}
-      return await run();
-    }
-  }
+  // NOTE: The previous _public() wrapper called signOut(scope: local)
+  // when a data query failed with JWT/session/401 keywords. This was
+  // INCORRECT — a data query failure must NEVER destroy the auth session.
+  // _ensureValidSession() in main.dart handles stale JWT at startup.
+  // If a public query fails here, the error propagates to the UI which
+  // shows the appropriate message via friendlyError().
 
   // ─────────────────────────────────────────────────────────────────────────
   // Live / Today / Upcoming / Results
@@ -50,7 +36,6 @@ class ScoresRepository {
   ///   2. Fallback: any match whose status is NOT in (finished ∪ postponed)
   ///      AND whose kickoff is within the last 110 minutes.
   Future<List<MatchModel>> getLive({int limit = kMaxMatchesPerFetch}) async {
-    return _public(() async {
       final liveOr = kLiveStatuses.map((s) => 'status.eq.$s').join(',');
       final rows = await _sb
           .from('Match')
@@ -70,11 +55,9 @@ class ScoresRepository {
         final end = m.startTime.add(const Duration(minutes: 110));
         return !now.isBefore(m.startTime) && now.isBefore(end);
       }).toList();
-    });
   }
 
   Future<List<MatchModel>> getToday({int limit = kMaxMatchesPerFetch}) async {
-    return _public(() async {
       final now = DateTime.now().toUtc();
       final start = DateTime.utc(now.year, now.month, now.day);
       final end = start.add(const Duration(days: 1));
@@ -86,14 +69,12 @@ class ScoresRepository {
           .order('kickoffAt')
           .limit(limit);
       return _mapRows(rows as List);
-    });
   }
 
   Future<List<MatchModel>> getUpcoming({
     DateTime? day,
     int limit = kMaxMatchesPerFetch,
   }) async {
-    return _public(() async {
     final now = DateTime.now().toUtc();
     final rows = await _sb
         .from('Match')
@@ -111,14 +92,12 @@ class ScoresRepository {
           .toList();
     }
     return list;
-    });
   }
 
   Future<List<MatchModel>> getResults({
     DateTime? day,
     int limit = kMaxMatchesPerFetch,
   }) async {
-    return _public(() async {
     final finishedOr = kFinishedStatuses.map((s) => 'status.eq.$s').join(',');
     final rows = await _sb
         .from('Match')
@@ -144,15 +123,12 @@ class ScoresRepository {
           .toList();
     }
     return list;
-    });
   }
 
   Future<List<MatchModel>> _fetchAll({int limit = kMaxMatchesPerFetch}) async {
-    return _public(() async {
       final rows =
           await _sb.from('Match').select().order('kickoffAt').limit(limit);
       return _mapRows(rows as List);
-    });
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -205,7 +181,6 @@ class ScoresRepository {
     required String league,
     String sportSlug = 'football',
   }) async {
-    return _public(() async {
     // Push the league filter to SQL so we don't download the entire Match
     // table just to discard most of it in memory (H6). The in-memory
     // leagueName check below is kept as a defensive safety net for any
@@ -300,7 +275,6 @@ class ScoresRepository {
       return b.goalsFor.compareTo(a.goalsFor);
     });
     return list;
-      });
   }
 
   // ─────────────────────────────────────────────────────────────────────────

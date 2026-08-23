@@ -114,30 +114,13 @@ class _SpotlightsContent extends StatelessWidget {
   }
 }
 
-// ── Shared helper: clear stale JWT once and retry ──────────
-
-/// Mirrors [ScoresRepository._public] and the wrapper in
-/// `live_scores.dart`.  Public reads (Post, Community, Match) must
-/// work for guests — if a stale JWT is attached, PostgREST returns
-/// 401.  Clear it locally and retry once.
-Future<T> _publicRead<T>(Future<T> Function() run) async {
-  try {
-    return await run();
-  } catch (e) {
-    final msg = e.toString().toLowerCase();
-    final authish = msg.contains('jwt') ||
-        msg.contains('session') ||
-        msg.contains('401') ||
-        msg.contains('expired') ||
-        msg.contains('not authenticated') ||
-        msg.contains('unauthorized');
-    if (!authish) rethrow;
-    try {
-      await Supabase.instance.client.auth.signOut(scope: SignOutScope.local);
-    } catch (_) {}
-    return await run();
-  }
-}
+// ── NOTE ──────────────────────────────────────────────────────────────
+// The previous _publicRead() wrapper called signOut(scope: local)
+// when a data query failed with JWT/session/401 keywords. This was
+// INCORRECT — a data query failure must NEVER destroy the auth session.
+// Queries below now run directly; errors propagate to the UI which
+// shows appropriate messages via friendlyError().
+// ──────────────────────────────────────────────────────────────────
 
 // ── Trending tab ───────────────────────────────────────────
 
@@ -159,11 +142,11 @@ class _TrendingContentState extends State<_TrendingContent> {
 
   Future<void> _load() async {
     try {
-      final rows = await _publicRead(() => Supabase.instance.client
+      final rows = await Supabase.instance.client
           .from('Post')
           .select()
           .order('likeCount', ascending: false)
-          .limit(30));
+          .limit(30);
       if (mounted) {
         setState(() {
           _rows = [for (final r in rows as List) Map<String, dynamic>.from(r as Map)];
@@ -238,11 +221,11 @@ class _CommunityContentState extends State<_CommunityContent> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final rows = await _publicRead(() => Supabase.instance.client
+      final rows = await Supabase.instance.client
           .from('Community')
           .select()
           .order('memberCount', ascending: false)
-          .limit(40));
+          .limit(40);
       final list = [for (final r in rows as List) Map<String, dynamic>.from(r as Map)];
       final uid = Supabase.instance.client.auth.currentUser?.id;
       final joined = <String>{};

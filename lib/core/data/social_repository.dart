@@ -616,77 +616,39 @@ class SocialRepository {
   // ============================================================
 
   /// Get the user's feed (newest first). Falls back across column naming.
+  /// NOTE: A feed query failure must NEVER destroy the auth session.
+  /// Errors are caught and logged; the caller gets an empty list.
   Future<List<Map<String, dynamic>>> feedForUser() async {
-    Future<List<Map<String, dynamic>>> once() async {
+    try {
       // Prefer camelCase schema used by createPost
-      try {
-        final rows = await _sb
-            .from('Post')
-            .select()
-            .order('createdAt', ascending: false)
-            .limit(50);
-        return List<Map<String, dynamic>>.from(rows as List);
-      } catch (e1) {
-        debugPrint('feed createdAt order failed: $e1');
-        final msg = e1.toString().toLowerCase();
-        // Auth/JWT errors should bubble so we can clear session + retry.
-        if (msg.contains('jwt') ||
-            msg.contains('session') ||
-            msg.contains('401') ||
-            msg.contains('expired') ||
-            msg.contains('unauthorized')) {
-          rethrow;
-        }
-      }
-
-      // snake_case fallback
-      try {
-        final rows = await _sb
-            .from('Post')
-            .select()
-            .order('created_at', ascending: false)
-            .limit(50);
-        return List<Map<String, dynamic>>.from(rows as List);
-      } catch (e2) {
-        debugPrint('feed created_at order failed: $e2');
-        final msg = e2.toString().toLowerCase();
-        if (msg.contains('jwt') ||
-            msg.contains('session') ||
-            msg.contains('401') ||
-            msg.contains('expired') ||
-            msg.contains('unauthorized')) {
-          rethrow;
-        }
-      }
-
-      // Last resort: unordered
-      final rows = await _sb.from('Post').select().limit(50);
+      final rows = await _sb
+          .from('Post')
+          .select()
+          .order('createdAt', ascending: false)
+          .limit(50);
       return List<Map<String, dynamic>>.from(rows as List);
+    } catch (e1) {
+      debugPrint('[FEED] createdAt order failed: $e1');
     }
 
+    // snake_case fallback
     try {
-      return await once();
-    } catch (e) {
-      final msg = e.toString().toLowerCase();
-      final authish = msg.contains('jwt') ||
-          msg.contains('session') ||
-          msg.contains('401') ||
-          msg.contains('expired') ||
-          msg.contains('unauthorized') ||
-          msg.contains('not authenticated');
-      if (authish) {
-        debugPrint('feed: clearing expired session for guest public read: $e');
-        try {
-          await _sb.auth.signOut(scope: SignOutScope.local);
-        } catch (_) {}
-        try {
-          return await once();
-        } catch (e2) {
-          debugPrint('Failed to get feed after session clear: $e2');
-          return [];
-        }
-      }
-      debugPrint('Failed to get feed: $e');
+      final rows = await _sb
+          .from('Post')
+          .select()
+          .order('created_at', ascending: false)
+          .limit(50);
+      return List<Map<String, dynamic>>.from(rows as List);
+    } catch (e2) {
+      debugPrint('[FEED] created_at order failed: $e2');
+    }
+
+    // Last resort: unordered
+    try {
+      final rows = await _sb.from('Post').select().limit(50);
+      return List<Map<String, dynamic>>.from(rows as List);
+    } catch (e3) {
+      debugPrint('[FEED] unordered query failed: $e3');
       return [];
     }
   }
