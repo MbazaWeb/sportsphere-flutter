@@ -22,9 +22,8 @@ String friendlyError(Object? error, {String fallback = 'Something went wrong. Pl
   // These must NEVER say "session expired" — they are DATA errors.
   // ═══════════════════════════════════════════════════════════════════════
   if (error is PostgrestException) {
-    // postgrest 2.x: code is a String (e.g. '401', 'PGRST116'), no statusCode getter.
-    final status = int.tryParse(error.code) ?? -1;
-    final code = error.code;
+    final code = error.code ?? '';
+    final status = int.tryParse(code) ?? -1;
     final msg = (error.message ?? '').toLowerCase();
 
     // 403 = RLS / permission denied
