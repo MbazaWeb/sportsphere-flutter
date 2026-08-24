@@ -1,47 +1,203 @@
 import 'package:flutter/material.dart';
-import '../../../shared/org_profile_view.dart';
-import '../../../../../core/theme/colors.dart';
+import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class CommunityProfileView extends StatelessWidget {
-  const CommunityProfileView({super.key});
+import '../../../../../core/theme/colors.dart';
+import '../../../shared/org_profile_view.dart';
+import '../../../shared/profile_widgets.dart';
+
+// ══════════════════════════════════════════════════════════════════════════════
+// COMMUNITY PROFILE VIEW
+// Loads real community data from Supabase by handle or id.
+// ══════════════════════════════════════════════════════════════════════════════
+
+class CommunityProfileView extends StatefulWidget {
+  /// Either [handle] or [communityId] must be supplied.
+  final String? handle;
+  final String? communityId;
+
+  const CommunityProfileView({super.key, this.handle, this.communityId});
+
+  @override
+  State<CommunityProfileView> createState() => _CommunityProfileViewState();
+}
+
+class _CommunityProfileViewState extends State<CommunityProfileView> {
+  static SupabaseClient get _sb => Supabase.instance.client;
+
+  Map<String, dynamic>? _data;
+  bool _loading = true;
+  String? _error;
+  bool _joined = false;
+  bool _busyJoin = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (mounted) setState(() { _loading = true; _error = null; });
+    try {
+      Map<String, dynamic>? row;
+
+      if (widget.communityId != null) {
+        final r = await _sb.from('Community').select().eq('id', widget.communityId!).maybeSingle();
+        row = r != null ? Map<String, dynamic>.from(r) : null;
+      } else if (widget.handle != null) {
+        final h = widget.handle!.replaceAll('@', '');
+        // Try handle column first, fall back to name match
+        var r = await _sb.from('Community').select().eq('handle', h).maybeSingle();
+        r ??= await _sb.from('Community').select().ilike('name', '%$h%').maybeSingle();
+        row = r != null ? Map<String, dynamic>.from(r) : null;
+      }
+
+      if (row == null) {
+        if (mounted) setState(() { _error = 'Community not found'; _loading = false; });
+        return;
+      }
+
+      // Check if current user is a member
+      final uid = _sb.auth.currentUser?.id;
+      bool joined = false;
+      if (uid != null) {
+        final mem = await _sb.from('CommunityMember')
+            .select('id')
+            .eq('communityId', row['id']?.toString() ?? '')
+            .eq('userId', uid)
+            .maybeSingle();
+        joined = mem != null;
+      }
+
+      if (mounted) setState(() { _data = row; _joined = joined; _loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = '$e'; _loading = false; });
+    }
+  }
+
+  Future<void> _toggleMembership() async {
+    final d = _data;
+    if (d == null || _busyJoin) return;
+    final id = d['id']?.toString() ?? '';
+    final uid = _sb.auth.currentUser?.id;
+    if (uid == null) return;
+
+    setState(() => _busyJoin = true);
+    try {
+      if (_joined) {
+        await _sb.from('CommunityMember').delete()
+            .eq('communityId', id).eq('userId', uid);
+        // Decrement count
+        final current = (d['memberCount'] as int?) ?? 1;
+        await _sb.from('Community').update({'memberCount': (current - 1).clamp(0, 999999)}).eq('id', id);
+        if (mounted) setState(() { _joined = false; d['memberCount'] = (current - 1).clamp(0, 999999); });
+      } else {
+        await _sb.from('CommunityMember').insert({'communityId': id, 'userId': uid});
+        final current = (d['memberCount'] as int?) ?? 0;
+        await _sb.from('Community').update({'memberCount': current + 1}).eq('id', id);
+        if (mounted) setState(() { _joined = true; d['memberCount'] = current + 1; });
+      }
+    } catch (_) {} finally {
+      if (mounted) setState(() => _busyJoin = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(
+        backgroundColor: SportSphereColors.background,
+        body: Center(child: CircularProgressIndicator(
+            color: SportSphereColors.electricBlue, strokeWidth: 2)),
+      );
+    }
+
+    if (_error != null || _data == null) {
+      return Scaffold(
+        backgroundColor: SportSphereColors.background,
+        appBar: AppBar(backgroundColor: SportSphereColors.background,
+            leading: BackButton(onPressed: () => context.pop())),
+        body: Center(child: Text(_error ?? 'Not found',
+            style: const TextStyle(color: SportSphereColors.muted))),
+      );
+    }
+
+    final d = _data!;
+    final name = (d['name'] as String?) ?? 'Community';
+    final handle = (d['handle'] as String?) ?? '';
+    final bio = (d['description'] as String?) ?? (d['bio'] as String?) ?? '';
+    final topic = (d['topic'] as String?) ?? (d['communityType'] as String?) ?? '';
+    final teamName = (d['supportedTeam'] as String?) ?? (d['teamName'] as String?) ?? '';
+    final memberCount = (d['memberCount'] as int?) ?? 0;
+    final avatarUrl = (d['avatarUrl'] as String?) ?? (d['logo_url'] as String?);
+    final coverUrl = (d['coverUrl'] as String?) ?? (d['cover_url'] as String?);
+    final accent = _parseColor((d['primaryColor'] as String?) ?? '#009DFF');
+
     return OrgProfileView(
       profile: OrgProfileModel(
-        name: 'Community Name',
-        handle: 'communityhandle',
+        name: name,
+        handle: handle.isNotEmpty ? handle : name.toLowerCase().replaceAll(' ', ''),
         roleName: 'Community',
-        roleColor: const Color(0xFF168CFF),
-        accentColor: const Color(0xFF168CFF),
-        postCount: 340,
-        fanCount: 24000,
-        followingCount: 85,
-        bio: 'Official SportSphere Community page.',
-        location: 'Tanzania',
-        joinedDate: DateTime(2024, 1, 1),
-        isVerified: true,
-        aboutFields: const [
+        roleColor: accent,
+        accentColor: accent,
+        postCount: (d['postCount'] as int?) ?? 0,
+        fanCount: memberCount,
+        followingCount: 0,
+        bio: bio,
+        location: (d['country'] as String?) ?? 'Tanzania',
+        joinedDate: DateTime.tryParse((d['createdAt'] as String?) ?? '') ?? DateTime.now(),
+        isVerified: (d['isVerified'] as bool?) ?? false,
+        avatarUrl: avatarUrl,
+        coverUrl: coverUrl,
+        aboutFields: [
+          if (topic.isNotEmpty)
+            PersonAboutField(
+              icon: Icons.tag_rounded,
+              iconColor: accent,
+              label: 'Topic',
+              value: topic,
+            ),
           PersonAboutField(
-            icon: Icons.corporate_fare_rounded,
-            iconColor: SportSphereColors.electricBlue,
-            label: 'Type',
-            value: 'Community',
-          ),
-          PersonAboutField(
-            icon: Icons.sports_soccer_rounded,
+            icon: Icons.people_rounded,
             iconColor: SportSphereColors.sportGreen,
-            label: 'Sport',
-            value: 'Football',
+            label: 'Members',
+            value: _fmt(memberCount),
           ),
-          PersonAboutField(
-            icon: Icons.place_rounded,
-            iconColor: SportSphereColors.sportOrange,
-            label: 'Country',
-            value: 'Tanzania',
-          ),
+          if (teamName.isNotEmpty)
+            PersonAboutField(
+              icon: Icons.sports_soccer_rounded,
+              iconColor: SportSphereColors.sportOrange,
+              label: 'Supported Team',
+              value: teamName,
+            ),
         ],
+        headerTrailing: FilledButton.icon(
+          style: FilledButton.styleFrom(
+            backgroundColor: _joined ? SportSphereColors.muted.withValues(alpha: 0.2) : accent,
+            foregroundColor: _joined ? SportSphereColors.muted : SportSphereColors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          ),
+          onPressed: _busyJoin ? null : _toggleMembership,
+          icon: _busyJoin
+              ? const SizedBox(width: 14, height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : Icon(_joined ? Icons.check_rounded : Icons.group_add_rounded, size: 16),
+          label: Text(_joined ? 'Joined' : 'Join',
+              style: const TextStyle(fontWeight: FontWeight.w800)),
+        ),
       ),
     );
   }
+
+  Color _parseColor(String hex) {
+    try {
+      final h = hex.replaceAll('#', '');
+      return Color(int.parse('FF$h', radix: 16));
+    } catch (_) {
+      return SportSphereColors.electricBlue;
+    }
+  }
+
+  String _fmt(int v) => v >= 1000 ? '${(v / 1000).toStringAsFixed(1)}K' : '$v';
 }

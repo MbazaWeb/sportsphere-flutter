@@ -253,12 +253,13 @@ class _CreateComposerState extends State<_CreateComposer>
               title: const Text('Photo from Gallery', style: TextStyle(color: SportSphereColors.white)),
               onTap: () => Navigator.pop(sheetCtx, 'gallery_image'),
             ),
-            ListTile(
+            // Camera not available on web
+            if (!kIsWeb) ListTile(
               leading: const Icon(Icons.videocam_rounded, color: SportSphereColors.sportGreen),
               title: const Text('Record Video', style: TextStyle(color: SportSphereColors.white)),
               onTap: () => Navigator.pop(sheetCtx, 'camera_video'),
             ),
-            ListTile(
+            if (!kIsWeb) ListTile(
               leading: const Icon(Icons.photo_camera_rounded, color: SportSphereColors.sportOrange),
               title: const Text('Take Photo', style: TextStyle(color: SportSphereColors.white)),
               onTap: () => Navigator.pop(sheetCtx, 'camera_image'),
@@ -285,14 +286,21 @@ class _CreateComposerState extends State<_CreateComposer>
           final result = await FilePicker.pickFiles(
             type: FileType.video,
             allowMultiple: false,
+            withData: kIsWeb, // web requires bytes; mobile uses path
           );
           if (result == null || result.files.isEmpty) return;
           final picked = result.files.single;
-          if (picked.path == null || picked.path!.isEmpty) {
+          setState(() => _posting = true);
+          // Web: no path, use bytes. Mobile: use path.
+          final XFile xfile;
+          if (kIsWeb && picked.bytes != null) {
+            xfile = XFile.fromData(picked.bytes!, name: picked.name,
+                mimeType: 'video/${picked.extension ?? 'mp4'}');
+          } else if (picked.path != null && picked.path!.isNotEmpty) {
+            xfile = XFile(picked.path!);
+          } else {
             throw StateError('Could not access the selected file');
           }
-          setState(() => _posting = true);
-          final xfile = XFile(picked.path!);
           final url = await _social.uploadPickedFile(
             bucket: 'media', folder: 'videos', file: xfile,
           );
@@ -303,8 +311,9 @@ class _CreateComposerState extends State<_CreateComposer>
           });
           break;
 
-        // ── Record video with camera ──
+        // ── Record video with camera (mobile only) ──
         case 'camera_video':
+          if (kIsWeb) break; // camera not available on web
           final file = await _picker.pickVideo(source: ImageSource.camera);
           if (file == null) return;
           setState(() => _posting = true);
@@ -318,8 +327,9 @@ class _CreateComposerState extends State<_CreateComposer>
           });
           break;
 
-        // ── Take photo with camera ──
+        // ── Take photo with camera (mobile only) ──
         case 'camera_image':
+          if (kIsWeb) break; // camera not available on web
           final file = await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
           if (file == null) return;
           setState(() => _posting = true);

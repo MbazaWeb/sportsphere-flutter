@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -350,7 +351,7 @@ class _NewsCardState extends State<_NewsCard> {
                 if (article.sourceUrl != null) ...[
                   const SizedBox(height: 16),
                   TextButton.icon(
-                    onPressed: () => launchUrl(Uri.parse(article.sourceUrl!), mode: LaunchMode.externalApplication),
+                    onPressed: () => launchUrl(Uri.parse(article.sourceUrl!), mode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication),
                     icon: const Icon(Icons.open_in_new, size: 16),
                     label: const Text('Open source'),
                   ),

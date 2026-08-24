@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -17,7 +18,7 @@ class PdfViewerPage extends StatelessWidget {
       ),
       body: Center(
         child: FilledButton.icon(
-          onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+          onPressed: () => launchUrl(Uri.parse(url), mode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication),
           icon: const Icon(Icons.picture_as_pdf),
           label: const Text('Open PDF'),
         ),
@@ -35,6 +36,6 @@ void openMediaUrl(BuildContext context, String url, {String? title}) {
       ),
     );
   } else {
-    launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    launchUrl(Uri.parse(url), mode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication);
   }
 }

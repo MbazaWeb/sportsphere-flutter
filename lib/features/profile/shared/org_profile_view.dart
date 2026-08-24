@@ -16,6 +16,8 @@ class OrgProfileModel {
     this.accentColor = const Color(0xFF009DFF),
     this.bio = '',
     this.logoAsset,
+    this.avatarUrl,
+    this.coverUrl,
     this.location = '',
     this.joinedDate,
     this.isVerified = false,
@@ -24,6 +26,7 @@ class OrgProfileModel {
     this.followingCount = 0,
     this.aboutFields = const [],
     this.membersLabel = 'Members',
+    this.headerTrailing,
   });
 
   final String id;
@@ -34,6 +37,8 @@ class OrgProfileModel {
   final Color accentColor;
   final String bio;
   final String? logoAsset;
+  final String? avatarUrl;   // Network URL for avatar image
+  final String? coverUrl;    // Network URL for cover image
   final String location;
   final DateTime? joinedDate;
   final bool isVerified;
@@ -42,6 +47,7 @@ class OrgProfileModel {
   final int followingCount;
   final List<PersonAboutField> aboutFields;
   final String membersLabel;
+  final Widget? headerTrailing; // e.g. Join/Leave button
 }
 
 // ── OrgProfileView ─────────────────────────────────────────────────────────────
@@ -98,7 +104,10 @@ class _OrgProfileViewState extends State<OrgProfileView> {
             CircleAvatar(
               radius: 28,
               backgroundColor: p.accentColor.withValues(alpha: 0.15),
-              child: Icon(Icons.corporate_fare_rounded, color: p.accentColor),
+              backgroundImage: p.avatarUrl != null ? NetworkImage(p.avatarUrl!) : null,
+              child: p.avatarUrl == null
+                  ? Icon(Icons.corporate_fare_rounded, color: p.accentColor)
+                  : null,
             ),
             const SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -108,6 +117,7 @@ class _OrgProfileViewState extends State<OrgProfileView> {
               ]),
               Text('@${p.handle}  ·  ${p.roleName}', style: const TextStyle(color: SportSphereColors.muted, fontSize: 12)),
             ])),
+            if (p.headerTrailing != null) ...[const SizedBox(width: 8), p.headerTrailing!],
           ]),
         ),
         Expanded(child: _loading

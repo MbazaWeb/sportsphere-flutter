@@ -86,6 +86,7 @@ Future<List<XFile>> pickAndEditMedia(BuildContext context, {int remaining = 4}) 
     final files = await picker.pickMultiImage();
     out.addAll(files.take(remaining));
   } else if (choice == 'camera') {
+    if (kIsWeb) return out; // camera not available on web
     final f = await picker.pickImage(source: ImageSource.camera);
     if (f != null) out.add(f);
   } else if (choice == 'video') {
