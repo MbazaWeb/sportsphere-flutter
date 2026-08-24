@@ -3063,38 +3063,50 @@ class _ActionRowState extends State<_ActionRow> {
   Future<void> _toggleFan(bool next) async {
     final uid = Supabase.instance.client.auth.currentUser?.id;
     if (uid == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sign in to become a fan')),
-        );
-      }
-      return;
-    }
-    final target = await _resolveTargetId();
-    if (target == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not find this team/profile')),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sign in to become a fan')));
       return;
     }
     setState(() => _isFan = next);
     try {
-      final graph = SocialGraph();
-      await graph.fan(target, on: next);
-      // Also refresh the fan's own counts / badges source
-      await graph.refreshCounts(uid);
+      // Determine entity type and id from the item
+      final entityType = widget.item.type == SpotlightType.team ? 'team'
+          : widget.item.type == SpotlightType.player ? 'player' : null;
+      final entityId = widget.item.targetUserId ?? widget.item.handle.replaceAll('@', '');
+
+      if (entityType != null && entityId.isNotEmpty) {
+        // Use entity_follows — works regardless of whether accountUserId exists
+        if (next) {
+          await Supabase.instance.client.from('entity_follows').upsert({
+            'follower_id': uid,
+            'entity_type': entityType,
+            'entity_id': entityId,
+            'is_fan': true,
+          });
+        } else {
+          await Supabase.instance.client.from('entity_follows').delete()
+              .eq('follower_id', uid)
+              .eq('entity_type', entityType)
+              .eq('entity_id', entityId);
+        }
+      } else {
+        // Fall back to fans table for user profiles
+        final target = await _resolveTargetId();
+        if (target != null) {
+          final graph = SocialGraph();
+          await graph.fan(target, on: next);
+          await graph.refreshCounts(uid);
+        }
+      }
+
       if (mounted) {
         final name = widget.item.author;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(next
-                ? 'You are now a $name fan — badge updated on your profile'
-                : 'Removed $name fan status'),
-            duration: const Duration(seconds: 3),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(next
+              ? 'You are now a $name fan!'
+              : 'Removed $name fan status'),
+          duration: const Duration(seconds: 2),
+        ));
       }
     } catch (e) {
       if (mounted) setState(() => _isFan = !next);

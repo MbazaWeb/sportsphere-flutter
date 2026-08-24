@@ -499,7 +499,7 @@ class _Avatar extends StatelessWidget {
         child: asset != null
             ? (asset!.startsWith('http')
                 ? Image.network(
-                    asset!,
+                    _sanitizeAvatarUrl(asset!),
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => _AvatarFallback(accent: accentColor),
                   )
@@ -514,7 +514,16 @@ class _Avatar extends StatelessWidget {
   }
 }
 
-class _AvatarFallback extends StatelessWidget {
+/// Sanitize avatar URL — replaces stale old domains with current Supabase URL.
+String _sanitizeAvatarUrl(String url) {
+  if (url.startsWith('assets/')) return url; // local asset
+  // Replace any old sportssphere domain with the correct Supabase storage URL
+  return url
+      .replaceAll('sportssphere.fun', 'fffqjbrethogesgghjsn.supabase.co')
+      .replaceAll('sportsphere.fun', 'fffqjbrethogesgghjsn.supabase.co');
+}
+
+
   final Color accent;
   const _AvatarFallback({required this.accent});
 

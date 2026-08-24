@@ -922,7 +922,7 @@ class _SportlightsTab extends StatelessWidget {
                 style: TextStyle(color: SportSphereColors.white,
                     fontSize: 18, fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
-            const Text('Posts from \${profile.name} will appear here.',
+            Text('Posts from \${profile.name} will appear here.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: SportSphereColors.muted, fontSize: 14)),
           ],
