@@ -54,12 +54,11 @@ class AppRoutes {
   static const String player = '/player/:handle';
   static const String roleProfile = '/role/:role/:handle';
 
-  // Protected routes requiring authentication
+  // Protected routes requiring authentication.
+  // Profiles (/profile, /team, /player, /role) are PUBLIC — guests can view.
+  // Only actions inside those pages (follow, fan, comment) check auth individually.
   static const Set<String> protected = {
     '/create',
-    '/profile',
-    '/team',
-    '/player',
   };
 }
 
