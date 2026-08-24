@@ -1,3 +1,4 @@
+import '../../core/services/update_checker.dart';
 import 'dart:ui';
 import 'dart:async';
 
@@ -94,9 +95,11 @@ class _SportSphereShellState extends ConsumerState<SportSphereShell> {
       extendBody: true,
       body: SafeArea(
         bottom: false,
-        child: IndexedStack(
-          index: safeIndex,
-          children: screens,
+        child: UpdateBanner(
+          child: IndexedStack(
+            index: safeIndex,
+            children: screens,
+          ),
         ),
       ),
       bottomNavigationBar: _BottomNavigation(
