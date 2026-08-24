@@ -249,19 +249,29 @@ class _PlayerProfileViewState extends State<PlayerProfileView>
                 HapticFeedback.mediumImpact();
                 final next = !_isFan;
                 setState(() => _isFan = next);
+                final uid = Supabase.instance.client.auth.currentUser?.id;
+                if (uid == null) { setState(() => _isFan = !next); return; }
                 try {
-                  final id = await _graph.resolveId(widget.profile.handle);
-                  if (id == null) throw StateError('profile not found');
-                  await _graph.fan(id, on: next);
-                  final me = _graph.currentUid;
-                  if (me != null) await _graph.refreshCounts(me);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(next
-                          ? 'You are now a ${widget.profile.name} fan'
-                          : 'Removed fan status'),
-                    ));
+                  final entityId = widget.profile.id.isNotEmpty
+                      ? widget.profile.id
+                      : widget.profile.handle.replaceAll('@', '');
+                  if (next) {
+                    await Supabase.instance.client.from('entity_follows').upsert({
+                      'follower_id': uid,
+                      'entity_type': 'player',
+                      'entity_id': entityId,
+                      'is_fan': true,
+                    });
+                  } else {
+                    await Supabase.instance.client.from('entity_follows').delete()
+                        .eq('follower_id', uid).eq('entity_type', 'player').eq('entity_id', entityId);
                   }
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(next
+                        ? 'You are now a ${widget.profile.name} fan!'
+                        : 'Removed fan status'),
+                    duration: const Duration(seconds: 2),
+                  ));
                 } catch (e) {
                   debugPrint('onBecomeFan: $e');
                   if (mounted) setState(() => _isFan = !next);

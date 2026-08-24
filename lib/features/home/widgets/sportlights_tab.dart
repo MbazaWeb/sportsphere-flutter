@@ -424,8 +424,10 @@ class _SportlightsTabState extends State<SportlightsTab> {
           type = _typeForRole(roleLabel);
           // Read avatar from either schema (snake_case profiles.avatar_url or
           // PascalCase User.avatarUrl).
-          authorAvatarUrl = (p['avatar_url'] as String?)?.trim().nullIfEmpty ??
+          // Only use URL if it's a real http URL — asset paths don't work as network images
+          final rawAvatar = (p['avatar_url'] as String?)?.trim().nullIfEmpty ??
               (p['avatarUrl'] as String?)?.trim().nullIfEmpty;
+          authorAvatarUrl = (rawAvatar?.startsWith('http') == true) ? rawAvatar : null;
         }
 
         final postType = (r['postType'] as String?) ??
@@ -1097,19 +1099,18 @@ class _ImageContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final asset = item.asset;
 
-    // No media — show text content if available, otherwise nothing
+    // No media — show text content if available
     if (asset == null || asset.isEmpty) {
       final text = (item.content ?? '').trim();
       if (text.isEmpty) return const SizedBox.shrink();
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
         child: Text(
           text,
           style: const TextStyle(
             color: Colors.white,
             fontSize: 15,
-            height: 1.45,
+            height: 1.5,
           ),
         ),
       );

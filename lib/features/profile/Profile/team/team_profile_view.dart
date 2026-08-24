@@ -226,25 +226,30 @@ class _TeamProfileViewState extends State<TeamProfileView>
     HapticFeedback.mediumImpact();
     final next = !_isFan;
     setState(() { _isFan = next; _busyFan = true; });
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid == null) {
+      setState(() { _isFan = !next; _busyFan = false; });
+      return;
+    }
     try {
-      final id = await _resolveTarget();
-      if (id == null) throw StateError('team profile not found');
-      await _graph.fan(id, on: next);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(next
-              ? 'You are now a ${p.name} fan'
-              : 'Removed fan status'),
-        ));
+      if (next) {
+        await Supabase.instance.client.from('entity_follows').upsert({
+          'follower_id': uid,
+          'entity_type': 'team',
+          'entity_id': p.id,
+          'is_fan': true,
+        });
+      } else {
+        await Supabase.instance.client.from('entity_follows').delete()
+            .eq('follower_id', uid).eq('entity_type', 'team').eq('entity_id', p.id);
       }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(next ? 'You are now a ${p.name} fan!' : 'Removed fan status'),
+        duration: const Duration(seconds: 2),
+      ));
     } catch (e) {
       debugPrint('team fan: $e');
-      if (mounted) {
-        setState(() => _isFan = !next);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not ${next ? 'become a fan' : 'unfan'}: $e')),
-        );
-      }
+      if (mounted) setState(() => _isFan = !next);
     } finally {
       if (mounted) setState(() => _busyFan = false);
     }
