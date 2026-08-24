@@ -55,8 +55,7 @@ class AppRoutes {
   static const String roleProfile = '/role/:role/:handle';
 
   // Protected routes requiring authentication.
-  // Profiles (/profile, /team, /player, /role) are PUBLIC — guests can view.
-  // Only actions inside those pages (follow, fan, comment) check auth individually.
+  // Only post creation requires login — everything else is public.
   static const Set<String> protected = {
     '/create',
   };
@@ -224,9 +223,10 @@ String? _redirectLogic(Ref ref, GoRouterState state) {
   // and the router will then redirect to login if guest.
   if (location == AppRoutes.splash) return null;
 
-  // Still hydrating — send non-splash routes to splash
+  // Still hydrating — only block protected routes, let public routes through
   if (auth.status == AuthStatus.unknown) {
-    return AppRoutes.splash;
+    final isProtected = AppRoutes.protected.any(location.startsWith);
+    return isProtected ? AppRoutes.splash : null;
   }
 
   // Check if current route requires authentication

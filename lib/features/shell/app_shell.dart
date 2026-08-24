@@ -1,4 +1,5 @@
 import '../../core/services/update_checker.dart';
+import 'package:geolocator/geolocator.dart';
 import 'dart:ui';
 import 'dart:async';
 
