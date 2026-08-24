@@ -131,3 +131,27 @@ create or replace view public.entity_identity_report as
   from public."League" l
   left join auth.users au on au.id = l."accountUserId"
   left join public.profiles p  on p.id  = l."accountUserId";
+
+-- ── RLS for entity_follows ────────────────────────────────────────────────────
+alter table public.entity_follows enable row level security;
+
+create policy "entity_follows_public_read"
+  on public.entity_follows for select using (true);
+
+create policy "entity_follows_auth_create"
+  on public.entity_follows for insert
+  with check (auth.uid() = follower_id);
+
+create policy "entity_follows_own_delete"
+  on public.entity_follows for delete
+  using (auth.uid() = follower_id);
+
+-- ── RLS for entity_communities ────────────────────────────────────────────────
+alter table public.entity_communities enable row level security;
+
+create policy "entity_communities_public_read"
+  on public.entity_communities for select using (true);
+
+create policy "entity_communities_service_write"
+  on public.entity_communities for all
+  using (auth.role() = 'service_role');

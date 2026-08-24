@@ -1138,10 +1138,11 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
         ids.add(authId);
       }
 
-      // Resolve from profiles table by handle (returns uuid matching Post.userId)
+      // Resolve from profiles table by handle (returns uuid = Post.userId)
       try {
         final rows = await Supabase.instance.client
-            .from('profiles').select('id').ilike('handle', handle);
+            .from('profiles').select('id')
+            .or('handle.eq.$handle,handle.ilike.$handle');
         for (final r in rows as List) {
           final id = (r as Map)['id']?.toString();
           if (id != null) ids.add(id);
@@ -1151,7 +1152,8 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
       // Resolve from User table by handle (text ids)
       try {
         final rows = await Supabase.instance.client
-            .from('User').select('id').ilike('handle', handle);
+            .from('User').select('id')
+            .or('handle.eq.$handle,handle.ilike.$handle');
         for (final r in rows as List) {
           final id = (r as Map)['id']?.toString();
           if (id != null) ids.add(id);

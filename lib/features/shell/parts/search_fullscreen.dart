@@ -46,6 +46,8 @@ class _FullScreenSearchState extends State<_FullScreenSearch> {
           .from('profiles')
           .select('id, handle, first_name, last_name, role, avatar_url')
           .or('handle.ilike.$pattern,first_name.ilike.$pattern,last_name.ilike.$pattern')
+          // Exclude entity accounts (team/player/league) — they appear via their own table queries
+          .not('role', 'in', '(team,player,league,coach)')
           .limit(20);
       for (final r in profiles as List) {
         final m = Map<String, dynamic>.from(r as Map);
