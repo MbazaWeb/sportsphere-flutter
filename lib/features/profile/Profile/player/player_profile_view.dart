@@ -252,9 +252,7 @@ class _PlayerProfileViewState extends State<PlayerProfileView>
                 final uid = Supabase.instance.client.auth.currentUser?.id;
                 if (uid == null) { setState(() => _isFan = !next); return; }
                 try {
-                  final entityId = widget.profile.id.isNotEmpty
-                      ? widget.profile.id
-                      : widget.profile.handle.replaceAll('@', '');
+                  final entityId = widget.profile.handle.replaceAll('@', '');
                   if (next) {
                     await Supabase.instance.client.from('entity_follows').upsert({
                       'follower_id': uid,

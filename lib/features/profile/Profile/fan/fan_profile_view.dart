@@ -517,13 +517,12 @@ class _Avatar extends StatelessWidget {
 /// Sanitize avatar URL — replaces stale old domains with current Supabase URL.
 String _sanitizeAvatarUrl(String url) {
   if (url.startsWith('assets/')) return url; // local asset
-  // Replace any old sportssphere domain with the correct Supabase storage URL
   return url
       .replaceAll('sportssphere.fun', 'fffqjbrethogesgghjsn.supabase.co')
       .replaceAll('sportsphere.fun', 'fffqjbrethogesgghjsn.supabase.co');
 }
 
-
+class _AvatarFallback extends StatelessWidget {
   final Color accent;
   const _AvatarFallback({required this.accent});
 

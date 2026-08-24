@@ -241,7 +241,7 @@ class _TeamProfileViewState extends State<TeamProfileView>
         });
       } else {
         await Supabase.instance.client.from('entity_follows').delete()
-            .eq('follower_id', uid).eq('entity_type', 'team').eq('entity_id', p.id);
+            .eq('follower_id', uid).eq('entity_type', 'team').eq('entity_id', p.id ?? '');
       }
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(next ? 'You are now a ${p.name} fan!' : 'Removed fan status'),
