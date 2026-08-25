@@ -371,8 +371,11 @@ class _FullScreenSearchState extends State<_FullScreenSearch>
 
 // ─────────────────────────────────────────────────────────────────────────────
 // NEARBY FANS TAB
-// Scans for fans who share teams, sports, or country with the current user.
+// Scans for fans near you using GPS. Shows radar animation on tab open.
+// Fans are sorted by distance. User can follow + message each fan.
 // ─────────────────────────────────────────────────────────────────────────────
+
+enum _NearbyFilter { all, team, sport, country, engagements }
 
 class _NearbyFansTab extends StatefulWidget {
   const _NearbyFansTab();
@@ -381,35 +384,134 @@ class _NearbyFansTab extends StatefulWidget {
   State<_NearbyFansTab> createState() => _NearbyFansTabState();
 }
 
-class _NearbyFansTabState extends State<_NearbyFansTab> {
+class _NearbyFansTabState extends State<_NearbyFansTab>
+    with SingleTickerProviderStateMixin {
   final SupabaseClient _sb = Supabase.instance.client;
   List<Map<String, dynamic>> _fans = [];
   bool _loading = true;
+  bool _scanning = false;
   String? _error;
+
+  // Radar animation
+  late final AnimationController _radarCtrl;
+  late final Animation<double> _radarAnim;
 
   // Filter chips
   _NearbyFilter _filter = _NearbyFilter.all;
 
-  // Current user context
+  // Current user GPS location
+  double? _myLat;
+  double? _myLng;
   String? _myUid;
   String? _myCountry;
+
+  // Current user context for non-GPS filters
   final Set<String> _myTeamIds = {};
   final Set<String> _mySportIds = {};
 
   @override
   void initState() {
     super.initState();
-    _loadMyContext();
+    _radarCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2200),
+    );
+    _radarAnim = CurvedAnimation(
+      parent: _radarCtrl,
+      curve: Curves.easeOutCubic,
+    );
+    // Trigger radar scan on tab open
+    _triggerScan();
+  }
+
+  @override
+  void dispose() {
+    _radarCtrl.dispose();
+    super.dispose();
+  }
+
+  /// Trigger the radar scan animation + load nearby fans.
+  Future<void> _triggerScan() async {
+    if (_scanning) return;
+    setState(() {
+      _scanning = true;
+      _loading = true;
+      _error = null;
+    });
+
+    // Start radar animation
+    _radarCtrl.forward(from: 0.0);
+
+    // Get GPS location + load context in parallel
+    await Future.wait([
+      _getMyLocation(),
+      _loadMyContext(),
+    ]);
+
+    // Wait for radar animation to complete (min 1.5s for visual effect)
+    await Future.delayed(const Duration(milliseconds: 1500));
+
+    // Load fans based on filter
+    await _loadFans();
+
+    if (mounted) {
+      setState(() => _scanning = false);
+    }
+  }
+
+  /// Get the current user's GPS location using geolocator.
+  Future<void> _getMyLocation() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        // Fall back to country-based matching
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          return;
+        }
+      }
+      if (permission == LocationPermission.deniedForever) {
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 8),
+        ),
+      );
+
+      _myLat = position.latitude;
+      _myLng = position.longitude;
+
+      // Save location to profile for future queries
+      final uid = _sb.auth.currentUser?.id;
+      if (uid != null) {
+        try {
+          await _sb.from('profiles').update({
+            'latitude': _myLat,
+            'longitude': _myLng,
+            'location_updated_at': DateTime.now().toIso8601String(),
+          }).eq('id', uid);
+        } catch (_) {}
+      }
+    } catch (e) {
+      // GPS failed — fall back to country-based matching
+      debugPrint('GPS error: $e');
+    }
   }
 
   /// Load the current user's uid, country, favorite teams, and followed sports.
-  /// This determines what "nearby" means for each filter.
   Future<void> _loadMyContext() async {
     final uid = _sb.auth.currentUser?.id;
     if (uid == null) {
       if (mounted) {
         setState(() {
-          _loading = false;
           _error = 'Sign in to discover nearby fans';
         });
       }
@@ -418,7 +520,7 @@ class _NearbyFansTabState extends State<_NearbyFansTab> {
     _myUid = uid;
 
     try {
-      // Load my profile (country)
+      // Load my profile (country + GPS)
       final me = await _sb
           .from('User')
           .select('currentCountry, countryOfOrigin, location')
@@ -430,7 +532,7 @@ class _NearbyFansTabState extends State<_NearbyFansTab> {
             (me['location'] as String?);
       }
 
-      // Load my favorite teams (UserFavorite where targetType='TEAM')
+      // Load my favorite teams
       final favTeams = await _sb
           .from('UserFavorite')
           .select('targetId')
@@ -441,7 +543,7 @@ class _NearbyFansTabState extends State<_NearbyFansTab> {
         if (id != null && id.isNotEmpty) _myTeamIds.add(id);
       }
 
-      // Load my sports (UserSport)
+      // Load my sports
       final mySports = await _sb
           .from('UserSport')
           .select('sportId')
@@ -450,114 +552,41 @@ class _NearbyFansTabState extends State<_NearbyFansTab> {
         final id = (r as Map)['sportId'] as String?;
         if (id != null && id.isNotEmpty) _mySportIds.add(id);
       }
-
-      _loadFans();
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = 'Could not load your profile: $e';
-        });
-      }
+      debugPrint('_loadMyContext: $e');
     }
   }
 
   /// Load fans based on the active filter.
   Future<void> _loadFans() async {
-    if (_myUid == null) return;
-    if (mounted) setState(() => _loading = true);
+    if (_myUid == null) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
 
     try {
-      final Set<String> matchedUids = {};
-      final reasons = <String, String>{};
+      // ── GPS-based nearby fans ─────────────────────────────────
+      if (_myLat != null && _myLng != null &&
+          (_filter == _NearbyFilter.all || _filter == _NearbyFilter.country)) {
+        final rows = await _sb.rpc('nearby_fans', params: {
+          'p_lat': _myLat,
+          'p_lng': _myLng,
+          'p_radius_m': 100000, // 100km radius
+          'p_limit': 50,
+        });
 
-      // ── Filter: Same Team ─────────────────────────────────────
-      if (_filter == _NearbyFilter.all || _filter == _NearbyFilter.team) {
-        if (_myTeamIds.isNotEmpty) {
-          // Find other users who also favorite any of my teams
-          final teamFans = await _sb
-              .from('UserFavorite')
-              .select('userId, targetId, targetName')
-              .inFilter('targetId', _myTeamIds.toList())
-              .neq('userId', _myUid!);
-          for (final r in teamFans as List) {
-            final m = r as Map;
-            final uid = m['userId'] as String?;
-            if (uid != null && uid != _myUid) {
-              matchedUids.add(uid);
-              reasons[uid] = 'Fan of ${m['targetName'] ?? 'your team'}';
-            }
-          }
+        final profiles = <Map<String, dynamic>>[];
+        for (final r in rows as List) {
+          final m = Map<String, dynamic>.from(r as Map);
+          final distM = (m['distance_m'] as num?)?.toDouble() ?? 0;
+          m['_distance'] = _formatDistance(distM);
+          m['_reason'] = '${_formatDistance(distM)} away';
+          profiles.add(m);
         }
-      }
 
-      // ── Filter: Same Sport ────────────────────────────────────
-      if (_filter == _NearbyFilter.all || _filter == _NearbyFilter.sport) {
-        if (_mySportIds.isNotEmpty) {
-          final sportFans = await _sb
-              .from('UserSport')
-              .select('userId, sportId')
-              .inFilter('sportId', _mySportIds.toList())
-              .neq('userId', _myUid!);
-          for (final r in sportFans as List) {
-            final m = r as Map;
-            final uid = m['userId'] as String?;
-            if (uid != null && uid != _myUid) {
-              matchedUids.add(uid);
-              reasons.update(uid, (v) => '$v · Same sport',
-                  ifAbsent: () => 'Follows a sport you like');
-            }
-          }
-        }
-      }
-
-      // ── Filter: Same Country ──────────────────────────────────
-      if (_filter == _NearbyFilter.all || _filter == _NearbyFilter.country) {
-        if (_myCountry != null && _myCountry!.isNotEmpty) {
-          // Query fans in the same country
-          final countryFans = await _sb
-              .from('User')
-              .select('id, handle, name, avatarUrl, role, currentCountry, location')
-              .or('currentCountry.ilike.%$_myCountry%,countryOfOrigin.ilike.%$_myCountry%,location.ilike.%$_myCountry%')
-              .neq('id', _myUid!)
-              .limit(100);
-          for (final r in countryFans as List) {
-            final m = r as Map;
-            final uid = m['id'] as String?;
-            if (uid != null) {
-              matchedUids.add(uid);
-              reasons.update(uid, (v) => '$v · Same country',
-                  ifAbsent: () => 'In $_myCountry');
-            }
-          }
-        }
-      }
-
-      // ── Filter: Fan Engagements (mutual fans — both fan of same targets)
-      if (_filter == _NearbyFilter.engagements) {
-        // Find users I am a fan of, then find OTHER users who also fan them
-        if (_myTeamIds.isNotEmpty) {
-          final engagements = await _sb
-              .from('UserFavorite')
-              .select('userId, targetId, targetName')
-              .inFilter('targetId', _myTeamIds.toList())
-              .neq('userId', _myUid!);
-          for (final r in engagements as List) {
-            final m = r as Map;
-            final uid = m['userId'] as String?;
-            if (uid != null && uid != _myUid) {
-              matchedUids.add(uid);
-              reasons[uid] = 'Also fans ${m['targetName'] ?? 'same team'}';
-            }
-          }
-        }
-      }
-
-      // ── Fetch full profiles for matched UIDs ──────────────────
-      if (matchedUids.isEmpty) {
         if (mounted) {
           setState(() {
-            _fans = [];
+            _fans = profiles;
             _loading = false;
             _error = null;
           });
@@ -565,28 +594,98 @@ class _NearbyFansTabState extends State<_NearbyFansTab> {
         return;
       }
 
-      // Supabase inFilter has a max of ~300 items; chunk if needed
-      final uidList = matchedUids.toList();
-      final profiles = <Map<String, dynamic>>[];
-
-      // Process in chunks of 100
-      for (var i = 0; i < uidList.length; i += 100) {
-        final chunk = uidList.sublist(
-            i, (i + 100 > uidList.length) ? uidList.length : i + 100);
-        final rows = await _sb
-            .from('User')
-            .select('id, handle, name, avatarUrl, role, currentCountry, location, bio')
-            .inFilter('id', chunk);
-        for (final r in rows as List) {
-          final m = Map<String, dynamic>.from(r as Map);
-          m['_reason'] = reasons[m['id']] ?? 'Nearby fan';
-          profiles.add(m);
+      // ── Filter: Same Team ─────────────────────────────────────
+      if (_filter == _NearbyFilter.team && _myTeamIds.isNotEmpty) {
+        final teamFans = await _sb
+            .from('UserFavorite')
+            .select('userId, targetId, targetName')
+            .inFilter('targetId', _myTeamIds.toList())
+            .neq('userId', _myUid!);
+        final uids = <String>{};
+        final reasons = <String, String>{};
+        for (final r in teamFans as List) {
+          final m = r as Map;
+          final uid = m['userId'] as String?;
+          if (uid != null && uid != _myUid) {
+            uids.add(uid);
+            reasons[uid] = 'Fan of ${m['targetName'] ?? 'your team'}';
+          }
         }
+        await _fetchProfilesByIds(uids, reasons);
+        return;
       }
 
+      // ── Filter: Same Sport ────────────────────────────────────
+      if (_filter == _NearbyFilter.sport && _mySportIds.isNotEmpty) {
+        final sportFans = await _sb
+            .from('UserSport')
+            .select('userId, sportId')
+            .inFilter('sportId', _mySportIds.toList())
+            .neq('userId', _myUid!);
+        final uids = <String>{};
+        final reasons = <String, String>{};
+        for (final r in sportFans as List) {
+          final m = r as Map;
+          final uid = m['userId'] as String?;
+          if (uid != null && uid != _myUid) {
+            uids.add(uid);
+            reasons[uid] = 'Follows a sport you like';
+          }
+        }
+        await _fetchProfilesByIds(uids, reasons);
+        return;
+      }
+
+      // ── Filter: Fan Engagements ───────────────────────────────
+      if (_filter == _NearbyFilter.engagements && _myTeamIds.isNotEmpty) {
+        final engagements = await _sb
+            .from('UserFavorite')
+            .select('userId, targetId, targetName')
+            .inFilter('targetId', _myTeamIds.toList())
+            .neq('userId', _myUid!);
+        final uids = <String>{};
+        final reasons = <String, String>{};
+        for (final r in engagements as List) {
+          final m = r as Map;
+          final uid = m['userId'] as String?;
+          if (uid != null && uid != _myUid) {
+            uids.add(uid);
+            reasons[uid] = 'Also fans ${m['targetName'] ?? 'same team'}';
+          }
+        }
+        await _fetchProfilesByIds(uids, reasons);
+        return;
+      }
+
+      // ── Fallback: Same Country (text-based) ───────────────────
+      if (_myCountry != null && _myCountry!.isNotEmpty) {
+        final countryFans = await _sb
+            .from('User')
+            .select('id, handle, name, avatarUrl, role, currentCountry, location')
+            .or('currentCountry.ilike.%$_myCountry%,countryOfOrigin.ilike.%$_myCountry%,location.ilike.%$_myCountry%')
+            .neq('id', _myUid!)
+            .limit(50);
+        final profiles = <Map<String, dynamic>>[];
+        for (final r in countryFans as List) {
+          final m = Map<String, dynamic>.from(r as Map);
+          m['_reason'] = 'In $_myCountry';
+          m['_distance'] = null;
+          profiles.add(m);
+        }
+        if (mounted) {
+          setState(() {
+            _fans = profiles;
+            _loading = false;
+            _error = null;
+          });
+        }
+        return;
+      }
+
+      // No data to match on
       if (mounted) {
         setState(() {
-          _fans = profiles;
+          _fans = [];
           _loading = false;
           _error = null;
         });
@@ -601,6 +700,59 @@ class _NearbyFansTabState extends State<_NearbyFansTab> {
     }
   }
 
+  /// Fetch full profiles for a set of user IDs.
+  Future<void> _fetchProfilesByIds(
+    Set<String> uids,
+    Map<String, String> reasons,
+  ) async {
+    if (uids.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _fans = [];
+          _loading = false;
+        });
+      }
+      return;
+    }
+
+    final uidList = uids.toList();
+    final profiles = <Map<String, dynamic>>[];
+
+    for (var i = 0; i < uidList.length; i += 100) {
+      final chunk = uidList.sublist(
+          i, (i + 100 > uidList.length) ? uidList.length : i + 100);
+      final rows = await _sb
+          .from('User')
+          .select('id, handle, name, avatarUrl, role, currentCountry, location, bio')
+          .inFilter('id', chunk);
+      for (final r in rows as List) {
+        final m = Map<String, dynamic>.from(r as Map);
+        m['_reason'] = reasons[m['id']] ?? 'Nearby fan';
+        m['_distance'] = null;
+        profiles.add(m);
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _fans = profiles;
+        _loading = false;
+        _error = null;
+      });
+    }
+  }
+
+  /// Format distance in meters to a human-readable string.
+  String _formatDistance(double meters) {
+    if (meters < 1000) {
+      return '${meters.round()} m';
+    } else if (meters < 100000) {
+      return '${(meters / 1000).toStringAsFixed(1)} km';
+    } else {
+      return '${(meters / 1000).round()} km';
+    }
+  }
+
   void _onFilterChanged(_NearbyFilter f) {
     if (_filter == f) return;
     setState(() => _filter = f);
@@ -609,12 +761,11 @@ class _NearbyFansTabState extends State<_NearbyFansTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Center(
-        child: CircularProgressIndicator(
-          color: SportSphereColors.electricBlue,
-          strokeWidth: 2,
-        ),
+    // Show radar scan animation when scanning
+    if (_scanning || _loading) {
+      return _RadarScanOverlay(
+        animation: _radarAnim,
+        message: _scanning ? 'Scanning for nearby fans...' : 'Loading...',
       );
     }
 
@@ -639,7 +790,7 @@ class _NearbyFansTabState extends State<_NearbyFansTab> {
               ),
               const SizedBox(height: 16),
               TextButton(
-                onPressed: _loadMyContext,
+                onPressed: _triggerScan,
                 child: const Text('Retry'),
               ),
             ],
@@ -658,9 +809,10 @@ class _NearbyFansTabState extends State<_NearbyFansTab> {
             scrollDirection: Axis.horizontal,
             children: [
               _FilterChip(
-                label: 'All Fans',
-                icon: Icons.people_rounded,
-                selected: _filter == _NearbyFilter.all,
+                label: 'Nearby (GPS)',
+                icon: Icons.my_location_rounded,
+                selected: _filter == _NearbyFilter.all ||
+                    _filter == _NearbyFilter.country,
                 onTap: () => _onFilterChanged(_NearbyFilter.all),
               ),
               const SizedBox(width: 8),
@@ -679,17 +831,50 @@ class _NearbyFansTabState extends State<_NearbyFansTab> {
               ),
               const SizedBox(width: 8),
               _FilterChip(
-                label: 'Same Country',
-                icon: Icons.public_rounded,
-                selected: _filter == _NearbyFilter.country,
-                onTap: () => _onFilterChanged(_NearbyFilter.country),
-              ),
-              const SizedBox(width: 8),
-              _FilterChip(
-                label: 'Fan Engagements',
+                label: 'Engagements',
                 icon: Icons.favorite_rounded,
                 selected: _filter == _NearbyFilter.engagements,
                 onTap: () => _onFilterChanged(_NearbyFilter.engagements),
+              ),
+            ],
+          ),
+        ),
+
+        // ── Rescan button ────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Row(
+            children: [
+              Icon(Icons.radar_rounded,
+                  size: 14, color: SportSphereColors.electricBlue),
+              const SizedBox(width: 6),
+              Text(
+                _myLat != null
+                    ? 'Location: ${_myLat!.toStringAsFixed(3)}, ${_myLng!.toStringAsFixed(3)}'
+                    : 'GPS unavailable — showing text-based matches',
+                style: TextStyle(
+                  color: SportSphereColors.muted,
+                  fontSize: 11,
+                ),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: _triggerScan,
+                child: Row(
+                  children: [
+                    Icon(Icons.refresh_rounded,
+                        size: 14, color: SportSphereColors.electricBlue),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Rescan',
+                      style: TextStyle(
+                        color: SportSphereColors.electricBlue,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -721,6 +906,7 @@ class _NearbyFansTabState extends State<_NearbyFansTab> {
                         country: (f['currentCountry'] as String?) ??
                             (f['location'] as String?),
                         reason: (f['_reason'] as String?) ?? 'Nearby fan',
+                        distance: f['_distance'] as String?,
                         bio: f['bio'] as String?,
                       );
                     },
@@ -733,7 +919,189 @@ class _NearbyFansTabState extends State<_NearbyFansTab> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// NEARBY FAN CARD
+// RADAR SCAN OVERLAY — animated radar that plays while scanning for fans
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _RadarScanOverlay extends StatelessWidget {
+  final Animation<double> animation;
+  final String message;
+
+  const _RadarScanOverlay({
+    required this.animation,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Radar animation
+          SizedBox(
+            width: 200,
+            height: 200,
+            child: AnimatedBuilder(
+              animation: animation,
+              builder: (context, _) {
+                return CustomPaint(
+                  painter: _RadarPainter(animation.value),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Message
+          Text(
+            message,
+            style: const TextStyle(
+              color: SportSphereColors.electricBlue,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Animated dots
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(3, (i) {
+              return AnimatedBuilder(
+                animation: animation,
+                builder: (context, _) {
+                  final t = (animation.value * 3 - i * 0.3) % 1.0;
+                  final opacity = t < 0.5 ? t * 2 : (1 - t) * 2;
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: SportSphereColors.electricBlue
+                          .withValues(alpha: opacity.clamp(0.1, 1.0)),
+                      shape: BoxShape.circle,
+                    ),
+                  );
+                },
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RADAR PAINTER — draws concentric circles + sweeping radar line
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _RadarPainter extends CustomPainter {
+  final double progress;
+
+  _RadarPainter(this.progress);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final maxRadius = size.width / 2;
+
+    // Background circle
+    final bgPaint = Paint()
+      ..color = SportSphereColors.electricBlue.withValues(alpha: 0.05)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, maxRadius, bgPaint);
+
+    // Concentric circles
+    final ringPaint = Paint()
+      ..color = SportSphereColors.electricBlue.withValues(alpha: 0.2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    for (var i = 1; i <= 4; i++) {
+      canvas.drawCircle(center, maxRadius * i / 4, ringPaint);
+    }
+
+    // Cross lines
+    final linePaint = Paint()
+      ..color = SportSphereColors.electricBlue.withValues(alpha: 0.15)
+      ..strokeWidth = 1;
+    canvas.drawLine(
+      Offset(center.dx, 0),
+      Offset(center.dx, size.height),
+      linePaint,
+    );
+    canvas.drawLine(
+      Offset(0, center.dy),
+      Offset(size.width, center.dy),
+      linePaint,
+    );
+
+    // Sweep gradient (the rotating radar beam)
+    final sweepAngle = progress * 2 * 3.14159265;
+    final sweepRect = Rect.fromCircle(center: center, radius: maxRadius);
+    final sweepPaint = Paint()
+      ..shader = SweepGradient(
+        center: Alignment.center,
+        startAngle: 0,
+        endAngle: 3.14159265 / 2, // 90-degree fan
+        colors: [
+          SportSphereColors.electricBlue.withValues(alpha: 0.4),
+          SportSphereColors.electricBlue.withValues(alpha: 0.0),
+        ],
+        transform: GradientRotation(sweepAngle),
+      ).createShader(sweepRect);
+    canvas.drawArc(
+      sweepRect,
+      sweepAngle,
+      3.14159265 / 2, // 90 degrees
+      true,
+      sweepPaint,
+    );
+
+    // Center dot (you)
+    final centerPaint = Paint()
+      ..color = SportSphereColors.electricBlue
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, 6, centerPaint);
+    // Pulsing ring around center
+    final pulseRadius = 6.0 + progress * 20;
+    final pulsePaint = Paint()
+      ..color = SportSphereColors.electricBlue
+          .withValues(alpha: (1 - progress) * 0.5)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    canvas.drawCircle(center, pulseRadius, pulsePaint);
+
+    // Random "detected" dots that appear as the sweep passes
+    final rng = List.generate(8, (i) => i * 0.7853); // fixed positions
+    for (var i = 0; i < rng.length; i++) {
+      final angle = rng[i];
+      final dist = maxRadius * (0.3 + (i % 3) * 0.2);
+      final dx = center.dx + dist * math.cos(angle);
+      final dy = center.dy + dist * math.sin(angle);
+      final dotPos = Offset(dx, dy);
+
+      // Dot appears when sweep is near
+      final sweepPos = (sweepAngle % (2 * 3.14159265)) / (2 * 3.14159265);
+      final dotPos2 = angle / (2 * 3.14159265);
+      final delta = (sweepPos - dotPos2).abs();
+      final visibility = delta < 0.15 ? (1 - delta / 0.15) : 0.0;
+
+      if (visibility > 0) {
+        final dotPaint = Paint()
+          ..color = SportSphereColors.sportGreen.withValues(alpha: visibility)
+          ..style = PaintingStyle.fill;
+        canvas.drawCircle(dotPos, 4 * visibility, dotPaint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _RadarPainter oldDelegate) {
+    return oldDelegate.progress != progress;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NEARBY FAN CARD — shows fan info + distance + Follow + Message buttons
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _NearbyFanCard extends StatelessWidget {
@@ -744,6 +1112,7 @@ class _NearbyFanCard extends StatelessWidget {
   final String role;
   final String? country;
   final String reason;
+  final String? distance;
   final String? bio;
 
   const _NearbyFanCard({
@@ -754,6 +1123,7 @@ class _NearbyFanCard extends StatelessWidget {
     required this.role,
     required this.country,
     required this.reason,
+    required this.distance,
     required this.bio,
   });
 
@@ -786,82 +1156,116 @@ class _NearbyFanCard extends StatelessWidget {
           ),
           const SizedBox(width: 14),
 
-          // Name + reason
+          // Name + reason + distance
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        displayName,
-                        style: const TextStyle(
-                          color: SportSphereColors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (country != null && country!.isNotEmpty) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: SportSphereColors.sportGreen
-                              .withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
+            child: GestureDetector(
+              onTap: () {
+                Navigator.pop(context);
+                context.push('/profile/$handle');
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
                         child: Text(
-                          country!,
-                          style: TextStyle(
-                            color: SportSphereColors.sportGreen,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
+                          displayName,
+                          style: const TextStyle(
+                            color: SportSphereColors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
                           ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (distance != null) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: SportSphereColors.sportGreen
+                                .withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.place_rounded,
+                                  size: 10,
+                                  color: SportSphereColors.sportGreen),
+                              const SizedBox(width: 2),
+                              Text(
+                                distance!,
+                                style: TextStyle(
+                                  color: SportSphereColors.sportGreen,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ] else if (country != null && country!.isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: SportSphereColors.sportGreen
+                                .withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            country!,
+                            style: TextStyle(
+                              color: SportSphereColors.sportGreen,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '@$handle',
+                    style: const TextStyle(
+                      color: SportSphereColors.muted,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.link_rounded,
+                          size: 12,
+                          color: SportSphereColors.electricBlue
+                              .withValues(alpha: 0.7)),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          reason,
+                          style: TextStyle(
+                            color: SportSphereColors.electricBlue
+                                .withValues(alpha: 0.85),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
-                  ],
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  '@$handle',
-                  style: const TextStyle(
-                    color: SportSphereColors.muted,
-                    fontSize: 12,
                   ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.link_rounded,
-                        size: 12,
-                        color: SportSphereColors.electricBlue
-                            .withValues(alpha: 0.7)),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        reason,
-                        style: TextStyle(
-                          color: SportSphereColors.electricBlue
-                              .withValues(alpha: 0.85),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
 
-          // Action buttons
-          _FanActionButtons(uid: uid, handle: handle),
+          // Action buttons: Follow + Message
+          _FanActionButtons(uid: uid, handle: handle, name: displayName),
         ],
       ),
     );
@@ -869,16 +1273,18 @@ class _NearbyFanCard extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FAN ACTION BUTTONS — Follow + Message
+// FAN ACTION BUTTONS — Follow + Message + View profile
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _FanActionButtons extends StatefulWidget {
   final String uid;
   final String handle;
+  final String name;
 
   const _FanActionButtons({
     required this.uid,
     required this.handle,
+    required this.name,
   });
 
   @override
@@ -943,6 +1349,20 @@ class _FanActionButtonsState extends State<_FanActionButtons> {
     }
   }
 
+  void _startChat() {
+    // Close the search page first, then open the message sheet with this peer
+    Navigator.of(context).pop(); // close search
+    // Use post-frame callback to ensure search is dismissed before opening sheet
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _Header._showMessages(
+        context,
+        peerId: widget.uid,
+        peerName: widget.name,
+        peerHandle: widget.handle,
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -952,7 +1372,7 @@ class _FanActionButtonsState extends State<_FanActionButtons> {
         GestureDetector(
           onTap: _busy ? null : _toggleFollow,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
               color: _following
                   ? SportSphereColors.surface2
@@ -981,25 +1401,24 @@ class _FanActionButtonsState extends State<_FanActionButtons> {
                   ),
           ),
         ),
-        const SizedBox(width: 8),
-        // View profile button
+        const SizedBox(width: 6),
+        // Message button
         GestureDetector(
-          onTap: () {
-            Navigator.pop(context);
-            context.push('/profile/${widget.handle}');
-          },
+          onTap: _startChat,
           child: Container(
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: SportSphereColors.surface2,
+              color: SportSphereColors.sportGreen.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+              border: Border.all(
+                color: SportSphereColors.sportGreen.withValues(alpha: 0.3),
+              ),
             ),
-            child: const Icon(
-              Icons.chevron_right_rounded,
-              color: SportSphereColors.muted,
-              size: 20,
+            child: Icon(
+              Icons.chat_bubble_outline_rounded,
+              color: SportSphereColors.sportGreen,
+              size: 18,
             ),
           ),
         ),

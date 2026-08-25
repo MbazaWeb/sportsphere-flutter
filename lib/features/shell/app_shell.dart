@@ -2,6 +2,7 @@ import '../../core/services/update_checker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:ui';
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:cross_file/cross_file.dart';
 import 'package:file_picker/file_picker.dart';

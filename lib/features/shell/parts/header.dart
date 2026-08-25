@@ -103,13 +103,22 @@ class _Header extends ConsumerWidget {
     );
   }
 
-  static void _showMessages(BuildContext context) {
+  static void _showMessages(
+    BuildContext context, {
+    String? peerId,
+    String? peerName,
+    String? peerHandle,
+  }) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: SportSphereColors.transparent,
       barrierColor: SportSphereColors.black.withValues(alpha: 0.58),
-      builder: (_) => const _MessageSheet(),
+      builder: (_) => _MessageSheet(
+        initialPeerId: peerId,
+        initialPeerName: peerName,
+        initialPeerHandle: peerHandle,
+      ),
     );
   }
 }

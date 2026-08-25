@@ -441,7 +441,14 @@ class _SearchEmptyState extends StatelessWidget {
 }
 
 class _MessageSheet extends StatefulWidget {
-  const _MessageSheet();
+  final String? initialPeerId;
+  final String? initialPeerName;
+  final String? initialPeerHandle;
+  const _MessageSheet({
+    this.initialPeerId,
+    this.initialPeerName,
+    this.initialPeerHandle,
+  });
   @override
   State<_MessageSheet> createState() => _MessageSheetState();
 }
@@ -463,6 +470,16 @@ class _MessageSheetState extends State<_MessageSheet> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialPeerId != null) {
+      // Open directly to the specified peer conversation
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _openPeer(
+          widget.initialPeerId!,
+          widget.initialPeerName ?? 'Fan',
+          handle: widget.initialPeerHandle,
+        );
+      });
+    }
     _loadInbox();
   }
 
