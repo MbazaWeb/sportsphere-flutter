@@ -70,3 +70,7 @@ PUBSPEC_ASSETS.txt
 **/*firebase-adminsdk*.json
 
 supabase/.temp/
+deploy.env
+logs/
+debug-info/
+deploy_fixed.ps1
