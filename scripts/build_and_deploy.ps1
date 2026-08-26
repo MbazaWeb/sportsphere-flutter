@@ -80,7 +80,7 @@ if (-not $SkipWeb) {
         info "DRY RUN - skip"
     } else {
         Remove-Item -Recurse -Force "build\web" -ErrorAction SilentlyContinue
-        flutter build web --release "--dart-define=SUPABASE_URL=$SupabaseUrl" "--dart-define=SUPABASE_ANON_KEY=$SupabaseAnon" --web-renderer canvaskit "--base-href=/"
+        flutter build web --release "--dart-define=SUPABASE_URL=$SupabaseUrl" "--dart-define=SUPABASE_ANON_KEY=$SupabaseAnon" "--base-href=/"
         if ($LASTEXITCODE -ne 0) { Write-Host "Web build failed" -ForegroundColor Red ; exit 1 }
         $sizeBytes = (Get-ChildItem "build\web" -Recurse | Measure-Object Length -Sum).Sum
         $sizeMB = [math]::Round($sizeBytes / 1MB, 1)

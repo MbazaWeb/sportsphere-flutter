@@ -93,7 +93,7 @@ function Build-Web {
         flutter build web --release `
             "--dart-define=SUPABASE_URL=$($CFG['SUPABASE_URL'])" `
             "--dart-define=SUPABASE_ANON_KEY=$($CFG['SUPABASE_ANON_KEY'])" `
-            --web-renderer=canvaskit `
+            `
             "--base-href=/"
     }
     $mb = [math]::Round(((Get-ChildItem "build\web" -Recurse | Measure-Object Length -Sum).Sum)/1MB,1)
