@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../theme/colors.dart';
@@ -91,18 +92,31 @@ class UpdateBanner extends StatefulWidget {
 class _UpdateBannerState extends State<UpdateBanner> {
   UpdateInfo? _update;
   bool _dismissed = false;
+  static const _prefKey = 'update_dismissed_version';
 
   @override
   void initState() {
     super.initState();
-    // Check immediately then again after 3s
     _check();
     Future.delayed(const Duration(seconds: 3), _check);
   }
 
   Future<void> _check() async {
     final info = await UpdateChecker.check();
-    if (mounted && info != null) setState(() => _update = info);
+    if (info == null) return;
+
+    // Check if user already dismissed this version
+    final prefs = await SharedPreferences.getInstance();
+    final dismissed = prefs.getString(_prefKey);
+    if (dismissed == info.latest && !info.mandatory) return;
+
+    if (mounted) setState(() => _update = info);
+  }
+
+  Future<void> _dismiss() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_prefKey, _update?.latest ?? '');
+    setState(() => _dismissed = true);
   }
 
   @override
@@ -112,7 +126,7 @@ class _UpdateBannerState extends State<UpdateBanner> {
     return Column(children: [
       if (show) _Banner(
         update: update!,
-        onDismiss: update.mandatory ? null : () => setState(() => _dismissed = true),
+        onDismiss: update.mandatory ? null : _dismiss,
         onUpdate: UpdateChecker.launchDownload,
       ),
       Expanded(child: widget.child),
