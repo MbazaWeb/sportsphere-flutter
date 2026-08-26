@@ -361,6 +361,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                               ),
                             ),
                           ),
+                          // Step indicator
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: SportSphereColors.electricBlue.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: SportSphereColors.electricBlue.withValues(alpha: 0.4)),
+                            ),
+                            child: const Row(children: [
+                              Icon(Icons.looks_one_rounded, color: SportSphereColors.electricBlue, size: 14),
+                              SizedBox(width: 4),
+                              Text('Step 1 of 2', style: TextStyle(color: SportSphereColors.electricBlue,
+                                  fontSize: 11, fontWeight: FontWeight.w700)),
+                            ]),
+                          ),
                           // Fan badge
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -590,11 +605,31 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                     // Fan info note
                                     _FanNote(),
 
-                                    const SizedBox(height: 22),
+                                    const SizedBox(height: 16),
+
+                                    // Step 2 hint
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: SportSphereColors.electricBlue.withValues(alpha: 0.08),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: SportSphereColors.electricBlue.withValues(alpha: 0.2)),
+                                      ),
+                                      child: const Row(children: [
+                                        Icon(Icons.arrow_forward_rounded, color: SportSphereColors.electricBlue, size: 16),
+                                        SizedBox(width: 8),
+                                        Expanded(child: Text(
+                                          'Next: choose your favourite teams and upload a photo',
+                                          style: TextStyle(color: SportSphereColors.electricBlue, fontSize: 12),
+                                        )),
+                                      ]),
+                                    ),
+
+                                    const SizedBox(height: 16),
 
                                     // Submit
                                     _PrimaryButton(
-                                      label: 'Create Fan Account',
+                                      label: 'Continue →  Fan Setup',
                                       loading: auth.isLoading,
                                       onTap: _submit,
                                     ),
