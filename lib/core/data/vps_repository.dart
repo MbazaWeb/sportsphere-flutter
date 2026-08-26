@@ -187,7 +187,7 @@ class VpsRepository {
 
   Future<void> removeDeviceToken(String token) async {
     try {
-      await _client.delete<void>('/v1/fcm/token');
+      await _client.post<void>('/v1/fcm/unregister', data: {'token': token});
     } catch (_) {}
   }
 

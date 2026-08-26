@@ -91,6 +91,10 @@ mpesaRouter.post('/stk', async (c) => {
 })
 
 // ── Safaricom Callback ───────────────────────────────────────────────────────
+export const mpesaCallbackHandler = async (c: any) => {
+  return mpesaRouter.fetch(new Request(c.req.url.replace('/v1/mpesa/callback', '/callback'), { method: 'POST', headers: c.req.raw.headers, body: c.req.raw.body }))
+}
+
 mpesaRouter.post('/callback', async (c) => {
   let body: any
   try { body = await c.req.json() }

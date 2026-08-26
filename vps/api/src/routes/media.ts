@@ -9,21 +9,19 @@ import sharp from 'sharp'
 
 export const mediaRouter = new Hono()
 
-// ── S3/MinIO client ──────────────────────────────────────────────────────────
-function s3() {
-  return new S3Client({
-    endpoint:        Bun.env.MINIO_ENDPOINT ?? 'http://localhost:9000',
-    region:          Bun.env.MINIO_REGION   ?? 'us-east-1',
-    credentials: {
-      accessKeyId:     Bun.env.MINIO_ROOT_USER     ?? '',
-      secretAccessKey: Bun.env.MINIO_ROOT_PASSWORD ?? '',
-    },
-    forcePathStyle: true,   // required for MinIO
-  })
-}
+// ── S3/MinIO client — module-level singleton (not per-request) ───────────────
+const s3 = new S3Client({
+  endpoint:        Bun.env.MINIO_ENDPOINT ?? 'http://localhost:9000',
+  region:          Bun.env.MINIO_REGION   ?? 'us-east-1',
+  credentials: {
+    accessKeyId:     Bun.env.MINIO_ROOT_USER     ?? '',
+    secretAccessKey: Bun.env.MINIO_ROOT_PASSWORD ?? '',
+  },
+  forcePathStyle: true,   // required for MinIO
+})
 
 const CDN = () => Bun.env.CDN_BASE_URL ?? 'https://api.playify.app/storage'
-const BUCKET = 'playify-media'
+const BUCKET = 'media'
 
 // Image variant specs — matches storage strategy from our schema design
 const VARIANTS = {
@@ -50,7 +48,7 @@ mediaRouter.post('/image', async (c) => {
   const buf = Buffer.from(await file.arrayBuffer())
   const ts  = Date.now()
   const urls: Record<string, string> = {}
-  const client = s3()
+  const client = s3
 
   for (const [variant, spec] of Object.entries(VARIANTS)) {
     const compressed = await sharp(buf)
@@ -60,7 +58,7 @@ mediaRouter.post('/image', async (c) => {
       .toBuffer()
 
     const key = `${folder}/${userId}/${ts}/${variant}.webp`
-    await client.send(new PutObjectCommand({
+    await s3.send(new PutObjectCommand({
       Bucket:       BUCKET,
       Key:          key,
       Body:         compressed,
@@ -89,7 +87,7 @@ mediaRouter.post('/avatar', async (c) => {
     .toBuffer()
 
   const key = `avatars/${userId}.webp`
-  await s3().send(new PutObjectCommand({
+  await s3.send(new PutObjectCommand({
     Bucket:       BUCKET,
     Key:          key,
     Body:         compressed,
@@ -113,7 +111,7 @@ mediaRouter.post('/video', async (c) => {
   const buf = Buffer.from(await file.arrayBuffer())
   const key = `videos/${postId}/video.${file.name.split('.').pop() ?? 'mp4'}`
 
-  await s3().send(new PutObjectCommand({
+  await s3.send(new PutObjectCommand({
     Bucket:       BUCKET,
     Key:          key,
     Body:         buf,
@@ -124,8 +122,18 @@ mediaRouter.post('/video', async (c) => {
 })
 
 // ── DELETE /v1/media/:key ────────────────────────────────────────────────────
+// Ownership: key must contain the userId segment OR caller is admin
 mediaRouter.delete('/:key{.+}', async (c) => {
-  const key = c.req.param('key')
-  await s3().send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }))
+  const userId = c.get('userId') as string
+  const key    = c.req.param('key')
+  // Keys are structured as: {folder}/{userId}/{ts}/{variant}.webp or avatars/{userId}.webp
+  // Verify the key belongs to this user (contains their userId)
+  if (!key.includes(userId)) {
+    // Allow admin to delete anything
+    const { isAdmin: checkAdmin } = await import('../lib/supabase.js')
+    const ok = await checkAdmin(userId)
+    if (!ok) return c.json({ error: 'Forbidden: key does not belong to you' }, 403)
+  }
+  await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }))
   return c.json({ ok: true, deleted: key })
 })

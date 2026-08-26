@@ -1,19 +1,4 @@
 // vps/api/src/index.ts
-// Playify VPS API — Bun + Hono
-// Sits in front of Supabase for server-side operations:
-//   - M-Pesa STK Push + callback (amount always from DB)
-//   - FCM push notifications (Firebase service account)
-//   - Media upload + compress (Sharp + MinIO/S3)
-//   - Feed scoring (personalised, weighted)
-//   - Nearby fans (Haversine)
-//   - Admin actions (delete user, approve/reject claim)
-//   - AI assistant (Anthropic + DeepSeek)
-//
-// Auth: every protected route reads the Supabase JWT from
-//   Authorization: Bearer <supabase_access_token>
-// and verifies it via supabase.auth.getUser(token).
-// Supabase remains the source of truth for auth + realtime + direct DB reads.
-
 import { Hono }   from 'hono'
 import { cors }   from 'hono/cors'
 import { logger } from 'hono/logger'
@@ -26,7 +11,7 @@ import { healthRouter }   from './routes/health.js'
 import { feedRouter }     from './routes/feed.js'
 import { mediaRouter }    from './routes/media.js'
 import { matchRouter }    from './routes/matches.js'
-import { mpesaRouter }    from './routes/mpesa.js'
+import { mpesaRouter, mpesaCallbackHandler } from './routes/mpesa.js'
 import { fcmRouter }      from './routes/fcm.js'
 import { claimsRouter }   from './routes/claims.js'
 import { adminRouter }    from './routes/admin.js'
@@ -36,44 +21,48 @@ import { notifRouter }    from './routes/notifications.js'
 
 const app = new Hono()
 
-// ── Global middleware ────────────────────────────────────────────────────────
+// ── Global middleware ─────────────────────────────────────────────────────────
 app.use('*', secureHeaders())
 app.use('*', logger())
 app.use('*', cors({
   origin: (origin) => {
+    // Flutter mobile sends no Origin header — allow it
+    if (!origin) return null   // null = no ACAO header, fine for non-browser clients
     const allowed = (Bun.env.ALLOWED_ORIGINS ?? 'https://app.playify.app')
       .split(',').map(s => s.trim())
-    // Flutter mobile doesn't send Origin — allow null/empty
-    if (!origin) return '*'
-    return allowed.includes(origin) ? origin : ''
+    return allowed.includes(origin) ? origin : null
   },
   allowMethods:  ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowHeaders:  ['Content-Type', 'Authorization', 'apikey', 'x-client-info'],
   credentials:   true,
 }))
 
-// ── Public routes (no JWT required) ─────────────────────────────────────────
-app.route('/health',           healthRouter)
-app.route('/v1/matches',       matchRouter)   // public read (matches, standings)
-app.route('/v1/mpesa/callback', mpesaRouter)  // Safaricom callback — verified by shortcode
+// ── Public routes (NO JWT) ────────────────────────────────────────────────────
+app.route('/health',               healthRouter)
+app.route('/v1/matches',           matchRouter)   // public: live scores, standings
 
-// ── Authenticated routes (Supabase JWT required) ─────────────────────────────
+// Safaricom callback — public, no JWT, verified by BusinessShortCode inside handler
+// Registered BEFORE the /v1/* auth middleware so it is NOT protected
+app.post('/v1/mpesa/callback', mpesaCallbackHandler)
+
+// ── Auth middleware — all /v1/* except the callback above ────────────────────
 app.use('/v1/*', authMiddleware)
 
+// ── Authenticated routes ──────────────────────────────────────────────────────
 app.route('/v1/feed',          feedRouter)
 app.route('/v1/media',         mediaRouter)
-app.route('/v1/mpesa',         mpesaRouter)
+app.route('/v1/mpesa',         mpesaRouter)   // /v1/mpesa/stk goes here
 app.route('/v1/fcm',           fcmRouter)
 app.route('/v1/claims',        claimsRouter)
 app.route('/v1/nearby',        nearbyRouter)
 app.route('/v1/notifications', notifRouter)
 app.route('/v1/ai',            aiRouter)
 
-// ── Admin routes (Supabase JWT + admin role required) ────────────────────────
+// ── Admin routes (JWT + admin role) ──────────────────────────────────────────
 app.use('/v1/admin/*', adminMiddleware)
 app.route('/v1/admin', adminRouter)
 
-// ── 404 ──────────────────────────────────────────────────────────────────────
+// ── Error handlers ────────────────────────────────────────────────────────────
 app.notFound((c) => c.json({ error: 'Not found' }, 404))
 app.onError((err, c) => {
   console.error('[API Error]', err)

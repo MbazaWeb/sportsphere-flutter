@@ -61,10 +61,11 @@ fcmRouter.post('/register', async (c) => {
   return c.json({ ok: true })
 })
 
-// ── Remove device token ───────────────────────────────────────────────────────
-fcmRouter.delete('/token', async (c) => {
+// ── Remove device token (POST so body works on all clients) ──────────────────
+fcmRouter.post('/unregister', async (c) => {
   const userId = c.get('userId') as string
   const { token } = await c.req.json<{ token: string }>()
+  if (!token) return c.json({ error: 'token required' }, 400)
   await supabaseAdmin.from('device_tokens').delete().eq('user_id', userId).eq('token', token)
   return c.json({ ok: true })
 })

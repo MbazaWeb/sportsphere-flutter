@@ -38,7 +38,8 @@ ufw default allow outgoing
 ufw allow 22/tcp    # SSH
 ufw allow 80/tcp    # HTTP (certbot)
 ufw allow 443/tcp   # HTTPS
-ufw allow 6001/tcp  # Soketi WebSocket
+# Soketi port 6001 NOT exposed — access via Nginx /app/ proxy only
+# ufw allow 6001/tcp
 ufw --force enable
 echo "Firewall configured"
 
@@ -162,9 +163,19 @@ fi
 
 cd /var/playify/app/vps/api
 bun install
-cp /etc/playify/.env .env 2>/dev/null || true
 
-pm2 start bun --name playify-api -- run src/index.ts
+# Create .env from example if not already present
+if [ ! -f .env ]; then
+  cp /var/playify/app/vps/.env.example .env
+  echo "⚠  Edit /var/playify/app/vps/api/.env before starting the API"
+fi
+
+# Inject the credentials generated above into the .env
+sed -i "s|DATABASE_URL=.*|DATABASE_URL=postgresql://playify:${PLAYIFY_DB_PASS}@localhost:5432/playify|" .env
+sed -i "s|MINIO_ROOT_USER=.*|MINIO_ROOT_USER=${MINIO_ROOT_USER}|" .env
+sed -i "s|MINIO_ROOT_PASSWORD=.*|MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASS}|" .env
+
+pm2 start /usr/local/bin/bun --name playify-api -- run src/index.ts
 pm2 save
 cd /root
 echo "Playify API running on :3000"
@@ -204,18 +215,7 @@ server {
 
     client_max_body_size 110M;   # slightly above 100MB media bucket limit
 
-    # ── REST API ──────────────────────────────────────────────────────────
-    location /api/ {
-        proxy_pass         http://127.0.0.1:3000/;
-        proxy_http_version 1.1;
-        proxy_set_header   Host              \$host;
-        proxy_set_header   X-Real-IP         \$remote_addr;
-        proxy_set_header   X-Forwarded-For   \$proxy_add_x_forwarded_for;
-        proxy_set_header   X-Forwarded-Proto \$scheme;
-        proxy_read_timeout 60s;
-    }
-
-    # ── Soketi WebSocket ──────────────────────────────────────────────────
+    # ── Soketi WebSocket (/app/  — must be before catch-all) ─────────────
     location /app/ {
         proxy_pass         http://127.0.0.1:6001;
         proxy_http_version 1.1;
@@ -226,7 +226,7 @@ server {
         proxy_read_timeout 600s;
     }
 
-    # ── MinIO object storage ──────────────────────────────────────────────
+    # ── MinIO object storage (/storage/ — before catch-all) ──────────────
     location /storage/ {
         proxy_pass         http://127.0.0.1:9000/;
         proxy_http_version 1.1;
@@ -236,9 +236,17 @@ server {
         proxy_read_timeout 300s;
     }
 
-    # Health check (no auth)
-    location = /health {
-        proxy_pass http://127.0.0.1:3000/health;
+    # ── Hono API — catch-all (/health /v1/* /v1/mpesa/callback etc.) ─────
+    # Flutter calls https://api.playify.app/v1/... directly (no /api prefix)
+    location / {
+        proxy_pass         http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              \$host;
+        proxy_set_header   X-Real-IP         \$remote_addr;
+        proxy_set_header   X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto \$scheme;
+        proxy_read_timeout 120s;
+        proxy_send_timeout 120s;
     }
 }
 NGINX_EOF
