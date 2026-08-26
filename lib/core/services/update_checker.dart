@@ -59,7 +59,15 @@ class UpdateChecker {
 
   static Future<void> launchDownload() async {
     final uri = Uri.parse(_apkUrl);
-    if (await canLaunchUrl(uri)) await launchUrl(uri);
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('[UpdateChecker] launchUrl failed: $e');
+      // Fallback
+      try {
+        await launchUrl(uri);
+      } catch (_) {}
+    }
   }
 }
 
