@@ -171,24 +171,75 @@ class _TrendingContentState extends State<_TrendingContent> {
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 120),
         itemCount: _rows.length,
         itemBuilder: (_, i) {
           final post = _rows[i];
-          return Card(
-            color: const Color(0xFF0C1A2A),
-            margin: const EdgeInsets.only(bottom: 10),
-            child: ListTile(
-              title: Text(
-                '${post['content'] ?? ''}',
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w600),
+          final content = (post['content'] as String? ?? '').trim();
+          final likes = post['likeCount'] ?? 0;
+          final comments = post['commentCount'] ?? 0;
+          final userId = post['userId']?.toString() ?? '';
+          final postType = post['postType'] as String? ?? 'text';
+
+          return GestureDetector(
+            onTap: () async {
+              // Navigate to the author's profile
+              try {
+                final profile = await Supabase.instance.client
+                    .from('profiles')
+                    .select('handle')
+                    .eq('id', userId)
+                    .maybeSingle();
+                final handle = profile?['handle'] as String?;
+                if (handle != null && handle.isNotEmpty && context.mounted) {
+                  context.push('/profile/$handle');
+                }
+              } catch (_) {}
+            },
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0C1A2A),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
               ),
-              subtitle: Text(
-                '♥ ${post['likeCount'] ?? 0} · 💬 ${post['commentCount'] ?? 0} · ↗ ${post['shareCount'] ?? 0}',
-                style: const TextStyle(color: SportSphereColors.white54, fontSize: 12),
-              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                // Post type badge
+                if (postType != 'text') ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: SportSphereColors.electricBlue.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(postType.toUpperCase(),
+                        style: const TextStyle(color: SportSphereColors.electricBlue,
+                            fontSize: 10, fontWeight: FontWeight.w800)),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                // Content
+                if (content.isNotEmpty)
+                  Text(content,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: SportSphereColors.white,
+                          fontSize: 14, fontWeight: FontWeight.w600, height: 1.4)),
+                const SizedBox(height: 10),
+                // Stats row
+                Row(children: [
+                  const Icon(Icons.favorite_rounded, size: 14, color: SportSphereColors.danger),
+                  const SizedBox(width: 4),
+                  Text('$likes', style: const TextStyle(color: SportSphereColors.muted, fontSize: 12)),
+                  const SizedBox(width: 12),
+                  const Icon(Icons.chat_bubble_outline_rounded, size: 14, color: SportSphereColors.muted),
+                  const SizedBox(width: 4),
+                  Text('$comments', style: const TextStyle(color: SportSphereColors.muted, fontSize: 12)),
+                  const Spacer(),
+                  const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: SportSphereColors.muted),
+                ]),
+              ]),
             ),
           );
         },
@@ -221,30 +272,54 @@ class _CommunityContentState extends State<_CommunityContent> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final rows = await Supabase.instance.client
-          .from('Community')
-          .select()
-          .order('memberCount', ascending: false)
-          .limit(40);
-      final list = [for (final r in rows as List) Map<String, dynamic>.from(r as Map)];
+      // Try Community table first
+      List<Map<String, dynamic>> list = [];
+      try {
+        final rows = await Supabase.instance.client
+            .from('Community')
+            .select()
+            .order('memberCount', ascending: false)
+            .limit(40);
+        list = [for (final r in rows as List) Map<String, dynamic>.from(r as Map)];
+      } catch (_) {}
+
+      // If empty, fall back to entity_communities (fan communities auto-created per team)
+      if (list.isEmpty) {
+        try {
+          final rows = await Supabase.instance.client
+              .from('entity_communities')
+              .select()
+              .order('member_count', ascending: false)
+              .limit(40);
+          list = [for (final r in rows as List) {
+            'id': (r as Map)['id'],
+            'name': r['name'],
+            'description': r['description'] ?? 'Fan community',
+            'memberCount': r['member_count'] ?? 0,
+            'topic': 'Football',
+            '_source': 'entity',
+          }];
+        } catch (_) {}
+      }
+
       final uid = Supabase.instance.client.auth.currentUser?.id;
       final joined = <String>{};
       if (uid != null) {
-        final mem = await Supabase.instance.client
-            .from('CommunityMember')
-            .select('communityId')
-            .eq('userId', uid);
-        for (final r in mem as List) {
-          final id = (r as Map)['communityId']?.toString();
-          if (id != null) joined.add(id);
-        }
+        try {
+          final mem = await Supabase.instance.client
+              .from('CommunityMember')
+              .select('communityId')
+              .eq('userId', uid);
+          for (final r in mem as List) {
+            final id = (r as Map)['communityId']?.toString();
+            if (id != null) joined.add(id);
+          }
+        } catch (_) {}
       }
       if (mounted) {
         setState(() {
           _groups = list;
-          _joined
-            ..clear()
-            ..addAll(joined);
+          _joined..clear()..addAll(joined);
           _loading = false;
         });
       }
@@ -309,34 +384,60 @@ class _CommunityContentState extends State<_CommunityContent> {
           ),
           const SizedBox(height: 12),
           if (groups.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(24),
-              child: Text(
-                'No communities yet. Join one when it\'s created.',
-                style: TextStyle(color: SportSphereColors.white54),
-                textAlign: TextAlign.center,
-              ),
+            Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.groups_rounded, size: 56,
+                    color: SportSphereColors.muted.withValues(alpha: 0.4)),
+                const SizedBox(height: 16),
+                const Text('No communities yet',
+                    style: TextStyle(color: SportSphereColors.white,
+                        fontSize: 16, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                const Text('Communities are created automatically for every team. Ask admin to add teams.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: SportSphereColors.muted, fontSize: 13)),
+              ]),
             ),
           for (final g in groups)
-            Card(
-              color: const Color(0xFF0C1A2A),
+            Container(
               margin: const EdgeInsets.only(bottom: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0C1A2A),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+              ),
               child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                leading: CircleAvatar(
+                  backgroundColor: SportSphereColors.electricBlue.withValues(alpha: 0.15),
+                  child: const Icon(Icons.groups_rounded,
+                      color: SportSphereColors.electricBlue, size: 20),
+                ),
                 title: Text(
                   '${g['name'] ?? 'Community'}',
-                  style: const TextStyle(
-                    color: SportSphereColors.white,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: const TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700),
                 ),
                 subtitle: Text(
                   '${g['memberCount'] ?? 0} members · ${g['topic'] ?? g['description'] ?? ''}',
-                  style: const TextStyle(color: SportSphereColors.white54, fontSize: 12),
-                  maxLines: 2,
+                  style: const TextStyle(color: SportSphereColors.muted, fontSize: 12),
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
                 ),
-                trailing: TextButton(
+                trailing: OutlinedButton(
                   onPressed: () => _toggle('${g['id']}'),
-                  child: Text(_joined.contains('${g['id']}') ? 'Joined' : 'Join'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _joined.contains('${g['id']}')
+                        ? SportSphereColors.muted
+                        : SportSphereColors.electricBlue,
+                    side: BorderSide(color: _joined.contains('${g['id']}')
+                        ? SportSphereColors.muted.withValues(alpha: 0.3)
+                        : SportSphereColors.electricBlue.withValues(alpha: 0.5)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(_joined.contains('${g['id']}') ? 'Joined' : 'Join',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                 ),
               ),
             ),
