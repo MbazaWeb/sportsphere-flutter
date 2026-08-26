@@ -18,19 +18,26 @@ class UpdateChecker {
         Uri.parse(_versionUrl),
         headers: {'Cache-Control': 'no-cache'},
       ).timeout(const Duration(seconds: 8));
-      if (res.statusCode != 200) return null;
+      if (res.statusCode != 200) {
+        debugPrint('[UpdateChecker] HTTP ${res.statusCode}');
+        return null;
+      }
+      debugPrint('[UpdateChecker] version.json: ${res.body}');
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       final latest = data['version'] as String? ?? '';
       final notes = data['notes'] as String? ?? '';
       final mandatory = data['mandatory'] as bool? ?? false;
       final info = await PackageInfo.fromPlatform();
+      debugPrint('[UpdateChecker] installed=${info.version} latest=$latest');
       if (_isNewer(latest, info.version)) {
+        debugPrint('[UpdateChecker] UPDATE AVAILABLE');
         return UpdateInfo(current: info.version, latest: latest,
             notes: notes, mandatory: mandatory);
       }
+      debugPrint('[UpdateChecker] already up to date');
       return null;
     } catch (e) {
-      debugPrint('[UpdateChecker] $e');
+      debugPrint('[UpdateChecker] error: $e');
       return null;
     }
   }
@@ -80,6 +87,8 @@ class _UpdateBannerState extends State<UpdateBanner> {
   @override
   void initState() {
     super.initState();
+    // Check immediately then again after 3s
+    _check();
     Future.delayed(const Duration(seconds: 3), _check);
   }
 
