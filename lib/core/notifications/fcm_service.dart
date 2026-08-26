@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -91,14 +92,46 @@ class FcmService {
     final uid = Supabase.instance.client.auth.currentUser?.id;
     if (uid == null || token.isEmpty) return;
     try {
-      await Supabase.instance.client.from('device_tokens').upsert({
-        'user_id': uid,
-        'token': token,
-        'platform': platform,
-        'updated_at': DateTime.now().toIso8601String(),
-      });
+      // Primary: register via VPS API (server-side, uses service role key)
+      await _VpsTokenClient.register(token, platform);
+      debugPrint('FCM: token registered via VPS');
     } catch (e) {
-      debugPrint('FCM register: $e');
+      debugPrint('FCM register VPS failed, falling back to Supabase: $e');
+      // Fallback: direct Supabase upsert (still works during transition)
+      try {
+        await Supabase.instance.client.from('device_tokens').upsert({
+          'user_id': uid,
+          'token': token,
+          'platform': platform,
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      } catch (e2) {
+        debugPrint('FCM register fallback also failed: $e2');
+      }
     }
   }
+}
+
+// Lightweight Dio-free HTTP call to VPS — avoids circular import with VpsRepository
+class _VpsTokenClient {
+  static Future<void> register(String token, String platform) async {
+    // Read from dart-define at compile time (same as ApiClient)
+    const base = String.fromEnvironment('API_BASE_URL',
+        defaultValue: 'https://api.playify.app');
+    final session = Supabase.instance.client.auth.currentSession;
+    if (session == null) return;
+    final body = '{"token":"$token","platform":"$platform"}';
+    await Future.any([
+      () async {
+        final uri = Uri.parse('$base/v1/fcm/register');
+        // Use dart:io HttpClient to avoid adding a dependency
+        final req = await (await HttpClient().postUrl(uri))
+          ..headers.set('Content-Type', 'application/json')
+          ..headers.set('Authorization', 'Bearer ${session.accessToken}')
+          ..write(body)
+          ..close();
+        await req; // ignore response
+      }(),
+      Future.delayed(const Duration(seconds: 8)), // timeout
+    ]);
 }

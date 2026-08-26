@@ -1,4 +1,4 @@
-# SportSphere — Schema Audit & Feature Confirmation
+# Playify — Schema Audit & Feature Confirmation
 ## Source: 40 migration files, 3 batches (2026-08-19 → 2026-08-25)
 
 ---

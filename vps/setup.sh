@@ -152,41 +152,19 @@ pm2 save
 echo "Soketi realtime ready on :6001"
 
 # ─── 8. Playify API (Bun + Hono) ─────────────────────────────────────────────
-mkdir -p /var/playify/api
-cat > /var/playify/api/server.ts << 'APIEOF'
-import { Hono } from 'hono'
-import { cors } from 'hono/cors'
-import { logger } from 'hono/logger'
+# Clone the repo and use the vps/api source directly
+mkdir -p /var/playify
+if [ ! -d /var/playify/app ]; then
+  git clone https://github.com/MbazaWeb/sportsphere-flutter.git /var/playify/app
+else
+  cd /var/playify/app && git pull && cd /root
+fi
 
-const app = new Hono()
-app.use('*', logger())
-app.use('*', cors({
-  origin: (origin) => {
-    const allowed = (Bun.env.ALLOWED_ORIGINS ?? '').split(',').map(s => s.trim())
-    return allowed.includes(origin) ? origin : ''
-  },
-  allowMethods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-  allowHeaders: ['Content-Type','Authorization','apikey'],
-  credentials: true,
-}))
+cd /var/playify/app/vps/api
+bun install
+cp /etc/playify/.env .env 2>/dev/null || true
 
-app.get('/health', (c) => c.json({ ok: true, app: 'playify', ts: Date.now() }))
-
-// Mount feature routers here as you build them:
-// import { authRouter }  from './routes/auth'
-// import { feedRouter }  from './routes/feed'
-// import { matchRouter } from './routes/matches'
-// app.route('/auth', authRouter)
-
-export default { port: Number(Bun.env.PORT ?? 3000), fetch: app.fetch }
-APIEOF
-
-cat > /var/playify/api/package.json << 'EOF'
-{"name":"playify-api","version":"1.0.0","type":"module","scripts":{"start":"bun run server.ts","dev":"bun --hot run server.ts"}}
-EOF
-
-cd /var/playify/api && bun add hono
-pm2 start bun --name playify-api -- run server.ts
+pm2 start bun --name playify-api -- run src/index.ts
 pm2 save
 cd /root
 echo "Playify API running on :3000"

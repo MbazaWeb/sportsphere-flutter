@@ -1,4 +1,5 @@
 {
   "SUPABASE_URL": "https://fffqjbrethogesgghjsn.supabase.co",
-  "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZmZnFqYnJldGhvZ2VzZ2doanNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjkwNTUsImV4cCI6MjEwMjc0NTA1NX0.5_Z2Ij5G6qTv-jfnkoAkzPnntWfdPK8yh7urt3vYrao"
+  "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZmZnFqYnJldGhvZ2VzZ2doanNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjkwNTUsImV4cCI6MjEwMjc0NTA1NX0.5_Z2Ij5G6qTv-jfnkoAkzPnntWfdPK8yh7urt3vYrao",
+  "API_BASE_URL": "https://api.playify.app"
 }

@@ -55,8 +55,19 @@ class ApiClient {
   Future<Response<T>> put<T>(String path, {Object? data}) =>
       _guard(() => _dio.put<T>(path, data: data));
 
+  Future<Response<T>> patch<T>(String path, {Object? data}) =>
+      _guard(() => _dio.patch<T>(path, data: data));
+
   Future<Response<T>> delete<T>(String path) =>
       _guard(() => _dio.delete<T>(path));
+
+  Future<Response<T>> upload<T>(String path, FormData form) =>
+      _guard(() => _dio.post<T>(path, data: form,
+          options: Options(
+            headers: {'Content-Type': 'multipart/form-data'},
+            receiveTimeout: const Duration(minutes: 5),
+            sendTimeout: const Duration(minutes: 5),
+          )));
 
   Future<Response<T>> _guard<T>(Future<Response<T>> Function() run) async {
     try {

@@ -1,7 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'vps_repository.dart';
+
 class CommerceRepository {
+  CommerceRepository() : _vps = const VpsRepository();
+
+  final VpsRepository _vps;
   SupabaseClient get _sb => Supabase.instance.client;
   String? get _uid => _sb.auth.currentUser?.id;
 
@@ -60,23 +65,15 @@ class CommerceRepository {
     }
   }
 
-  /// Calls Edge Function mpesa-stk-push (Daraja STK).
+  /// Initiates M-Pesa STK Push via VPS API.
+  /// Amount is ALWAYS read from the DB on the server — the amountTzs param
+  /// is kept for UI display only; the server ignores it and reads ShopOrder.
   Future<Map<String, dynamic>> initiateMpesaStk({
     required String orderId,
     required String phone,
-    required int amountTzs,
+    required int amountTzs, // UI display only — server reads from DB
   }) async {
-    final res = await _sb.functions.invoke(
-      'mpesa-stk-push',
-      body: {
-        'order_id': orderId,
-        'phone': phone,
-        'amount': amountTzs,
-      },
-    );
-    final data = res.data;
-    if (data is Map) return Map<String, dynamic>.from(data);
-    return {'raw': data};
+    return _vps.initiateMpesa(orderId: orderId, phone: phone);
   }
 
   Future<Map<String, int>> sellerTicketStats(String sellerHandle) async {

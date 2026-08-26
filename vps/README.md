@@ -32,7 +32,7 @@ Hetzner resizes with one click — zero migration, zero data loss, ~2 min reboot
 
 # 2. SSH in and run setup
 ssh root@YOUR_SERVER_IP
-curl -fsSL https://raw.githubusercontent.com/MbazaWeb/sportsphere-flutter/main/vps/setup.sh | \
+curl -fsSL https://raw.githubusercontent.com/MbazaWeb/playify-flutter/main/vps/setup.sh | \
   DOMAIN=api.playify.app bash
 
 # 3. Point DNS

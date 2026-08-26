@@ -1,0 +1,17 @@
+{
+  "name": "playify-api",
+  "version": "1.0.0",
+  "description": "Playify VPS API — Bun + Hono",
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "dev":   "bun --hot run src/index.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.50.0",
+    "hono": "^4.8.0",
+    "sharp": "^0.34.0",
+    "@aws-sdk/client-s3": "^3.800.0",
+    "@aws-sdk/s3-request-presigner": "^3.800.0"
+  }
+}
