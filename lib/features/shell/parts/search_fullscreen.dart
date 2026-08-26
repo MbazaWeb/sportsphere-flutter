@@ -770,29 +770,65 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
     }
 
     if (_error != null) {
+      final isGuest = _error == 'Sign in to discover nearby fans';
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.error_outline_rounded,
-                  size: 48,
-                  color: SportSphereColors.muted.withValues(alpha: 0.4)),
-              const SizedBox(height: 12),
+              Icon(
+                isGuest ? Icons.near_me_rounded : Icons.wifi_off_rounded,
+                size: 64,
+                color: isGuest
+                    ? SportSphereColors.electricBlue.withValues(alpha: 0.5)
+                    : SportSphereColors.muted.withValues(alpha: 0.4),
+              ),
+              const SizedBox(height: 20),
               Text(
-                _error!,
+                isGuest ? 'Discover Fans Near You' : 'Could not load',
+                style: const TextStyle(
+                  color: SportSphereColors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                isGuest
+                    ? 'Log in to find fans of your favourite team who are close to you right now.'
+                    : _error!,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: SportSphereColors.muted,
-                  fontSize: 13,
+                  fontSize: 14,
+                  height: 1.5,
                 ),
               ),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: _triggerScan,
-                child: const Text('Retry'),
-              ),
+              const SizedBox(height: 24),
+              if (isGuest)
+                FilledButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    context.push('/login');
+                  },
+                  icon: const Icon(Icons.login_rounded, size: 18),
+                  label: const Text('Log In',
+                      style: TextStyle(fontWeight: FontWeight.w700)),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: SportSphereColors.electricBlue,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 32, vertical: 14),
+                  ),
+                )
+              else
+                OutlinedButton.icon(
+                  onPressed: _triggerScan,
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: const Text('Retry'),
+                  style: OutlinedButton.styleFrom(
+                      foregroundColor: SportSphereColors.electricBlue),
+                ),
             ],
           ),
         ),
