@@ -1566,11 +1566,6 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ENUM: Nearby fan filter type
-// ─────────────────────────────────────────────────────────────────────────────
-
-enum _NearbyFilter { all, team, sport, country, engagements }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DISCOVER (original — shown when search query is empty)
