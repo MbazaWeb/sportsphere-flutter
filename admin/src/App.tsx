@@ -7,7 +7,7 @@ import { LoginPage } from './pages/LoginPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { UsersPage } from './pages/UsersPage'
 import { CreateUserPage } from './pages/CreateUserPage'
-import { SportSpherePage } from './pages/SportSpherePage'
+import { PlayifyPage } from './pages/PlayifyPage'
 import { EntitiesPage } from './pages/EntitiesPage'
 import { NewsPage } from './pages/NewsPage'
 import { SyncPage } from './pages/SyncPage'
@@ -31,7 +31,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="login-wrap">
-        <p className="muted">Loading SportSphere Admin…</p>
+        <p className="muted">Loading Playify Admin…</p>
       </div>
     )
   }
@@ -44,7 +44,7 @@ export default function App() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/users" element={<UsersPage />} />
         <Route path="/create-user" element={<CreateUserPage />} />
-        <Route path="/sportsphere" element={<SportSpherePage />} />
+        <Route path="/playify" element={<PlayifyPage />} />
         <Route path="/entities" element={<EntitiesPage />} />
         <Route path="/matches" element={<MatchesPage />} />
         <Route path="/news" element={<NewsPage />} />

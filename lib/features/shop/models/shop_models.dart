@@ -116,7 +116,7 @@ ShopCatalog businessShopCatalog({
     );
 
 ShopCatalog marketplaceCatalog() => emptyShopCatalog(
-      sellerName: 'SportSphere Marketplace',
+      sellerName: 'Playify Marketplace',
       sellerHandle: 'marketplace',
       accent: const Color(0xFF009DFF),
     );

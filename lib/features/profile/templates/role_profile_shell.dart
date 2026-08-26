@@ -206,7 +206,7 @@ class _RoleProfileShellState extends ConsumerState<RoleProfileShell>
   Widget build(BuildContext context) {
     final tabs = _tabs;
     return Scaffold(
-      backgroundColor: SportSphereColors.background,
+      backgroundColor: PlayifyColors.background,
       body: NestedScrollView(
         headerSliverBuilder: (context, _) => [
           SliverToBoxAdapter(
@@ -272,13 +272,13 @@ class _RoleProfileShellState extends ConsumerState<RoleProfileShell>
             pinned: true,
             delegate: ProfileTabBarDelegate(
               tabBar: Container(
-                color: SportSphereColors.background,
+                color: PlayifyColors.background,
                 child: TabBar(
                   controller: _tabCtrl,
                   isScrollable: true,
                   tabAlignment: TabAlignment.start,
-                  labelColor: SportSphereColors.white,
-                  unselectedLabelColor: SportSphereColors.muted,
+                  labelColor: PlayifyColors.white,
+                  unselectedLabelColor: PlayifyColors.muted,
                   labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                   unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                   indicator: UnderlineTabIndicator(
@@ -408,7 +408,7 @@ class _Header extends StatelessWidget {
               Row(children: [
                 Flexible(
                   child: Text(p.displayName,
-                      style: const TextStyle(color: SportSphereColors.white, fontSize: 22, fontWeight: FontWeight.w900)),
+                      style: const TextStyle(color: PlayifyColors.white, fontSize: 22, fontWeight: FontWeight.w900)),
                 ),
                 if (p.isVerified) ...[
                   const SizedBox(width: 6),
@@ -417,7 +417,7 @@ class _Header extends StatelessWidget {
               ]),
               const SizedBox(height: 4),
               Row(children: [
-                Text(p.atHandle, style: const TextStyle(color: SportSphereColors.muted, fontSize: 13)),
+                Text(p.atHandle, style: const TextStyle(color: PlayifyColors.muted, fontSize: 13)),
                 const SizedBox(width: 8),
                 RoleBadge(label: p.roleLabel, color: p.accent),
               ]),
@@ -425,14 +425,14 @@ class _Header extends StatelessWidget {
               Text(p.subtitle, style: TextStyle(color: p.accent, fontSize: 13, fontWeight: FontWeight.w600)),
               if (p.bio.isNotEmpty) ...[
                 const SizedBox(height: 10),
-                Text(p.bio, style: const TextStyle(color: SportSphereColors.white, fontSize: 14, height: 1.4)),
+                Text(p.bio, style: const TextStyle(color: PlayifyColors.white, fontSize: 14, height: 1.4)),
               ],
               if (p.location.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Row(children: [
-                  const Icon(Icons.location_on_outlined, size: 14, color: SportSphereColors.muted),
+                  const Icon(Icons.location_on_outlined, size: 14, color: PlayifyColors.muted),
                   const SizedBox(width: 4),
-                  Text(p.location, style: const TextStyle(color: SportSphereColors.muted, fontSize: 12)),
+                  Text(p.location, style: const TextStyle(color: PlayifyColors.muted, fontSize: 12)),
                 ]),
               ],
               const SizedBox(height: 14),
@@ -523,14 +523,14 @@ class _Header extends StatelessWidget {
                             border: Border.all(
                               color: following
                                   ? Colors.white.withValues(alpha: 0.18)
-                                  : SportSphereColors.electricBlue.withValues(alpha: 0.75),
+                                  : PlayifyColors.electricBlue.withValues(alpha: 0.75),
                             ),
                           ),
                           child: Center(
                             child: Text(
                               following ? 'Following' : 'Follow',
                               style: TextStyle(
-                                color: following ? SportSphereColors.muted : SportSphereColors.electricBlue,
+                                color: following ? PlayifyColors.muted : PlayifyColors.electricBlue,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 13,
                               ),
@@ -554,7 +554,7 @@ class _Header extends StatelessWidget {
                           child: Center(
                             child: Text(following ? 'Following' : 'Follow',
                                 style: TextStyle(
-                                  color: following ? SportSphereColors.muted : Colors.white,
+                                  color: following ? PlayifyColors.muted : Colors.white,
                                   fontWeight: FontWeight.w700,
                                 )),
                           ),
@@ -580,9 +580,9 @@ class _Header extends StatelessWidget {
                           border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
                         ),
                         child: const Row(children: [
-                          Icon(Icons.storefront_rounded, size: 16, color: SportSphereColors.white),
+                          Icon(Icons.storefront_rounded, size: 16, color: PlayifyColors.white),
                           SizedBox(width: 6),
-                          Text('Shop', style: TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700)),
+                          Text('Shop', style: TextStyle(color: PlayifyColors.white, fontWeight: FontWeight.w700)),
                         ]),
                       ),
                     ),
@@ -645,7 +645,7 @@ class _Sportlights extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (p.posts.isEmpty) {
-      return const Center(child: Text('No Sportlights yet', style: TextStyle(color: SportSphereColors.muted)));
+      return const Center(child: Text('No Sportlights yet', style: TextStyle(color: PlayifyColors.muted)));
     }
     return ListView.builder(
       padding: const EdgeInsets.only(top: 12, bottom: 100),
@@ -671,9 +671,9 @@ class _About extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
       children: [
         if (p.bio.isNotEmpty) ...[
-          const Text('Bio', style: TextStyle(color: SportSphereColors.muted, fontWeight: FontWeight.w700, fontSize: 12)),
+          const Text('Bio', style: TextStyle(color: PlayifyColors.muted, fontWeight: FontWeight.w700, fontSize: 12)),
           const SizedBox(height: 8),
-          Text(p.bio, style: const TextStyle(color: SportSphereColors.white, height: 1.45)),
+          Text(p.bio, style: const TextStyle(color: PlayifyColors.white, height: 1.45)),
           const SizedBox(height: 20),
         ],
         for (final f in p.aboutFields)
@@ -682,10 +682,10 @@ class _About extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(width: 118, child: Text(f.label, style: const TextStyle(color: SportSphereColors.muted, fontSize: 13))),
+                SizedBox(width: 118, child: Text(f.label, style: const TextStyle(color: PlayifyColors.muted, fontSize: 13))),
                 Expanded(
                   child: Text(f.value,
-                      style: const TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                      style: const TextStyle(color: PlayifyColors.white, fontWeight: FontWeight.w600, fontSize: 13)),
                 ),
               ],
             ),
@@ -714,9 +714,9 @@ class _Members extends StatelessWidget {
             child: Text(m.name.isNotEmpty ? m.name[0] : '?',
                 style: TextStyle(color: p.accent, fontWeight: FontWeight.w800)),
           ),
-          title: Text(m.name, style: const TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700)),
+          title: Text(m.name, style: const TextStyle(color: PlayifyColors.white, fontWeight: FontWeight.w700)),
           subtitle: Text('${m.subtitle}  ·  @${m.handle}',
-              style: const TextStyle(color: SportSphereColors.muted, fontSize: 12)),
+              style: const TextStyle(color: PlayifyColors.muted, fontSize: 12)),
           onTap: m.route == null ? null : () => context.push(m.route!),
         );
       },
@@ -743,8 +743,8 @@ class _Stats extends StatelessWidget {
               border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
             ),
             child: Row(children: [
-              Expanded(child: Text(r.label, style: const TextStyle(color: SportSphereColors.muted))),
-              Text(r.value, style: const TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w800)),
+              Expanded(child: Text(r.label, style: const TextStyle(color: PlayifyColors.muted))),
+              Text(r.value, style: const TextStyle(color: PlayifyColors.white, fontWeight: FontWeight.w800)),
             ]),
           ),
       ],
@@ -768,7 +768,7 @@ class _MembersSheet extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(p.membersTitle,
-                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: SportSphereColors.white)),
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: PlayifyColors.white)),
             const SizedBox(height: 12),
             Expanded(
               child: p.members.isEmpty
@@ -794,11 +794,11 @@ class _MembersSheet extends StatelessWidget {
                           ),
                           title: Text(m.name,
                               style: const TextStyle(
-                                  color: SportSphereColors.white,
+                                  color: PlayifyColors.white,
                                   fontWeight: FontWeight.w700)),
                           subtitle: Text('${m.subtitle}  ·  @${m.handle}',
                               style: const TextStyle(
-                                  color: SportSphereColors.muted, fontSize: 12)),
+                                  color: PlayifyColors.muted, fontSize: 12)),
                           onTap: m.route == null
                               ? null
                               : () {

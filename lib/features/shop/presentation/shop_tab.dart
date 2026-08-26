@@ -60,13 +60,13 @@ class _ShopEmptyState extends StatelessWidget {
           catalog.sellerName.isEmpty ? 'Shop' : '${catalog.sellerName} Shop',
           textAlign: TextAlign.center,
           style: const TextStyle(
-              color: SportSphereColors.white, fontSize: 22, fontWeight: FontWeight.w900),
+              color: PlayifyColors.white, fontSize: 22, fontWeight: FontWeight.w900),
         ),
         const SizedBox(height: 8),
         const Text(
           'No items available yet.\nCheck back soon for tickets, merch, and memberships.',
           textAlign: TextAlign.center,
-          style: TextStyle(color: SportSphereColors.muted, fontSize: 14, height: 1.5),
+          style: TextStyle(color: PlayifyColors.muted, fontSize: 14, height: 1.5),
         ),
         const SizedBox(height: 32),
         // Preview cards of what will be here
@@ -126,10 +126,10 @@ class _PreviewCard extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(title, style: TextStyle(
-              color: SportSphereColors.white.withValues(alpha: 0.6),
+              color: PlayifyColors.white.withValues(alpha: 0.6),
               fontWeight: FontWeight.w700, fontSize: 13)),
           Text(subtitle, style: const TextStyle(
-              color: SportSphereColors.muted, fontSize: 12)),
+              color: PlayifyColors.muted, fontSize: 12)),
         ])),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -164,7 +164,7 @@ class _Section extends StatelessWidget {
           Row(children: [
             Icon(icon, size: 16, color: catalog.accent),
             const SizedBox(width: 8),
-            Text(title, style: const TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w800, fontSize: 15)),
+            Text(title, style: const TextStyle(color: PlayifyColors.white, fontWeight: FontWeight.w800, fontSize: 15)),
           ]),
           const SizedBox(height: 10),
           ...items.map((item) => _ShopCard(item: item, catalog: catalog)),
@@ -211,7 +211,7 @@ class _ShopCard extends StatelessWidget {
                 Row(children: [
                   Flexible(
                     child: Text(item.name,
-                        style: const TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+                        style: const TextStyle(color: PlayifyColors.white, fontWeight: FontWeight.w700, fontSize: 14)),
                   ),
                   if (item.badge != null) ...[
                     const SizedBox(width: 6),
@@ -226,7 +226,7 @@ class _ShopCard extends StatelessWidget {
                     ),
                   ],
                 ]),
-                Text(item.subtitle, style: const TextStyle(color: SportSphereColors.muted, fontSize: 12)),
+                Text(item.subtitle, style: const TextStyle(color: PlayifyColors.muted, fontSize: 12)),
                 const SizedBox(height: 4),
                 Text(item.formattedPrice,
                     style: TextStyle(color: accent, fontWeight: FontWeight.w800, fontSize: 13)),

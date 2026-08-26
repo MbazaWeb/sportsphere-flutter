@@ -1,4 +1,4 @@
-/// Composable SportSphere taxonomy. Do not collapse into one mega-enum.
+/// Composable Playify taxonomy. Do not collapse into one mega-enum.
 class TaxonomyTerm {
   final String domain;
   final String slug;

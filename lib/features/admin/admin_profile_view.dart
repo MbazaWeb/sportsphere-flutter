@@ -66,13 +66,13 @@ class _AdminProfileViewState extends ConsumerState<AdminProfileView>
     final user = ref.watch(authControllerProvider).user;
     if (user == null) {
       return const Scaffold(
-        backgroundColor: SportSphereColors.background,
-        body: Center(child: CircularProgressIndicator(color: SportSphereColors.electricBlue, strokeWidth: 2)),
+        backgroundColor: PlayifyColors.background,
+        body: Center(child: CircularProgressIndicator(color: PlayifyColors.electricBlue, strokeWidth: 2)),
       );
     }
 
     return Scaffold(
-      backgroundColor: SportSphereColors.background,
+      backgroundColor: PlayifyColors.background,
       body: NestedScrollView(
         headerSliverBuilder: (_, __) => [
           SliverToBoxAdapter(child: _Header(user: user, onRefresh: _loadStats)),
@@ -80,8 +80,8 @@ class _AdminProfileViewState extends ConsumerState<AdminProfileView>
             pinned: true,
             delegate: _TabDelegate(TabBar(
               controller: _tab,
-              labelColor: SportSphereColors.white,
-              unselectedLabelColor: SportSphereColors.muted,
+              labelColor: PlayifyColors.white,
+              unselectedLabelColor: PlayifyColors.muted,
               labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
               indicator: const UnderlineTabIndicator(
                 borderSide: BorderSide(color: Color(0xFFFFD700), width: 2.5),
@@ -149,7 +149,7 @@ class _Header extends ConsumerWidget {
             ),
             const Spacer(),
             IconButton(
-              icon: const Icon(Icons.edit_outlined, color: SportSphereColors.muted, size: 20),
+              icon: const Icon(Icons.edit_outlined, color: PlayifyColors.muted, size: 20),
               tooltip: 'Edit Profile',
               onPressed: () => showEditProfileSheet(context, user),
             ),
@@ -187,7 +187,7 @@ class _Header extends ConsumerWidget {
                   (user.firstName as String).isNotEmpty
                       ? '${user.firstName} ${user.lastName}'.trim()
                       : 'Admin',
-                  style: const TextStyle(color: SportSphereColors.white,
+                  style: const TextStyle(color: PlayifyColors.white,
                       fontSize: 22, fontWeight: FontWeight.w900, height: 1.1),
                   overflow: TextOverflow.ellipsis,
                 )),
@@ -196,17 +196,17 @@ class _Header extends ConsumerWidget {
               ]),
               const SizedBox(height: 2),
               Text('@${user.handle}',
-                  style: const TextStyle(color: SportSphereColors.muted, fontSize: 14)),
+                  style: const TextStyle(color: PlayifyColors.muted, fontSize: 14)),
               const SizedBox(height: 4),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: SportSphereColors.electricBlue.withValues(alpha: 0.12),
+                  color: PlayifyColors.electricBlue.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: SportSphereColors.electricBlue.withValues(alpha: 0.3)),
+                  border: Border.all(color: PlayifyColors.electricBlue.withValues(alpha: 0.3)),
                 ),
-                child: const Text('SportSphere Official',
-                    style: TextStyle(color: SportSphereColors.electricBlue,
+                child: const Text('Playify Official',
+                    style: TextStyle(color: PlayifyColors.electricBlue,
                         fontSize: 11, fontWeight: FontWeight.w700)),
               ),
             ])),
@@ -216,7 +216,7 @@ class _Header extends ConsumerWidget {
 
           if ((user.bio as String).isNotEmpty) ...[
             Text(user.bio as String,
-                style: const TextStyle(color: SportSphereColors.muted, fontSize: 13, height: 1.5)),
+                style: const TextStyle(color: PlayifyColors.muted, fontSize: 13, height: 1.5)),
             const SizedBox(height: 12),
           ],
 
@@ -251,17 +251,17 @@ class _QuickActionsTab extends StatelessWidget {
     return ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 40), children: [
       _Section('CONTENT'),
       _Tile(Icons.sensors_rounded,         const Color(0xFFE31B23),      'Live Match Control',       'Update scores in real time',           () => context.push('/admin')),
-      _Tile(Icons.newspaper_rounded,        SportSphereColors.sportOrange, 'Publish News',             'Breaking news and match updates',       () => context.push('/admin')),
-      _Tile(Icons.add_circle_rounded,       SportSphereColors.sportGreen,  'Schedule Match',           'Add a new fixture',                     () => context.push('/admin')),
+      _Tile(Icons.newspaper_rounded,        PlayifyColors.sportOrange, 'Publish News',             'Breaking news and match updates',       () => context.push('/admin')),
+      _Tile(Icons.add_circle_rounded,       PlayifyColors.sportGreen,  'Schedule Match',           'Add a new fixture',                     () => context.push('/admin')),
       const SizedBox(height: 20),
       _Section('USERS'),
-      _Tile(Icons.people_rounded,           SportSphereColors.electricBlue,'Manage Users',             'Search, verify or moderate accounts',   () => context.push('/admin')),
+      _Tile(Icons.people_rounded,           PlayifyColors.electricBlue,'Manage Users',             'Search, verify or moderate accounts',   () => context.push('/admin')),
       _Tile(Icons.verified_rounded,         const Color(0xFFFFD700),       'PRO Queue',                'Review pending PRO applications',        () => context.push('/admin')),
       const SizedBox(height: 20),
       _Section('SYSTEM'),
       _Tile(Icons.dashboard_rounded,        const Color(0xFF9B6DFF),       'Full Dashboard',           'All admin controls in one place',        () => context.push('/admin')),
       _Tile(Icons.upload_file_rounded,       const Color(0xFF22C55E),       'Bulk Upload',              'Import fixtures, teams & players via CSV', () => Navigator.push(context, MaterialPageRoute(builder: (_) => BulkUploadScreen(onDone: () => Navigator.of(context).maybePop())))),
-      _Tile(Icons.refresh_rounded,          SportSphereColors.muted,       'Refresh Stats',            'Reload platform counters',               () { HapticFeedback.mediumImpact(); onRefresh(); }),
+      _Tile(Icons.refresh_rounded,          PlayifyColors.muted,       'Refresh Stats',            'Reload platform counters',               () { HapticFeedback.mediumImpact(); onRefresh(); }),
     ]);
   }
 }
@@ -282,7 +282,7 @@ class _StatsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return RefreshIndicator(
       onRefresh: () async => onRefresh(),
-      color: SportSphereColors.electricBlue,
+      color: PlayifyColors.electricBlue,
       child: ListView(physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 40), children: [
         _Section('PLATFORM METRICS'),
@@ -290,7 +290,7 @@ class _StatsTab extends StatelessWidget {
         if (loading)
           const Center(child: Padding(
             padding: EdgeInsets.only(top: 40),
-            child: CircularProgressIndicator(color: SportSphereColors.electricBlue, strokeWidth: 2),
+            child: CircularProgressIndicator(color: PlayifyColors.electricBlue, strokeWidth: 2),
           ))
         else GridView.count(
           shrinkWrap: true,
@@ -298,19 +298,19 @@ class _StatsTab extends StatelessWidget {
           crossAxisCount: 2,
           mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: 1.5,
           children: [
-            _StatCard('Users',   _fmt(users),   Icons.people_rounded,         SportSphereColors.electricBlue),
-            _StatCard('Posts',   _fmt(posts),   Icons.article_rounded,         SportSphereColors.sportGreen),
+            _StatCard('Users',   _fmt(users),   Icons.people_rounded,         PlayifyColors.electricBlue),
+            _StatCard('Posts',   _fmt(posts),   Icons.article_rounded,         PlayifyColors.sportGreen),
             _StatCard('Matches', _fmt(matches), Icons.sports_soccer_rounded,   const Color(0xFFE31B23)),
             _StatCard('Teams',   _fmt(teams),   Icons.groups_rounded,          const Color(0xFF9B6DFF)),
-            _StatCard('News',    _fmt(news),    Icons.newspaper_rounded,       SportSphereColors.sportOrange),
+            _StatCard('News',    _fmt(news),    Icons.newspaper_rounded,       PlayifyColors.sportOrange),
           ],
         ),
         const SizedBox(height: 24),
         _Section('PENDING'),
         const SizedBox(height: 10),
-        _InfoRow(Icons.warning_amber_rounded, SportSphereColors.sportOrange, 'M-Pesa Daraja secrets needed for live payments'),
-        _InfoRow(Icons.notifications_off_rounded, SportSphereColors.muted,   'FCM push not yet wired'),
-        _InfoRow(Icons.person_search_rounded, SportSphereColors.electricBlue,'PRO verification queue — check ⭐ PRO Queue tab'),
+        _InfoRow(Icons.warning_amber_rounded, PlayifyColors.sportOrange, 'M-Pesa Daraja secrets needed for live payments'),
+        _InfoRow(Icons.notifications_off_rounded, PlayifyColors.muted,   'FCM push not yet wired'),
+        _InfoRow(Icons.person_search_rounded, PlayifyColors.electricBlue,'PRO verification queue — check ⭐ PRO Queue tab'),
       ]),
     );
   }
@@ -325,7 +325,7 @@ class _Section extends StatelessWidget {
   const _Section(this.t);
   @override
   Widget build(BuildContext ctx) => Text(t,
-      style: TextStyle(color: SportSphereColors.muted.withValues(alpha: 0.7),
+      style: TextStyle(color: PlayifyColors.muted.withValues(alpha: 0.7),
           fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.2));
 }
 
@@ -354,10 +354,10 @@ class _Tile extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: const TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700, fontSize: 14)),
-          Text(sub,   style: const TextStyle(color: SportSphereColors.muted, fontSize: 12)),
+          Text(title, style: const TextStyle(color: PlayifyColors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+          Text(sub,   style: const TextStyle(color: PlayifyColors.muted, fontSize: 12)),
         ])),
-        Icon(Icons.chevron_right_rounded, color: SportSphereColors.muted.withValues(alpha: 0.5)),
+        Icon(Icons.chevron_right_rounded, color: PlayifyColors.muted.withValues(alpha: 0.5)),
       ]),
     ),
   );
@@ -382,7 +382,7 @@ class _StatCard extends StatelessWidget {
       Icon(icon, color: color, size: 20),
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(value, style: TextStyle(color: color, fontSize: 22, fontWeight: FontWeight.w900, height: 1)),
-        Text(label, style: const TextStyle(color: SportSphereColors.muted, fontSize: 11)),
+        Text(label, style: const TextStyle(color: PlayifyColors.muted, fontSize: 11)),
       ]),
     ]),
   );
@@ -403,7 +403,7 @@ class _InfoRow extends StatelessWidget {
     child: Row(children: [
       Icon(icon, color: color, size: 16),
       const SizedBox(width: 10),
-      Expanded(child: Text(label, style: const TextStyle(color: SportSphereColors.muted, fontSize: 12))),
+      Expanded(child: Text(label, style: const TextStyle(color: PlayifyColors.muted, fontSize: 12))),
     ]),
   );
 }
@@ -414,6 +414,6 @@ class _TabDelegate extends SliverPersistentHeaderDelegate {
   @override double get minExtent => tabBar.preferredSize.height + 1;
   @override double get maxExtent => tabBar.preferredSize.height + 1;
   @override Widget build(BuildContext _, double __, bool ___) =>
-      Container(color: SportSphereColors.background, child: tabBar);
+      Container(color: PlayifyColors.background, child: tabBar);
   @override bool shouldRebuild(_TabDelegate o) => o.tabBar != tabBar;
 }

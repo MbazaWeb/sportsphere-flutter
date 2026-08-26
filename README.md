@@ -1,4 +1,4 @@
-# SportSphere
+# Playify
 
 A sports network for fans, players, teams, media, and the business side of the game.
 Dark UI. Live scores. Communities. Shop.
@@ -10,7 +10,7 @@ Dark UI. Live scores. Communities. Shop.
 - go_router 17
 - Dio + flutter_secure_storage
 - Supabase (auth + database)
-- Package id: `com.sportsphere.sportsphere_app`
+- Package id: `com.playify.playify`
 
 ## Environment variables
 
@@ -33,7 +33,7 @@ For VS Code, add a `.vscode/launch.json`:
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "SportSphere",
+      "name": "Playify",
       "request": "launch",
       "type": "dart",
       "args": [

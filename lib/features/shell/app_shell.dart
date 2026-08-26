@@ -42,14 +42,14 @@ part 'parts/create_screen.dart';
 part 'parts/profile_screen.dart';
 part 'parts/bottom_nav.dart';
 
-class SportSphereShell extends ConsumerStatefulWidget {
-  const SportSphereShell({super.key});
+class PlayifyShell extends ConsumerStatefulWidget {
+  const PlayifyShell({super.key});
 
   @override
-  ConsumerState<SportSphereShell> createState() => _SportSphereShellState();
+  ConsumerState<PlayifyShell> createState() => _PlayifyShellState();
 }
 
-class _SportSphereShellState extends ConsumerState<SportSphereShell> {
+class _PlayifyShellState extends ConsumerState<PlayifyShell> {
   // Local index tracks the user's manual tab taps. We then reconcile with
   // shellTabProvider (set externally by Spotlight "View Match" buttons etc.)
   // in build() — if shellTabProvider differs from _index, we let it win and
@@ -93,7 +93,7 @@ class _SportSphereShellState extends ConsumerState<SportSphereShell> {
     final safeIndex = _index.clamp(0, screens.length - 1);
 
     return Scaffold(
-      backgroundColor: SportSphereColors.background,
+      backgroundColor: PlayifyColors.background,
       extendBody: true,
       body: SafeArea(
         bottom: false,

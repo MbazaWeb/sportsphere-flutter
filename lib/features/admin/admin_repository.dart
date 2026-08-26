@@ -729,7 +729,7 @@ class AdminRepository {
     } catch (e) { return []; }
   }
 
-  Future<String> createNews({required String title, required String summary, required String body, required String category, String source = 'SportSphere', bool isBreaking = false, String? imageUrl, String? pdfUrl}) async {
+  Future<String> createNews({required String title, required String summary, required String body, required String category, String source = 'Playify', bool isBreaking = false, String? imageUrl, String? pdfUrl}) async {
     final id = 'news-${DateTime.now().millisecondsSinceEpoch}';
     await _sb.from('NewsItem').insert({
       'id': id, 'title': title, 'summary': summary, 'body': body,

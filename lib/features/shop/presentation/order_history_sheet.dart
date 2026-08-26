@@ -128,7 +128,7 @@ class _OrderHistorySheetState extends State<_OrderHistorySheet> {
           const Text(
             'My Orders',
             style: TextStyle(
-              color: SportSphereColors.white,
+              color: PlayifyColors.white,
               fontSize: 20,
               fontWeight: FontWeight.w900,
             ),
@@ -153,12 +153,12 @@ class _OrderHistorySheetState extends State<_OrderHistorySheet> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(18),
                         color: _tab == 0
-                            ? SportSphereColors.electricBlue
+                            ? PlayifyColors.electricBlue
                                 .withValues(alpha: 0.16)
                             : Colors.white.withValues(alpha: 0.04),
                         border: Border.all(
                           color: _tab == 0
-                              ? SportSphereColors.electricBlue
+                              ? PlayifyColors.electricBlue
                               : Colors.white.withValues(alpha: 0.10),
                         ),
                       ),
@@ -166,8 +166,8 @@ class _OrderHistorySheetState extends State<_OrderHistorySheet> {
                         'Purchases',
                         style: TextStyle(
                           color: _tab == 0
-                              ? SportSphereColors.electricBlue
-                              : SportSphereColors.white,
+                              ? PlayifyColors.electricBlue
+                              : PlayifyColors.white,
                           fontWeight: FontWeight.w700,
                           fontSize: 13,
                         ),
@@ -190,12 +190,12 @@ class _OrderHistorySheetState extends State<_OrderHistorySheet> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(18),
                         color: _tab == 1
-                            ? SportSphereColors.electricBlue
+                            ? PlayifyColors.electricBlue
                                 .withValues(alpha: 0.16)
                             : Colors.white.withValues(alpha: 0.04),
                         border: Border.all(
                           color: _tab == 1
-                              ? SportSphereColors.electricBlue
+                              ? PlayifyColors.electricBlue
                               : Colors.white.withValues(alpha: 0.10),
                         ),
                       ),
@@ -203,8 +203,8 @@ class _OrderHistorySheetState extends State<_OrderHistorySheet> {
                         'Sales',
                         style: TextStyle(
                           color: _tab == 1
-                              ? SportSphereColors.electricBlue
-                              : SportSphereColors.white,
+                              ? PlayifyColors.electricBlue
+                              : PlayifyColors.white,
                           fontWeight: FontWeight.w700,
                           fontSize: 13,
                         ),
@@ -226,7 +226,7 @@ class _OrderHistorySheetState extends State<_OrderHistorySheet> {
                           'No orders yet',
                           style: TextStyle(
                             color:
-                                SportSphereColors.muted.withValues(alpha: 0.7),
+                                PlayifyColors.muted.withValues(alpha: 0.7),
                             fontSize: 15,
                           ),
                         ),
@@ -256,7 +256,7 @@ class _OrderHistorySheetState extends State<_OrderHistorySheet> {
                                         child: Text(
                                           '${o['itemName'] ?? 'Order'}',
                                           style: const TextStyle(
-                                            color: SportSphereColors.white,
+                                            color: PlayifyColors.white,
                                             fontWeight: FontWeight.w700,
                                             fontSize: 14,
                                           ),
@@ -270,9 +270,9 @@ class _OrderHistorySheetState extends State<_OrderHistorySheet> {
                                         decoration: BoxDecoration(
                                           color: (o['status'] ==
                                                   'paid'
-                                              ? SportSphereColors
+                                              ? PlayifyColors
                                                   .sportGreen
-                                              : SportSphereColors.muted)
+                                              : PlayifyColors.muted)
                                               .withValues(alpha: 0.14),
                                           borderRadius:
                                               BorderRadius.circular(10),
@@ -281,9 +281,9 @@ class _OrderHistorySheetState extends State<_OrderHistorySheet> {
                                           _statusLabel(o['status']),
                                           style: TextStyle(
                                             color: o['status'] == 'paid'
-                                                ? SportSphereColors
+                                                ? PlayifyColors
                                                     .sportGreen
-                                                : SportSphereColors.muted,
+                                                : PlayifyColors.muted,
                                             fontSize: 11,
                                             fontWeight: FontWeight.w700,
                                           ),
@@ -299,7 +299,7 @@ class _OrderHistorySheetState extends State<_OrderHistorySheet> {
                                             (o['amountTzs'] as int?) ??
                                                 0),
                                         style: TextStyle(
-                                          color: SportSphereColors.white
+                                          color: PlayifyColors.white
                                               .withValues(alpha: 0.85),
                                           fontWeight: FontWeight.w700,
                                           fontSize: 13,
@@ -310,7 +310,7 @@ class _OrderHistorySheetState extends State<_OrderHistorySheet> {
                                         _ago(o['createdAt']
                                             ?.toString()),
                                         style: const TextStyle(
-                                          color: SportSphereColors.muted,
+                                          color: PlayifyColors.muted,
                                           fontSize: 11,
                                         ),
                                       ),
@@ -321,7 +321,7 @@ class _OrderHistorySheetState extends State<_OrderHistorySheet> {
                                     Text(
                                       'Ref: ${o['id']?.toString().substring(0, 16) ?? ''}',
                                       style: const TextStyle(
-                                        color: SportSphereColors.muted,
+                                        color: PlayifyColors.muted,
                                         fontSize: 10,
                                       ),
                                     ),

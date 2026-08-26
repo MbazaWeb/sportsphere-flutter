@@ -52,27 +52,27 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard>
   Widget build(BuildContext context) {
     final user = ref.watch(authControllerProvider).user;
     if (!AppAdmin.isAdminUser(user)) {
-      return const Scaffold(backgroundColor: SportSphereColors.background,
+      return const Scaffold(backgroundColor: PlayifyColors.background,
           body: Center(child: Text('Access denied',
-              style: TextStyle(color: SportSphereColors.muted))));
+              style: TextStyle(color: PlayifyColors.muted))));
     }
     return Scaffold(
-      backgroundColor: SportSphereColors.background,
+      backgroundColor: PlayifyColors.background,
       body: SafeArea(child: Column(children: [
         // Header
         Padding(
           padding: const EdgeInsets.fromLTRB(4, 8, 16, 0),
           child: Row(children: [
             IconButton(
-              icon: const Icon(Icons.arrow_back_rounded, color: SportSphereColors.white),
+              icon: const Icon(Icons.arrow_back_rounded, color: PlayifyColors.white),
               onPressed: () => Navigator.of(context).maybePop(),
             ),
             const Icon(Icons.admin_panel_settings_rounded, color: Color(0xFFFFD700), size: 22),
             const SizedBox(width: 8),
             const Expanded(child: Text('Admin Dashboard',
-                style: TextStyle(color: SportSphereColors.white, fontSize: 20, fontWeight: FontWeight.w900))),
+                style: TextStyle(color: PlayifyColors.white, fontSize: 20, fontWeight: FontWeight.w900))),
             IconButton(
-              icon: const Icon(Icons.refresh_rounded, color: SportSphereColors.muted),
+              icon: const Icon(Icons.refresh_rounded, color: PlayifyColors.muted),
               onPressed: _loadStats,
             ),
           ]),
@@ -81,8 +81,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard>
           controller: _tabs,
           isScrollable: true,
           tabAlignment: TabAlignment.start,
-          labelColor: SportSphereColors.white,
-          unselectedLabelColor: SportSphereColors.muted,
+          labelColor: PlayifyColors.white,
+          unselectedLabelColor: PlayifyColors.muted,
           labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
           indicatorColor: const Color(0xFFFFD700),
           indicatorWeight: 2.5,
@@ -117,30 +117,30 @@ class _OverviewTab extends ConsumerWidget {
   const _OverviewTab({required this.stats,required this.loading,required this.onRefresh,required this.tabCtrl});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return RefreshIndicator(onRefresh:()async=>onRefresh(),color:SportSphereColors.electricBlue,
+    return RefreshIndicator(onRefresh:()async=>onRefresh(),color:PlayifyColors.electricBlue,
       child:ListView(padding:const EdgeInsets.all(16),children:[
         _Label('PLATFORM STATISTICS'), const SizedBox(height:10),
-        if(loading) const Center(child:CircularProgressIndicator(color:SportSphereColors.electricBlue,strokeWidth:2))
+        if(loading) const Center(child:CircularProgressIndicator(color:PlayifyColors.electricBlue,strokeWidth:2))
         else GridView.count(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),crossAxisCount:2,
           mainAxisSpacing:10,crossAxisSpacing:10,childAspectRatio:1.55,children:[
-            _StatCard('Total Users','${stats['users']??0}',Icons.people_rounded,SportSphereColors.electricBlue),
-            _StatCard('Posts','${stats['posts']??0}',Icons.article_rounded,SportSphereColors.sportGreen),
+            _StatCard('Total Users','${stats['users']??0}',Icons.people_rounded,PlayifyColors.electricBlue),
+            _StatCard('Posts','${stats['posts']??0}',Icons.article_rounded,PlayifyColors.sportGreen),
             _StatCard('Matches','${stats['matches']??0}',Icons.sports_soccer_rounded,const Color(0xFFE31B23)),
             _StatCard('Teams','${stats['teams']??0}',Icons.groups_rounded,const Color(0xFF9B6DFF)),
-            _StatCard('Players','${stats['players']??0}',Icons.person_rounded,SportSphereColors.sportOrange),
+            _StatCard('Players','${stats['players']??0}',Icons.person_rounded,PlayifyColors.sportOrange),
             _StatCard('Coaches','${stats['coaches']??0}',Icons.sports_rounded,const Color(0xFF00C896)),
             _StatCard('Competitions','${stats['competitions']??0}',Icons.emoji_events_rounded,const Color(0xFFFFD700)),
-            _StatCard('News','${stats['news']??0}',Icons.newspaper_rounded,SportSphereColors.brightBlue),
+            _StatCard('News','${stats['news']??0}',Icons.newspaper_rounded,PlayifyColors.brightBlue),
         ]),
         const SizedBox(height:24), _Label('QUICK ACTIONS'), const SizedBox(height:10),
         _ActionCard(Icons.sensors_rounded,const Color(0xFFE31B23),'Live Match Control','Update scores, status and minutes live',()=>openAdminLiveControl(context,ref)),
         _ActionCard(Icons.healing_rounded,const Color(0xFF9B6DFF),'Reconcile Identities','Fix entities missing Playify identity',()=>_showReconcileDialog(context)),
         _ActionCard(Icons.emoji_events_rounded,const Color(0xFFFFD700),'Create Competition','Add new league or cup',()=>_showCreateCompetition(context)),
         _ActionCard(Icons.groups_rounded,const Color(0xFF9B6DFF),'Create Team','Add a new club or national team',()=>_showCreateTeam(context,null)),
-        _ActionCard(Icons.add_circle_rounded,SportSphereColors.sportGreen,'Schedule Fixture','Add a new match to the calendar',()=>_showCreateMatch(context)),
-        _ActionCard(Icons.newspaper_rounded,SportSphereColors.sportOrange,'Post News Article','Publish breaking news or updates',()=>_showNewsCompose(context)),
+        _ActionCard(Icons.add_circle_rounded,PlayifyColors.sportGreen,'Schedule Fixture','Add a new match to the calendar',()=>_showCreateMatch(context)),
+        _ActionCard(Icons.newspaper_rounded,PlayifyColors.sportOrange,'Post News Article','Publish breaking news or updates',()=>_showNewsCompose(context)),
         _ActionCard(Icons.upload_rounded,const Color(0xFF9B6DFF),'Bulk Upload','Upload teams, players or fixtures from Excel',()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>BulkUploadScreen(onDone:onRefresh)))),
-        _ActionCard(Icons.person_add_rounded,SportSphereColors.electricBlue,'Create User','Add a new user account',()=>_showCreateUser(context)),
+        _ActionCard(Icons.person_add_rounded,PlayifyColors.electricBlue,'Create User','Add a new user account',()=>_showCreateUser(context)),
     ]));
   }
 }
@@ -165,7 +165,7 @@ class _UsersTabState extends State<_UsersTab> {
       Padding(padding:const EdgeInsets.fromLTRB(16,12,16,8),child:Row(children:[
         Expanded(child:_SearchField(controller:_search,hint:'Search users...',onSearch:_load)),
         const SizedBox(width:8),
-        FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:SportSphereColors.electricBlue),
+        FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:PlayifyColors.electricBlue),
           icon:const Icon(Icons.add,size:16),label:const Text('New'),
           onPressed:()=>_showCreateUser(context).then((_)=>_load(''))),
       ])),
@@ -177,18 +177,18 @@ class _UsersTabState extends State<_UsersTab> {
             final name='${u['first_name']??''} ${u['last_name']??''}'.trim();
             final handle=u['handle']??''; final role=u['role']??'fan'; final verified=u['is_verified']==true;
             return ListTile(contentPadding:const EdgeInsets.symmetric(vertical:4),
-              leading:CircleAvatar(backgroundColor:SportSphereColors.electricBlue.withValues(alpha:0.15),
+              leading:CircleAvatar(backgroundColor:PlayifyColors.electricBlue.withValues(alpha:0.15),
                 child:Text(name.isNotEmpty?name[0].toUpperCase():'?',
-                    style:const TextStyle(color:SportSphereColors.electricBlue,fontWeight:FontWeight.w800))),
+                    style:const TextStyle(color:PlayifyColors.electricBlue,fontWeight:FontWeight.w800))),
               title:Row(children:[
                 Flexible(child:Text(name.isNotEmpty?name:handle,
-                    style:const TextStyle(color:SportSphereColors.white,fontWeight:FontWeight.w700,fontSize:14))),
+                    style:const TextStyle(color:PlayifyColors.white,fontWeight:FontWeight.w700,fontSize:14))),
                 if(verified)...[const SizedBox(width:4),const Icon(Icons.verified_rounded,color:Color(0xFFFFD700),size:14)],
               ]),
-              subtitle:Text('@$handle  ·  $role',style:const TextStyle(color:SportSphereColors.muted,fontSize:12)),
+              subtitle:Text('@$handle  ·  $role',style:const TextStyle(color:PlayifyColors.muted,fontSize:12)),
               trailing:PopupMenuButton<String>(
-                color:SportSphereColors.surface,
-                icon:const Icon(Icons.more_vert_rounded,color:SportSphereColors.muted),
+                color:PlayifyColors.surface,
+                icon:const Icon(Icons.more_vert_rounded,color:PlayifyColors.muted),
                 onSelected:(v) async {
                   final uid=u['id'].toString();
                   if(v=='verify'){await _repo.verifyUser(uid,!verified);_load(_search.text.trim());}
@@ -200,9 +200,9 @@ class _UsersTabState extends State<_UsersTab> {
                   }
                 },
                 itemBuilder:(_)=>[
-                  PopupMenuItem(value:'verify',child:Text(verified?'Remove Verified':'Verify',style:const TextStyle(color:SportSphereColors.white))),
-                  const PopupMenuItem(value:'role',child:Text('Change Role',style:TextStyle(color:SportSphereColors.white))),
-                  const PopupMenuItem(value:'delete',child:Text('Delete',style:TextStyle(color:SportSphereColors.danger))),
+                  PopupMenuItem(value:'verify',child:Text(verified?'Remove Verified':'Verify',style:const TextStyle(color:PlayifyColors.white))),
+                  const PopupMenuItem(value:'role',child:Text('Change Role',style:TextStyle(color:PlayifyColors.white))),
+                  const PopupMenuItem(value:'delete',child:Text('Delete',style:TextStyle(color:PlayifyColors.danger))),
                 ],
               ),
             );
@@ -216,9 +216,9 @@ class _UsersTabState extends State<_UsersTab> {
     String sel=roles.contains(cur)?cur:'fan';
     showDialog<void>(context:ctx,builder:(_)=>StatefulBuilder(builder:(c,setL)=>AlertDialog(
       backgroundColor:GrassForm.sheetBg,
-      title:const Text('Change Role',style:TextStyle(color:SportSphereColors.white)),
-      content:DropdownButton<String>(value:sel,dropdownColor:SportSphereColors.surface,isExpanded:true,
-        style:const TextStyle(color:SportSphereColors.white),
+      title:const Text('Change Role',style:TextStyle(color:PlayifyColors.white)),
+      content:DropdownButton<String>(value:sel,dropdownColor:PlayifyColors.surface,isExpanded:true,
+        style:const TextStyle(color:PlayifyColors.white),
         items:roles.map((r)=>DropdownMenuItem(value:r,child:Text(r[0].toUpperCase()+r.substring(1)))).toList(),
         onChanged:(v)=>setL(()=>sel=v??sel)),
       actions:[
@@ -230,8 +230,8 @@ class _UsersTabState extends State<_UsersTab> {
   void _confirmDelete(BuildContext ctx,String uid,String name){
     showDialog<void>(context:ctx,builder:(_)=>AlertDialog(
       backgroundColor:GrassForm.sheetBg,
-      title:const Text('Delete User?',style:TextStyle(color:SportSphereColors.white)),
-      content:Text('Permanently delete $name?',style:const TextStyle(color:SportSphereColors.muted)),
+      title:const Text('Delete User?',style:TextStyle(color:PlayifyColors.white)),
+      content:Text('Permanently delete $name?',style:const TextStyle(color:PlayifyColors.muted)),
       actions:[
         TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Cancel')),
         TextButton(onPressed:() async {
@@ -249,7 +249,7 @@ class _UsersTabState extends State<_UsersTab> {
           }
           _load(_search.text.trim());
         },
-            child:const Text('Delete',style:TextStyle(color:SportSphereColors.danger))),
+            child:const Text('Delete',style:TextStyle(color:PlayifyColors.danger))),
       ],
     ));
   }
@@ -275,11 +275,11 @@ class _CompetitionsTabState extends State<_CompetitionsTab> with SingleTickerPro
   Widget build(BuildContext context) {
     return Column(children:[
       Padding(padding:const EdgeInsets.fromLTRB(16,8,16,4),child:Align(alignment:Alignment.centerRight,child:
-        FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:SportSphereColors.electricBlue,padding:const EdgeInsets.symmetric(horizontal:12,vertical:8)),
+        FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:PlayifyColors.electricBlue,padding:const EdgeInsets.symmetric(horizontal:12,vertical:8)),
           icon:const Icon(Icons.upload_rounded,size:15),label:const Text('Bulk Upload Teams / Players',style:TextStyle(fontSize:11)),
           onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>BulkUploadScreen(onDone:_load)))),
       )),
-      TabBar(controller:_sub,labelColor:SportSphereColors.white,unselectedLabelColor:SportSphereColors.muted,
+      TabBar(controller:_sub,labelColor:PlayifyColors.white,unselectedLabelColor:PlayifyColors.muted,
         indicatorColor:const Color(0xFFFFD700),labelStyle:const TextStyle(fontSize:11,fontWeight:FontWeight.w700),
         tabs:const[Tab(text:'Competitions'),Tab(text:'Teams'),Tab(text:'Players'),Tab(text:'Coaches')]),
       Expanded(child:_loading?const _Loader():TabBarView(controller:_sub,children:[
@@ -295,7 +295,7 @@ class _CompetitionsTabState extends State<_CompetitionsTab> with SingleTickerPro
           entityType:EntityType.team,
           onEdited:_load,
           onDelete:(id) async {await _repo.deleteTeam(id);_load();}),
-        _EList(items:_players,icon:Icons.person_rounded,color:SportSphereColors.sportOrange,
+        _EList(items:_players,icon:Icons.person_rounded,color:PlayifyColors.sportOrange,
           addLabel:'Add Player',onAdd:()=>_showCreatePlayer(context,_teams).then((_)=>_load()),
           sub:(p)=>'${p['position']??''}  ·  #${p['shirtNumber']??'-'}',
           entityType:EntityType.player,
@@ -333,11 +333,11 @@ class _EList extends StatelessWidget {
         return ListTile(
           contentPadding:const EdgeInsets.symmetric(vertical:4),
           leading:Container(width:36,height:36,decoration:BoxDecoration(shape:BoxShape.circle,color:color.withValues(alpha:0.12)),child:Icon(icon,color:color,size:18)),
-          title:Text(e['name']??'',style:const TextStyle(color:SportSphereColors.white,fontWeight:FontWeight.w700,fontSize:13)),
-          subtitle:Text(sub(e),style:const TextStyle(color:SportSphereColors.muted,fontSize:11)),
+          title:Text(e['name']??'',style:const TextStyle(color:PlayifyColors.white,fontWeight:FontWeight.w700,fontSize:13)),
+          subtitle:Text(sub(e),style:const TextStyle(color:PlayifyColors.muted,fontSize:11)),
           trailing:PopupMenuButton<String>(
-            color:SportSphereColors.surface,
-            icon:const Icon(Icons.more_vert_rounded,color:SportSphereColors.muted),
+            color:PlayifyColors.surface,
+            icon:const Icon(Icons.more_vert_rounded,color:PlayifyColors.muted),
             onSelected:(v) async {
               if(v=='edit' && entityType != null) {
                 await showEntityEditSheet(
@@ -354,14 +354,14 @@ class _EList extends StatelessWidget {
             itemBuilder:(_)=>[
               if(entityType != null)
                 const PopupMenuItem(value:'edit',child:Row(children:[
-                  Icon(Icons.edit_outlined,color:SportSphereColors.electricBlue,size:18),
+                  Icon(Icons.edit_outlined,color:PlayifyColors.electricBlue,size:18),
                   SizedBox(width:10),
-                  Text('Edit',style:TextStyle(color:SportSphereColors.white)),
+                  Text('Edit',style:TextStyle(color:PlayifyColors.white)),
                 ])),
               const PopupMenuItem(value:'delete',child:Row(children:[
-                Icon(Icons.delete_outline_rounded,color:SportSphereColors.danger,size:18),
+                Icon(Icons.delete_outline_rounded,color:PlayifyColors.danger,size:18),
                 SizedBox(width:10),
-                Text('Delete',style:TextStyle(color:SportSphereColors.danger)),
+                Text('Delete',style:TextStyle(color:PlayifyColors.danger)),
               ])),
             ],
           ),
@@ -392,25 +392,25 @@ class _MatchesTabState extends ConsumerState<_MatchesTab> {
           icon:const Icon(Icons.sensors_rounded,size:16),label:const Text('Live Control'),
           onPressed:()=>openAdminLiveControl(context,ref).then((_)=>_load()))),
         const SizedBox(width:8),
-        Expanded(child:FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:SportSphereColors.sportGreen),
+        Expanded(child:FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:PlayifyColors.sportGreen),
           icon:const Icon(Icons.add,size:16),label:const Text('Add Fixture'),
           onPressed:()=>_showCreateMatch(context).then((_)=>_load()))),
         const SizedBox(width:8),
-        Expanded(child:FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:SportSphereColors.electricBlue),
+        Expanded(child:FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:PlayifyColors.electricBlue),
           icon:const Icon(Icons.upload_rounded,size:16),label:const Text('Bulk Upload'),
           onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>BulkUploadScreen(onDone:_load)))))
       ])),
       Expanded(child:_loading?const _Loader():_matches.isEmpty?const _Empty('No matches yet'):
-        RefreshIndicator(onRefresh:_load,color:SportSphereColors.electricBlue,child:ListView.separated(
+        RefreshIndicator(onRefresh:_load,color:PlayifyColors.electricBlue,child:ListView.separated(
           padding:const EdgeInsets.fromLTRB(16,0,16,40),itemCount:_matches.length,separatorBuilder:(_,__)=>const _Div(),
           itemBuilder:(_,i){final m=_matches[i];final st=m['status']??'upcoming';final isLive=st=='live';
             return ListTile(contentPadding:const EdgeInsets.symmetric(vertical:4),
               leading:Container(width:36,height:36,decoration:BoxDecoration(shape:BoxShape.circle,
-                  color:(isLive?SportSphereColors.danger:SportSphereColors.muted).withValues(alpha:0.12)),
-                  child:Icon(Icons.sports_soccer_rounded,color:isLive?SportSphereColors.danger:SportSphereColors.muted,size:18)),
-              title:Text('${m['homeTeam']}  vs  ${m['awayTeam']}',style:const TextStyle(color:SportSphereColors.white,fontWeight:FontWeight.w700,fontSize:13)),
-              subtitle:Text('$st  ·  ${m['homeScore']??0}-${m['awayScore']??0}  ·  ${m['league']??''}',style:const TextStyle(color:SportSphereColors.muted,fontSize:11)),
-              trailing:PopupMenuButton<String>(color:SportSphereColors.surface,icon:const Icon(Icons.more_vert_rounded,color:SportSphereColors.muted),
+                  color:(isLive?PlayifyColors.danger:PlayifyColors.muted).withValues(alpha:0.12)),
+                  child:Icon(Icons.sports_soccer_rounded,color:isLive?PlayifyColors.danger:PlayifyColors.muted,size:18)),
+              title:Text('${m['homeTeam']}  vs  ${m['awayTeam']}',style:const TextStyle(color:PlayifyColors.white,fontWeight:FontWeight.w700,fontSize:13)),
+              subtitle:Text('$st  ·  ${m['homeScore']??0}-${m['awayScore']??0}  ·  ${m['league']??''}',style:const TextStyle(color:PlayifyColors.muted,fontSize:11)),
+              trailing:PopupMenuButton<String>(color:PlayifyColors.surface,icon:const Icon(Icons.more_vert_rounded,color:PlayifyColors.muted),
                 onSelected:(v) async {
                   if(v=='edit') _showEditMatch(context,m);
                   if(v=='delete'){await _repo.deleteMatch(m['id'].toString());_load();}
@@ -419,11 +419,11 @@ class _MatchesTabState extends ConsumerState<_MatchesTab> {
                   if(v=='pred') await _showCreatePredictionForMatch(context,m).then((_)=>_load());
                 },
                 itemBuilder:(_)=>[
-                  const PopupMenuItem(value:'edit',child:Text('Edit Result',style:TextStyle(color:SportSphereColors.white))),
-                  const PopupMenuItem(value:'feed',child:Text('Post to Feed',style:TextStyle(color:SportSphereColors.electricBlue))),
-                  const PopupMenuItem(value:'poll',child:Text('Create Poll',style:TextStyle(color:SportSphereColors.sportGreen))),
-                  const PopupMenuItem(value:'pred',child:Text('Create Prediction',style:TextStyle(color:SportSphereColors.sportOrange))),
-                  const PopupMenuItem(value:'delete',child:Text('Delete',style:TextStyle(color:SportSphereColors.danger))),
+                  const PopupMenuItem(value:'edit',child:Text('Edit Result',style:TextStyle(color:PlayifyColors.white))),
+                  const PopupMenuItem(value:'feed',child:Text('Post to Feed',style:TextStyle(color:PlayifyColors.electricBlue))),
+                  const PopupMenuItem(value:'poll',child:Text('Create Poll',style:TextStyle(color:PlayifyColors.sportGreen))),
+                  const PopupMenuItem(value:'pred',child:Text('Create Prediction',style:TextStyle(color:PlayifyColors.sportOrange))),
+                  const PopupMenuItem(value:'delete',child:Text('Delete',style:TextStyle(color:PlayifyColors.danger))),
                 ],
               ),
             );
@@ -440,16 +440,16 @@ class _MatchesTabState extends ConsumerState<_MatchesTab> {
     final statuses=['upcoming','live','ht','finished','postponed','cancelled'];
     showDialog<void>(context:ctx,builder:(_)=>StatefulBuilder(builder:(c,setL)=>AlertDialog(
       backgroundColor:GrassForm.sheetBg,
-      title:Text('${m['homeTeam']} vs ${m['awayTeam']}',style:const TextStyle(color:SportSphereColors.white,fontSize:14)),
+      title:Text('${m['homeTeam']} vs ${m['awayTeam']}',style:const TextStyle(color:PlayifyColors.white,fontSize:14)),
       content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
-        DropdownButtonFormField<String>(value:statuses.contains(status)?status:'upcoming',dropdownColor:SportSphereColors.surface,
-          decoration:const InputDecoration(labelText:'Status',labelStyle:TextStyle(color:SportSphereColors.muted)),
-          items:statuses.map((s)=>DropdownMenuItem(value:s,child:Text(s,style:const TextStyle(color:SportSphereColors.white)))).toList(),
+        DropdownButtonFormField<String>(value:statuses.contains(status)?status:'upcoming',dropdownColor:PlayifyColors.surface,
+          decoration:const InputDecoration(labelText:'Status',labelStyle:TextStyle(color:PlayifyColors.muted)),
+          items:statuses.map((s)=>DropdownMenuItem(value:s,child:Text(s,style:const TextStyle(color:PlayifyColors.white)))).toList(),
           onChanged:(v)=>setL(()=>status=v??status)),
         const SizedBox(height:8),
         Row(children:[
           Expanded(child:_AdminField(controller:hCtrl,label:m['homeTeam']??'Home',keyboardType:TextInputType.number)),
-          const Padding(padding:EdgeInsets.all(8),child:Text(':',style:TextStyle(color:SportSphereColors.white,fontSize:20))),
+          const Padding(padding:EdgeInsets.all(8),child:Text(':',style:TextStyle(color:PlayifyColors.white,fontSize:20))),
           Expanded(child:_AdminField(controller:aCtrl,label:m['awayTeam']??'Away',keyboardType:TextInputType.number)),
         ]),
         _AdminField(controller:minCtrl,label:'Minute',keyboardType:TextInputType.number),
@@ -481,15 +481,15 @@ class _ContentTabState extends State<_ContentTab> {
   @override Widget build(BuildContext ctx)=>Column(children:[
     _AddBar('Create Post',()=>_showCreatePost(ctx).then((_)=>_load())),
     Expanded(child:_loading?const _Loader():_posts.isEmpty?const _Empty('No posts yet'):
-      RefreshIndicator(onRefresh:_load,color:SportSphereColors.electricBlue,child:ListView.separated(
+      RefreshIndicator(onRefresh:_load,color:PlayifyColors.electricBlue,child:ListView.separated(
         padding:const EdgeInsets.fromLTRB(16,0,16,40),itemCount:_posts.length,separatorBuilder:(_,__)=>const _Div(),
         itemBuilder:(_,i){final p=_posts[i];final content=(p['content']as String?)??'';final type=p['postType']??'text';
           return ListTile(contentPadding:const EdgeInsets.symmetric(vertical:4),
-            leading:Container(width:36,height:36,decoration:BoxDecoration(shape:BoxShape.circle,color:SportSphereColors.sportGreen.withValues(alpha:0.12)),
-                child:Icon(type=='poll'?Icons.poll_rounded:type=='prediction'?Icons.insights_rounded:Icons.article_rounded,color:SportSphereColors.sportGreen,size:18)),
-            title:Text(content.length>80?'${content.substring(0,80)}...':content,style:const TextStyle(color:SportSphereColors.white,fontSize:13),maxLines:2),
-            subtitle:Text('$type  ·  ♥ ${p['likeCount']??0}  ·  💬 ${p['commentCount']??0}',style:const TextStyle(color:SportSphereColors.muted,fontSize:11)),
-            trailing:IconButton(icon:const Icon(Icons.delete_outline_rounded,color:SportSphereColors.danger,size:20),
+            leading:Container(width:36,height:36,decoration:BoxDecoration(shape:BoxShape.circle,color:PlayifyColors.sportGreen.withValues(alpha:0.12)),
+                child:Icon(type=='poll'?Icons.poll_rounded:type=='prediction'?Icons.insights_rounded:Icons.article_rounded,color:PlayifyColors.sportGreen,size:18)),
+            title:Text(content.length>80?'${content.substring(0,80)}...':content,style:const TextStyle(color:PlayifyColors.white,fontSize:13),maxLines:2),
+            subtitle:Text('$type  ·  ♥ ${p['likeCount']??0}  ·  💬 ${p['commentCount']??0}',style:const TextStyle(color:PlayifyColors.muted,fontSize:11)),
+            trailing:IconButton(icon:const Icon(Icons.delete_outline_rounded,color:PlayifyColors.danger,size:20),
                 onPressed:() async {await _repo.deletePostAdmin(p['id'].toString());_load();}),
           );},
       ))),
@@ -508,16 +508,16 @@ class _NewsTabState extends State<_NewsTab> {
   @override Widget build(BuildContext ctx)=>Column(children:[
     _AddBar('New Article',()=>_showNewsCompose(ctx).then((_)=>_load())),
     Expanded(child:_loading?const _Loader():_articles.isEmpty?const _Empty('No articles yet'):
-      RefreshIndicator(onRefresh:_load,color:SportSphereColors.electricBlue,child:ListView.separated(
+      RefreshIndicator(onRefresh:_load,color:PlayifyColors.electricBlue,child:ListView.separated(
         padding:const EdgeInsets.fromLTRB(16,0,16,40),itemCount:_articles.length,separatorBuilder:(_,__)=>const _Div(),
         itemBuilder:(_,i){final a=_articles[i];final brk=a['is_breaking']==true||a['category']=='breaking';
           return ListTile(contentPadding:const EdgeInsets.symmetric(vertical:4),
             leading:Container(width:36,height:36,decoration:BoxDecoration(shape:BoxShape.circle,
-                color:(brk?SportSphereColors.danger:SportSphereColors.sportOrange).withValues(alpha:0.12)),
-                child:Icon(brk?Icons.warning_rounded:Icons.newspaper_rounded,color:brk?SportSphereColors.danger:SportSphereColors.sportOrange,size:18)),
-            title:Text(a['title']??'',maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:SportSphereColors.white,fontSize:13,fontWeight:FontWeight.w600)),
-            subtitle:Text('${a['category']??'updates'}  ·  ${a['source']??'SportSphere'}',style:const TextStyle(color:SportSphereColors.muted,fontSize:11)),
-            trailing:IconButton(icon:const Icon(Icons.delete_outline_rounded,color:SportSphereColors.danger,size:20),
+                color:(brk?PlayifyColors.danger:PlayifyColors.sportOrange).withValues(alpha:0.12)),
+                child:Icon(brk?Icons.warning_rounded:Icons.newspaper_rounded,color:brk?PlayifyColors.danger:PlayifyColors.sportOrange,size:18)),
+            title:Text(a['title']??'',maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:PlayifyColors.white,fontSize:13,fontWeight:FontWeight.w600)),
+            subtitle:Text('${a['category']??'updates'}  ·  ${a['source']??'Playify'}',style:const TextStyle(color:PlayifyColors.muted,fontSize:11)),
+            trailing:IconButton(icon:const Icon(Icons.delete_outline_rounded,color:PlayifyColors.danger,size:20),
                 onPressed:() async {await _repo.deleteNews(a['id'].toString());_load();}),
           );},
       ))),
@@ -529,10 +529,10 @@ class _NewsTabState extends State<_NewsTab> {
 Future<void> _showReconcileDialog(BuildContext ctx) async {
   showDialog<void>(context: ctx, barrierDismissible: false, builder: (c) => AlertDialog(
     backgroundColor: GrassForm.sheetBg,
-    title: const Text('Reconcile Entity Identities', style: TextStyle(color: SportSphereColors.white)),
+    title: const Text('Reconcile Entity Identities', style: TextStyle(color: PlayifyColors.white)),
     content: const Text(
       'Scans all Teams, Players and Leagues.\n\nEntities missing a Playify identity will have one created. Existing identities are not touched.',
-      style: TextStyle(color: SportSphereColors.muted, fontSize: 13)),
+      style: TextStyle(color: PlayifyColors.muted, fontSize: 13)),
     actions: [
       TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancel')),
       TextButton(
@@ -540,11 +540,11 @@ Future<void> _showReconcileDialog(BuildContext ctx) async {
           Navigator.pop(c);
           if (!ctx.mounted) return;
           showDialog<void>(context: ctx, barrierDismissible: false, builder: (_) => const AlertDialog(
-            backgroundColor: SportSphereColors.surface,
+            backgroundColor: PlayifyColors.surface,
             content: Row(children: [
-              CircularProgressIndicator(color: SportSphereColors.electricBlue),
+              CircularProgressIndicator(color: PlayifyColors.electricBlue),
               SizedBox(width: 16),
-              Text('Reconciling...', style: TextStyle(color: SportSphereColors.white)),
+              Text('Reconciling...', style: TextStyle(color: PlayifyColors.white)),
             ]),
           ));
           try {
@@ -555,9 +555,9 @@ Future<void> _showReconcileDialog(BuildContext ctx) async {
             final healthy = report.where((r) => r['status'] == 'ALREADY_HAS_IDENTITY').length;
             if (ctx.mounted) showDialog<void>(context: ctx, builder: (_) => AlertDialog(
               backgroundColor: GrassForm.sheetBg,
-              title: const Text('Done', style: TextStyle(color: SportSphereColors.white)),
+              title: const Text('Done', style: TextStyle(color: PlayifyColors.white)),
               content: Text('Scanned: ${report.length}\nCreated: $created\nHealthy: $healthy\nFailed: $failed',
-                  style: const TextStyle(color: SportSphereColors.white, fontSize: 13)),
+                  style: const TextStyle(color: PlayifyColors.white, fontSize: 13)),
               actions: [TextButton(onPressed: () => Navigator.pop(c), child: const Text('OK'))],
             ));
           } catch (e) {
@@ -567,7 +567,7 @@ Future<void> _showReconcileDialog(BuildContext ctx) async {
             }
           }
         },
-        child: const Text('Reconcile', style: TextStyle(color: SportSphereColors.sportGreen)),
+        child: const Text('Reconcile', style: TextStyle(color: PlayifyColors.sportGreen)),
       ),
     ],
   ));
@@ -593,7 +593,7 @@ Future<String?> _pickAndUpload(BuildContext ctx, {String folder='admin'}) async 
 // ── Create User ────────────────────────────────────────────────────────────────
 Future<void> _showCreateUser(BuildContext ctx) {
   final email = TextEditingController();
-  final password = TextEditingController(text: 'SportSphere2024!');
+  final password = TextEditingController(text: 'Playify2024!');
   final handle = TextEditingController();
   final firstName = TextEditingController();
   final lastName = TextEditingController();
@@ -604,7 +604,7 @@ Future<void> _showCreateUser(BuildContext ctx) {
     builder: (_) => StatefulBuilder(
       builder: (c, setL) => AlertDialog(
         backgroundColor: GrassForm.sheetBg,
-        title: const Text('Create User', style: TextStyle(color: SportSphereColors.white)),
+        title: const Text('Create User', style: TextStyle(color: PlayifyColors.white)),
         content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
           _AdminField(controller: firstName, label: 'First Name *'),
           _AdminField(controller: lastName, label: 'Last Name'),
@@ -617,13 +617,13 @@ Future<void> _showCreateUser(BuildContext ctx) {
             dropdownColor: GrassForm.sheetBg,
             decoration: const InputDecoration(
               labelText: 'Role',
-              labelStyle: TextStyle(color: SportSphereColors.muted),
+              labelStyle: TextStyle(color: PlayifyColors.muted),
             ),
             items: ['fan', 'player', 'coach', 'team', 'journalist',
                     'analyst', 'creator', 'scout', 'agent', 'admin']
                 .map((r) => DropdownMenuItem(value: r,
                     child: Text(r[0].toUpperCase() + r.substring(1),
-                        style: const TextStyle(color: SportSphereColors.white)))).toList(),
+                        style: const TextStyle(color: PlayifyColors.white)))).toList(),
             onChanged: (v) => setL(() => role = v ?? role),
           ),
         ])),
@@ -690,7 +690,7 @@ Future<void> _showCreateCompetition(BuildContext ctx) {
               children: [
                 const GrassFormHeader(
                   title: 'Create Competition',
-                  subtitle: 'League or cup on the SportSphere pitch',
+                  subtitle: 'League or cup on the Playify pitch',
                   icon: Icons.emoji_events_rounded,
                 ),
                 const SizedBox(height: 16),
@@ -711,7 +711,7 @@ Future<void> _showCreateCompetition(BuildContext ctx) {
                   items: kSeasonOptions
                       .map((s) => DropdownMenuItem(
                             value: s,
-                            child: Text(s, style: const TextStyle(color: SportSphereColors.white)),
+                            child: Text(s, style: const TextStyle(color: PlayifyColors.white)),
                           ))
                       .toList(),
                   onChanged: (v) => setL(() => season = v ?? season),
@@ -726,7 +726,7 @@ Future<void> _showCreateCompetition(BuildContext ctx) {
                             value: t,
                             child: Text(
                               t[0].toUpperCase() + t.substring(1),
-                              style: const TextStyle(color: SportSphereColors.white),
+                              style: const TextStyle(color: PlayifyColors.white),
                             ),
                           ))
                       .toList(),
@@ -854,7 +854,7 @@ Future<void> _showCreateTeam(BuildContext ctx, List<Map<String,dynamic>>? preloa
                             value: s,
                             child: Text(s,
                                 style: const TextStyle(
-                                    color: SportSphereColors.white)),
+                                    color: PlayifyColors.white)),
                           ))
                       .toList(),
                   onChanged: (v) => setL(() => city = v),
@@ -884,12 +884,12 @@ Future<void> _showCreateTeam(BuildContext ctx, List<Map<String,dynamic>>? preloa
                           value: null,
                           child: Text('None',
                               style:
-                                  TextStyle(color: SportSphereColors.muted))),
+                                  TextStyle(color: PlayifyColors.muted))),
                       ...comps.map((comp) => DropdownMenuItem(
                             value: comp['id'].toString(),
                             child: Text(comp['name'].toString(),
                                 style: const TextStyle(
-                                    color: SportSphereColors.white)),
+                                    color: PlayifyColors.white)),
                           )),
                     ],
                     onChanged: (v) => setL(() => leagueId = v),
@@ -976,10 +976,10 @@ Future<void> _showCreatePlayer(BuildContext ctx, List<Map<String,dynamic>> teams
       context: ctx,
       builder: (_) => AlertDialog(
         backgroundColor: GrassForm.sheetBg,
-        title: const Text('No clubs yet', style: TextStyle(color: SportSphereColors.white)),
+        title: const Text('No clubs yet', style: TextStyle(color: PlayifyColors.white)),
         content: const Text(
           'Create a club/team first under Matches → Teams, then add the player and select their current club.',
-          style: TextStyle(color: SportSphereColors.muted),
+          style: TextStyle(color: PlayifyColors.muted),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
@@ -1022,14 +1022,14 @@ Future<void> _showCreatePlayer(BuildContext ctx, List<Map<String,dynamic>> teams
                 // Required: current club
                 const Text('Current club / team *',
                     style: TextStyle(
-                        color: SportSphereColors.muted, fontSize: 12)),
+                        color: PlayifyColors.muted, fontSize: 12)),
                 const SizedBox(height: 6),
                 DropdownButtonFormField<String>(
                   value: teamId,
-                  dropdownColor: SportSphereColors.surface,
+                  dropdownColor: PlayifyColors.surface,
                   decoration: InputDecoration(
                     labelText: 'Select existing club',
-                    labelStyle: const TextStyle(color: SportSphereColors.muted),
+                    labelStyle: const TextStyle(color: PlayifyColors.muted),
                     errorText: teamError,
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -1039,7 +1039,7 @@ Future<void> _showCreatePlayer(BuildContext ctx, List<Map<String,dynamic>> teams
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                       borderSide: const BorderSide(
-                          color: SportSphereColors.electricBlue),
+                          color: PlayifyColors.electricBlue),
                     ),
                   ),
                   items: teams
@@ -1049,7 +1049,7 @@ Future<void> _showCreatePlayer(BuildContext ctx, List<Map<String,dynamic>> teams
                               '${t['name'] ?? 'Team'}'
                               '${(t['city'] != null && '${t['city']}'.isNotEmpty) ? ' · ${t['city']}' : ''}',
                               style: const TextStyle(
-                                  color: SportSphereColors.white, fontSize: 14),
+                                  color: PlayifyColors.white, fontSize: 14),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ))
@@ -1075,7 +1075,7 @@ Future<void> _showCreatePlayer(BuildContext ctx, List<Map<String,dynamic>> teams
                       children: [
                         Text('${team['name'] ?? ''}',
                             style: const TextStyle(
-                                color: SportSphereColors.white,
+                                color: PlayifyColors.white,
                                 fontWeight: FontWeight.w800)),
                         const SizedBox(height: 4),
                         Text(
@@ -1088,7 +1088,7 @@ Future<void> _showCreatePlayer(BuildContext ctx, List<Map<String,dynamic>> teams
                               'Stadium: ${team['venue']}',
                           ].whereType<Object>().join(' · '),
                           style: const TextStyle(
-                              color: SportSphereColors.muted, fontSize: 12),
+                              color: PlayifyColors.muted, fontSize: 12),
                         ),
                       ],
                     ),
@@ -1119,10 +1119,10 @@ Future<void> _showCreatePlayer(BuildContext ctx, List<Map<String,dynamic>> teams
                   Expanded(
                       child: DropdownButtonFormField<String>(
                     value: position,
-                    dropdownColor: SportSphereColors.surface,
+                    dropdownColor: PlayifyColors.surface,
                     decoration: const InputDecoration(
                         labelText: 'Position',
-                        labelStyle: TextStyle(color: SportSphereColors.muted)),
+                        labelStyle: TextStyle(color: PlayifyColors.muted)),
                     items: [
                       'Goalkeeper',
                       'Defender',
@@ -1135,7 +1135,7 @@ Future<void> _showCreatePlayer(BuildContext ctx, List<Map<String,dynamic>> teams
                             value: p,
                             child: Text(p,
                                 style: const TextStyle(
-                                    color: SportSphereColors.white))))
+                                    color: PlayifyColors.white))))
                         .toList(),
                     onChanged: (v) =>
                         setL(() => position = v ?? position),
@@ -1162,11 +1162,11 @@ Future<void> _showCreatePlayer(BuildContext ctx, List<Map<String,dynamic>> teams
                           : 'DOB: $dob',
                       style: TextStyle(
                           color: dob == null
-                              ? SportSphereColors.muted
-                              : SportSphereColors.white,
+                              ? PlayifyColors.muted
+                              : PlayifyColors.white,
                           fontSize: 13)),
                   trailing: const Icon(Icons.calendar_today_rounded,
-                      color: SportSphereColors.electricBlue, size: 18),
+                      color: PlayifyColors.electricBlue, size: 18),
                   onTap: () async {
                     final d = await showDatePicker(
                         context: c,
@@ -1271,28 +1271,28 @@ Future<void> _showCreateCoach(BuildContext ctx, List<Map<String,dynamic>> teams)
         ]),
         _AdminField(controller:name, label:'Display Name'),
         CountryPickerField(label:'Nationality', value:nationality, onChanged:(v)=>setL(()=>nationality=v)),
-        DropdownButtonFormField<String>(value:coachRole, dropdownColor:SportSphereColors.surface,
-          decoration:const InputDecoration(labelText:'Role', labelStyle:TextStyle(color:SportSphereColors.muted)),
+        DropdownButtonFormField<String>(value:coachRole, dropdownColor:PlayifyColors.surface,
+          decoration:const InputDecoration(labelText:'Role', labelStyle:TextStyle(color:PlayifyColors.muted)),
           items:['head_coach','assistant_coach','goalkeeper_coach','fitness_coach',
                  'analyst','scout','physio','technical_director']
               .map((r)=>DropdownMenuItem(value:r, child:Text(r.replaceAll('_',' ').split(' ')
                   .map((w)=>w[0].toUpperCase()+w.substring(1)).join(' '),
-                  style:const TextStyle(color:SportSphereColors.white)))).toList(),
+                  style:const TextStyle(color:PlayifyColors.white)))).toList(),
           onChanged:(v)=>setL(()=>coachRole=v??coachRole)),
         ListTile(contentPadding:EdgeInsets.zero,
           title:Text(dob==null?'Date of Birth (optional)':'DOB: $dob',
-              style:TextStyle(color:dob==null?SportSphereColors.muted:SportSphereColors.white, fontSize:13)),
-          trailing:const Icon(Icons.calendar_today_rounded, color:SportSphereColors.electricBlue, size:18),
+              style:TextStyle(color:dob==null?PlayifyColors.muted:PlayifyColors.white, fontSize:13)),
+          trailing:const Icon(Icons.calendar_today_rounded, color:PlayifyColors.electricBlue, size:18),
           onTap:() async {
             final d=await showDatePicker(context:c,
               initialDate:DateTime(1975,1,1), firstDate:DateTime(1940), lastDate:DateTime.now());
             if(d!=null) setL(()=>dob='${d.year}-${d.month.toString().padLeft(2,'0')}-${d.day.toString().padLeft(2,'0')}');
           }),
         if(teams.isNotEmpty) DropdownButtonFormField<String?>(value:teamId,
-          dropdownColor:SportSphereColors.surface,
-          decoration:const InputDecoration(labelText:'Team', labelStyle:TextStyle(color:SportSphereColors.muted)),
-          items:[const DropdownMenuItem(value:null,child:Text('None',style:TextStyle(color:SportSphereColors.muted))),
-            ...teams.map((t)=>DropdownMenuItem(value:t['id'].toString(),child:Text(t['name'].toString(),style:const TextStyle(color:SportSphereColors.white))))],
+          dropdownColor:PlayifyColors.surface,
+          decoration:const InputDecoration(labelText:'Team', labelStyle:TextStyle(color:PlayifyColors.muted)),
+          items:[const DropdownMenuItem(value:null,child:Text('None',style:TextStyle(color:PlayifyColors.muted))),
+            ...teams.map((t)=>DropdownMenuItem(value:t['id'].toString(),child:Text(t['name'].toString(),style:const TextStyle(color:PlayifyColors.white))))],
           onChanged:(v)=>setL(()=>teamId=v)),
         const SizedBox(height:12),
         _UploadButton(url:photoUrl, uploading:uploading, label:'Upload Photo',
@@ -1340,27 +1340,27 @@ Future<void> _showCreateMatch(BuildContext ctx) async {
     builder:(_)=>StatefulBuilder(builder:(c,setL)=>Padding(
       padding:EdgeInsets.fromLTRB(20,20,20,MediaQuery.of(c).viewInsets.bottom+20),
       child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-        const Text('Schedule Fixture', style:TextStyle(color:SportSphereColors.white, fontSize:18, fontWeight:FontWeight.w800)),
+        const Text('Schedule Fixture', style:TextStyle(color:PlayifyColors.white, fontSize:18, fontWeight:FontWeight.w800)),
         const SizedBox(height:16),
 
         // Team selectors
         if(teams.isNotEmpty) ...[
           DropdownButtonFormField<Map<String,dynamic>?>(value:homeTeam,
-            dropdownColor:SportSphereColors.surface,
-            decoration:const InputDecoration(labelText:'Home Team *', labelStyle:TextStyle(color:SportSphereColors.muted)),
-            items:[const DropdownMenuItem(value:null,child:Text('Select home team',style:TextStyle(color:SportSphereColors.muted))),
-              ...teams.map((t)=>DropdownMenuItem(value:t,child:Text(t['name'].toString(),style:const TextStyle(color:SportSphereColors.white))))],
+            dropdownColor:PlayifyColors.surface,
+            decoration:const InputDecoration(labelText:'Home Team *', labelStyle:TextStyle(color:PlayifyColors.muted)),
+            items:[const DropdownMenuItem(value:null,child:Text('Select home team',style:TextStyle(color:PlayifyColors.muted))),
+              ...teams.map((t)=>DropdownMenuItem(value:t,child:Text(t['name'].toString(),style:const TextStyle(color:PlayifyColors.white))))],
             onChanged:(v)=>setL(()=>homeTeam=v)),
           const SizedBox(height:4),
           DropdownButtonFormField<Map<String,dynamic>?>(value:awayTeam,
-            dropdownColor:SportSphereColors.surface,
-            decoration:const InputDecoration(labelText:'Away Team *', labelStyle:TextStyle(color:SportSphereColors.muted)),
-            items:[const DropdownMenuItem(value:null,child:Text('Select away team',style:TextStyle(color:SportSphereColors.muted))),
-              ...teams.map((t)=>DropdownMenuItem(value:t,child:Text(t['name'].toString(),style:const TextStyle(color:SportSphereColors.white))))],
+            dropdownColor:PlayifyColors.surface,
+            decoration:const InputDecoration(labelText:'Away Team *', labelStyle:TextStyle(color:PlayifyColors.muted)),
+            items:[const DropdownMenuItem(value:null,child:Text('Select away team',style:TextStyle(color:PlayifyColors.muted))),
+              ...teams.map((t)=>DropdownMenuItem(value:t,child:Text(t['name'].toString(),style:const TextStyle(color:PlayifyColors.white))))],
             onChanged:(v)=>setL(()=>awayTeam=v)),
         ] else ...[
           const Text('No teams yet — create teams first in Competitions tab.',
-              style:TextStyle(color:SportSphereColors.danger, fontSize:13)),
+              style:TextStyle(color:PlayifyColors.danger, fontSize:13)),
           const SizedBox(height:8),
         ],
 
@@ -1376,8 +1376,8 @@ Future<void> _showCreateMatch(BuildContext ctx) async {
         // Kickoff date/time
         ListTile(contentPadding:EdgeInsets.zero,
           title:Text('Kickoff: ${kickoff.day}/${kickoff.month}/${kickoff.year}  ${kickoff.hour}:${kickoff.minute.toString().padLeft(2,"0")}',
-              style:const TextStyle(color:SportSphereColors.white, fontSize:13)),
-          trailing:const Icon(Icons.calendar_today_rounded, color:SportSphereColors.electricBlue),
+              style:const TextStyle(color:PlayifyColors.white, fontSize:13)),
+          trailing:const Icon(Icons.calendar_today_rounded, color:PlayifyColors.electricBlue),
           onTap:() async {
             final d=await showDatePicker(context:c,
               initialDate:kickoff,
@@ -1394,17 +1394,17 @@ Future<void> _showCreateMatch(BuildContext ctx) async {
           value: postToFeed,
           onChanged: (v) => setL(() => postToFeed = v),
           title: const Text('Post to Feed',
-              style: TextStyle(color: SportSphereColors.white, fontSize: 14)),
+              style: TextStyle(color: PlayifyColors.white, fontSize: 14)),
           subtitle: const Text(
               'Auto-create a feed Post (type=match) linking to this fixture',
-              style: TextStyle(color: SportSphereColors.muted, fontSize: 11)),
-          activeColor: SportSphereColors.sportGreen,
+              style: TextStyle(color: PlayifyColors.muted, fontSize: 11)),
+          activeColor: PlayifyColors.sportGreen,
           contentPadding: EdgeInsets.zero,
         ),
 
         const SizedBox(height:16),
         SizedBox(width:double.infinity, child:FilledButton(
-          style:FilledButton.styleFrom(backgroundColor:SportSphereColors.sportGreen, padding:const EdgeInsets.symmetric(vertical:14)),
+          style:FilledButton.styleFrom(backgroundColor:PlayifyColors.sportGreen, padding:const EdgeInsets.symmetric(vertical:14)),
           onPressed:() async {
             final home = homeTeam?['name']?.toString() ?? '';
             final away = awayTeam?['name']?.toString() ?? '';
@@ -1462,7 +1462,7 @@ Future<void> _showCreateMatch(BuildContext ctx) async {
 // ── Publish News ───────────────────────────────────────────────────────────────
 Future<void> _showNewsCompose(BuildContext ctx) {
   final titleCtrl=TextEditingController(), summaryCtrl=TextEditingController(),
-        bodyCtrl=TextEditingController(), sourceCtrl=TextEditingController(text:'SportSphere');
+        bodyCtrl=TextEditingController(), sourceCtrl=TextEditingController(text:'Playify');
   String category='updates';
   bool isBreaking=false;
   List<String> images=[];
@@ -1474,15 +1474,15 @@ Future<void> _showNewsCompose(BuildContext ctx) {
     builder:(_)=>StatefulBuilder(builder:(c,setL)=>Padding(
       padding:EdgeInsets.fromLTRB(20,20,20,MediaQuery.of(c).viewInsets.bottom+20),
       child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-        const Text('Publish News Article', style:TextStyle(color:SportSphereColors.white, fontSize:18, fontWeight:FontWeight.w800)),
+        const Text('Publish News Article', style:TextStyle(color:PlayifyColors.white, fontSize:18, fontWeight:FontWeight.w800)),
         const SizedBox(height:16),
         _AdminField(controller:titleCtrl, label:'Headline *'),
         _AdminField(controller:summaryCtrl, label:'Summary / Subtitle'),
         _AdminField(controller:bodyCtrl, label:'Full Article Body', maxLines:8),
         _AdminField(controller:sourceCtrl, label:'Source'),
-        DropdownButtonFormField<String>(value:category, dropdownColor:SportSphereColors.surface,
-          style:const TextStyle(color:SportSphereColors.white),
-          decoration:const InputDecoration(labelText:'Category', labelStyle:TextStyle(color:SportSphereColors.muted)),
+        DropdownButtonFormField<String>(value:category, dropdownColor:PlayifyColors.surface,
+          style:const TextStyle(color:PlayifyColors.white),
+          decoration:const InputDecoration(labelText:'Category', labelStyle:TextStyle(color:PlayifyColors.muted)),
           items:const[
             DropdownMenuItem(value:'updates', child:Text('Updates')),
             DropdownMenuItem(value:'breaking', child:Text('Breaking News')),
@@ -1493,19 +1493,19 @@ Future<void> _showNewsCompose(BuildContext ctx) {
           ],
           onChanged:(v)=>setL(()=>category=v??category)),
         SwitchListTile(value:isBreaking, onChanged:(v)=>setL(()=>isBreaking=v),
-          title:const Text('Breaking News', style:TextStyle(color:SportSphereColors.white)),
-          activeColor:SportSphereColors.danger, contentPadding:EdgeInsets.zero),
+          title:const Text('Breaking News', style:TextStyle(color:PlayifyColors.white)),
+          activeColor:PlayifyColors.danger, contentPadding:EdgeInsets.zero),
 
         // Images
         if(images.isNotEmpty) Wrap(spacing:8, children:images.map((u)=>Chip(
           label:const Text('Image', style:TextStyle(fontSize:11)),
-          backgroundColor:SportSphereColors.sportGreen.withValues(alpha:0.15),
-          labelStyle:const TextStyle(color:SportSphereColors.sportGreen),
-          deleteIcon:const Icon(Icons.close, size:14, color:SportSphereColors.danger),
+          backgroundColor:PlayifyColors.sportGreen.withValues(alpha:0.15),
+          labelStyle:const TextStyle(color:PlayifyColors.sportGreen),
+          deleteIcon:const Icon(Icons.close, size:14, color:PlayifyColors.danger),
           onDeleted:()=>setL(()=>images.remove(u)))).toList()),
 
         OutlinedButton.icon(
-          style:OutlinedButton.styleFrom(foregroundColor:SportSphereColors.muted),
+          style:OutlinedButton.styleFrom(foregroundColor:PlayifyColors.muted),
           icon: uploading ? const SizedBox(width:14,height:14,child:CircularProgressIndicator(strokeWidth:2))
                          : const Icon(Icons.photo_rounded, size:16),
           label:Text(uploading?'Uploading...':'Add Image / Photo', style:const TextStyle(fontSize:12)),
@@ -1680,7 +1680,7 @@ Future<void> _showCreatePost(BuildContext ctx) async {
                       padding: EdgeInsets.only(top: 8, bottom: 4),
                       child: Text('Options (min 2, max 6)',
                           style: TextStyle(
-                              color: SportSphereColors.muted, fontSize: 12)),
+                              color: PlayifyColors.muted, fontSize: 12)),
                     ),
                     for (var i = 0; i < pollOptionCtrls.length; i++)
                       Padding(
@@ -1695,7 +1695,7 @@ Future<void> _showCreatePost(BuildContext ctx) async {
                           if (pollOptionCtrls.length > 2)
                             IconButton(
                               icon: const Icon(Icons.remove_circle_outline,
-                                  color: SportSphereColors.danger, size: 20),
+                                  color: PlayifyColors.danger, size: 20),
                               onPressed: () => setL(() {
                                 pollOptionCtrls[i].dispose();
                                 pollOptionCtrls.removeAt(i);
@@ -1716,23 +1716,23 @@ Future<void> _showCreatePost(BuildContext ctx) async {
                     if (matches.isNotEmpty)
                       DropdownButtonFormField<String?>(
                         value: pollMatchId,
-                        dropdownColor: SportSphereColors.surface,
+                        dropdownColor: PlayifyColors.surface,
                         decoration: const InputDecoration(
                             labelText: 'Link to match (optional)',
                             labelStyle:
-                                TextStyle(color: SportSphereColors.muted)),
+                                TextStyle(color: PlayifyColors.muted)),
                         items: [
                           const DropdownMenuItem(
                               value: null,
                               child: Text('None',
                                   style: TextStyle(
-                                      color: SportSphereColors.muted))),
+                                      color: PlayifyColors.muted))),
                           ...matches.map((m) => DropdownMenuItem(
                                 value: m['id'].toString(),
                                 child: Text(
                                     '${m['homeTeam']} vs ${m['awayTeam']}',
                                     style: const TextStyle(
-                                        color: SportSphereColors.white)),
+                                        color: PlayifyColors.white)),
                               )),
                         ],
                         onChanged: (v) => setL(() => pollMatchId = v),
@@ -1746,28 +1746,28 @@ Future<void> _showCreatePost(BuildContext ctx) async {
                         child: Text(
                             'No matches available — prediction will be saved without a match link.',
                             style: TextStyle(
-                                color: SportSphereColors.muted, fontSize: 12)),
+                                color: PlayifyColors.muted, fontSize: 12)),
                       )
                     else
                       DropdownButtonFormField<String?>(
                         value: predMatchId,
-                        dropdownColor: SportSphereColors.surface,
+                        dropdownColor: PlayifyColors.surface,
                         decoration: const InputDecoration(
                             labelText: 'Match *',
                             labelStyle:
-                                TextStyle(color: SportSphereColors.muted)),
+                                TextStyle(color: PlayifyColors.muted)),
                         items: [
                           const DropdownMenuItem(
                               value: null,
                               child: Text('Select match',
                                   style: TextStyle(
-                                      color: SportSphereColors.muted))),
+                                      color: PlayifyColors.muted))),
                           ...matches.map((m) => DropdownMenuItem(
                                 value: m['id'].toString(),
                                 child: Text(
                                     '${m['homeTeam']} vs ${m['awayTeam']}',
                                     style: const TextStyle(
-                                        color: SportSphereColors.white)),
+                                        color: PlayifyColors.white)),
                               )),
                         ],
                         onChanged: (v) => setL(() => predMatchId = v),
@@ -1776,7 +1776,7 @@ Future<void> _showCreatePost(BuildContext ctx) async {
                       padding: EdgeInsets.only(top: 12, bottom: 4),
                       child: Text('Predicted winner',
                           style: TextStyle(
-                              color: SportSphereColors.muted, fontSize: 12)),
+                              color: PlayifyColors.muted, fontSize: 12)),
                     ),
                     Wrap(spacing: 8, children: [
                       ChoiceChip(
@@ -1808,7 +1808,7 @@ Future<void> _showCreatePost(BuildContext ctx) async {
                         padding: EdgeInsets.symmetric(horizontal: 8),
                         child: Text(':',
                             style: TextStyle(
-                                color: SportSphereColors.white,
+                                color: PlayifyColors.white,
                                 fontSize: 20)),
                       ),
                       Expanded(
@@ -2095,7 +2095,7 @@ Future<void> _showPostMatchToFeed(BuildContext ctx, Map<String, dynamic> m) asyn
             children: [
               const Text('Post Match to Feed',
                   style: TextStyle(
-                      color: SportSphereColors.white,
+                      color: PlayifyColors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.w800)),
               const SizedBox(height: 12),
@@ -2109,7 +2109,7 @@ Future<void> _showPostMatchToFeed(BuildContext ctx, Map<String, dynamic> m) asyn
                 width: double.infinity,
                 child: FilledButton(
                   style: FilledButton.styleFrom(
-                      backgroundColor: SportSphereColors.electricBlue,
+                      backgroundColor: PlayifyColors.electricBlue,
                       padding: const EdgeInsets.symmetric(vertical: 14)),
                   onPressed: confirmed
                       ? null
@@ -2188,7 +2188,7 @@ Future<void> _showCreatePollForMatch(
             children: [
               const Text('Create Poll',
                   style: TextStyle(
-                      color: SportSphereColors.white,
+                      color: PlayifyColors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.w800)),
               const SizedBox(height: 12),
@@ -2197,7 +2197,7 @@ Future<void> _showCreatePollForMatch(
                 padding: EdgeInsets.only(top: 8, bottom: 4),
                 child: Text('Options',
                     style: TextStyle(
-                        color: SportSphereColors.muted, fontSize: 12)),
+                        color: PlayifyColors.muted, fontSize: 12)),
               ),
               for (var i = 0; i < optCtrls.length; i++)
                 Padding(
@@ -2211,7 +2211,7 @@ Future<void> _showCreatePollForMatch(
                     if (optCtrls.length > 2)
                       IconButton(
                         icon: const Icon(Icons.remove_circle_outline,
-                            color: SportSphereColors.danger, size: 20),
+                            color: PlayifyColors.danger, size: 20),
                         onPressed: () => setL(() {
                           optCtrls[i].dispose();
                           optCtrls.removeAt(i);
@@ -2234,7 +2234,7 @@ Future<void> _showCreatePollForMatch(
                 width: double.infinity,
                 child: FilledButton(
                   style: FilledButton.styleFrom(
-                      backgroundColor: SportSphereColors.sportGreen,
+                      backgroundColor: PlayifyColors.sportGreen,
                       padding: const EdgeInsets.symmetric(vertical: 14)),
                   onPressed: posting
                       ? null
@@ -2333,7 +2333,7 @@ Future<void> _showCreatePredictionForMatch(
               Text(
                 'Predict: ${m['homeTeam']} vs ${m['awayTeam']}',
                 style: const TextStyle(
-                    color: SportSphereColors.white,
+                    color: PlayifyColors.white,
                     fontSize: 16,
                     fontWeight: FontWeight.w800),
               ),
@@ -2348,7 +2348,7 @@ Future<void> _showCreatePredictionForMatch(
                     padding: EdgeInsets.symmetric(horizontal: 8),
                     child: Text(':',
                         style: TextStyle(
-                            color: SportSphereColors.white, fontSize: 20))),
+                            color: PlayifyColors.white, fontSize: 20))),
                 Expanded(
                     child: _AdminField(
                         controller: awayCtrl,
@@ -2378,7 +2378,7 @@ Future<void> _showCreatePredictionForMatch(
                 width: double.infinity,
                 child: FilledButton(
                   style: FilledButton.styleFrom(
-                      backgroundColor: SportSphereColors.sportOrange,
+                      backgroundColor: PlayifyColors.sportOrange,
                       padding: const EdgeInsets.symmetric(vertical: 14)),
                   onPressed: posting
                       ? null
@@ -2476,7 +2476,7 @@ class _UploadButton extends StatelessWidget {
 
 class _Label extends StatelessWidget {
   final String t; const _Label(this.t);
-  @override Widget build(BuildContext context)=>Text(t,style:TextStyle(color:SportSphereColors.muted.withValues(alpha:0.7),fontSize:11,fontWeight:FontWeight.w800,letterSpacing:1.1));
+  @override Widget build(BuildContext context)=>Text(t,style:TextStyle(color:PlayifyColors.muted.withValues(alpha:0.7),fontSize:11,fontWeight:FontWeight.w800,letterSpacing:1.1));
 }
 
 class _StatCard extends StatelessWidget {
@@ -2489,7 +2489,7 @@ class _StatCard extends StatelessWidget {
       Icon(icon,color:color,size:22),
       Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         Text(value,style:TextStyle(color:color,fontSize:24,fontWeight:FontWeight.w900,height:1)),
-        Text(label,style:const TextStyle(color:SportSphereColors.muted,fontSize:11)),
+        Text(label,style:const TextStyle(color:PlayifyColors.muted,fontSize:11)),
       ]),
     ]),
   );
@@ -2505,10 +2505,10 @@ class _ActionCard extends StatelessWidget {
       Container(width:42,height:42,decoration:BoxDecoration(shape:BoxShape.circle,color:color.withValues(alpha:0.12)),child:Icon(icon,color:color,size:20)),
       const SizedBox(width:12),
       Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Text(title,style:const TextStyle(color:SportSphereColors.white,fontWeight:FontWeight.w700,fontSize:14)),
-        Text(subtitle,style:const TextStyle(color:SportSphereColors.muted,fontSize:12)),
+        Text(title,style:const TextStyle(color:PlayifyColors.white,fontWeight:FontWeight.w700,fontSize:14)),
+        Text(subtitle,style:const TextStyle(color:PlayifyColors.muted,fontSize:12)),
       ])),
-      Icon(Icons.chevron_right_rounded,color:SportSphereColors.muted.withValues(alpha:0.5)),
+      Icon(Icons.chevron_right_rounded,color:PlayifyColors.muted.withValues(alpha:0.5)),
     ]),
   ));
 }
@@ -2519,7 +2519,7 @@ class _AddBar extends StatelessWidget {
   @override Widget build(BuildContext context)=>Padding(
     padding:const EdgeInsets.fromLTRB(16,12,16,8),
     child:SizedBox(width:double.infinity,child:FilledButton.icon(
-      style:FilledButton.styleFrom(backgroundColor:SportSphereColors.electricBlue),
+      style:FilledButton.styleFrom(backgroundColor:PlayifyColors.electricBlue),
       icon:const Icon(Icons.add,size:16),label:Text(label),onPressed:onTap)));
 }
 
@@ -2527,11 +2527,11 @@ class _SearchField extends StatelessWidget {
   final TextEditingController controller; final String hint; final Function(String) onSearch;
   const _SearchField({required this.controller,required this.hint,required this.onSearch});
   @override Widget build(BuildContext context)=>TextField(
-    controller:controller,style:const TextStyle(color:SportSphereColors.white),
-    decoration:InputDecoration(hintText:hint,hintStyle:const TextStyle(color:SportSphereColors.muted),
-      prefixIcon:const Icon(Icons.search_rounded,color:SportSphereColors.electricBlue),
-      suffixIcon:IconButton(icon:const Icon(Icons.search,color:SportSphereColors.muted),onPressed:()=>onSearch(controller.text.trim())),
-      filled:true,fillColor:SportSphereColors.surface,border:OutlineInputBorder(borderRadius:BorderRadius.circular(12),borderSide:BorderSide.none)),
+    controller:controller,style:const TextStyle(color:PlayifyColors.white),
+    decoration:InputDecoration(hintText:hint,hintStyle:const TextStyle(color:PlayifyColors.muted),
+      prefixIcon:const Icon(Icons.search_rounded,color:PlayifyColors.electricBlue),
+      suffixIcon:IconButton(icon:const Icon(Icons.search,color:PlayifyColors.muted),onPressed:()=>onSearch(controller.text.trim())),
+      filled:true,fillColor:PlayifyColors.surface,border:OutlineInputBorder(borderRadius:BorderRadius.circular(12),borderSide:BorderSide.none)),
     onSubmitted:onSearch);
 }
 
@@ -2563,12 +2563,12 @@ class _AdminField extends StatelessWidget {
 
 class _Loader extends StatelessWidget {
   const _Loader();
-  @override Widget build(BuildContext ctx)=>const Center(child:CircularProgressIndicator(color:SportSphereColors.electricBlue,strokeWidth:2));
+  @override Widget build(BuildContext ctx)=>const Center(child:CircularProgressIndicator(color:PlayifyColors.electricBlue,strokeWidth:2));
 }
 
 class _Empty extends StatelessWidget {
   final String msg; const _Empty(this.msg);
-  @override Widget build(BuildContext ctx)=>Center(child:Text(msg,style:const TextStyle(color:SportSphereColors.muted),textAlign:TextAlign.center));
+  @override Widget build(BuildContext ctx)=>Center(child:Text(msg,style:const TextStyle(color:PlayifyColors.muted),textAlign:TextAlign.center));
 }
 
 class _Div extends StatelessWidget {
@@ -2669,10 +2669,10 @@ class _ProQueueTabState extends State<_ProQueueTab> {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
         child: Row(children: [
           Text('${_requests.length} pending',
-              style: const TextStyle(color: SportSphereColors.muted, fontSize: 13)),
+              style: const TextStyle(color: PlayifyColors.muted, fontSize: 13)),
           const Spacer(),
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: SportSphereColors.muted, size: 20),
+            icon: const Icon(Icons.refresh_rounded, color: PlayifyColors.muted, size: 20),
             onPressed: _load,
           ),
         ]),
@@ -2684,14 +2684,14 @@ class _ProQueueTabState extends State<_ProQueueTab> {
                 ? const Center(child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.verified_rounded, color: SportSphereColors.muted, size: 48),
+                      Icon(Icons.verified_rounded, color: PlayifyColors.muted, size: 48),
                       SizedBox(height: 12),
                       Text('No pending PRO requests',
-                          style: TextStyle(color: SportSphereColors.muted)),
+                          style: TextStyle(color: PlayifyColors.muted)),
                     ]))
                 : RefreshIndicator(
                     onRefresh: _load,
-                    color: SportSphereColors.electricBlue,
+                    color: PlayifyColors.electricBlue,
                     child: ListView.separated(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
                       itemCount: _requests.length,
@@ -2715,28 +2715,28 @@ class _ProQueueTabState extends State<_ProQueueTab> {
                           ),
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Row(children: [
-                              _Chip(role.toString().toUpperCase(), SportSphereColors.electricBlue),
+                              _Chip(role.toString().toUpperCase(), PlayifyColors.electricBlue),
                               const SizedBox(width: 6),
-                              _Chip(src, SportSphereColors.muted),
+                              _Chip(src, PlayifyColors.muted),
                               const Spacer(),
                               if (created != null)
                                 Text('${created.day}/${created.month}/${created.year}',
-                                    style: const TextStyle(color: SportSphereColors.muted, fontSize: 11)),
+                                    style: const TextStyle(color: PlayifyColors.muted, fontSize: 11)),
                             ]),
                             const SizedBox(height: 8),
                             Text('User: ${uid.toString().length > 24 ? '${uid.toString().substring(0, 24)}…' : uid}',
-                                style: const TextStyle(color: SportSphereColors.muted, fontSize: 12)),
+                                style: const TextStyle(color: PlayifyColors.muted, fontSize: 12)),
                             if (notes.toString().isNotEmpty) ...[
                               const SizedBox(height: 4),
                               Text(notes.toString(),
-                                  style: const TextStyle(color: SportSphereColors.white, fontSize: 13, height: 1.4)),
+                                  style: const TextStyle(color: PlayifyColors.white, fontSize: 13, height: 1.4)),
                             ],
                             const SizedBox(height: 12),
                             Row(children: [
                               Expanded(child: OutlinedButton.icon(
                                 style: OutlinedButton.styleFrom(
-                                  foregroundColor: SportSphereColors.danger,
-                                  side: BorderSide(color: SportSphereColors.danger.withValues(alpha: 0.5)),
+                                  foregroundColor: PlayifyColors.danger,
+                                  side: BorderSide(color: PlayifyColors.danger.withValues(alpha: 0.5)),
                                   padding: const EdgeInsets.symmetric(vertical: 8),
                                 ),
                                 onPressed: () => _decide(r, 'rejected'),
@@ -2746,7 +2746,7 @@ class _ProQueueTabState extends State<_ProQueueTab> {
                               const SizedBox(width: 10),
                               Expanded(child: FilledButton.icon(
                                 style: FilledButton.styleFrom(
-                                  backgroundColor: SportSphereColors.sportGreen,
+                                  backgroundColor: PlayifyColors.sportGreen,
                                   padding: const EdgeInsets.symmetric(vertical: 8),
                                 ),
                                 onPressed: () => _decide(r, 'approved'),

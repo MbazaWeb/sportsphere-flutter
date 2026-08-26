@@ -27,7 +27,7 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
         lastName: '',
         handle: '',
         fanOf: '',
-        fanOfAccent: SportSphereColors.electricBlue,
+        fanOfAccent: PlayifyColors.electricBlue,
         bio: '',
         sport: '',
         location: '',
@@ -52,10 +52,10 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
 
     if (user == null) {
       return const Scaffold(
-        backgroundColor: SportSphereColors.background,
+        backgroundColor: PlayifyColors.background,
         body: Center(
             child: CircularProgressIndicator(
-                color: SportSphereColors.electricBlue, strokeWidth: 2)),
+                color: PlayifyColors.electricBlue, strokeWidth: 2)),
       );
     }
 
@@ -119,7 +119,7 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
             handle: isAdmin ? 'playify' : user.handle,
             email: user.email,
             fanOf: '',
-            fanOfAccent: SportSphereColors.electricBlue,
+            fanOfAccent: PlayifyColors.electricBlue,
             bio: isAdmin
                 ? 'Official Playify platform account.'
                 : user.bio,

@@ -495,7 +495,7 @@ class _AdminLiveControlSheetState extends ConsumerState<_AdminLiveControlSheet>
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'SportSphere Official · Live control',
+                    'Playify Official · Live control',
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w900,
@@ -508,7 +508,7 @@ class _AdminLiveControlSheetState extends ConsumerState<_AdminLiveControlSheet>
           ),
           TabBar(
             controller: _tabs,
-            labelColor: SportSphereColors.electricBlue,
+            labelColor: PlayifyColors.electricBlue,
             unselectedLabelColor: Colors.white54,
             tabs: const [
               Tab(text: 'Matches'),
@@ -522,7 +522,7 @@ class _AdminLiveControlSheetState extends ConsumerState<_AdminLiveControlSheet>
                 _loading
                     ? const Center(child: CircularProgressIndicator())
                     : RefreshIndicator(
-                        color: SportSphereColors.electricBlue,
+                        color: PlayifyColors.electricBlue,
                         onRefresh: () => _loadMatches(initial: true),
                         child: ListView.builder(
                           padding: const EdgeInsets.all(12),

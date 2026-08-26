@@ -121,7 +121,7 @@ class AuthController extends Notifier<AuthState> {
   // ── Register ───────────────────────────────────────────────────────────────
   ///
   /// C1 — A password is ALWAYS required. The previous implementation fell
-  /// back to a hardcoded password (`'SportSphere2024!'`) when the caller
+  /// back to a hardcoded password (`'Playify2024!'`) when the caller
   /// passed an empty string, which silently created accounts with a known
   /// password. We now throw [ArgumentError] up front — the UI must collect
   /// and validate a password before calling this.

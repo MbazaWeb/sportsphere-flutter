@@ -1230,9 +1230,9 @@ class _VideoContentState extends State<_VideoContent> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.videocam_off_rounded, color: SportSphereColors.muted, size: 40),
+                Icon(Icons.videocam_off_rounded, color: PlayifyColors.muted, size: 40),
                 SizedBox(height: 8),
-                Text('Video unavailable', style: TextStyle(color: SportSphereColors.muted)),
+                Text('Video unavailable', style: TextStyle(color: PlayifyColors.muted)),
               ],
             ),
           ),
@@ -1258,7 +1258,7 @@ class _VideoContentState extends State<_VideoContent> {
                     color: const Color(0xFF071421),
                     child: const Center(
                       child: CircularProgressIndicator(
-                        color: SportSphereColors.electricBlue, strokeWidth: 2),
+                        color: PlayifyColors.electricBlue, strokeWidth: 2),
                     ),
                   ),
 
@@ -1288,7 +1288,7 @@ class _VideoContentState extends State<_VideoContent> {
                   _ctrl!,
                   allowScrubbing: true,
                   colors: VideoProgressColors(
-                    playedColor: SportSphereColors.electricBlue,
+                    playedColor: PlayifyColors.electricBlue,
                     bufferedColor: Colors.white24,
                     backgroundColor: Colors.black26,
                   ),
@@ -1656,7 +1656,7 @@ class _OutcomePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = activeColor ?? (label == 'X' ? SportSphereColors.sportOrange : SportSphereColors.sportGreen);
+    final color = activeColor ?? (label == 'X' ? PlayifyColors.sportOrange : PlayifyColors.sportGreen);
     return Expanded(child: Container(
       padding: const EdgeInsets.symmetric(vertical: 14),
       decoration: BoxDecoration(
@@ -2425,7 +2425,7 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
         ? widget.item.content!
         : '${widget.item.author} on Playify';
     try {
-      await Share.share(text, subject: 'SportSphere');
+      await Share.share(text, subject: 'Playify');
     } catch (e) {
       // OS share sheet failed or was cancelled — bail out WITHOUT inserting
       // a PostShare row.
@@ -2505,7 +2505,7 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
           label: 'Sign In',
           onPressed: () => context.push('/login'),
         ),
-        backgroundColor: SportSphereColors.surface,
+        backgroundColor: PlayifyColors.surface,
         duration: const Duration(seconds: 3),
       ),
     );

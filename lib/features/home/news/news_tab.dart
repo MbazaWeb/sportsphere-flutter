@@ -50,7 +50,7 @@ class _NewsTabState extends State<NewsTab> with SingleTickerProviderStateMixin {
               border: Border.all(color: const Color(0xFF168CFF).withValues(alpha: 0.45)),
             ),
             labelColor: Colors.white,
-            unselectedLabelColor: SportSphereColors.muted,
+            unselectedLabelColor: PlayifyColors.muted,
             labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
             tabs: const [
               Tab(text: 'News Updates'),

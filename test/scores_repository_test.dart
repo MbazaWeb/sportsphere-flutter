@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sportsphere_app/features/scores/data/scores_repository.dart';
+import 'package:playify/features/scores/data/scores_repository.dart';
 
 // ScoresRepository provides offline/fallback mock data used when Supabase
 // is unreachable. The live data path goes through fetchLiveMatches() in

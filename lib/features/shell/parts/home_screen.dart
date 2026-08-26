@@ -85,8 +85,8 @@ class _HomeTabBar extends StatelessWidget {
                       tabs[index],
                       style: TextStyle(
                         color: active
-                            ? SportSphereColors.white
-                            : SportSphereColors.muted,
+                            ? PlayifyColors.white
+                            : PlayifyColors.muted,
                         fontWeight:
                             active ? FontWeight.w700 : FontWeight.w500,
                         fontSize: 11,
@@ -165,7 +165,7 @@ class _TrendingContentState extends State<_TrendingContent> {
     }
     if (_rows.isEmpty) {
       return const Center(
-        child: Text('No trending posts yet', style: TextStyle(color: SportSphereColors.white54)),
+        child: Text('No trending posts yet', style: TextStyle(color: PlayifyColors.white54)),
       );
     }
     return RefreshIndicator(
@@ -210,11 +210,11 @@ class _TrendingContentState extends State<_TrendingContent> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: SportSphereColors.electricBlue.withValues(alpha: 0.15),
+                      color: PlayifyColors.electricBlue.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(postType.toUpperCase(),
-                        style: const TextStyle(color: SportSphereColors.electricBlue,
+                        style: const TextStyle(color: PlayifyColors.electricBlue,
                             fontSize: 10, fontWeight: FontWeight.w800)),
                   ),
                   const SizedBox(height: 8),
@@ -224,20 +224,20 @@ class _TrendingContentState extends State<_TrendingContent> {
                   Text(content,
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: SportSphereColors.white,
+                      style: const TextStyle(color: PlayifyColors.white,
                           fontSize: 14, fontWeight: FontWeight.w600, height: 1.4)),
                 const SizedBox(height: 10),
                 // Stats row
                 Row(children: [
-                  const Icon(Icons.favorite_rounded, size: 14, color: SportSphereColors.danger),
+                  const Icon(Icons.favorite_rounded, size: 14, color: PlayifyColors.danger),
                   const SizedBox(width: 4),
-                  Text('$likes', style: const TextStyle(color: SportSphereColors.muted, fontSize: 12)),
+                  Text('$likes', style: const TextStyle(color: PlayifyColors.muted, fontSize: 12)),
                   const SizedBox(width: 12),
-                  const Icon(Icons.chat_bubble_outline_rounded, size: 14, color: SportSphereColors.muted),
+                  const Icon(Icons.chat_bubble_outline_rounded, size: 14, color: PlayifyColors.muted),
                   const SizedBox(width: 4),
-                  Text('$comments', style: const TextStyle(color: SportSphereColors.muted, fontSize: 12)),
+                  Text('$comments', style: const TextStyle(color: PlayifyColors.muted, fontSize: 12)),
                   const Spacer(),
-                  const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: SportSphereColors.muted),
+                  const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: PlayifyColors.muted),
                 ]),
               ]),
             ),
@@ -375,7 +375,7 @@ class _CommunityContentState extends State<_CommunityContent> {
               hintText: 'Search communities',
               prefixIcon: const Icon(Icons.search),
               filled: true,
-              fillColor: SportSphereColors.white.withValues(alpha: 0.06),
+              fillColor: PlayifyColors.white.withValues(alpha: 0.06),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide.none,
@@ -388,15 +388,15 @@ class _CommunityContentState extends State<_CommunityContent> {
               padding: const EdgeInsets.all(32),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 Icon(Icons.groups_rounded, size: 56,
-                    color: SportSphereColors.muted.withValues(alpha: 0.4)),
+                    color: PlayifyColors.muted.withValues(alpha: 0.4)),
                 const SizedBox(height: 16),
                 const Text('No communities yet',
-                    style: TextStyle(color: SportSphereColors.white,
+                    style: TextStyle(color: PlayifyColors.white,
                         fontSize: 16, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 8),
                 const Text('Communities are created automatically for every team. Ask admin to add teams.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: SportSphereColors.muted, fontSize: 13)),
+                    style: TextStyle(color: PlayifyColors.muted, fontSize: 13)),
               ]),
             ),
           for (final g in groups)
@@ -410,28 +410,28 @@ class _CommunityContentState extends State<_CommunityContent> {
               child: ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 leading: CircleAvatar(
-                  backgroundColor: SportSphereColors.electricBlue.withValues(alpha: 0.15),
+                  backgroundColor: PlayifyColors.electricBlue.withValues(alpha: 0.15),
                   child: const Icon(Icons.groups_rounded,
-                      color: SportSphereColors.electricBlue, size: 20),
+                      color: PlayifyColors.electricBlue, size: 20),
                 ),
                 title: Text(
                   '${g['name'] ?? 'Community'}',
-                  style: const TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700),
+                  style: const TextStyle(color: PlayifyColors.white, fontWeight: FontWeight.w700),
                 ),
                 subtitle: Text(
                   '${g['memberCount'] ?? 0} members · ${g['topic'] ?? g['description'] ?? ''}',
-                  style: const TextStyle(color: SportSphereColors.muted, fontSize: 12),
+                  style: const TextStyle(color: PlayifyColors.muted, fontSize: 12),
                   maxLines: 1, overflow: TextOverflow.ellipsis,
                 ),
                 trailing: OutlinedButton(
                   onPressed: () => _toggle('${g['id']}'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: _joined.contains('${g['id']}')
-                        ? SportSphereColors.muted
-                        : SportSphereColors.electricBlue,
+                        ? PlayifyColors.muted
+                        : PlayifyColors.electricBlue,
                     side: BorderSide(color: _joined.contains('${g['id']}')
-                        ? SportSphereColors.muted.withValues(alpha: 0.3)
-                        : SportSphereColors.electricBlue.withValues(alpha: 0.5)),
+                        ? PlayifyColors.muted.withValues(alpha: 0.3)
+                        : PlayifyColors.electricBlue.withValues(alpha: 0.5)),
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -463,9 +463,9 @@ class _SimpleCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700)),
+          Text(title, style: const TextStyle(color: PlayifyColors.white, fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
-          Text(subtitle, style: const TextStyle(color: SportSphereColors.muted, fontSize: 12)),
+          Text(subtitle, style: const TextStyle(color: PlayifyColors.muted, fontSize: 12)),
         ],
       ),
     );

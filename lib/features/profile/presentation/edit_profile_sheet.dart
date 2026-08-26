@@ -279,7 +279,7 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
             ),
             const SizedBox(height: 14),
             // Admin: lock name and handle fields
-            if (widget.user.email != 'sportsphere.app@sportsphere.com') ...[
+            if (widget.user.email != 'playify.app@playify.com') ...[
               GrassTextField(
                 controller: _first,
                 label: 'First name *',
@@ -747,12 +747,12 @@ class _EntityEditSheetState extends State<EntityEditSheet> {
                   ? 'Date of birth (optional)'
                   : 'DOB: ${_dateOfBirth!.year}-${_dateOfBirth!.month.toString().padLeft(2, '0')}-${_dateOfBirth!.day.toString().padLeft(2, '0')}',
               style: TextStyle(
-                color: _dateOfBirth == null ? SportSphereColors.muted : SportSphereColors.white,
+                color: _dateOfBirth == null ? PlayifyColors.muted : PlayifyColors.white,
                 fontSize: 13,
               ),
             ),
             trailing: const Icon(Icons.calendar_today_rounded,
-                color: SportSphereColors.electricBlue, size: 18),
+                color: PlayifyColors.electricBlue, size: 18),
             onTap: () async {
               final d = await showDatePicker(
                 context: context,

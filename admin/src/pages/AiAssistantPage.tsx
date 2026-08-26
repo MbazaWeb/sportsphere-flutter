@@ -51,7 +51,7 @@ export default function AiAssistantPage() {
       summary: out.slice(0, 180),
       category: 'updates',
       status: 'published',
-      source: 'SportSphere AI',
+      source: 'Playify AI',
       publishedAt: new Date().toISOString(),
     })
     if (err) setError(err.message)

@@ -31,7 +31,7 @@ class _Header extends ConsumerWidget {
                   const Text(
                     'Playify',
                     style: TextStyle(
-                      color: SportSphereColors.white,
+                      color: PlayifyColors.white,
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.2,
@@ -112,8 +112,8 @@ class _Header extends ConsumerWidget {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: SportSphereColors.transparent,
-      barrierColor: SportSphereColors.black.withValues(alpha: 0.58),
+      backgroundColor: PlayifyColors.transparent,
+      barrierColor: PlayifyColors.black.withValues(alpha: 0.58),
       builder: (_) => _MessageSheet(
         initialPeerId: peerId,
         initialPeerName: peerName,
@@ -147,13 +147,13 @@ class _HeaderButton extends StatelessWidget {
             height: 42,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: SportSphereColors.surface.withValues(alpha: 0.72),
+              color: PlayifyColors.surface.withValues(alpha: 0.72),
               border: Border.all(
-                color: SportSphereColors.white.withValues(alpha: 0.12),
+                color: PlayifyColors.white.withValues(alpha: 0.12),
               ),
               boxShadow: [
                 BoxShadow(
-                  color: SportSphereColors.black.withValues(alpha: 0.18),
+                  color: PlayifyColors.black.withValues(alpha: 0.18),
                   blurRadius: 14,
                   spreadRadius: -4,
                 ),
@@ -161,7 +161,7 @@ class _HeaderButton extends StatelessWidget {
             ),
             child: Icon(
               icon,
-              color: SportSphereColors.white,
+              color: PlayifyColors.white,
               size: 21,
             ),
           ),
@@ -174,13 +174,13 @@ class _HeaderButton extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  color: SportSphereColors.electricBlue,
+                  color: PlayifyColors.electricBlue,
                 ),
                 child: Center(
                   child: Text(
                     badge!,
                     style: const TextStyle(
-                      color: SportSphereColors.white,
+                      color: PlayifyColors.white,
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
                     ),

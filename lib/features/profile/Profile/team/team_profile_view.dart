@@ -100,7 +100,7 @@ class TeamProfileModel {
     this.joinedDate,
   });
 
-  /// SportSphere Team row id (e.g. "team-123"). Null when the lookup did not
+  /// Playify Team row id (e.g. "team-123"). Null when the lookup did not
   /// resolve the underlying DB record (admin-only edit relies on this).
   final String? id;
   /// Linked auth User.id for the team's account (used by SocialGraph).
@@ -266,7 +266,7 @@ class _TeamProfileViewState extends State<TeamProfileView>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: SportSphereColors.background,
+      backgroundColor: PlayifyColors.background,
       body: NestedScrollView(
         headerSliverBuilder: (context, _) => [
           SliverToBoxAdapter(
@@ -459,7 +459,7 @@ class _TeamHeader extends StatelessWidget {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      SportSphereColors.background.withValues(alpha: 0.97),
+                      PlayifyColors.background.withValues(alpha: 0.97),
                     ],
                   ),
                 ),
@@ -528,7 +528,7 @@ class _TeamHeader extends StatelessWidget {
                           child: Text(
                             profile.name,
                             style: const TextStyle(
-                              color: SportSphereColors.white,
+                              color: PlayifyColors.white,
                               fontSize: 22,
                               fontWeight: FontWeight.w900,
                               height: 1.1,
@@ -547,7 +547,7 @@ class _TeamHeader extends StatelessWidget {
                     // @handle
                     Text(profile.atHandle,
                         style: const TextStyle(
-                          color: SportSphereColors.muted, fontSize: 14,
+                          color: PlayifyColors.muted, fontSize: 14,
                         )),
 
                     const SizedBox(height: 6),
@@ -556,7 +556,7 @@ class _TeamHeader extends StatelessWidget {
                     Text(
                       '${profile.sport} · ${profile.competition}',
                       style: TextStyle(
-                        color: SportSphereColors.muted.withValues(alpha: 0.80),
+                        color: PlayifyColors.muted.withValues(alpha: 0.80),
                         fontSize: 13,
                       ),
                     ),
@@ -567,13 +567,13 @@ class _TeamHeader extends StatelessWidget {
                     Row(
                       children: [
                         Icon(Icons.place_rounded,
-                            color: SportSphereColors.muted.withValues(alpha: 0.65),
+                            color: PlayifyColors.muted.withValues(alpha: 0.65),
                             size: 13),
                         const SizedBox(width: 4),
                         Text(
                           '${profile.city}, ${profile.country}',
                           style: TextStyle(
-                            color: SportSphereColors.muted.withValues(alpha: 0.65),
+                            color: PlayifyColors.muted.withValues(alpha: 0.65),
                             fontSize: 13,
                           ),
                         ),
@@ -599,7 +599,7 @@ class _TeamHeader extends StatelessWidget {
                           color: Colors.white.withValues(alpha: 0.12)),
                     ),
                     child: const Icon(Icons.info_outline_rounded,
-                        color: SportSphereColors.muted, size: 18),
+                        color: PlayifyColors.muted, size: 18),
                   ),
                 ),
               ),
@@ -697,7 +697,7 @@ class _FollowRow extends StatelessWidget {
                       ? null
                       : const LinearGradient(
                           colors: [
-                            SportSphereColors.electricBlue,
+                            PlayifyColors.electricBlue,
                             Color(0xFF0066DD),
                           ],
                         ),
@@ -712,7 +712,7 @@ class _FollowRow extends StatelessWidget {
                       ? null
                       : [
                           BoxShadow(
-                            color: SportSphereColors.electricBlue
+                            color: PlayifyColors.electricBlue
                                 .withValues(alpha: 0.30),
                             blurRadius: 14,
                             offset: const Offset(0, 4),
@@ -733,7 +733,7 @@ class _FollowRow extends StatelessWidget {
                           following ? 'Following' : 'Follow',
                           style: TextStyle(
                             color: following
-                                ? SportSphereColors.muted
+                                ? PlayifyColors.muted
                                 : Colors.white,
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
@@ -825,7 +825,7 @@ class _FollowRow extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.14)),
               ),
               child: const Icon(Icons.notifications_none_rounded,
-                  color: SportSphereColors.muted, size: 20),
+                  color: PlayifyColors.muted, size: 20),
             ),
           ),
         ),
@@ -845,13 +845,13 @@ class _TeamTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: SportSphereColors.background,
+      color: PlayifyColors.background,
       child: TabBar(
         controller: controller,
         isScrollable: true,
         tabAlignment: TabAlignment.start,
-        labelColor: SportSphereColors.white,
-        unselectedLabelColor: SportSphereColors.muted,
+        labelColor: PlayifyColors.white,
+        unselectedLabelColor: PlayifyColors.muted,
         labelStyle:
             const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
         unselectedLabelStyle:
@@ -924,12 +924,12 @@ class _SportlightsTab extends StatelessWidget {
                 color: profile.accentColor.withValues(alpha: 0.35)),
             const SizedBox(height: 16),
             const Text('No posts yet',
-                style: TextStyle(color: SportSphereColors.white,
+                style: TextStyle(color: PlayifyColors.white,
                     fontSize: 18, fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             Text('Posts from \${profile.name} will appear here.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: SportSphereColors.muted, fontSize: 14)),
+                style: const TextStyle(color: PlayifyColors.muted, fontSize: 14)),
           ],
         ),
       ),
@@ -957,7 +957,7 @@ class _AboutTab extends StatelessWidget {
             title: 'About',
             child: Text(profile.description,
                 style: const TextStyle(
-                  color: SportSphereColors.white,
+                  color: PlayifyColors.white,
                   fontSize: 15,
                   height: 1.55,
                 )),
@@ -979,25 +979,25 @@ class _AboutTab extends StatelessWidget {
               ),
               AboutRow(
                 icon: Icons.flag_rounded,
-                iconColor: SportSphereColors.sportOrange,
+                iconColor: PlayifyColors.sportOrange,
                 label: 'Country',
                 value: profile.country,
               ),
               AboutRow(
                 icon: Icons.place_rounded,
-                iconColor: SportSphereColors.electricBlue,
+                iconColor: PlayifyColors.electricBlue,
                 label: 'City',
                 value: profile.city,
               ),
               AboutRow(
                 icon: Icons.stadium_rounded,
-                iconColor: SportSphereColors.sportGreen,
+                iconColor: PlayifyColors.sportGreen,
                 label: 'Stadium',
                 value: profile.stadium,
               ),
               AboutRow(
                 icon: Icons.calendar_today_rounded,
-                iconColor: SportSphereColors.brightBlue,
+                iconColor: PlayifyColors.brightBlue,
                 label: 'Founded',
                 value: '${profile.founded}',
               ),
@@ -1024,7 +1024,7 @@ class _AboutTab extends StatelessWidget {
             title: 'Playify',
             child: AboutRow(
               icon: Icons.calendar_today_rounded,
-              iconColor: SportSphereColors.electricBlue,
+              iconColor: PlayifyColors.electricBlue,
               label: 'Joined',
               value: DateFormat('MMMM yyyy').format(profile.joinedDate!),
               isLast: true,
@@ -1099,7 +1099,7 @@ class _SquadSection extends StatelessWidget {
           child: Text(
             title.toUpperCase(),
             style: TextStyle(
-              color: SportSphereColors.muted.withValues(alpha: 0.75),
+              color: PlayifyColors.muted.withValues(alpha: 0.75),
               fontSize: 11,
               fontWeight: FontWeight.w800,
               letterSpacing: 1.2,
@@ -1194,7 +1194,7 @@ class _SquadRow extends StatelessWidget {
                               color: accent,
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                  color: SportSphereColors.background,
+                                  color: PlayifyColors.background,
                                   width: 1.5),
                             ),
                             child: Text(
@@ -1218,7 +1218,7 @@ class _SquadRow extends StatelessWidget {
                       children: [
                         Text(member.name,
                             style: const TextStyle(
-                              color: SportSphereColors.white,
+                              color: PlayifyColors.white,
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
                             )),
@@ -1227,14 +1227,14 @@ class _SquadRow extends StatelessWidget {
                           children: [
                             Text(member.subrole,
                                 style: const TextStyle(
-                                  color: SportSphereColors.muted,
+                                  color: PlayifyColors.muted,
                                   fontSize: 12,
                                 )),
                             if (member.nationality != null) ...[
                               Text(
                                 '  ·  ${member.nationality}',
                                 style: TextStyle(
-                                  color: SportSphereColors.muted
+                                  color: PlayifyColors.muted
                                       .withValues(alpha: 0.6),
                                   fontSize: 12,
                                 ),
@@ -1250,7 +1250,7 @@ class _SquadRow extends StatelessWidget {
                   if (isNavigable)
                     Icon(
                       Icons.chevron_right_rounded,
-                      color: SportSphereColors.muted.withValues(alpha: 0.5),
+                      color: PlayifyColors.muted.withValues(alpha: 0.5),
                       size: 20,
                     ),
                 ],
@@ -1333,14 +1333,14 @@ class _StatsTabState extends State<_StatsTab> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
-                  color: SportSphereColors.surface2,
+                  color: PlayifyColors.surface2,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
                 ),
                 child: Text(
                   stats.competition,
                   style: const TextStyle(
-                    color: SportSphereColors.muted,
+                    color: PlayifyColors.muted,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1392,7 +1392,7 @@ class _SeasonDropdown extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: SportSphereColors.surface2,
+        color: PlayifyColors.surface2,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
@@ -1400,14 +1400,14 @@ class _SeasonDropdown extends StatelessWidget {
         child: DropdownButton<String>(
           value: value,
           isExpanded: true,
-          dropdownColor: SportSphereColors.surface2,
+          dropdownColor: PlayifyColors.surface2,
           style: const TextStyle(
-            color: SportSphereColors.white,
+            color: PlayifyColors.white,
             fontSize: 13,
             fontWeight: FontWeight.w700,
           ),
           icon: const Icon(Icons.expand_more_rounded,
-              color: SportSphereColors.muted, size: 18),
+              color: PlayifyColors.muted, size: 18),
           items: options
               .map((o) => DropdownMenuItem(value: o, child: Text(o)))
               .toList(),
@@ -1456,7 +1456,7 @@ class _PositionBanner extends StatelessWidget {
               ),
               Text('League Position',
                   style: TextStyle(
-                    color: SportSphereColors.muted.withValues(alpha: 0.8),
+                    color: PlayifyColors.muted.withValues(alpha: 0.8),
                     fontSize: 12,
                   )),
             ],
@@ -1469,7 +1469,7 @@ class _PositionBanner extends StatelessWidget {
               Text(
                 '${stats.points}',
                 style: const TextStyle(
-                  color: SportSphereColors.white,
+                  color: PlayifyColors.white,
                   fontSize: 36,
                   fontWeight: FontWeight.w900,
                   height: 1,
@@ -1477,7 +1477,7 @@ class _PositionBanner extends StatelessWidget {
               ),
               const Text('Points',
                   style: TextStyle(
-                    color: SportSphereColors.muted,
+                    color: PlayifyColors.muted,
                     fontSize: 12,
                   )),
             ],
@@ -1490,7 +1490,7 @@ class _PositionBanner extends StatelessWidget {
               Text(
                 '${stats.matches}',
                 style: const TextStyle(
-                  color: SportSphereColors.white,
+                  color: PlayifyColors.white,
                   fontSize: 36,
                   fontWeight: FontWeight.w900,
                   height: 1,
@@ -1498,7 +1498,7 @@ class _PositionBanner extends StatelessWidget {
               ),
               const Text('Played',
                   style: TextStyle(
-                    color: SportSphereColors.muted,
+                    color: PlayifyColors.muted,
                     fontSize: 12,
                   )),
             ],
@@ -1542,15 +1542,15 @@ class _ResultBar extends StatelessWidget {
               children: [
                 Flexible(
                   flex: (wFrac * 100).round(),
-                  child: Container(color: SportSphereColors.sportGreen),
+                  child: Container(color: PlayifyColors.sportGreen),
                 ),
                 Flexible(
                   flex: (dFrac * 100).round(),
-                  child: Container(color: SportSphereColors.muted.withValues(alpha: 0.5)),
+                  child: Container(color: PlayifyColors.muted.withValues(alpha: 0.5)),
                 ),
                 Flexible(
                   flex: (lFrac * 100).round(),
-                  child: Container(color: SportSphereColors.danger),
+                  child: Container(color: PlayifyColors.danger),
                 ),
               ],
             ),
@@ -1560,11 +1560,11 @@ class _ResultBar extends StatelessWidget {
         // Labels
         Row(
           children: [
-            _ResultLabel(color: SportSphereColors.sportGreen, label: 'W', value: stats.wins),
+            _ResultLabel(color: PlayifyColors.sportGreen, label: 'W', value: stats.wins),
             const Spacer(),
-            _ResultLabel(color: SportSphereColors.muted, label: 'D', value: stats.draws),
+            _ResultLabel(color: PlayifyColors.muted, label: 'D', value: stats.draws),
             const Spacer(),
-            _ResultLabel(color: SportSphereColors.danger, label: 'L', value: stats.losses),
+            _ResultLabel(color: PlayifyColors.danger, label: 'L', value: stats.losses),
           ],
         ),
       ],
@@ -1597,7 +1597,7 @@ class _ResultLabel extends StatelessWidget {
         const SizedBox(width: 6),
         Text('$label $value',
             style: const TextStyle(
-              color: SportSphereColors.muted,
+              color: PlayifyColors.muted,
               fontSize: 13,
               fontWeight: FontWeight.w600,
             )),
@@ -1615,15 +1615,15 @@ class _TeamStatsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final entries = [
-      _Entry(Icons.calendar_today_rounded, SportSphereColors.electricBlue, 'Matches', '${stats.matches}'),
-      _Entry(Icons.check_circle_outline_rounded, SportSphereColors.sportGreen, 'Wins', '${stats.wins}'),
-      _Entry(Icons.remove_circle_outline_rounded, SportSphereColors.muted, 'Draws', '${stats.draws}'),
-      _Entry(Icons.cancel_outlined, SportSphereColors.danger, 'Losses', '${stats.losses}'),
+      _Entry(Icons.calendar_today_rounded, PlayifyColors.electricBlue, 'Matches', '${stats.matches}'),
+      _Entry(Icons.check_circle_outline_rounded, PlayifyColors.sportGreen, 'Wins', '${stats.wins}'),
+      _Entry(Icons.remove_circle_outline_rounded, PlayifyColors.muted, 'Draws', '${stats.draws}'),
+      _Entry(Icons.cancel_outlined, PlayifyColors.danger, 'Losses', '${stats.losses}'),
       _Entry(Icons.sports_soccer_rounded, const Color(0xFFE31B23), 'Goals For', '${stats.goalsFor}'),
-      _Entry(Icons.shield_outlined, SportSphereColors.sportOrange, 'Goals Against', '${stats.goalsAgainst}'),
-      _Entry(Icons.trending_up_rounded, SportSphereColors.brightBlue, 'Goal Difference',
+      _Entry(Icons.shield_outlined, PlayifyColors.sportOrange, 'Goals Against', '${stats.goalsAgainst}'),
+      _Entry(Icons.trending_up_rounded, PlayifyColors.brightBlue, 'Goal Difference',
           stats.goalDifference >= 0 ? '+${stats.goalDifference}' : '${stats.goalDifference}'),
-      _Entry(Icons.lock_outline_rounded, SportSphereColors.sportGreen, 'Clean Sheets', '${stats.cleanSheets}'),
+      _Entry(Icons.lock_outline_rounded, PlayifyColors.sportGreen, 'Clean Sheets', '${stats.cleanSheets}'),
     ];
 
     return Container(
@@ -1655,13 +1655,13 @@ class _TeamStatsGrid extends StatelessWidget {
                     Expanded(
                       child: Text(e.label,
                           style: const TextStyle(
-                            color: SportSphereColors.muted,
+                            color: PlayifyColors.muted,
                             fontSize: 14,
                           )),
                     ),
                     Text(e.value,
                         style: const TextStyle(
-                          color: SportSphereColors.white,
+                          color: PlayifyColors.white,
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
                         )),
@@ -1700,12 +1700,12 @@ class _SectionLabel extends StatelessWidget {
     return Row(
       children: [
         const Icon(Icons.bar_chart_rounded,
-            color: SportSphereColors.muted, size: 15),
+            color: PlayifyColors.muted, size: 15),
         const SizedBox(width: 7),
         Text(
           text.toUpperCase(),
           style: TextStyle(
-            color: SportSphereColors.muted.withValues(alpha: 0.75),
+            color: PlayifyColors.muted.withValues(alpha: 0.75),
             fontSize: 11,
             fontWeight: FontWeight.w800,
             letterSpacing: 1.1,

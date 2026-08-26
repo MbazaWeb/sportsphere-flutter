@@ -29,7 +29,7 @@ class UserProfile {
   final String country;
   final DateTime dob;
 
-  /// When the user joined SportSphere (distinct from dob).
+  /// When the user joined Playify (distinct from dob).
   final DateTime joinedDate;
 
   /// 'fan' by default. Future: 'player', 'coach', 'team', etc. via "Become Pro"

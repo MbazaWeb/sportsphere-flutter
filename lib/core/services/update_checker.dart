@@ -171,7 +171,7 @@ class _Banner extends StatelessWidget {
           onPressed: onUpdate,
           style: TextButton.styleFrom(
             backgroundColor: Colors.white,
-            foregroundColor: SportSphereColors.electricBlue,
+            foregroundColor: PlayifyColors.electricBlue,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             minimumSize: Size.zero,
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,

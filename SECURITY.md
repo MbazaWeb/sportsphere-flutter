@@ -10,7 +10,7 @@
 
 Please **do not** open a public GitHub issue for security vulnerabilities.
 
-Email: security@sportsphere.app
+Email: security@playify.app
 
 Include: description, reproduction steps, potential impact. We aim to respond within 48 hours.
 

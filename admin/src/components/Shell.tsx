@@ -9,7 +9,7 @@ const links = [
   { to: '/entities', label: 'League · Team · Player · Coach' },
   { to: '/matches', label: 'Match Updates' },
   { to: '/news', label: 'News Management' },
-  { to: '/sportsphere', label: 'SportSphere Posts' },
+  { to: '/playify', label: 'Playify Posts' },
   { to: '/moderation', label: 'Posts & Content Moderation' },
   { to: '/ai', label: 'AI Assistant' },
   { to: '/sync', label: 'Data Sync & APIs' },
@@ -21,7 +21,7 @@ export function Shell({ children }: { children: ReactNode }) {
       <aside className="sidebar">
         <div className="brand">
           <span>SS</span>
-          SportSphere Admin
+          Playify Admin
         </div>
         <nav className="nav">
           {links.map((l) => (

@@ -109,12 +109,12 @@ Deno.serve(async (req) => {
     }
 
     const system = {
-      news: "You are SportSphere news desk. Write concise Tanzania sports news in English.",
+      news: "You are Playify news desk. Write concise Tanzania sports news in English.",
       article: "You are a sports journalist. Write a structured article with headline and short paragraphs.",
       moderate: "You moderate a sports social app. Flag toxicity, spam, or false claims. Reply with verdict and reason.",
-      chat: "You are SportSphere assistant. Help fans, players and admins with the app.",
-      caption: "Write a short social post caption with 2-4 hashtags for SportSphere.",
-    }[mode as string] || "You are SportSphere assistant.";
+      chat: "You are Playify assistant. Help fans, players and admins with the app.",
+      caption: "Write a short social post caption with 2-4 hashtags for Playify.",
+    }[mode as string] || "You are Playify assistant.";
 
     const useAnthropic = provider === "anthropic";
     if (useAnthropic) {

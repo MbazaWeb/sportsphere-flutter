@@ -72,7 +72,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: SportSphereColors.background,
+      backgroundColor: PlayifyColors.background,
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
@@ -81,7 +81,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             top: -size.height * 0.12,
             left: -80,
             child: _AmbientOrb(
-              color: SportSphereColors.electricBlue,
+              color: PlayifyColors.electricBlue,
               size: size.width * 0.95,
             ),
           ),
@@ -89,7 +89,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             top: size.height * 0.25,
             right: -120,
             child: _AmbientOrb(
-              color: SportSphereColors.sportGreen,
+              color: PlayifyColors.sportGreen,
               size: size.width * 0.7,
             ),
           ),
@@ -97,7 +97,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             bottom: -80,
             left: size.width * 0.2,
             child: _AmbientOrb(
-              color: SportSphereColors.sportOrange,
+              color: PlayifyColors.sportOrange,
               size: size.width * 0.55,
             ),
           ),
@@ -173,7 +173,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                     _obscure
                                         ? Icons.visibility_off_outlined
                                         : Icons.visibility_outlined,
-                                    color: SportSphereColors.muted,
+                                    color: PlayifyColors.muted,
                                     size: 20,
                                   ),
                                 ),
@@ -241,7 +241,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                   child: const Text(
                                     'Forgot password?',
                                     style: const TextStyle(
-                                      color: SportSphereColors.electricBlue,
+                                      color: PlayifyColors.electricBlue,
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -289,7 +289,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                         child: Text(
                           'Continue as Guest',
                           style: TextStyle(
-                            color: SportSphereColors.muted
+                            color: PlayifyColors.muted
                                 .withValues(alpha: 0.85),
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
@@ -337,11 +337,11 @@ class _LogoSection extends StatelessWidget {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _tagWord('Connect.', SportSphereColors.electricBlue),
+            _tagWord('Connect.', PlayifyColors.electricBlue),
             const SizedBox(width: 6),
-            _tagWord('Compete.', SportSphereColors.sportGreen),
+            _tagWord('Compete.', PlayifyColors.sportGreen),
             const SizedBox(width: 6),
-            _tagWord('Celebrate.', SportSphereColors.sportOrange),
+            _tagWord('Celebrate.', PlayifyColors.sportOrange),
           ],
         ),
       ],
@@ -436,11 +436,11 @@ class _GlassFieldState extends State<_GlassField> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
         color: widget.focused
-            ? SportSphereColors.electricBlue.withValues(alpha: 0.06)
+            ? PlayifyColors.electricBlue.withValues(alpha: 0.06)
             : Colors.white.withValues(alpha: 0.04),
         border: Border.all(
           color: widget.focused
-              ? SportSphereColors.electricBlue.withValues(alpha: 0.55)
+              ? PlayifyColors.electricBlue.withValues(alpha: 0.55)
               : Colors.white.withValues(alpha: 0.10),
           width: widget.focused ? 1.5 : 1,
         ),
@@ -454,23 +454,23 @@ class _GlassFieldState extends State<_GlassField> {
           textInputAction: widget.textInputAction,
           onFieldSubmitted: widget.onSubmitted,
           style: const TextStyle(
-            color: SportSphereColors.white,
+            color: PlayifyColors.white,
             fontSize: 15,
             fontWeight: FontWeight.w500,
           ),
-          cursorColor: SportSphereColors.electricBlue,
+          cursorColor: PlayifyColors.electricBlue,
           decoration: InputDecoration(
             labelText: widget.label,
             labelStyle: TextStyle(
               color: widget.focused
-                  ? SportSphereColors.electricBlue
-                  : SportSphereColors.muted,
+                  ? PlayifyColors.electricBlue
+                  : PlayifyColors.muted,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
             hintText: widget.hint,
             hintStyle: TextStyle(
-              color: SportSphereColors.muted.withValues(alpha: 0.55),
+              color: PlayifyColors.muted.withValues(alpha: 0.55),
               fontSize: 14,
             ),
             prefixIcon: Padding(
@@ -478,8 +478,8 @@ class _GlassFieldState extends State<_GlassField> {
               child: Icon(
                 widget.prefixIcon,
                 color: widget.focused
-                    ? SportSphereColors.electricBlue
-                    : SportSphereColors.muted,
+                    ? PlayifyColors.electricBlue
+                    : PlayifyColors.muted,
                 size: 20,
               ),
             ),
@@ -528,11 +528,11 @@ class _PrimaryButton extends StatelessWidget {
           gradient: LinearGradient(
             colors: loading
                 ? [
-                    SportSphereColors.electricBlue.withValues(alpha: 0.6),
+                    PlayifyColors.electricBlue.withValues(alpha: 0.6),
                     const Color(0xFF0055BB).withValues(alpha: 0.6),
                   ]
                 : [
-                    SportSphereColors.electricBlue,
+                    PlayifyColors.electricBlue,
                     const Color(0xFF0066DD),
                   ],
           ),
@@ -540,7 +540,7 @@ class _PrimaryButton extends StatelessWidget {
               ? []
               : [
                   BoxShadow(
-                    color: SportSphereColors.electricBlue.withValues(alpha: 0.40),
+                    color: PlayifyColors.electricBlue.withValues(alpha: 0.40),
                     blurRadius: 22,
                     offset: const Offset(0, 8),
                   ),
@@ -600,12 +600,12 @@ class _OutlineButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: SportSphereColors.white, size: 20),
+            Icon(icon, color: PlayifyColors.white, size: 20),
             const SizedBox(width: 10),
             Text(
               label,
               style: const TextStyle(
-                color: SportSphereColors.white,
+                color: PlayifyColors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
               ),
@@ -642,7 +642,7 @@ class _OrDivider extends StatelessWidget {
           child: Text(
             'OR',
             style: TextStyle(
-              color: SportSphereColors.muted.withValues(alpha: 0.8),
+              color: PlayifyColors.muted.withValues(alpha: 0.8),
               fontSize: 12,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.2,
@@ -680,22 +680,22 @@ class _ErrorBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
       decoration: BoxDecoration(
-        color: SportSphereColors.danger.withValues(alpha: 0.12),
+        color: PlayifyColors.danger.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: SportSphereColors.danger.withValues(alpha: 0.35),
+          color: PlayifyColors.danger.withValues(alpha: 0.35),
         ),
       ),
       child: Row(
         children: [
           const Icon(Icons.error_outline_rounded,
-              color: SportSphereColors.danger, size: 18),
+              color: PlayifyColors.danger, size: 18),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
               style: const TextStyle(
-                color: SportSphereColors.white,
+                color: PlayifyColors.white,
                 fontSize: 13,
               ),
             ),
@@ -704,7 +704,7 @@ class _ErrorBanner extends StatelessWidget {
             onTap: onDismiss,
             child: const Icon(
               Icons.close_rounded,
-              color: SportSphereColors.muted,
+              color: PlayifyColors.muted,
               size: 18,
             ),
           ),
@@ -723,7 +723,7 @@ class _TermsText extends StatelessWidget {
       textAlign: TextAlign.center,
       text: TextSpan(
         style: TextStyle(
-          color: SportSphereColors.muted.withValues(alpha: 0.75),
+          color: PlayifyColors.muted.withValues(alpha: 0.75),
           fontSize: 12,
           height: 1.6,
         ),
@@ -732,7 +732,7 @@ class _TermsText extends StatelessWidget {
           const TextSpan(
             text: 'Terms of Service',
             style: const TextStyle(
-              color: SportSphereColors.electricBlue,
+              color: PlayifyColors.electricBlue,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -740,7 +740,7 @@ class _TermsText extends StatelessWidget {
           const TextSpan(
             text: 'Privacy Policy',
             style: const TextStyle(
-              color: SportSphereColors.electricBlue,
+              color: PlayifyColors.electricBlue,
               fontWeight: FontWeight.w600,
             ),
           ),

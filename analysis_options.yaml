@@ -1,4 +1,4 @@
-# SportSphere lint configuration
+# Playify lint configuration
 # Full rule reference: https://dart.dev/lints
 
 include: package:flutter_lints/flutter.yaml

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'app/app.dart' show SportSphereApp;
+import 'app/app.dart' show PlayifyApp;
 import 'app/config/env.dart';
 import 'core/notifications/local_notification_service.dart';
 import 'core/notifications/fcm_service.dart';
@@ -41,7 +41,7 @@ Future<void> main() async {
   // leaves the app stuck on the splash.
   unawaited(_initBackgroundServices());
 
-  runApp(const ProviderScope(child: SportSphereApp()));
+  runApp(const ProviderScope(child: PlayifyApp()));
 }
 
 Future<void> _initBackgroundServices() async {

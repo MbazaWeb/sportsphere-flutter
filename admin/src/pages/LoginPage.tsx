@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 export function LoginPage() {
-  const [email, setEmail] = useState('official@sportsphere.app')
+  const [email, setEmail] = useState('official@playify.app')
   const [password, setPassword] = useState('Test123')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -19,7 +19,7 @@ export function LoginPage() {
   return (
     <div className="login-wrap">
       <form className="login-card stack" onSubmit={onSubmit}>
-        <h1>SportSphere Admin</h1>
+        <h1>Playify Admin</h1>
         <p>Sign in with an admin / official account connected to the app APIs.</p>
         <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required />
         <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" required />

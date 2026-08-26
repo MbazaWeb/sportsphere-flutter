@@ -285,12 +285,12 @@ class _BulkUploadScreenState extends State<BulkUploadScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: SportSphereColors.background,
+      backgroundColor: PlayifyColors.background,
       appBar: AppBar(
-        backgroundColor: SportSphereColors.surface,
+        backgroundColor: PlayifyColors.surface,
         title: const Text('Bulk Upload', style: TextStyle(
-            color: SportSphereColors.white, fontWeight: FontWeight.w800)),
-        iconTheme: const IconThemeData(color: SportSphereColors.white),
+            color: PlayifyColors.white, fontWeight: FontWeight.w800)),
+        iconTheme: const IconThemeData(color: PlayifyColors.white),
         actions: [
           TextButton.icon(
             onPressed: _downloading ? null : _downloadTemplate,
@@ -304,17 +304,17 @@ class _BulkUploadScreenState extends State<BulkUploadScreen>
           const SizedBox(width: 4),
           TextButton.icon(
             onPressed: _pickAndParse,
-            icon: const Icon(Icons.upload_file_rounded, color: SportSphereColors.electricBlue, size: 18),
+            icon: const Icon(Icons.upload_file_rounded, color: PlayifyColors.electricBlue, size: 18),
             label: const Text('Upload File',
-                style: TextStyle(color: SportSphereColors.electricBlue, fontSize: 12)),
+                style: TextStyle(color: PlayifyColors.electricBlue, fontSize: 12)),
           ),
           const SizedBox(width: 8),
         ],
         bottom: TabBar(
           controller: _tabs,
-          labelColor: SportSphereColors.electricBlue,
-          unselectedLabelColor: SportSphereColors.muted,
-          indicatorColor: SportSphereColors.electricBlue,
+          labelColor: PlayifyColors.electricBlue,
+          unselectedLabelColor: PlayifyColors.muted,
+          indicatorColor: PlayifyColors.electricBlue,
           tabs: const [Tab(text: 'Teams'), Tab(text: 'Players'), Tab(text: 'Fixtures')],
         ),
       ),
@@ -341,17 +341,17 @@ class _BulkUploadScreenState extends State<BulkUploadScreen>
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: SportSphereColors.surface,
+            color: PlayifyColors.surface,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: SportSphereColors.electricBlue.withValues(alpha: 0.2)),
+            border: Border.all(color: PlayifyColors.electricBlue.withValues(alpha: 0.2)),
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               const Icon(Icons.info_outline_rounded,
-                  color: SportSphereColors.electricBlue, size: 16),
+                  color: PlayifyColors.electricBlue, size: 16),
               const SizedBox(width: 6),
               Text('$sheetName — Required Columns',
-                  style: const TextStyle(color: SportSphereColors.white,
+                  style: const TextStyle(color: PlayifyColors.white,
                       fontWeight: FontWeight.w700, fontSize: 14)),
             ]),
             const SizedBox(height: 10),
@@ -362,26 +362,26 @@ class _BulkUploadScreenState extends State<BulkUploadScreen>
                   margin: const EdgeInsets.only(top: 5, right: 8),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: col.required ? SportSphereColors.danger : SportSphereColors.muted,
+                    color: col.required ? PlayifyColors.danger : PlayifyColors.muted,
                   )),
                 SizedBox(width: 130,
                   child: Text(col.key, style: const TextStyle(
-                      color: SportSphereColors.electricBlue, fontSize: 12,
+                      color: PlayifyColors.electricBlue, fontSize: 12,
                       fontFamily: 'monospace'))),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(col.label, style: const TextStyle(color: SportSphereColors.white, fontSize: 12)),
+                  Text(col.label, style: const TextStyle(color: PlayifyColors.white, fontSize: 12)),
                   if (col.hint.isNotEmpty)
                     Text(col.hint, style: const TextStyle(
-                        color: SportSphereColors.muted, fontSize: 10)),
+                        color: PlayifyColors.muted, fontSize: 10)),
                 ])),
                 if (col.required)
                   const Text('*', style: TextStyle(
-                      color: SportSphereColors.danger, fontWeight: FontWeight.w900)),
+                      color: PlayifyColors.danger, fontWeight: FontWeight.w900)),
               ]),
             )),
             const SizedBox(height: 6),
             const Text('* Required  ● = Optional',
-                style: TextStyle(color: SportSphereColors.muted, fontSize: 10)),
+                style: TextStyle(color: PlayifyColors.muted, fontSize: 10)),
           ]),
         ),
 
@@ -398,8 +398,8 @@ class _BulkUploadScreenState extends State<BulkUploadScreen>
             icon: const Icon(Icons.download_rounded),
             label: const Text('Download Template (.xlsx)'),
             style: OutlinedButton.styleFrom(
-              foregroundColor: SportSphereColors.sportGreen,
-              side: const BorderSide(color: SportSphereColors.sportGreen),
+              foregroundColor: PlayifyColors.sportGreen,
+              side: const BorderSide(color: PlayifyColors.sportGreen),
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
           )),
@@ -408,10 +408,10 @@ class _BulkUploadScreenState extends State<BulkUploadScreen>
         // ── Preview table ────────────────────────────────────────────────
         if (rows.isNotEmpty) ...[
           Row(children: [
-            const Icon(Icons.table_rows_rounded, color: SportSphereColors.sportGreen, size: 16),
+            const Icon(Icons.table_rows_rounded, color: PlayifyColors.sportGreen, size: 16),
             const SizedBox(width: 6),
             Text('${rows.length} row${rows.length == 1 ? '' : 's'} ready to upload',
-                style: const TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w700)),
+                style: const TextStyle(color: PlayifyColors.white, fontWeight: FontWeight.w700)),
           ]),
           const SizedBox(height: 8),
           ClipRRect(
@@ -419,11 +419,11 @@ class _BulkUploadScreenState extends State<BulkUploadScreen>
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                headingRowColor: WidgetStatePropertyAll(SportSphereColors.surface),
-                dataRowColor: WidgetStatePropertyAll(SportSphereColors.background),
-                headingTextStyle: const TextStyle(color: SportSphereColors.electricBlue,
+                headingRowColor: WidgetStatePropertyAll(PlayifyColors.surface),
+                dataRowColor: WidgetStatePropertyAll(PlayifyColors.background),
+                headingTextStyle: const TextStyle(color: PlayifyColors.electricBlue,
                     fontSize: 11, fontWeight: FontWeight.w700),
-                dataTextStyle: const TextStyle(color: SportSphereColors.white, fontSize: 11),
+                dataTextStyle: const TextStyle(color: PlayifyColors.white, fontSize: 11),
                 columnSpacing: 16,
                 columns: headers.map((h) => DataColumn(label: Text(h))).toList(),
                 rows: rows.take(10).map((row) => DataRow(
@@ -437,7 +437,7 @@ class _BulkUploadScreenState extends State<BulkUploadScreen>
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text('+ ${rows.length - 10} more rows',
-                  style: const TextStyle(color: SportSphereColors.muted, fontSize: 11)),
+                  style: const TextStyle(color: PlayifyColors.muted, fontSize: 11)),
             ),
           const SizedBox(height: 12),
 
@@ -447,13 +447,13 @@ class _BulkUploadScreenState extends State<BulkUploadScreen>
               margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(
                 color: (result.startsWith('Uploaded') && !result.contains('failed')
-                    ? SportSphereColors.sportGreen : SportSphereColors.danger)
+                    ? PlayifyColors.sportGreen : PlayifyColors.danger)
                     .withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(result, style: TextStyle(
                 color: result.startsWith('Uploaded') && !result.contains('failed')
-                    ? SportSphereColors.sportGreen : SportSphereColors.danger,
+                    ? PlayifyColors.sportGreen : PlayifyColors.danger,
                 fontWeight: FontWeight.w600)),
             ),
 
@@ -465,7 +465,7 @@ class _BulkUploadScreenState extends State<BulkUploadScreen>
                 : const Icon(Icons.cloud_upload_rounded),
             label: Text(uploading ? 'Uploading...' : 'Upload ${rows.length} $sheetName'),
             style: FilledButton.styleFrom(
-              backgroundColor: SportSphereColors.electricBlue,
+              backgroundColor: PlayifyColors.electricBlue,
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
           )),
@@ -490,13 +490,13 @@ class _Step extends StatelessWidget {
         alignment: Alignment.center,
         decoration: const BoxDecoration(
           shape: BoxShape.circle,
-          color: SportSphereColors.electricBlue,
+          color: PlayifyColors.electricBlue,
         ),
         child: Text(n, style: const TextStyle(
             color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
       ),
       const SizedBox(width: 10),
-      Expanded(child: Text(text, style: const TextStyle(color: SportSphereColors.white, fontSize: 13))),
+      Expanded(child: Text(text, style: const TextStyle(color: PlayifyColors.white, fontSize: 13))),
     ]),
   );
 }

@@ -146,7 +146,7 @@ class _CompetitionProfileViewState extends State<CompetitionProfileView>
   Widget build(BuildContext context) {
     final isAdmin = AppAdmin.isSessionAdmin;
     return Scaffold(
-      backgroundColor: SportSphereColors.background,
+      backgroundColor: PlayifyColors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -157,7 +157,7 @@ class _CompetitionProfileViewState extends State<CompetitionProfileView>
                 children: [
                   IconButton(
                     icon: const Icon(Icons.arrow_back_rounded,
-                        color: SportSphereColors.white),
+                        color: PlayifyColors.white),
                     onPressed: () => Navigator.of(context).maybePop(),
                   ),
                   Expanded(
@@ -168,7 +168,7 @@ class _CompetitionProfileViewState extends State<CompetitionProfileView>
                               ? 'Competition'
                               : _str(_comp?['name'])),
                       style: const TextStyle(
-                        color: SportSphereColors.white,
+                        color: PlayifyColors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                       ),
@@ -177,7 +177,7 @@ class _CompetitionProfileViewState extends State<CompetitionProfileView>
                   ),
                   IconButton(
                     icon: const Icon(Icons.more_horiz_rounded,
-                        color: SportSphereColors.white),
+                        color: PlayifyColors.white),
                     onPressed: () => _showMore(context, isAdmin),
                   ),
                 ],
@@ -188,21 +188,21 @@ class _CompetitionProfileViewState extends State<CompetitionProfileView>
               const Padding(
                 padding: EdgeInsets.all(40),
                 child: CircularProgressIndicator(
-                    color: SportSphereColors.electricBlue, strokeWidth: 2),
+                    color: PlayifyColors.electricBlue, strokeWidth: 2),
               )
             else if (_error != null)
               Padding(
                 padding: const EdgeInsets.all(24),
                 child: Text(_error!,
                     style:
-                        const TextStyle(color: SportSphereColors.muted)),
+                        const TextStyle(color: PlayifyColors.muted)),
               )
             else ...[
               _IdentityCard(comp: _comp!),
               TabBar(
                 controller: _tab,
-                labelColor: SportSphereColors.white,
-                unselectedLabelColor: SportSphereColors.muted,
+                labelColor: PlayifyColors.white,
+                unselectedLabelColor: PlayifyColors.muted,
                 indicatorColor: const Color(0xFFFFD700),
                 tabs: const [
                   Tab(text: 'About'),
@@ -232,7 +232,7 @@ class _CompetitionProfileViewState extends State<CompetitionProfileView>
     final id = _str(_comp!['id']);
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: SportSphereColors.surface,
+      backgroundColor: PlayifyColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -253,9 +253,9 @@ class _CompetitionProfileViewState extends State<CompetitionProfileView>
             if (isAdmin && id.isNotEmpty)
               ListTile(
                 leading: const Icon(Icons.edit_outlined,
-                    color: SportSphereColors.electricBlue),
+                    color: PlayifyColors.electricBlue),
                 title: const Text('Edit Profile',
-                    style: TextStyle(color: SportSphereColors.white)),
+                    style: TextStyle(color: PlayifyColors.white)),
                 onTap: () async {
                   Navigator.pop(context);
                   await showEntityEditSheet(
@@ -269,9 +269,9 @@ class _CompetitionProfileViewState extends State<CompetitionProfileView>
               ),
             ListTile(
               leading: const Icon(Icons.share_outlined,
-                  color: SportSphereColors.white),
+                  color: PlayifyColors.white),
               title: const Text('Share Profile',
-                  style: TextStyle(color: SportSphereColors.white)),
+                  style: TextStyle(color: PlayifyColors.white)),
               onTap: () => Navigator.pop(context),
             ),
           ],
@@ -344,7 +344,7 @@ class _IdentityCard extends StatelessWidget {
                     child: Text(
                       name.isEmpty ? 'Competition' : name,
                       style: const TextStyle(
-                        color: SportSphereColors.white,
+                        color: PlayifyColors.white,
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                       ),
@@ -359,19 +359,19 @@ class _IdentityCard extends StatelessWidget {
                 if (season.isNotEmpty)
                   Text('Season: $season',
                       style: const TextStyle(
-                          color: SportSphereColors.muted, fontSize: 13)),
+                          color: PlayifyColors.muted, fontSize: 13)),
                 if (sport.isNotEmpty)
                   Text('Sport: ${_labelForSport(sport)}',
                       style: const TextStyle(
-                          color: SportSphereColors.muted, fontSize: 13)),
+                          color: PlayifyColors.muted, fontSize: 13)),
                 if (country.isNotEmpty)
                   Text('Country: $country',
                       style: const TextStyle(
-                          color: SportSphereColors.muted, fontSize: 13)),
+                          color: PlayifyColors.muted, fontSize: 13)),
                 if (compType.isNotEmpty)
                   Text('Type: $compType',
                       style: const TextStyle(
-                          color: SportSphereColors.muted, fontSize: 13)),
+                          color: PlayifyColors.muted, fontSize: 13)),
               ],
             ),
           ),
@@ -450,7 +450,7 @@ class _AboutTab extends StatelessWidget {
       children: [
         const Text('About',
             style: TextStyle(
-                color: SportSphereColors.white,
+                color: PlayifyColors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w800)),
         const SizedBox(height: 12),
@@ -465,15 +465,15 @@ class _AboutTab extends StatelessWidget {
             children: [
               for (final f in fields) ...[
                 Row(children: [
-                  Icon(f.$1, color: SportSphereColors.electricBlue, size: 18),
+                  Icon(f.$1, color: PlayifyColors.electricBlue, size: 18),
                   const SizedBox(width: 10),
                   Text(f.$2,
                       style: const TextStyle(
-                          color: SportSphereColors.muted, fontSize: 13)),
+                          color: PlayifyColors.muted, fontSize: 13)),
                   const Spacer(),
                   Text(f.$3,
                       style: const TextStyle(
-                          color: SportSphereColors.white,
+                          color: PlayifyColors.white,
                           fontSize: 13,
                           fontWeight: FontWeight.w600)),
                 ]),
@@ -524,7 +524,7 @@ class _StatsTab extends StatelessWidget {
       children: [
         const Text('Stats',
             style: TextStyle(
-                color: SportSphereColors.white,
+                color: PlayifyColors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w800)),
         const SizedBox(height: 12),
@@ -537,13 +537,13 @@ class _StatsTab extends StatelessWidget {
           childAspectRatio: 1.8,
           children: [
             _StatTile('Total matches', '$total', Icons.sports_soccer_rounded,
-                SportSphereColors.electricBlue),
+                PlayifyColors.electricBlue),
             _StatTile('Finished', '$finished', Icons.check_circle_outline,
-                SportSphereColors.sportGreen),
+                PlayifyColors.sportGreen),
             _StatTile('Live', '$live', Icons.sensors_rounded,
                 const Color(0xFFE31B23)),
             _StatTile('Upcoming', '$upcoming', Icons.schedule_rounded,
-                SportSphereColors.sportOrange),
+                PlayifyColors.sportOrange),
           ],
         ),
       ],
@@ -581,7 +581,7 @@ class _StatTile extends StatelessWidget {
                         fontWeight: FontWeight.w900)),
                 Text(label,
                     style: const TextStyle(
-                        color: SportSphereColors.muted, fontSize: 11)),
+                        color: PlayifyColors.muted, fontSize: 11)),
               ],
             ),
           ],
@@ -601,7 +601,7 @@ class _FixturesTab extends StatelessWidget {
     if (matches.isEmpty) {
       return const Center(
         child: Text('No fixtures yet',
-            style: TextStyle(color: SportSphereColors.muted)),
+            style: TextStyle(color: PlayifyColors.muted)),
       );
     }
     return ListView.separated(
@@ -623,7 +623,7 @@ class _FixturesTab extends StatelessWidget {
               Expanded(
                 child: Text('$home',
                     style: const TextStyle(
-                        color: SportSphereColors.white,
+                        color: PlayifyColors.white,
                         fontSize: 13,
                         fontWeight: FontWeight.w600),
                     textAlign: TextAlign.right,
@@ -634,7 +634,7 @@ class _FixturesTab extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: SportSphereColors.electricBlue.withValues(alpha: 0.1),
+                  color: PlayifyColors.electricBlue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Column(
@@ -642,18 +642,18 @@ class _FixturesTab extends StatelessWidget {
                   children: [
                     Text('$hs - $as',
                         style: const TextStyle(
-                            color: SportSphereColors.electricBlue,
+                            color: PlayifyColors.electricBlue,
                             fontWeight: FontWeight.w800)),
                     Text(status,
                         style: const TextStyle(
-                            color: SportSphereColors.muted, fontSize: 10)),
+                            color: PlayifyColors.muted, fontSize: 10)),
                   ],
                 ),
               ),
               Expanded(
                 child: Text('$away',
                     style: const TextStyle(
-                        color: SportSphereColors.white,
+                        color: PlayifyColors.white,
                         fontSize: 13,
                         fontWeight: FontWeight.w600),
                     overflow: TextOverflow.ellipsis),

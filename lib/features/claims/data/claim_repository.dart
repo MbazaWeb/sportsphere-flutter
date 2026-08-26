@@ -25,7 +25,7 @@ class ClaimRepository {
     final last = (profile?['last_name'] as String?) ?? '';
     final handle = (profile?['handle'] as String?) ?? user.id.substring(0, 8);
     final name = ('$first $last').trim().isEmpty ? handle : ('$first $last').trim();
-    final email = (profile?['email'] as String?) ?? user.email ?? '$handle@sportsphere.local';
+    final email = (profile?['email'] as String?) ?? user.email ?? '$handle@playify.local';
 
     await _sb.from('User').upsert({
       'id': user.id,

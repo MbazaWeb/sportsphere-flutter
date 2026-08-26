@@ -53,7 +53,7 @@ class _CreateScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: SportSphereColors.background,
+      backgroundColor: PlayifyColors.background,
       body: SafeArea(
         child: _CreateComposer(),
       ),
@@ -240,7 +240,7 @@ class _CreateComposerState extends State<_CreateComposer>
     // camera-recorded mp4/mov and silently fails on everything else.
     final source = await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: SportSphereColors.surface,
+      backgroundColor: PlayifyColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
@@ -249,26 +249,26 @@ class _CreateComposerState extends State<_CreateComposer>
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_library_rounded, color: SportSphereColors.electricBlue),
-              title: const Text('Photo from Gallery', style: TextStyle(color: SportSphereColors.white)),
+              leading: const Icon(Icons.photo_library_rounded, color: PlayifyColors.electricBlue),
+              title: const Text('Photo from Gallery', style: TextStyle(color: PlayifyColors.white)),
               onTap: () => Navigator.pop(sheetCtx, 'gallery_image'),
             ),
             // Camera not available on web
             if (!kIsWeb) ListTile(
-              leading: const Icon(Icons.videocam_rounded, color: SportSphereColors.sportGreen),
-              title: const Text('Record Video', style: TextStyle(color: SportSphereColors.white)),
+              leading: const Icon(Icons.videocam_rounded, color: PlayifyColors.sportGreen),
+              title: const Text('Record Video', style: TextStyle(color: PlayifyColors.white)),
               onTap: () => Navigator.pop(sheetCtx, 'camera_video'),
             ),
             if (!kIsWeb) ListTile(
-              leading: const Icon(Icons.photo_camera_rounded, color: SportSphereColors.sportOrange),
-              title: const Text('Take Photo', style: TextStyle(color: SportSphereColors.white)),
+              leading: const Icon(Icons.photo_camera_rounded, color: PlayifyColors.sportOrange),
+              title: const Text('Take Photo', style: TextStyle(color: PlayifyColors.white)),
               onTap: () => Navigator.pop(sheetCtx, 'camera_image'),
             ),
             ListTile(
               leading: const Icon(Icons.video_library_rounded, color: Color(0xFF9B6DFF)),
-              title: const Text('Video file (any format)', style: TextStyle(color: SportSphereColors.white)),
+              title: const Text('Video file (any format)', style: TextStyle(color: PlayifyColors.white)),
               subtitle: const Text('mp4, mov, mkv, webm, avi, 3gp, …',
-                  style: TextStyle(color: SportSphereColors.muted, fontSize: 11)),
+                  style: TextStyle(color: PlayifyColors.muted, fontSize: 11)),
               onTap: () => Navigator.pop(sheetCtx, 'any_video'),
             ),
           ],
@@ -748,8 +748,8 @@ class _ComposerHeader extends StatelessWidget {
               shape: BoxShape.circle,
               gradient: const LinearGradient(
                 colors: [
-                  SportSphereColors.electricBlue,
-                  SportSphereColors.sportGreen,
+                  PlayifyColors.electricBlue,
+                  PlayifyColors.sportGreen,
                 ],
               ),
             ),
@@ -758,7 +758,7 @@ class _ComposerHeader extends StatelessWidget {
               child: Container(
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  color: SportSphereColors.background,
+                  color: PlayifyColors.background,
                 ),
                 child: ClipOval(
                   child: Image.asset(
@@ -766,7 +766,7 @@ class _ComposerHeader extends StatelessWidget {
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => const Icon(
                       Icons.person_rounded,
-                      color: SportSphereColors.muted,
+                      color: PlayifyColors.muted,
                       size: 22,
                     ),
                   ),
@@ -784,7 +784,7 @@ class _ComposerHeader extends StatelessWidget {
                     const Text(
                       'You',
                       style: TextStyle(
-                        color: SportSphereColors.white,
+                        color: PlayifyColors.white,
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                       ),
@@ -797,18 +797,18 @@ class _ComposerHeader extends StatelessWidget {
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: SportSphereColors.sportGreen
+                        color: PlayifyColors.sportGreen
                             .withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: SportSphereColors.sportGreen
+                          color: PlayifyColors.sportGreen
                               .withValues(alpha: 0.35),
                         ),
                       ),
                       child: Text(
                         'Fan',
                         style: TextStyle(
-                          color: SportSphereColors.sportGreen,
+                          color: PlayifyColors.sportGreen,
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
                         ),
@@ -826,11 +826,11 @@ class _ComposerHeader extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: SportSphereColors.electricBlue
+                      color: PlayifyColors.electricBlue
                           .withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: SportSphereColors.electricBlue
+                        color: PlayifyColors.electricBlue
                             .withValues(alpha: 0.30),
                       ),
                     ),
@@ -839,14 +839,14 @@ class _ComposerHeader extends StatelessWidget {
                       children: [
                         Icon(
                           _audienceIcon(audience),
-                          color: SportSphereColors.electricBlue,
+                          color: PlayifyColors.electricBlue,
                           size: 12,
                         ),
                         const SizedBox(width: 4),
                         Text(
                           audience,
                           style: TextStyle(
-                            color: SportSphereColors.electricBlue,
+                            color: PlayifyColors.electricBlue,
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                           ),
@@ -854,7 +854,7 @@ class _ComposerHeader extends StatelessWidget {
                         const SizedBox(width: 3),
                         Icon(
                           Icons.expand_more_rounded,
-                          color: SportSphereColors.electricBlue,
+                          color: PlayifyColors.electricBlue,
                           size: 13,
                         ),
                       ],
@@ -871,7 +871,7 @@ class _ComposerHeader extends StatelessWidget {
               Text(
                 'New Post',
                 style: TextStyle(
-                  color: SportSphereColors.white,
+                  color: PlayifyColors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                 ),
@@ -897,7 +897,7 @@ class _ComposerHeader extends StatelessWidget {
   void _showAudiencePicker(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: SportSphereColors.transparent,
+      backgroundColor: PlayifyColors.transparent,
       builder: (_) => _AudiencePicker(
         selected: audience,
         onSelect: (v) {
@@ -915,7 +915,7 @@ class _AudiencePicker extends StatelessWidget {
   const _AudiencePicker({required this.selected, required this.onSelect});
 
   static const _options = [
-    (label: 'Everyone', icon: Icons.public_rounded, sub: 'Visible to all SportSphere users'),
+    (label: 'Everyone', icon: Icons.public_rounded, sub: 'Visible to all Playify users'),
     (label: 'Followers', icon: Icons.group_rounded, sub: 'Only people who follow you'),
     (label: 'Fans Only', icon: Icons.favorite_rounded, sub: 'Only your fans see this'),
   ];
@@ -934,21 +934,21 @@ class _AudiencePicker extends StatelessWidget {
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: active
-                    ? SportSphereColors.electricBlue.withValues(alpha: 0.10)
-                    : SportSphereColors.white.withValues(alpha: 0.04),
+                    ? PlayifyColors.electricBlue.withValues(alpha: 0.10)
+                    : PlayifyColors.white.withValues(alpha: 0.04),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: active
-                      ? SportSphereColors.electricBlue.withValues(alpha: 0.45)
-                      : SportSphereColors.white.withValues(alpha: 0.08),
+                      ? PlayifyColors.electricBlue.withValues(alpha: 0.45)
+                      : PlayifyColors.white.withValues(alpha: 0.08),
                 ),
               ),
               child: Row(
                 children: [
                   Icon(o.icon,
                       color: active
-                          ? SportSphereColors.electricBlue
-                          : SportSphereColors.muted,
+                          ? PlayifyColors.electricBlue
+                          : PlayifyColors.muted,
                       size: 22),
                   const SizedBox(width: 12),
                   Expanded(
@@ -958,13 +958,13 @@ class _AudiencePicker extends StatelessWidget {
                         Text(o.label,
                             style: TextStyle(
                               color: active
-                                  ? SportSphereColors.electricBlue
-                                  : SportSphereColors.white,
+                                  ? PlayifyColors.electricBlue
+                                  : PlayifyColors.white,
                               fontWeight: FontWeight.w700,
                             )),
                         Text(o.sub,
                             style: const TextStyle(
-                              color: SportSphereColors.muted,
+                              color: PlayifyColors.muted,
                               fontSize: 12,
                             )),
                       ],
@@ -972,7 +972,7 @@ class _AudiencePicker extends StatelessWidget {
                   ),
                   if (active)
                     Icon(Icons.check_circle_rounded,
-                        color: SportSphereColors.electricBlue, size: 20),
+                        color: PlayifyColors.electricBlue, size: 20),
                 ],
               ),
             ),
@@ -1007,12 +1007,12 @@ class _TextArea extends StatelessWidget {
       children: [
         Container(
           decoration: BoxDecoration(
-            color: SportSphereColors.white.withValues(alpha: 0.035),
+            color: PlayifyColors.white.withValues(alpha: 0.035),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: overLimit
-                  ? SportSphereColors.danger.withValues(alpha: 0.5)
-                  : SportSphereColors.white.withValues(alpha: 0.07),
+                  ? PlayifyColors.danger.withValues(alpha: 0.5)
+                  : PlayifyColors.white.withValues(alpha: 0.07),
             ),
           ),
           child: TextField(
@@ -1020,16 +1020,16 @@ class _TextArea extends StatelessWidget {
             maxLines: 6,
             minLines: 3,
             style: const TextStyle(
-              color: SportSphereColors.white,
+              color: PlayifyColors.white,
               fontSize: 16,
               height: 1.55,
             ),
-            cursorColor: SportSphereColors.electricBlue,
+            cursorColor: PlayifyColors.electricBlue,
             decoration: InputDecoration(
               hintText:
                   "What's happening in your world of sport? Use @ to mention someone…",
               hintStyle: TextStyle(
-                color: SportSphereColors.muted.withValues(alpha: 0.55),
+                color: PlayifyColors.muted.withValues(alpha: 0.55),
                 fontSize: 15,
                 height: 1.55,
               ),
@@ -1048,10 +1048,10 @@ class _TextArea extends StatelessWidget {
                 : '$charsLeft',
             style: TextStyle(
               color: overLimit
-                  ? SportSphereColors.danger
+                  ? PlayifyColors.danger
                   : nearLimit
-                      ? SportSphereColors.sportOrange
-                      : SportSphereColors.muted.withValues(alpha: 0.6),
+                      ? PlayifyColors.sportOrange
+                      : PlayifyColors.muted.withValues(alpha: 0.6),
               fontSize: 12,
               fontWeight:
                   nearLimit ? FontWeight.w700 : FontWeight.w400,
@@ -1091,7 +1091,7 @@ class _MediaStrip extends StatelessWidget {
                         borderRadius: BorderRadius.circular(14),
                         color: const Color(0xFF0B1626),
                         border: Border.all(
-                          color: SportSphereColors.white.withValues(alpha: 0.10),
+                          color: PlayifyColors.white.withValues(alpha: 0.10),
                         ),
                       ),
                       child: ClipRRect(
@@ -1101,7 +1101,7 @@ class _MediaStrip extends StatelessWidget {
                                 ? Container(color: Colors.black, child: const Center(child: Icon(Icons.play_circle_rounded, color: Colors.white, size: 32)))
                                 : Image.network(tiles[i], fit: BoxFit.cover,
                                     errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_rounded, color: Colors.white38, size: 32)))
-                            : const Icon(Icons.image_rounded, color: SportSphereColors.white38, size: 32),
+                            : const Icon(Icons.image_rounded, color: PlayifyColors.white38, size: 32),
                       ),
                     ),
                     Positioned(
@@ -1115,11 +1115,11 @@ class _MediaStrip extends StatelessWidget {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color:
-                                SportSphereColors.black.withValues(alpha: 0.65),
+                                PlayifyColors.black.withValues(alpha: 0.65),
                           ),
                           child: const Icon(
                             Icons.close_rounded,
-                            color: SportSphereColors.white,
+                            color: PlayifyColors.white,
                             size: 14,
                           ),
                         ),
@@ -1142,15 +1142,15 @@ class _MediaStrip extends StatelessWidget {
                   height: 100,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(14),
-                    color: SportSphereColors.white.withValues(alpha: 0.035),
+                    color: PlayifyColors.white.withValues(alpha: 0.035),
                     border: Border.all(
-                      color: SportSphereColors.white.withValues(alpha: 0.10),
+                      color: PlayifyColors.white.withValues(alpha: 0.10),
                       style: BorderStyle.solid,
                     ),
                   ),
                   child: const Icon(
                     Icons.add_rounded,
-                    color: SportSphereColors.muted,
+                    color: PlayifyColors.muted,
                   ),
                 ),
               ),
@@ -1282,7 +1282,7 @@ class _PollPanelState extends State<_PollPanel> {
   Widget build(BuildContext context) {
     return _ContentPanel(
       label: 'POLL',
-      color: SportSphereColors.electricBlue,
+      color: PlayifyColors.electricBlue,
       icon: Icons.poll_rounded,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1296,9 +1296,9 @@ class _PollPanelState extends State<_PollPanel> {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
-                      color: SportSphereColors.electricBlue.withValues(alpha: 0.12),
+                      color: PlayifyColors.electricBlue.withValues(alpha: 0.12),
                       border: Border.all(
-                        color: SportSphereColors.electricBlue.withValues(alpha: 0.35),
+                        color: PlayifyColors.electricBlue.withValues(alpha: 0.35),
                       ),
                     ),
                     child: Row(
@@ -1307,12 +1307,12 @@ class _PollPanelState extends State<_PollPanel> {
                         if (_loadingTeams)
                           const SizedBox(
                             width: 14, height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: SportSphereColors.electricBlue),
+                            child: CircularProgressIndicator(strokeWidth: 2, color: PlayifyColors.electricBlue),
                           )
                         else
-                          const Icon(Icons.groups_rounded, size: 16, color: SportSphereColors.electricBlue),
+                          const Icon(Icons.groups_rounded, size: 16, color: PlayifyColors.electricBlue),
                         const SizedBox(width: 6),
-                        const Text('From teams', style: TextStyle(color: SportSphereColors.electricBlue, fontSize: 12, fontWeight: FontWeight.w600)),
+                        const Text('From teams', style: TextStyle(color: PlayifyColors.electricBlue, fontSize: 12, fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),
@@ -1326,9 +1326,9 @@ class _PollPanelState extends State<_PollPanel> {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
-                      color: SportSphereColors.electricBlue.withValues(alpha: 0.12),
+                      color: PlayifyColors.electricBlue.withValues(alpha: 0.12),
                       border: Border.all(
-                        color: SportSphereColors.electricBlue.withValues(alpha: 0.35),
+                        color: PlayifyColors.electricBlue.withValues(alpha: 0.35),
                       ),
                     ),
                     child: Row(
@@ -1337,12 +1337,12 @@ class _PollPanelState extends State<_PollPanel> {
                         if (_loadingPlayers)
                           const SizedBox(
                             width: 14, height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: SportSphereColors.electricBlue),
+                            child: CircularProgressIndicator(strokeWidth: 2, color: PlayifyColors.electricBlue),
                           )
                         else
-                          const Icon(Icons.person_outline_rounded, size: 16, color: SportSphereColors.electricBlue),
+                          const Icon(Icons.person_outline_rounded, size: 16, color: PlayifyColors.electricBlue),
                         const SizedBox(width: 6),
-                        const Text('From players', style: TextStyle(color: SportSphereColors.electricBlue, fontSize: 12, fontWeight: FontWeight.w600)),
+                        const Text('From players', style: TextStyle(color: PlayifyColors.electricBlue, fontSize: 12, fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),
@@ -1369,7 +1369,7 @@ class _PollPanelState extends State<_PollPanel> {
                       onTap: () => widget.onRemoveOption(i),
                       child: Icon(
                         Icons.remove_circle_outline_rounded,
-                        color: SportSphereColors.danger.withValues(alpha: 0.75),
+                        color: PlayifyColors.danger.withValues(alpha: 0.75),
                         size: 22,
                       ),
                     ),
@@ -1385,14 +1385,14 @@ class _PollPanelState extends State<_PollPanel> {
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: SportSphereColors.electricBlue.withValues(alpha: 0.30)),
+                  border: Border.all(color: PlayifyColors.electricBlue.withValues(alpha: 0.30)),
                 ),
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.add_rounded, color: SportSphereColors.electricBlue, size: 18),
+                    Icon(Icons.add_rounded, color: PlayifyColors.electricBlue, size: 18),
                     SizedBox(width: 8),
-                    Text('Add option', style: TextStyle(color: SportSphereColors.electricBlue, fontSize: 13, fontWeight: FontWeight.w600)),
+                    Text('Add option', style: TextStyle(color: PlayifyColors.electricBlue, fontSize: 13, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ),
@@ -1415,17 +1415,17 @@ class _PollPanelState extends State<_PollPanel> {
                 onTap: () => _showPlayerPicker(context),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                  decoration: BoxDecoration(color: SportSphereColors.sportOrange.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(20), border: Border.all(color: SportSphereColors.sportOrange.withValues(alpha: 0.35))),
+                  decoration: BoxDecoration(color: PlayifyColors.sportOrange.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20), border: Border.all(color: PlayifyColors.sportOrange.withValues(alpha: 0.35))),
                   child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.person_rounded, color: SportSphereColors.sportOrange, size: 14), SizedBox(width: 5),
-                    Text('+ Player', style: TextStyle(color: SportSphereColors.sportOrange, fontSize: 12, fontWeight: FontWeight.w600))]),
+                    Icon(Icons.person_rounded, color: PlayifyColors.sportOrange, size: 14), SizedBox(width: 5),
+                    Text('+ Player', style: TextStyle(color: PlayifyColors.sportOrange, fontSize: 12, fontWeight: FontWeight.w600))]),
                 ),
               ),
             ]),
           ],
           const SizedBox(height: 14),
-          const Text('Poll duration', style: TextStyle(color: SportSphereColors.muted, fontSize: 12, fontWeight: FontWeight.w600)),
+          const Text('Poll duration', style: TextStyle(color: PlayifyColors.muted, fontSize: 12, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -1439,13 +1439,13 @@ class _PollPanelState extends State<_PollPanel> {
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
-                    color: active ? SportSphereColors.electricBlue : SportSphereColors.white.withValues(alpha: 0.06),
-                    border: Border.all(color: active ? SportSphereColors.electricBlue : SportSphereColors.white.withValues(alpha: 0.10)),
+                    color: active ? PlayifyColors.electricBlue : PlayifyColors.white.withValues(alpha: 0.06),
+                    border: Border.all(color: active ? PlayifyColors.electricBlue : PlayifyColors.white.withValues(alpha: 0.10)),
                   ),
                   child: Text(
                     d.label,
                     style: TextStyle(
-                      color: active ? SportSphereColors.white : SportSphereColors.muted,
+                      color: active ? PlayifyColors.white : PlayifyColors.muted,
                       fontSize: 12,
                       fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                     ),
@@ -1559,7 +1559,7 @@ class _PredictionPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return _ContentPanel(
       label: 'PREDICTION',
-      color: SportSphereColors.sportGreen,
+      color: PlayifyColors.sportGreen,
       icon: Icons.insights_rounded,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
@@ -1588,19 +1588,19 @@ class _PredictionPanel extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: SportSphereColors.black.withValues(alpha: 0.25),
+              color: PlayifyColors.black.withValues(alpha: 0.25),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: selectedMatch != null
-                    ? SportSphereColors.sportGreen.withValues(alpha: 0.5)
-                    : SportSphereColors.white.withValues(alpha: 0.10),
+                    ? PlayifyColors.sportGreen.withValues(alpha: 0.5)
+                    : PlayifyColors.white.withValues(alpha: 0.10),
               ),
             ),
             child: Row(children: [
               Icon(Icons.stadium_rounded,
                   color: selectedMatch != null
-                      ? SportSphereColors.sportGreen
-                      : SportSphereColors.muted,
+                      ? PlayifyColors.sportGreen
+                      : PlayifyColors.muted,
                   size: 18),
               const SizedBox(width: 10),
               Expanded(child: Text(
@@ -1610,12 +1610,12 @@ class _PredictionPanel extends StatelessWidget {
                         ? 'No upcoming matches'
                         : 'Select a match (optional)',
                 style: TextStyle(
-                  color: selectedMatch != null ? SportSphereColors.white : SportSphereColors.muted,
+                  color: selectedMatch != null ? PlayifyColors.white : PlayifyColors.muted,
                   fontSize: 13, fontWeight: FontWeight.w600,
                 ),
               )),
               Icon(Icons.arrow_drop_down_rounded,
-                  color: SportSphereColors.white54, size: 20),
+                  color: PlayifyColors.white54, size: 20),
             ]),
           ),
         ),
@@ -1632,12 +1632,12 @@ class _PredictionPanel extends StatelessWidget {
               child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 Expanded(child: Text(selectedMatch!['homeTeam'] ?? 'Home',
                     textAlign: TextAlign.left,
-                    style: const TextStyle(color: SportSphereColors.muted, fontSize: 11),
+                    style: const TextStyle(color: PlayifyColors.muted, fontSize: 11),
                     maxLines: 1, overflow: TextOverflow.ellipsis)),
-                const Text('vs', style: TextStyle(color: SportSphereColors.muted, fontSize: 11)),
+                const Text('vs', style: TextStyle(color: PlayifyColors.muted, fontSize: 11)),
                 Expanded(child: Text(selectedMatch!['awayTeam'] ?? 'Away',
                     textAlign: TextAlign.right,
-                    style: const TextStyle(color: SportSphereColors.muted, fontSize: 11),
+                    style: const TextStyle(color: PlayifyColors.muted, fontSize: 11),
                     maxLines: 1, overflow: TextOverflow.ellipsis)),
               ]),
             ),
@@ -1661,19 +1661,19 @@ class _PredictionPanel extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: SportSphereColors.black.withValues(alpha: 0.25),
+                color: PlayifyColors.black.withValues(alpha: 0.25),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: selectedPlayer != null
-                      ? SportSphereColors.electricBlue.withValues(alpha: 0.5)
-                      : SportSphereColors.white.withValues(alpha: 0.10),
+                      ? PlayifyColors.electricBlue.withValues(alpha: 0.5)
+                      : PlayifyColors.white.withValues(alpha: 0.10),
                 ),
               ),
               child: Row(children: [
                 Icon(Icons.person_rounded,
                     color: selectedPlayer != null
-                        ? SportSphereColors.electricBlue
-                        : SportSphereColors.muted,
+                        ? PlayifyColors.electricBlue
+                        : PlayifyColors.muted,
                     size: 18),
                 const SizedBox(width: 10),
                 Expanded(child: Text(
@@ -1681,26 +1681,26 @@ class _PredictionPanel extends StatelessWidget {
                       ? '${selectedPlayer!["name"]}  ·  ${selectedPlayer!["position"] ?? ""}'
                       : players.isEmpty ? 'No players available' : 'Select a player',
                   style: TextStyle(
-                    color: selectedPlayer != null ? SportSphereColors.white : SportSphereColors.muted,
+                    color: selectedPlayer != null ? PlayifyColors.white : PlayifyColors.muted,
                     fontSize: 13, fontWeight: FontWeight.w600,
                   ),
                 )),
                 Icon(Icons.arrow_drop_down_rounded,
-                    color: SportSphereColors.white54, size: 20),
+                    color: PlayifyColors.white54, size: 20),
               ]),
             ),
           ),
           const SizedBox(height: 10),
           // Event type chips
           const Text('Predict event:', style: TextStyle(
-              color: SportSphereColors.muted, fontSize: 12)),
+              color: PlayifyColors.muted, fontSize: 12)),
           const SizedBox(height: 8),
           Wrap(spacing: 8, runSpacing: 6, children: [
-            _EventChip(label: 'Goal', icon: Icons.sports_soccer_rounded, color: SportSphereColors.sportGreen,
+            _EventChip(label: 'Goal', icon: Icons.sports_soccer_rounded, color: PlayifyColors.sportGreen,
                 onTap: () => onHomeScoreChanged(1)),
-            _EventChip(label: 'Assist', icon: Icons.handshake_rounded, color: SportSphereColors.electricBlue,
+            _EventChip(label: 'Assist', icon: Icons.handshake_rounded, color: PlayifyColors.electricBlue,
                 onTap: () {}),
-            _EventChip(label: 'Red Card', icon: Icons.rectangle_rounded, color: SportSphereColors.danger,
+            _EventChip(label: 'Red Card', icon: Icons.rectangle_rounded, color: PlayifyColors.danger,
                 onTap: () {}),
             _EventChip(label: 'Yellow Card', icon: Icons.rectangle_rounded, color: const Color(0xFFFFD700),
                 onTap: () {}),
@@ -1709,9 +1709,9 @@ class _PredictionPanel extends StatelessWidget {
           ]),
           const SizedBox(height: 8),
           Text('Goals predicted: $homeScore',
-              style: const TextStyle(color: SportSphereColors.muted, fontSize: 12)),
+              style: const TextStyle(color: PlayifyColors.muted, fontSize: 12)),
           Row(children: [
-            const Text('Goals: ', style: TextStyle(color: SportSphereColors.white, fontSize: 13)),
+            const Text('Goals: ', style: TextStyle(color: PlayifyColors.white, fontSize: 13)),
             _ScoreStepper(value: homeScore, onChanged: onHomeScoreChanged),
           ]),
         ],
@@ -1728,7 +1728,7 @@ class _PredictionPanel extends StatelessWidget {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: SportSphereColors.surface,
+      backgroundColor: PlayifyColors.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
       builder: (sheetCtx) => DraggableScrollableSheet(
@@ -1737,12 +1737,12 @@ class _PredictionPanel extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.fromLTRB(20, 16, 20, 12),
             child: Text('Select Match', style: TextStyle(
-                color: SportSphereColors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+                color: PlayifyColors.white, fontWeight: FontWeight.w700, fontSize: 16)),
           ),
           if (selectedMatch != null)
             TextButton(
               onPressed: () { onMatchSelected(null); Navigator.pop(sheetCtx); },
-              child: const Text('Clear selection', style: TextStyle(color: SportSphereColors.muted)),
+              child: const Text('Clear selection', style: TextStyle(color: PlayifyColors.muted)),
             ),
           Expanded(child: ListView.builder(
             controller: sc,
@@ -1755,14 +1755,14 @@ class _PredictionPanel extends StatelessWidget {
               final isSelected = selectedMatch?['id'] == m['id'];
               return ListTile(
                 selected: isSelected,
-                selectedTileColor: SportSphereColors.sportGreen.withValues(alpha: 0.08),
+                selectedTileColor: PlayifyColors.sportGreen.withValues(alpha: 0.08),
                 leading: Icon(Icons.sports_soccer_rounded,
-                    color: isSelected ? SportSphereColors.sportGreen : SportSphereColors.muted),
+                    color: isSelected ? PlayifyColors.sportGreen : PlayifyColors.muted),
                 title: Text('${m["homeTeam"]} vs ${m["awayTeam"]}',
-                    style: const TextStyle(color: SportSphereColors.white,
+                    style: const TextStyle(color: PlayifyColors.white,
                         fontWeight: FontWeight.w700, fontSize: 13)),
                 subtitle: Text('${m["league"] ?? ""}  ·  $dateStr',
-                    style: const TextStyle(color: SportSphereColors.muted, fontSize: 11)),
+                    style: const TextStyle(color: PlayifyColors.muted, fontSize: 11)),
                 onTap: () { onMatchSelected(m); Navigator.pop(sheetCtx); },
               );
             },
@@ -1782,7 +1782,7 @@ class _PredictionPanel extends StatelessWidget {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: SportSphereColors.surface,
+      backgroundColor: PlayifyColors.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
       builder: (_) => StatefulBuilder(builder: (bCtx, bSet) {
@@ -1795,18 +1795,18 @@ class _PredictionPanel extends StatelessWidget {
             const Padding(
               padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
               child: Text('Select Player', style: TextStyle(
-                  color: SportSphereColors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+                  color: PlayifyColors.white, fontWeight: FontWeight.w700, fontSize: 16)),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: TextField(
                 controller: searchCtrl,
-                style: const TextStyle(color: SportSphereColors.white),
+                style: const TextStyle(color: PlayifyColors.white),
                 onChanged: (_) => bSet(() {}),
                 decoration: InputDecoration(
                   hintText: 'Search players...',
-                  hintStyle: const TextStyle(color: SportSphereColors.muted),
-                  prefixIcon: const Icon(Icons.search_rounded, color: SportSphereColors.muted, size: 20),
+                  hintStyle: const TextStyle(color: PlayifyColors.muted),
+                  prefixIcon: const Icon(Icons.search_rounded, color: PlayifyColors.muted, size: 20),
                   filled: true, fillColor: const Color(0xFF0B1626),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   isDense: true,
@@ -1821,14 +1821,14 @@ class _PredictionPanel extends StatelessWidget {
                 final isSelected = selectedPlayer?['id'] == p['id'];
                 return ListTile(
                   selected: isSelected,
-                  selectedTileColor: SportSphereColors.electricBlue.withValues(alpha: 0.08),
+                  selectedTileColor: PlayifyColors.electricBlue.withValues(alpha: 0.08),
                   leading: Icon(Icons.person_rounded,
-                      color: isSelected ? SportSphereColors.electricBlue : SportSphereColors.muted),
+                      color: isSelected ? PlayifyColors.electricBlue : PlayifyColors.muted),
                   title: Text(p['name'] as String? ?? '',
-                      style: const TextStyle(color: SportSphereColors.white,
+                      style: const TextStyle(color: PlayifyColors.white,
                           fontWeight: FontWeight.w700, fontSize: 13)),
                   subtitle: Text('${p["position"] ?? ""}',
-                      style: const TextStyle(color: SportSphereColors.muted, fontSize: 11)),
+                      style: const TextStyle(color: PlayifyColors.muted, fontSize: 11)),
                   onTap: () { onPlayerSelected(p); Navigator.pop(bCtx); },
                 );
               },
@@ -1869,24 +1869,24 @@ class _OutcomeBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = selected == value;
-    final color = value == 'draw' ? SportSphereColors.sportOrange : SportSphereColors.sportGreen;
+    final color = value == 'draw' ? PlayifyColors.sportOrange : PlayifyColors.sportGreen;
     return Expanded(child: GestureDetector(
       onTap: () => onTap(value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(vertical: 18),
         decoration: BoxDecoration(
-          color: active ? color.withValues(alpha: 0.18) : SportSphereColors.black.withValues(alpha: 0.25),
+          color: active ? color.withValues(alpha: 0.18) : PlayifyColors.black.withValues(alpha: 0.25),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: active ? color : SportSphereColors.white.withValues(alpha: 0.12),
+            color: active ? color : PlayifyColors.white.withValues(alpha: 0.12),
             width: active ? 2 : 1,
           ),
         ),
         child: Text(label,
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: active ? color : SportSphereColors.white.withValues(alpha: 0.55),
+            color: active ? color : PlayifyColors.white.withValues(alpha: 0.55),
             fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1.5,
           )),
       ),
@@ -1908,18 +1908,18 @@ class _PredTypeChip extends StatelessWidget {
       duration: const Duration(milliseconds: 180),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: selected ? SportSphereColors.sportGreen.withValues(alpha: 0.15) : Colors.transparent,
+        color: selected ? PlayifyColors.sportGreen.withValues(alpha: 0.15) : Colors.transparent,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-            color: selected ? SportSphereColors.sportGreen : SportSphereColors.white.withValues(alpha: 0.12)),
+            color: selected ? PlayifyColors.sportGreen : PlayifyColors.white.withValues(alpha: 0.12)),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(icon, size: 14,
-            color: selected ? SportSphereColors.sportGreen : SportSphereColors.muted),
+            color: selected ? PlayifyColors.sportGreen : PlayifyColors.muted),
         const SizedBox(width: 6),
         Text(label, style: TextStyle(
           fontSize: 12, fontWeight: FontWeight.w600,
-          color: selected ? SportSphereColors.sportGreen : SportSphereColors.muted,
+          color: selected ? PlayifyColors.sportGreen : PlayifyColors.muted,
         )),
       ]),
     ),
@@ -1971,7 +1971,7 @@ class _ScoreStepper extends StatelessWidget {
           child: Text(
             '$value',
             style: const TextStyle(
-              color: SportSphereColors.white,
+              color: PlayifyColors.white,
               fontSize: 20,
               fontWeight: FontWeight.w900,
             ),
@@ -2001,20 +2001,20 @@ class _StepBtn extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: onTap != null
-              ? SportSphereColors.sportGreen.withValues(alpha: 0.15)
-              : SportSphereColors.white.withValues(alpha: 0.04),
+              ? PlayifyColors.sportGreen.withValues(alpha: 0.15)
+              : PlayifyColors.white.withValues(alpha: 0.04),
           border: Border.all(
             color: onTap != null
-                ? SportSphereColors.sportGreen.withValues(alpha: 0.4)
-                : SportSphereColors.white.withValues(alpha: 0.06),
+                ? PlayifyColors.sportGreen.withValues(alpha: 0.4)
+                : PlayifyColors.white.withValues(alpha: 0.06),
           ),
         ),
         child: Icon(
           icon,
           size: 16,
           color: onTap != null
-              ? SportSphereColors.sportGreen
-              : SportSphereColors.muted.withValues(alpha: 0.4),
+              ? PlayifyColors.sportGreen
+              : PlayifyColors.muted.withValues(alpha: 0.4),
         ),
       ),
     );
@@ -2039,7 +2039,7 @@ class _LocationPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return _ContentPanel(
       label: 'LOCATION',
-      color: SportSphereColors.sportOrange,
+      color: PlayifyColors.sportOrange,
       icon: Icons.location_on_rounded,
       child: Column(
         children: _locationSuggestions.map((l) {
@@ -2055,14 +2055,14 @@ class _LocationPanel extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 color: active
-                    ? SportSphereColors.sportOrange
+                    ? PlayifyColors.sportOrange
                         .withValues(alpha: 0.12)
-                    : SportSphereColors.white.withValues(alpha: 0.04),
+                    : PlayifyColors.white.withValues(alpha: 0.04),
                 border: Border.all(
                   color: active
-                      ? SportSphereColors.sportOrange
+                      ? PlayifyColors.sportOrange
                           .withValues(alpha: 0.4)
-                      : SportSphereColors.white.withValues(alpha: 0.07),
+                      : PlayifyColors.white.withValues(alpha: 0.07),
                 ),
               ),
               child: Row(
@@ -2070,8 +2070,8 @@ class _LocationPanel extends StatelessWidget {
                   Icon(
                     Icons.place_rounded,
                     color: active
-                        ? SportSphereColors.sportOrange
-                        : SportSphereColors.muted,
+                        ? PlayifyColors.sportOrange
+                        : PlayifyColors.muted,
                     size: 18,
                   ),
                   const SizedBox(width: 10),
@@ -2080,8 +2080,8 @@ class _LocationPanel extends StatelessWidget {
                       l,
                       style: TextStyle(
                         color: active
-                            ? SportSphereColors.white
-                            : SportSphereColors.muted,
+                            ? PlayifyColors.white
+                            : PlayifyColors.muted,
                         fontSize: 13,
                         fontWeight: active
                             ? FontWeight.w600
@@ -2092,7 +2092,7 @@ class _LocationPanel extends StatelessWidget {
                   if (active)
                     Icon(
                       Icons.check_rounded,
-                      color: SportSphereColors.sportOrange,
+                      color: PlayifyColors.sportOrange,
                       size: 18,
                     ),
                 ],
@@ -2123,7 +2123,7 @@ class _DisappearingPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return _ContentPanel(
       label: 'DISAPPEARS IN',
-      color: SportSphereColors.danger,
+      color: PlayifyColors.danger,
       icon: Icons.timer_rounded,
       child: Wrap(
         spacing: 10,
@@ -2141,12 +2141,12 @@ class _DisappearingPanel extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20),
                 color: active
-                    ? SportSphereColors.danger
-                    : SportSphereColors.white.withValues(alpha: 0.05),
+                    ? PlayifyColors.danger
+                    : PlayifyColors.white.withValues(alpha: 0.05),
                 border: Border.all(
                   color: active
-                      ? SportSphereColors.danger
-                      : SportSphereColors.white.withValues(alpha: 0.10),
+                      ? PlayifyColors.danger
+                      : PlayifyColors.white.withValues(alpha: 0.10),
                 ),
               ),
               child: Row(
@@ -2156,16 +2156,16 @@ class _DisappearingPanel extends StatelessWidget {
                     o.icon,
                     size: 14,
                     color: active
-                        ? SportSphereColors.white
-                        : SportSphereColors.muted,
+                        ? PlayifyColors.white
+                        : PlayifyColors.muted,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     o.label,
                     style: TextStyle(
                       color: active
-                          ? SportSphereColors.white
-                          : SportSphereColors.muted,
+                          ? PlayifyColors.white
+                          : PlayifyColors.muted,
                       fontSize: 13,
                       fontWeight: active
                           ? FontWeight.w700
@@ -2195,7 +2195,7 @@ class _TagPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return _ContentPanel(
       label: 'TAG PEOPLE OR TEAMS',
-      color: SportSphereColors.brightBlue,
+      color: PlayifyColors.brightBlue,
       icon: Icons.alternate_email_rounded,
       child: Column(
         children: _tagSuggestions.map((s) {
@@ -2211,14 +2211,14 @@ class _TagPanel extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 color: isAdded
-                    ? SportSphereColors.brightBlue
+                    ? PlayifyColors.brightBlue
                         .withValues(alpha: 0.10)
-                    : SportSphereColors.white.withValues(alpha: 0.04),
+                    : PlayifyColors.white.withValues(alpha: 0.04),
                 border: Border.all(
                   color: isAdded
-                      ? SportSphereColors.brightBlue
+                      ? PlayifyColors.brightBlue
                           .withValues(alpha: 0.35)
-                      : SportSphereColors.white.withValues(alpha: 0.07),
+                      : PlayifyColors.white.withValues(alpha: 0.07),
                 ),
               ),
               child: Row(
@@ -2228,11 +2228,11 @@ class _TagPanel extends StatelessWidget {
                     height: 34,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: SportSphereColors.surface2,
+                      color: PlayifyColors.surface2,
                     ),
                     child: Icon(
                       s.icon,
-                      color: SportSphereColors.electricBlue,
+                      color: PlayifyColors.electricBlue,
                       size: 18,
                     ),
                   ),
@@ -2244,7 +2244,7 @@ class _TagPanel extends StatelessWidget {
                         Text(
                           s.name,
                           style: const TextStyle(
-                            color: SportSphereColors.white,
+                            color: PlayifyColors.white,
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
                           ),
@@ -2252,7 +2252,7 @@ class _TagPanel extends StatelessWidget {
                         Text(
                           s.handle,
                           style: const TextStyle(
-                            color: SportSphereColors.muted,
+                            color: PlayifyColors.muted,
                             fontSize: 11,
                           ),
                         ),
@@ -2264,8 +2264,8 @@ class _TagPanel extends StatelessWidget {
                         ? Icons.check_circle_rounded
                         : Icons.add_circle_outline_rounded,
                     color: isAdded
-                        ? SportSphereColors.brightBlue
-                        : SportSphereColors.muted,
+                        ? PlayifyColors.brightBlue
+                        : PlayifyColors.muted,
                     size: 20,
                   ),
                 ],
@@ -2296,10 +2296,10 @@ class _TagChips extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
-            color: SportSphereColors.electricBlue.withValues(alpha: 0.12),
+            color: PlayifyColors.electricBlue.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: SportSphereColors.electricBlue.withValues(alpha: 0.35),
+              color: PlayifyColors.electricBlue.withValues(alpha: 0.35),
             ),
           ),
           child: Row(
@@ -2308,7 +2308,7 @@ class _TagChips extends StatelessWidget {
               Text(
                 t,
                 style: TextStyle(
-                  color: SportSphereColors.electricBlue,
+                  color: PlayifyColors.electricBlue,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
@@ -2319,7 +2319,7 @@ class _TagChips extends StatelessWidget {
                 child: Icon(
                   Icons.close_rounded,
                   size: 13,
-                  color: SportSphereColors.electricBlue
+                  color: PlayifyColors.electricBlue
                       .withValues(alpha: 0.7),
                 ),
               ),
@@ -2358,14 +2358,14 @@ class _MetaBadges extends StatelessWidget {
           _MetaBadge(
             icon: Icons.place_rounded,
             label: location!,
-            color: SportSphereColors.sportOrange,
+            color: PlayifyColors.sportOrange,
             onRemove: onRemoveLocation,
           ),
         if (disappearsIn != null)
           _MetaBadge(
             icon: Icons.timer_rounded,
             label: disappearsIn!,
-            color: SportSphereColors.danger,
+            color: PlayifyColors.danger,
             onRemove: onRemoveDisappearing,
           ),
       ],
@@ -2477,10 +2477,10 @@ class _AttachmentBar extends StatelessWidget {
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(
-            color: SportSphereColors.white.withValues(alpha: 0.07),
+            color: PlayifyColors.white.withValues(alpha: 0.07),
           ),
         ),
-        color: SportSphereColors.background.withValues(alpha: 0.96),
+        color: PlayifyColors.background.withValues(alpha: 0.96),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -2499,7 +2499,7 @@ class _AttachmentBar extends StatelessWidget {
                       icon: Icons.image_outlined,
                       label: 'Media',
                       active: activeType == _PostType.media,
-                      color: SportSphereColors.electricBlue,
+                      color: PlayifyColors.electricBlue,
                       onTap: onMedia,
                     ),
                     const SizedBox(width: 8),
@@ -2507,7 +2507,7 @@ class _AttachmentBar extends StatelessWidget {
                       icon: Icons.poll_outlined,
                       label: 'Poll',
                       active: activeType == _PostType.poll,
-                      color: SportSphereColors.electricBlue,
+                      color: PlayifyColors.electricBlue,
                       onTap: onPoll,
                     ),
                     const SizedBox(width: 8),
@@ -2515,7 +2515,7 @@ class _AttachmentBar extends StatelessWidget {
                       icon: Icons.insights_rounded,
                       label: 'Predict',
                       active: activeType == _PostType.prediction,
-                      color: SportSphereColors.sportGreen,
+                      color: PlayifyColors.sportGreen,
                       onTap: onPrediction,
                     ),
                     const SizedBox(width: 8),
@@ -2523,7 +2523,7 @@ class _AttachmentBar extends StatelessWidget {
                       icon: Icons.place_outlined,
                       label: 'Location',
                       active: showLocation,
-                      color: SportSphereColors.sportOrange,
+                      color: PlayifyColors.sportOrange,
                       onTap: onLocation,
                     ),
                     const SizedBox(width: 8),
@@ -2531,7 +2531,7 @@ class _AttachmentBar extends StatelessWidget {
                       icon: Icons.timer_outlined,
                       label: 'Vanish',
                       active: showDisappearing,
-                      color: SportSphereColors.danger,
+                      color: PlayifyColors.danger,
                       onTap: onDisappearing,
                     ),
                     const SizedBox(width: 8),
@@ -2539,7 +2539,7 @@ class _AttachmentBar extends StatelessWidget {
                       icon: Icons.alternate_email_rounded,
                       label: 'Tag',
                       active: showTag,
-                      color: SportSphereColors.brightBlue,
+                      color: PlayifyColors.brightBlue,
                       onTap: onTag,
                     ),
                   ],
@@ -2568,14 +2568,14 @@ class _AttachmentBar extends StatelessWidget {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: expanded
-                            ? SportSphereColors.electricBlue
+                            ? PlayifyColors.electricBlue
                                 .withValues(alpha: 0.15)
-                            : SportSphereColors.white.withValues(alpha: 0.05),
+                            : PlayifyColors.white.withValues(alpha: 0.05),
                         border: Border.all(
                           color: expanded
-                              ? SportSphereColors.electricBlue
+                              ? PlayifyColors.electricBlue
                                   .withValues(alpha: 0.45)
-                              : SportSphereColors.white.withValues(alpha: 0.10),
+                              : PlayifyColors.white.withValues(alpha: 0.10),
                         ),
                       ),
                       child: AnimatedRotation(
@@ -2584,8 +2584,8 @@ class _AttachmentBar extends StatelessWidget {
                         child: Icon(
                           Icons.add_rounded,
                           color: expanded
-                              ? SportSphereColors.electricBlue
-                              : SportSphereColors.muted,
+                              ? PlayifyColors.electricBlue
+                              : PlayifyColors.muted,
                           size: 24,
                         ),
                       ),
@@ -2614,20 +2614,20 @@ class _AttachmentBar extends StatelessWidget {
                           gradient: LinearGradient(
                             colors: (canPost && !posting)
                                 ? [
-                                    SportSphereColors.electricBlue,
+                                    PlayifyColors.electricBlue,
                                     const Color(0xFF0066DD),
                                   ]
                                 : [
-                                    SportSphereColors.muted
+                                    PlayifyColors.muted
                                         .withValues(alpha: 0.25),
-                                    SportSphereColors.muted
+                                    PlayifyColors.muted
                                         .withValues(alpha: 0.20),
                                   ],
                           ),
                           boxShadow: (canPost && !posting && !submitted)
                               ? [
                                   BoxShadow(
-                                    color: SportSphereColors.electricBlue
+                                    color: PlayifyColors.electricBlue
                                         .withValues(alpha: 0.35),
                                     blurRadius: 16,
                                     offset: const Offset(0, 4),
@@ -2642,14 +2642,14 @@ class _AttachmentBar extends StatelessWidget {
                                   children: const [
                                     Icon(
                                       Icons.check_circle_rounded,
-                                      color: SportSphereColors.white,
+                                      color: PlayifyColors.white,
                                       size: 18,
                                     ),
                                     SizedBox(width: 7),
                                     Text(
                                       'Posted!',
                                       style: TextStyle(
-                                        color: SportSphereColors.white,
+                                        color: PlayifyColors.white,
                                         fontSize: 14,
                                         fontWeight: FontWeight.w800,
                                       ),
@@ -2661,14 +2661,14 @@ class _AttachmentBar extends StatelessWidget {
                                       width: 18,
                                       height: 18,
                                       child: CircularProgressIndicator(
-                                        color: SportSphereColors.white,
+                                        color: PlayifyColors.white,
                                         strokeWidth: 2,
                                       ),
                                     )
                                   : const Text(
                                       'Post',
                                       style: TextStyle(
-                                        color: SportSphereColors.white,
+                                        color: PlayifyColors.white,
                                         fontSize: 15,
                                         fontWeight: FontWeight.w800,
                                         letterSpacing: 0.3,
@@ -2718,11 +2718,11 @@ class _AttachChip extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             color: active
                 ? color.withValues(alpha: 0.15)
-                : SportSphereColors.white.withValues(alpha: 0.05),
+                : PlayifyColors.white.withValues(alpha: 0.05),
             border: Border.all(
               color: active
                   ? color.withValues(alpha: 0.5)
-                  : SportSphereColors.white.withValues(alpha: 0.08),
+                  : PlayifyColors.white.withValues(alpha: 0.08),
             ),
           ),
           child: Row(
@@ -2730,12 +2730,12 @@ class _AttachChip extends StatelessWidget {
             children: [
               Icon(icon,
                   size: 16,
-                  color: active ? color : SportSphereColors.muted),
+                  color: active ? color : PlayifyColors.muted),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: TextStyle(
-                  color: active ? color : SportSphereColors.muted,
+                  color: active ? color : PlayifyColors.muted,
                   fontSize: 12,
                   fontWeight:
                       active ? FontWeight.w700 : FontWeight.w500,
@@ -2818,26 +2818,26 @@ class _PanelField extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: SportSphereColors.white.withValues(alpha: 0.04),
+        color: PlayifyColors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: SportSphereColors.white.withValues(alpha: 0.09)),
+        border: Border.all(color: PlayifyColors.white.withValues(alpha: 0.09)),
       ),
       child: TextField(
         controller: controller,
         style: const TextStyle(
-          color: SportSphereColors.white,
+          color: PlayifyColors.white,
           fontSize: 13,
           fontWeight: FontWeight.w600,
         ),
-        cursorColor: SportSphereColors.electricBlue,
+        cursorColor: PlayifyColors.electricBlue,
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: TextStyle(
-            color: SportSphereColors.muted.withValues(alpha: 0.55),
+            color: PlayifyColors.muted.withValues(alpha: 0.55),
             fontSize: 13,
           ),
           prefixIcon: Icon(icon,
-              color: SportSphereColors.muted, size: 16),
+              color: PlayifyColors.muted, size: 16),
           prefixIconConstraints:
               const BoxConstraints(minWidth: 36, minHeight: 36),
           border: InputBorder.none,
@@ -2861,7 +2861,7 @@ class _BottomSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: SportSphereColors.surface,
+        color: PlayifyColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
@@ -2874,7 +2874,7 @@ class _BottomSheet extends StatelessWidget {
             height: 4,
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
-              color: SportSphereColors.white.withValues(alpha: 0.18),
+              color: PlayifyColors.white.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(10),
             ),
           ),
@@ -2883,7 +2883,7 @@ class _BottomSheet extends StatelessWidget {
             child: Text(
               title,
               style: const TextStyle(
-                color: SportSphereColors.white,
+                color: PlayifyColors.white,
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
               ),

@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 
 /// Theme extensions for custom app properties
-extension SportSphereThemeExtension on ThemeData {
+extension PlayifyThemeExtension on ThemeData {
   // Add custom theme extensions here
   // Example:
-  // SportSphereColors? get sportSphereColors =>
-  //     extension<SportSphereColors>()?.data;
+  // PlayifyColors? get playifyColors =>
+  //     extension<PlayifyColors>()?.data;
 }
 
 /// Custom theme extension for app-specific colors
 @immutable
-class SportSphereColorsExtension extends ThemeExtension<SportSphereColorsExtension> {
-  const SportSphereColorsExtension({
+class PlayifyColorsExtension extends ThemeExtension<PlayifyColorsExtension> {
+  const PlayifyColorsExtension({
     required this.success,
     required this.warning,
     required this.info,
@@ -22,12 +22,12 @@ class SportSphereColorsExtension extends ThemeExtension<SportSphereColorsExtensi
   final Color info;
 
   @override
-  ThemeExtension<SportSphereColorsExtension> copyWith({
+  ThemeExtension<PlayifyColorsExtension> copyWith({
     Color? success,
     Color? warning,
     Color? info,
   }) {
-    return SportSphereColorsExtension(
+    return PlayifyColorsExtension(
       success: success ?? this.success,
       warning: warning ?? this.warning,
       info: info ?? this.info,
@@ -35,12 +35,12 @@ class SportSphereColorsExtension extends ThemeExtension<SportSphereColorsExtensi
   }
 
   @override
-  ThemeExtension<SportSphereColorsExtension> lerp(
-    covariant ThemeExtension<SportSphereColorsExtension>? other,
+  ThemeExtension<PlayifyColorsExtension> lerp(
+    covariant ThemeExtension<PlayifyColorsExtension>? other,
     double t,
   ) {
-    if (other is! SportSphereColorsExtension) return this;
-    return SportSphereColorsExtension(
+    if (other is! PlayifyColorsExtension) return this;
+    return PlayifyColorsExtension(
       success: Color.lerp(success, other.success, t) ?? success,
       warning: Color.lerp(warning, other.warning, t) ?? warning,
       info: Color.lerp(info, other.info, t) ?? info,

@@ -144,7 +144,7 @@ class _FullScreenSearchState extends State<_FullScreenSearch>
   Widget build(BuildContext context) {
     final hasQuery = _query.length >= 2;
     return Scaffold(
-      backgroundColor: SportSphereColors.background,
+      backgroundColor: PlayifyColors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -156,21 +156,21 @@ class _FullScreenSearchState extends State<_FullScreenSearch>
                   IconButton(
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.arrow_back_rounded,
-                        color: SportSphereColors.white),
+                        color: PlayifyColors.white),
                   ),
                   Expanded(
                     child: Container(
                       height: 50,
                       decoration: BoxDecoration(
-                        color: SportSphereColors.surface,
+                        color: PlayifyColors.surface,
                         borderRadius: BorderRadius.circular(26),
                         border: Border.all(
-                          color: SportSphereColors.electricBlue
+                          color: PlayifyColors.electricBlue
                               .withValues(alpha: 0.22),
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: SportSphereColors.electricBlue
+                            color: PlayifyColors.electricBlue
                                 .withValues(alpha: 0.08),
                             blurRadius: 20,
                           ),
@@ -180,19 +180,19 @@ class _FullScreenSearchState extends State<_FullScreenSearch>
                         controller: _controller,
                         focusNode: _focusNode,
                         style:
-                            const TextStyle(color: SportSphereColors.white),
-                        cursorColor: SportSphereColors.electricBlue,
+                            const TextStyle(color: PlayifyColors.white),
+                        cursorColor: PlayifyColors.electricBlue,
                         decoration: InputDecoration(
                           hintText: 'Search players, teams, fans...',
                           hintStyle: TextStyle(
-                              color: SportSphereColors.muted
+                              color: PlayifyColors.muted
                                   .withValues(alpha: 0.6)),
                           prefixIcon: const Icon(Icons.search_rounded,
-                              color: SportSphereColors.electricBlue),
+                              color: PlayifyColors.electricBlue),
                           suffixIcon: _query.isNotEmpty
                               ? IconButton(
                                   icon: const Icon(Icons.close_rounded,
-                                      color: SportSphereColors.muted,
+                                      color: PlayifyColors.muted,
                                       size: 18),
                                   onPressed: () => _controller.clear(),
                                 )
@@ -212,7 +212,7 @@ class _FullScreenSearchState extends State<_FullScreenSearch>
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                color: SportSphereColors.surface,
+                color: PlayifyColors.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: Colors.white.withValues(alpha: 0.06),
@@ -222,11 +222,11 @@ class _FullScreenSearchState extends State<_FullScreenSearch>
                 controller: _tabCtrl,
                 indicatorSize: TabBarIndicatorSize.tab,
                 indicator: BoxDecoration(
-                  color: SportSphereColors.electricBlue.withValues(alpha: 0.15),
+                  color: PlayifyColors.electricBlue.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                labelColor: SportSphereColors.electricBlue,
-                unselectedLabelColor: SportSphereColors.muted,
+                labelColor: PlayifyColors.electricBlue,
+                unselectedLabelColor: PlayifyColors.muted,
                 labelStyle: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -259,7 +259,7 @@ class _FullScreenSearchState extends State<_FullScreenSearch>
                   _loading
                       ? const Center(
                           child: CircularProgressIndicator(
-                              color: SportSphereColors.electricBlue,
+                              color: PlayifyColors.electricBlue,
                               strokeWidth: 2))
                       : !hasQuery
                           ? _Discover()
@@ -270,12 +270,12 @@ class _FullScreenSearchState extends State<_FullScreenSearch>
                                     children: [
                                       Icon(Icons.search_off_rounded,
                                           size: 48,
-                                          color: SportSphereColors.muted
+                                          color: PlayifyColors.muted
                                               .withValues(alpha: 0.4)),
                                       const SizedBox(height: 12),
                                       Text('No results for "$_query"',
                                           style: const TextStyle(
-                                              color: SportSphereColors.muted,
+                                              color: PlayifyColors.muted,
                                               fontSize: 14)),
                                     ],
                                   ),
@@ -312,7 +312,7 @@ class _FullScreenSearchState extends State<_FullScreenSearch>
                                           horizontal: 4, vertical: 6),
                                       leading: CircleAvatar(
                                         radius: 24,
-                                        backgroundColor: SportSphereColors
+                                        backgroundColor: PlayifyColors
                                             .electricBlue
                                             .withValues(alpha: 0.15),
                                         backgroundImage: avatarUrl != null
@@ -321,24 +321,24 @@ class _FullScreenSearchState extends State<_FullScreenSearch>
                                         child: avatarUrl == null
                                             ? const Icon(Icons.person_rounded,
                                                 color:
-                                                    SportSphereColors.electricBlue)
+                                                    PlayifyColors.electricBlue)
                                             : null,
                                       ),
                                       title: Text(
                                         name.isNotEmpty ? name : '@$handle',
                                         style: const TextStyle(
-                                            color: SportSphereColors.white,
+                                            color: PlayifyColors.white,
                                             fontWeight: FontWeight.w700),
                                       ),
                                       subtitle: Text(
                                         '@$handle  ·  $displayRole',
                                         style: const TextStyle(
-                                            color: SportSphereColors.muted,
+                                            color: PlayifyColors.muted,
                                             fontSize: 12),
                                       ),
                                       trailing: const Icon(
                                           Icons.chevron_right_rounded,
-                                          color: SportSphereColors.muted,
+                                          color: PlayifyColors.muted,
                                           size: 20),
                                       onTap: () {
                                         Navigator.pop(context);
@@ -781,14 +781,14 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
                 isGuest ? Icons.near_me_rounded : Icons.wifi_off_rounded,
                 size: 64,
                 color: isGuest
-                    ? SportSphereColors.electricBlue.withValues(alpha: 0.5)
-                    : SportSphereColors.muted.withValues(alpha: 0.4),
+                    ? PlayifyColors.electricBlue.withValues(alpha: 0.5)
+                    : PlayifyColors.muted.withValues(alpha: 0.4),
               ),
               const SizedBox(height: 20),
               Text(
                 isGuest ? 'Discover Fans Near You' : 'Could not load',
                 style: const TextStyle(
-                  color: SportSphereColors.white,
+                  color: PlayifyColors.white,
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
                 ),
@@ -800,7 +800,7 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
                     : _error!,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  color: SportSphereColors.muted,
+                  color: PlayifyColors.muted,
                   fontSize: 14,
                   height: 1.5,
                 ),
@@ -816,7 +816,7 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
                   label: const Text('Log In',
                       style: TextStyle(fontWeight: FontWeight.w700)),
                   style: FilledButton.styleFrom(
-                    backgroundColor: SportSphereColors.electricBlue,
+                    backgroundColor: PlayifyColors.electricBlue,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 32, vertical: 14),
                   ),
@@ -827,7 +827,7 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
                   icon: const Icon(Icons.refresh_rounded, size: 18),
                   label: const Text('Retry'),
                   style: OutlinedButton.styleFrom(
-                      foregroundColor: SportSphereColors.electricBlue),
+                      foregroundColor: PlayifyColors.electricBlue),
                 ),
             ],
           ),
@@ -882,14 +882,14 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
           child: Row(
             children: [
               Icon(Icons.radar_rounded,
-                  size: 14, color: SportSphereColors.electricBlue),
+                  size: 14, color: PlayifyColors.electricBlue),
               const SizedBox(width: 6),
               Text(
                 _myLat != null
                     ? 'Location: ${_myLat!.toStringAsFixed(3)}, ${_myLng!.toStringAsFixed(3)}'
                     : 'GPS unavailable — showing text-based matches',
                 style: TextStyle(
-                  color: SportSphereColors.muted,
+                  color: PlayifyColors.muted,
                   fontSize: 11,
                 ),
               ),
@@ -899,12 +899,12 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
                 child: Row(
                   children: [
                     Icon(Icons.refresh_rounded,
-                        size: 14, color: SportSphereColors.electricBlue),
+                        size: 14, color: PlayifyColors.electricBlue),
                     const SizedBox(width: 4),
                     Text(
                       'Rescan',
                       style: TextStyle(
-                        color: SportSphereColors.electricBlue,
+                        color: PlayifyColors.electricBlue,
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                       ),
@@ -921,7 +921,7 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
           child: _fans.isEmpty
               ? _EmptyState(filter: _filter)
               : RefreshIndicator(
-                  color: SportSphereColors.electricBlue,
+                  color: PlayifyColors.electricBlue,
                   onRefresh: _loadFans,
                   child: ListView.separated(
                     physics: const AlwaysScrollableScrollPhysics(
@@ -991,7 +991,7 @@ class _RadarScanOverlay extends StatelessWidget {
           Text(
             message,
             style: const TextStyle(
-              color: SportSphereColors.electricBlue,
+              color: PlayifyColors.electricBlue,
               fontSize: 14,
               fontWeight: FontWeight.w600,
             ),
@@ -1011,7 +1011,7 @@ class _RadarScanOverlay extends StatelessWidget {
                     width: 6,
                     height: 6,
                     decoration: BoxDecoration(
-                      color: SportSphereColors.electricBlue
+                      color: PlayifyColors.electricBlue
                           .withValues(alpha: opacity.clamp(0.1, 1.0)),
                       shape: BoxShape.circle,
                     ),
@@ -1042,13 +1042,13 @@ class _RadarPainter extends CustomPainter {
 
     // Background circle
     final bgPaint = Paint()
-      ..color = SportSphereColors.electricBlue.withValues(alpha: 0.05)
+      ..color = PlayifyColors.electricBlue.withValues(alpha: 0.05)
       ..style = PaintingStyle.fill;
     canvas.drawCircle(center, maxRadius, bgPaint);
 
     // Concentric circles
     final ringPaint = Paint()
-      ..color = SportSphereColors.electricBlue.withValues(alpha: 0.2)
+      ..color = PlayifyColors.electricBlue.withValues(alpha: 0.2)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
     for (var i = 1; i <= 4; i++) {
@@ -1057,7 +1057,7 @@ class _RadarPainter extends CustomPainter {
 
     // Cross lines
     final linePaint = Paint()
-      ..color = SportSphereColors.electricBlue.withValues(alpha: 0.15)
+      ..color = PlayifyColors.electricBlue.withValues(alpha: 0.15)
       ..strokeWidth = 1;
     canvas.drawLine(
       Offset(center.dx, 0),
@@ -1079,8 +1079,8 @@ class _RadarPainter extends CustomPainter {
         startAngle: 0,
         endAngle: 3.14159265 / 2, // 90-degree fan
         colors: [
-          SportSphereColors.electricBlue.withValues(alpha: 0.4),
-          SportSphereColors.electricBlue.withValues(alpha: 0.0),
+          PlayifyColors.electricBlue.withValues(alpha: 0.4),
+          PlayifyColors.electricBlue.withValues(alpha: 0.0),
         ],
         transform: GradientRotation(sweepAngle),
       ).createShader(sweepRect);
@@ -1094,13 +1094,13 @@ class _RadarPainter extends CustomPainter {
 
     // Center dot (you)
     final centerPaint = Paint()
-      ..color = SportSphereColors.electricBlue
+      ..color = PlayifyColors.electricBlue
       ..style = PaintingStyle.fill;
     canvas.drawCircle(center, 6, centerPaint);
     // Pulsing ring around center
     final pulseRadius = 6.0 + progress * 20;
     final pulsePaint = Paint()
-      ..color = SportSphereColors.electricBlue
+      ..color = PlayifyColors.electricBlue
           .withValues(alpha: (1 - progress) * 0.5)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
@@ -1123,7 +1123,7 @@ class _RadarPainter extends CustomPainter {
 
       if (visibility > 0) {
         final dotPaint = Paint()
-          ..color = SportSphereColors.sportGreen.withValues(alpha: visibility)
+          ..color = PlayifyColors.sportGreen.withValues(alpha: visibility)
           ..style = PaintingStyle.fill;
         canvas.drawCircle(dotPos, 4 * visibility, dotPaint);
       }
@@ -1177,13 +1177,13 @@ class _NearbyFanCard extends StatelessWidget {
           // Avatar
           CircleAvatar(
             radius: 26,
-            backgroundColor: SportSphereColors.electricBlue.withValues(alpha: 0.15),
+            backgroundColor: PlayifyColors.electricBlue.withValues(alpha: 0.15),
             backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl!) : null,
             child: avatarUrl == null
                 ? Text(
                     initial,
                     style: const TextStyle(
-                      color: SportSphereColors.electricBlue,
+                      color: PlayifyColors.electricBlue,
                       fontWeight: FontWeight.w800,
                       fontSize: 18,
                     ),
@@ -1208,7 +1208,7 @@ class _NearbyFanCard extends StatelessWidget {
                         child: Text(
                           displayName,
                           style: const TextStyle(
-                            color: SportSphereColors.white,
+                            color: PlayifyColors.white,
                             fontWeight: FontWeight.w700,
                             fontSize: 14,
                           ),
@@ -1221,7 +1221,7 @@ class _NearbyFanCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: SportSphereColors.sportGreen
+                            color: PlayifyColors.sportGreen
                                 .withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(6),
                           ),
@@ -1230,12 +1230,12 @@ class _NearbyFanCard extends StatelessWidget {
                             children: [
                               Icon(Icons.place_rounded,
                                   size: 10,
-                                  color: SportSphereColors.sportGreen),
+                                  color: PlayifyColors.sportGreen),
                               const SizedBox(width: 2),
                               Text(
                                 distance!,
                                 style: TextStyle(
-                                  color: SportSphereColors.sportGreen,
+                                  color: PlayifyColors.sportGreen,
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -1249,14 +1249,14 @@ class _NearbyFanCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: SportSphereColors.sportGreen
+                            color: PlayifyColors.sportGreen
                                 .withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             country!,
                             style: TextStyle(
-                              color: SportSphereColors.sportGreen,
+                              color: PlayifyColors.sportGreen,
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
                             ),
@@ -1269,7 +1269,7 @@ class _NearbyFanCard extends StatelessWidget {
                   Text(
                     '@$handle',
                     style: const TextStyle(
-                      color: SportSphereColors.muted,
+                      color: PlayifyColors.muted,
                       fontSize: 12,
                     ),
                   ),
@@ -1278,14 +1278,14 @@ class _NearbyFanCard extends StatelessWidget {
                     children: [
                       Icon(Icons.link_rounded,
                           size: 12,
-                          color: SportSphereColors.electricBlue
+                          color: PlayifyColors.electricBlue
                               .withValues(alpha: 0.7)),
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text(
                           reason,
                           style: TextStyle(
-                            color: SportSphereColors.electricBlue
+                            color: PlayifyColors.electricBlue
                                 .withValues(alpha: 0.85),
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
@@ -1411,8 +1411,8 @@ class _FanActionButtonsState extends State<_FanActionButtons> {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
               color: _following
-                  ? SportSphereColors.surface2
-                  : SportSphereColors.electricBlue,
+                  ? PlayifyColors.surface2
+                  : PlayifyColors.electricBlue,
               borderRadius: BorderRadius.circular(20),
               border: _following
                   ? Border.all(color: Colors.white.withValues(alpha: 0.1))
@@ -1424,13 +1424,13 @@ class _FanActionButtonsState extends State<_FanActionButtons> {
                     height: 14,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: SportSphereColors.white,
+                      color: PlayifyColors.white,
                     ),
                   )
                 : Text(
                     _following ? 'Following' : 'Follow',
                     style: const TextStyle(
-                      color: SportSphereColors.white,
+                      color: PlayifyColors.white,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                     ),
@@ -1445,15 +1445,15 @@ class _FanActionButtonsState extends State<_FanActionButtons> {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: SportSphereColors.sportGreen.withValues(alpha: 0.15),
+              color: PlayifyColors.sportGreen.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
-                color: SportSphereColors.sportGreen.withValues(alpha: 0.3),
+                color: PlayifyColors.sportGreen.withValues(alpha: 0.3),
               ),
             ),
             child: Icon(
               Icons.chat_bubble_outline_rounded,
-              color: SportSphereColors.sportGreen,
+              color: PlayifyColors.sportGreen,
               size: 18,
             ),
           ),
@@ -1488,12 +1488,12 @@ class _FilterChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: selected
-              ? SportSphereColors.electricBlue.withValues(alpha: 0.15)
-              : SportSphereColors.surface,
+              ? PlayifyColors.electricBlue.withValues(alpha: 0.15)
+              : PlayifyColors.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: selected
-                ? SportSphereColors.electricBlue.withValues(alpha: 0.4)
+                ? PlayifyColors.electricBlue.withValues(alpha: 0.4)
                 : Colors.white.withValues(alpha: 0.06),
           ),
         ),
@@ -1504,16 +1504,16 @@ class _FilterChip extends StatelessWidget {
               icon,
               size: 14,
               color: selected
-                  ? SportSphereColors.electricBlue
-                  : SportSphereColors.muted,
+                  ? PlayifyColors.electricBlue
+                  : PlayifyColors.muted,
             ),
             const SizedBox(width: 6),
             Text(
               label,
               style: TextStyle(
                 color: selected
-                    ? SportSphereColors.electricBlue
-                    : SportSphereColors.muted,
+                    ? PlayifyColors.electricBlue
+                    : PlayifyColors.muted,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
@@ -1575,12 +1575,12 @@ class _EmptyState extends StatelessWidget {
           children: [
             Icon(icon,
                 size: 56,
-                color: SportSphereColors.muted.withValues(alpha: 0.35)),
+                color: PlayifyColors.muted.withValues(alpha: 0.35)),
             const SizedBox(height: 16),
             Text(
               title,
               style: const TextStyle(
-                color: SportSphereColors.white,
+                color: PlayifyColors.white,
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
               ),
@@ -1590,7 +1590,7 @@ class _EmptyState extends StatelessWidget {
             Text(
               hint,
               style: const TextStyle(
-                color: SportSphereColors.muted,
+                color: PlayifyColors.muted,
                 fontSize: 12,
               ),
               textAlign: TextAlign.center,
@@ -1617,7 +1617,7 @@ class _Discover extends StatelessWidget {
         Text(
           'EXPLORE',
           style: TextStyle(
-            color: SportSphereColors.muted.withValues(alpha: 0.6),
+            color: PlayifyColors.muted.withValues(alpha: 0.6),
             fontSize: 11,
             fontWeight: FontWeight.w800,
             letterSpacing: 1.2,
@@ -1655,16 +1655,16 @@ class _DiscoverChip extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, color: SportSphereColors.electricBlue, size: 20),
+          Icon(icon, color: PlayifyColors.electricBlue, size: 20),
           const SizedBox(width: 12),
           Text(label,
               style: const TextStyle(
-                  color: SportSphereColors.white,
+                  color: PlayifyColors.white,
                   fontSize: 15,
                   fontWeight: FontWeight.w600)),
           const Spacer(),
           Icon(Icons.chevron_right_rounded,
-              color: SportSphereColors.muted.withValues(alpha: 0.5),
+              color: PlayifyColors.muted.withValues(alpha: 0.5),
               size: 20),
         ],
       ),

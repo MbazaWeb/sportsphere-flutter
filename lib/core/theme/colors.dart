@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-class SportSphereColors {
-  SportSphereColors._();
+class PlayifyColors {
+  PlayifyColors._();
 
   // Backgrounds
   static const background  = Color(0xFF020A14);

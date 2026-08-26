@@ -28,7 +28,7 @@ class AppEnv {
 
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://api.sportsphere.app',
+    defaultValue: 'https://api.playify.app',
   );
 
   static const Duration connectTimeout = Duration(seconds: 20);

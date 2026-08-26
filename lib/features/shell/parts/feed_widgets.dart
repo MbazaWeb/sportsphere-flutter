@@ -49,14 +49,14 @@ class _Stories extends StatelessWidget {
                     shape: BoxShape.circle,
                     gradient: const LinearGradient(
                       colors: [
-                        SportSphereColors.electricBlue,
-                        SportSphereColors.sportGreen,
-                        SportSphereColors.sportOrange,
+                        PlayifyColors.electricBlue,
+                        PlayifyColors.sportGreen,
+                        PlayifyColors.sportOrange,
                       ],
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: SportSphereColors.electricBlue.withValues(
+                        color: PlayifyColors.electricBlue.withValues(
                           alpha: 0.16,
                         ),
                         blurRadius: 14,
@@ -66,17 +66,17 @@ class _Stories extends StatelessWidget {
                   child: Container(
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      color: SportSphereColors.background,
+                      color: PlayifyColors.background,
                     ),
                     child: index == 0
                         ? const Icon(
                             Icons.add_rounded,
-                            color: SportSphereColors.electricBlue,
+                            color: PlayifyColors.electricBlue,
                             size: 28,
                           )
                         : const Icon(
                             Icons.sports_soccer_rounded,
-                            color: SportSphereColors.white,
+                            color: PlayifyColors.white,
                             size: 27,
                           ),
                   ),
@@ -87,7 +87,7 @@ class _Stories extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: SportSphereColors.white,
+                    color: PlayifyColors.white,
                     fontSize: 10.5,
                     fontWeight: FontWeight.w500,
                   ),
@@ -151,8 +151,8 @@ class _PostCard extends StatelessWidget {
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
                     colors: [
-                      SportSphereColors.electricBlue,
-                      SportSphereColors.sportGreen,
+                      PlayifyColors.electricBlue,
+                      PlayifyColors.sportGreen,
                     ],
                   ),
                 ),
@@ -161,11 +161,11 @@ class _PostCard extends StatelessWidget {
                   child: Container(
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      color: SportSphereColors.background,
+                      color: PlayifyColors.background,
                     ),
                     child: const Icon(
                       Icons.sports_soccer_rounded,
-                      color: SportSphereColors.muted,
+                      color: PlayifyColors.muted,
                       size: 20,
                     ),
                   ),
@@ -181,7 +181,7 @@ class _PostCard extends StatelessWidget {
                         Text(
                           username,
                           style: const TextStyle(
-                            color: SportSphereColors.white,
+                            color: PlayifyColors.white,
                             fontWeight: FontWeight.w700,
                             fontSize: 14,
                           ),
@@ -190,7 +190,7 @@ class _PostCard extends StatelessWidget {
                           const SizedBox(width: 4),
                           const Icon(
                             Icons.verified_rounded,
-                            color: SportSphereColors.electricBlue,
+                            color: PlayifyColors.electricBlue,
                             size: 14,
                           ),
                         ],
@@ -200,7 +200,7 @@ class _PostCard extends StatelessWidget {
                     Text(
                       '$handle · $time',
                       style: const TextStyle(
-                        color: SportSphereColors.muted,
+                        color: PlayifyColors.muted,
                         fontSize: 11.5,
                       ),
                     ),
@@ -209,7 +209,7 @@ class _PostCard extends StatelessWidget {
               ),
               const Icon(
                 Icons.more_horiz_rounded,
-                color: SportSphereColors.muted,
+                color: PlayifyColors.muted,
               ),
             ],
           ),
@@ -242,7 +242,7 @@ class _PostCard extends StatelessWidget {
                   Center(
                     child: Icon(
                       Icons.play_circle_outline_rounded,
-                      color: SportSphereColors.white,
+                      color: PlayifyColors.white,
                       size: 52,
                     ),
                   ),
@@ -255,7 +255,7 @@ class _PostCard extends StatelessWidget {
           Text(
             title,
             style: const TextStyle(
-              color: SportSphereColors.white,
+              color: PlayifyColors.white,
               fontSize: 18,
               fontWeight: FontWeight.w800,
             ),
@@ -284,7 +284,7 @@ class _PostCard extends StatelessWidget {
               const Spacer(),
               const Icon(
                 Icons.bookmark_border_rounded,
-                color: SportSphereColors.muted,
+                color: PlayifyColors.muted,
                 size: 21,
               ),
             ],
@@ -305,11 +305,11 @@ class _Action extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, color: SportSphereColors.muted, size: 20),
+        Icon(icon, color: PlayifyColors.muted, size: 20),
         const SizedBox(width: 5),
         Text(
           value,
-          style: const TextStyle(color: SportSphereColors.muted, fontSize: 12),
+          style: const TextStyle(color: PlayifyColors.muted, fontSize: 12),
         ),
       ],
     );

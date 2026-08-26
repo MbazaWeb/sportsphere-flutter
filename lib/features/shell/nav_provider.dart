@@ -1,12 +1,12 @@
 // ============================================================
 // Cross-widget navigation providers
 // ============================================================
-// These providers exist so widgets that live OUTSIDE SportSphereShell
+// These providers exist so widgets that live OUTSIDE PlayifyShell
 // (e.g. SpotlightCard in the home feed) can request a tab switch and an
 // optional "scroll to this match" highlight on the Scores tab.
 //
 // Without these, the only way to switch tabs is to call setState on the
-// private _SportSphereShellState — which is not exposed.
+// private _PlayifyShellState — which is not exposed.
 //
 // Note: Riverpod 3.x deprecated StateProvider. We use Notifier /
 // NotifierProvider (the recommended successor) instead.
@@ -14,7 +14,7 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Index of the active tab inside SportSphereShell.
+/// Index of the active tab inside PlayifyShell.
 class ShellTabNotifier extends Notifier<int> {
   @override
   int build() => 0;

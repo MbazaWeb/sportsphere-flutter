@@ -88,7 +88,7 @@ class _MatchCardState extends State<MatchCard> {
                 children: [
                   CircleAvatar(
                     radius: 12,
-                    backgroundColor: SportSphereColors.surface2,
+                    backgroundColor: PlayifyColors.surface2,
                     child: Icon(sportIconFor(m.sportSlug),
                         size: 14, color: Colors.white),
                   ),
@@ -99,7 +99,7 @@ class _MatchCardState extends State<MatchCard> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: SportSphereColors.muted,
+                        color: PlayifyColors.muted,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -110,7 +110,7 @@ class _MatchCardState extends State<MatchCard> {
                     button: true,
                     child: IconButton(
                       icon: const Icon(Icons.notifications_none_rounded,
-                          color: SportSphereColors.muted, size: 20),
+                          color: PlayifyColors.muted, size: 20),
                       onPressed: () => _showReminderSheet(context),
                     ),
                   ),
@@ -217,7 +217,7 @@ class _MatchCardState extends State<MatchCard> {
                         : Icons.favorite_border_rounded,
                     label: 'Like',
                     iconColor:
-                        _liked ? SportSphereColors.danger : SportSphereColors.muted,
+                        _liked ? PlayifyColors.danger : PlayifyColors.muted,
                     onTap: _onLike,
                   ),
                   _MatchAction(
@@ -322,7 +322,7 @@ class _MatchCardState extends State<MatchCard> {
     }
     final text = _shareSummary(m);
     try {
-      await Share.share(text, subject: 'SportSphere · Match');
+      await Share.share(text, subject: 'Playify · Match');
       // Record the share if there's a linked post (best-effort).
       final postId = m.postId;
       final uid = Supabase.instance.client.auth.currentUser?.id;
@@ -351,7 +351,7 @@ class _MatchCardState extends State<MatchCard> {
     ];
     if (m.venue.isNotEmpty) lines.add('📍 ${m.venue}');
     lines.add('Kickoff ${df.format(m.startTime)}');
-    lines.add('On SportSphere');
+    lines.add('On Playify');
     return lines.join('\n');
   }
 
@@ -365,7 +365,7 @@ class _MatchCardState extends State<MatchCard> {
   void _showReminderSheet(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: SportSphereColors.background,
+      backgroundColor: PlayifyColors.background,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -375,11 +375,11 @@ class _MatchCardState extends State<MatchCard> {
 
   Color _statusBadgeColor(MatchModel m) {
     final s = m.parsedStatus;
-    if (s.isLive) return SportSphereColors.sportGreen;
-    if (s.isFinished) return SportSphereColors.muted;
-    if (s.isPostponedOrCancelled) return SportSphereColors.sportOrange;
-    if (s == MatchStatus.scheduled) return SportSphereColors.electricBlue;
-    return SportSphereColors.muted;
+    if (s.isLive) return PlayifyColors.sportGreen;
+    if (s.isFinished) return PlayifyColors.muted;
+    if (s.isPostponedOrCancelled) return PlayifyColors.sportOrange;
+    if (s == MatchStatus.scheduled) return PlayifyColors.electricBlue;
+    return PlayifyColors.muted;
   }
 }
 
@@ -398,7 +398,7 @@ class _KickoffVenueRow extends StatelessWidget {
     return Row(
       children: [
         Icon(Icons.access_time_rounded,
-            size: 12, color: SportSphereColors.muted.withValues(alpha: 0.8)),
+            size: 12, color: PlayifyColors.muted.withValues(alpha: 0.8)),
         const SizedBox(width: 4),
         Expanded(
           child: Text(
@@ -406,7 +406,7 @@ class _KickoffVenueRow extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: SportSphereColors.muted.withValues(alpha: 0.9),
+              color: PlayifyColors.muted.withValues(alpha: 0.9),
               fontSize: 11,
             ),
           ),
@@ -514,7 +514,7 @@ class _AlertSheetState extends State<_AlertSheet> {
           Text(
             'Stored locally on this device.',
             style: TextStyle(
-              color: SportSphereColors.muted,
+              color: PlayifyColors.muted,
               fontSize: 12,
             ),
           ),
@@ -548,7 +548,7 @@ class _AlertSheetState extends State<_AlertSheet> {
               child: FilledButton(
                 onPressed: _saving ? null : _save,
                 style: FilledButton.styleFrom(
-                  backgroundColor: SportSphereColors.electricBlue,
+                  backgroundColor: PlayifyColors.electricBlue,
                 ),
                 child: _saving
                     ? const SizedBox(
@@ -591,7 +591,7 @@ class _Toggle extends StatelessWidget {
         ),
         value: value,
         onChanged: onChanged,
-        activeColor: SportSphereColors.electricBlue,
+        activeColor: PlayifyColors.electricBlue,
       ),
     );
   }
@@ -611,7 +611,7 @@ class _TeamAvatar extends StatelessWidget {
       height: 50,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: SportSphereColors.surface2,
+        color: PlayifyColors.surface2,
         border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       clipBehavior: Clip.antiAlias,
@@ -621,16 +621,16 @@ class _TeamAvatar extends StatelessWidget {
               fit: BoxFit.cover,
               placeholder: (_, __) => const Icon(
                 Icons.shield,
-                color: SportSphereColors.muted,
+                color: PlayifyColors.muted,
                 size: 30,
               ),
               errorWidget: (_, __, ___) => const Icon(
                 Icons.shield,
-                color: SportSphereColors.muted,
+                color: PlayifyColors.muted,
                 size: 30,
               ),
             )
-          : const Icon(Icons.shield, color: SportSphereColors.muted, size: 30),
+          : const Icon(Icons.shield, color: PlayifyColors.muted, size: 30),
     );
   }
 }
@@ -645,7 +645,7 @@ class _MatchAction extends StatelessWidget {
   const _MatchAction({
     required this.icon,
     required this.label,
-    this.iconColor = SportSphereColors.muted,
+    this.iconColor = PlayifyColors.muted,
     this.onTap,
   });
 
@@ -666,7 +666,7 @@ class _MatchAction extends StatelessWidget {
               Text(
                 label,
                 style: const TextStyle(
-                  color: SportSphereColors.muted,
+                  color: PlayifyColors.muted,
                   fontSize: 12,
                 ),
               ),

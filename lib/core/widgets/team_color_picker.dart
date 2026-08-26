@@ -61,7 +61,7 @@ class TeamColorPicker extends StatelessWidget {
         children: [
           Text(label,
               style: const TextStyle(
-                  color: SportSphereColors.muted, fontSize: 12)),
+                  color: PlayifyColors.muted, fontSize: 12)),
           const SizedBox(height: 8),
           Wrap(
             spacing: 10,
@@ -78,7 +78,7 @@ class TeamColorPicker extends StatelessWidget {
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: colorToHex(selected) == colorToHex(c)
-                            ? SportSphereColors.electricBlue
+                            ? PlayifyColors.electricBlue
                             : Colors.white.withValues(alpha: 0.25),
                         width: colorToHex(selected) == colorToHex(c) ? 3 : 1,
                       ),
@@ -107,7 +107,7 @@ class TeamColorPicker extends StatelessWidget {
           Text(
             valueHex ?? colorToHex(selected),
             style: const TextStyle(
-                color: SportSphereColors.muted, fontSize: 12),
+                color: PlayifyColors.muted, fontSize: 12),
           ),
         ],
       ),

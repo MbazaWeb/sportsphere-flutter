@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../shared/person_profile_view.dart';
 import '../../../../../core/theme/colors.dart';
 
-/// Special treatment for the official SportSphere admin account.
-/// - Name fixed to "SportSphere"
+/// Special treatment for the official Playify admin account.
+/// - Name fixed to "Playify"
 /// - Badge "Official" (not Fan/Admin)
 /// - No "Fan of" section
 /// - No country shown
@@ -16,8 +16,8 @@ class OfficialProfileView extends StatelessWidget {
   Widget build(BuildContext context) {
     return PersonProfileView(
       profile: PersonProfileModel(
-        name: 'SportSphere',
-        handle: 'sportsphere',
+        name: 'Playify',
+        handle: 'playify',
         roleName: 'Official',
         roleColor: const Color(0xFFFFD700),
         accentColor: const Color(0xFFFFD700),
@@ -25,7 +25,7 @@ class OfficialProfileView extends StatelessWidget {
         followerCount: 0,
         followingCount: 0,
         hasFanOption: false,
-        bio: 'Official SportSphere account. Platform news, live scores and verified content.',
+        bio: 'Official Playify account. Platform news, live scores and verified content.',
         location: '', // no country shown for admin
         joinedDate: DateTime(2024, 1, 1),
         isVerified: true, // always gold tick
@@ -38,15 +38,15 @@ class OfficialProfileView extends StatelessWidget {
           ),
           PersonAboutField(
             icon: Icons.sports_rounded,
-            iconColor: SportSphereColors.sportGreen,
+            iconColor: PlayifyColors.sportGreen,
             label: 'My Sports',
             value: 'All Sports',
           ),
           PersonAboutField(
             icon: Icons.public_rounded,
-            iconColor: SportSphereColors.electricBlue,
+            iconColor: PlayifyColors.electricBlue,
             label: 'Platform',
-            value: 'SportSphere Global',
+            value: 'Playify Global',
           ),
         ],
       ),

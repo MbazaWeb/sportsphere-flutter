@@ -168,7 +168,7 @@ class _ClaimProfileSheetState extends ConsumerState<ClaimProfileSheet> {
             GrassFormHeader(
               title: 'Claim ${widget.profileName}',
               subtitle:
-                  'This ${widget.profileType} profile was created by SportSphere. '
+                  'This ${widget.profileType} profile was created by Playify. '
                   'Submit a claim if you represent this account.',
               icon: Icons.flag_rounded,
             ),

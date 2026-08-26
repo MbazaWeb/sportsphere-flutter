@@ -9,7 +9,7 @@ class AppAdmin {
   /// Original official account UID
   static const _officialId = '2920d9ac-a8f8-4fd9-abbf-071bd3335fb9';
 
-  /// sportsphere.app@sportsphere.com — primary admin / app access account
+  /// playify.app@playify.com — primary admin / app access account
   static const _adminAppId = 'df104a87-bc0f-421a-a066-06b9d0e48d01';
 
   /// All UIDs that are unconditionally admin
@@ -21,7 +21,7 @@ class AppAdmin {
     // become usable. Handle-based check was removed because handles can be
     // squat (anyone who registers with handle='playify_app' was being treated
     // as admin, see scan issue #9.10).
-    if (user.email == 'sportsphere.app@sportsphere.com' ||
+    if (user.email == 'playify.app@playify.com' ||
         user.email == 'playify@playify.com') {
       return true;
     }
@@ -41,7 +41,7 @@ class AppAdmin {
     if (_adminUids.contains(u.id)) return true;
     final em = (u.email ?? '').toLowerCase();
     if (em == 'playify@playify.com' ||
-        em == 'sportsphere.app@sportsphere.com') {
+        em == 'playify.app@playify.com') {
       return true;
     }
     // Handle-based check intentionally removed (#9.10): handles can be squat.

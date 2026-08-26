@@ -142,7 +142,7 @@ class _CoachProfileViewState extends State<CoachProfileView>
   Widget build(BuildContext context) {
     final isAdmin = AppAdmin.isSessionAdmin;
     return Scaffold(
-      backgroundColor: SportSphereColors.background,
+      backgroundColor: PlayifyColors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -153,14 +153,14 @@ class _CoachProfileViewState extends State<CoachProfileView>
                 children: [
                   IconButton(
                     icon: const Icon(Icons.arrow_back_rounded,
-                        color: SportSphereColors.white),
+                        color: PlayifyColors.white),
                     onPressed: () => Navigator.of(context).maybePop(),
                   ),
                   Expanded(
                     child: Text(
                       _loading ? 'Loading…' : (_str(_coach?['name']).isEmpty ? 'Coach' : _str(_coach?['name'])),
                       style: const TextStyle(
-                        color: SportSphereColors.white,
+                        color: PlayifyColors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                       ),
@@ -169,7 +169,7 @@ class _CoachProfileViewState extends State<CoachProfileView>
                   ),
                   IconButton(
                     icon: const Icon(Icons.more_horiz_rounded,
-                        color: SportSphereColors.white),
+                        color: PlayifyColors.white),
                     onPressed: () => _showMore(context, isAdmin),
                   ),
                 ],
@@ -179,21 +179,21 @@ class _CoachProfileViewState extends State<CoachProfileView>
               const Padding(
                 padding: EdgeInsets.all(40),
                 child: CircularProgressIndicator(
-                    color: SportSphereColors.electricBlue, strokeWidth: 2),
+                    color: PlayifyColors.electricBlue, strokeWidth: 2),
               )
             else if (_error != null)
               Padding(
                 padding: const EdgeInsets.all(24),
                 child: Text(_error!,
                     style:
-                        const TextStyle(color: SportSphereColors.muted)),
+                        const TextStyle(color: PlayifyColors.muted)),
               )
             else ...[
               _IdentityCard(coach: _coach!, team: _team),
               TabBar(
                 controller: _tab,
-                labelColor: SportSphereColors.white,
-                unselectedLabelColor: SportSphereColors.muted,
+                labelColor: PlayifyColors.white,
+                unselectedLabelColor: PlayifyColors.muted,
                 indicatorColor: const Color(0xFF9B6DFF),
                 tabs: const [
                   Tab(text: 'About'),
@@ -223,7 +223,7 @@ class _CoachProfileViewState extends State<CoachProfileView>
     final id = _str(_coach!['id']);
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: SportSphereColors.surface,
+      backgroundColor: PlayifyColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -244,9 +244,9 @@ class _CoachProfileViewState extends State<CoachProfileView>
             if (isAdmin && id.isNotEmpty)
               ListTile(
                 leading: const Icon(Icons.edit_outlined,
-                    color: SportSphereColors.electricBlue),
+                    color: PlayifyColors.electricBlue),
                 title: const Text('Edit Profile',
-                    style: TextStyle(color: SportSphereColors.white)),
+                    style: TextStyle(color: PlayifyColors.white)),
                 onTap: () async {
                   Navigator.pop(context);
                   await showEntityEditSheet(
@@ -260,9 +260,9 @@ class _CoachProfileViewState extends State<CoachProfileView>
               ),
             ListTile(
               leading: const Icon(Icons.share_outlined,
-                  color: SportSphereColors.white),
+                  color: PlayifyColors.white),
               title: const Text('Share Profile',
-                  style: TextStyle(color: SportSphereColors.white)),
+                  style: TextStyle(color: PlayifyColors.white)),
               onTap: () => Navigator.pop(context),
             ),
           ],
@@ -320,7 +320,7 @@ class _IdentityCard extends StatelessWidget {
                     child: Text(
                       name.isEmpty ? 'Coach' : name,
                       style: const TextStyle(
-                        color: SportSphereColors.white,
+                        color: PlayifyColors.white,
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                       ),
@@ -336,15 +336,15 @@ class _IdentityCard extends StatelessWidget {
                 if (role.isNotEmpty)
                   Text('Role: ${_capitalise(role)}',
                       style: const TextStyle(
-                          color: SportSphereColors.muted, fontSize: 13)),
+                          color: PlayifyColors.muted, fontSize: 13)),
                 if (teamName.isNotEmpty)
                   Text('Team: $teamName',
                       style: const TextStyle(
-                          color: SportSphereColors.muted, fontSize: 13)),
+                          color: PlayifyColors.muted, fontSize: 13)),
                 if (nationality.isNotEmpty)
                   Text('Nationality: $nationality',
                       style: const TextStyle(
-                          color: SportSphereColors.muted, fontSize: 13)),
+                          color: PlayifyColors.muted, fontSize: 13)),
               ],
             ),
           ),
@@ -386,7 +386,7 @@ class _AboutTab extends StatelessWidget {
       children: [
         const Text('About',
             style: TextStyle(
-                color: SportSphereColors.white,
+                color: PlayifyColors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w800)),
         const SizedBox(height: 12),
@@ -401,16 +401,16 @@ class _AboutTab extends StatelessWidget {
             children: [
               for (final f in fields) ...[
                 Row(children: [
-                  Icon(f.$1, color: SportSphereColors.electricBlue, size: 18),
+                  Icon(f.$1, color: PlayifyColors.electricBlue, size: 18),
                   const SizedBox(width: 10),
                   Text(f.$2,
                       style: const TextStyle(
-                          color: SportSphereColors.muted, fontSize: 13)),
+                          color: PlayifyColors.muted, fontSize: 13)),
                   const Spacer(),
                   Flexible(
                     child: Text(f.$3,
                         style: const TextStyle(
-                            color: SportSphereColors.white,
+                            color: PlayifyColors.white,
                             fontSize: 13,
                             fontWeight: FontWeight.w600),
                         textAlign: TextAlign.right,
@@ -449,7 +449,7 @@ class _StatsTab extends StatelessWidget {
         'Active',
         coach['isActive'] == true ? 'Yes' : 'No',
         Icons.check_circle_outline,
-        SportSphereColors.sportGreen,
+        PlayifyColors.sportGreen,
       ),
       _StatTile(
         'Verified',
@@ -463,7 +463,7 @@ class _StatsTab extends StatelessWidget {
       children: [
         const Text('Stats',
             style: TextStyle(
-                color: SportSphereColors.white,
+                color: PlayifyColors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w800)),
         const SizedBox(height: 12),
@@ -479,18 +479,18 @@ class _StatsTab extends StatelessWidget {
         const SizedBox(height: 16),
         const Text('Note',
             style: TextStyle(
-                color: SportSphereColors.muted,
+                color: PlayifyColors.muted,
                 fontSize: 12)),
         const SizedBox(height: 4),
         const Text(
           'Detailed coach statistics (matches managed, win rate, trophies) '
           'will appear here once the analytics pipeline populates them.',
-          style: const TextStyle(color: SportSphereColors.muted, fontSize: 12),
+          style: const TextStyle(color: PlayifyColors.muted, fontSize: 12),
         ),
         if (_s(coach['metadata']).isNotEmpty) ...[
           const SizedBox(height: 12),
           Text('Metadata: ${_s(coach['metadata'])}',
-              style: const TextStyle(color: SportSphereColors.muted, fontSize: 11)),
+              style: const TextStyle(color: PlayifyColors.muted, fontSize: 11)),
         ],
       ],
     );
@@ -526,7 +526,7 @@ class _StatTile extends StatelessWidget {
                         fontWeight: FontWeight.w900)),
                 Text(label,
                     style: const TextStyle(
-                        color: SportSphereColors.muted, fontSize: 11)),
+                        color: PlayifyColors.muted, fontSize: 11)),
               ],
             ),
           ],
@@ -545,7 +545,7 @@ class _SquadTab extends StatelessWidget {
     if (players.isEmpty) {
       return const Center(
         child: Text('No squad members visible',
-            style: TextStyle(color: SportSphereColors.muted)),
+            style: TextStyle(color: PlayifyColors.muted)),
       );
     }
     return ListView.separated(
@@ -562,20 +562,20 @@ class _SquadTab extends StatelessWidget {
           contentPadding: const EdgeInsets.symmetric(vertical: 4),
           leading: CircleAvatar(
             radius: 18,
-            backgroundColor: SportSphereColors.sportOrange.withValues(alpha: 0.15),
+            backgroundColor: PlayifyColors.sportOrange.withValues(alpha: 0.15),
             child: Text(
               shirt == null ? '?' : '$shirt',
               style: const TextStyle(
-                  color: SportSphereColors.sportOrange,
+                  color: PlayifyColors.sportOrange,
                   fontWeight: FontWeight.w800),
             ),
           ),
           title: Text('$name',
               style: const TextStyle(
-                  color: SportSphereColors.white, fontWeight: FontWeight.w600)),
+                  color: PlayifyColors.white, fontWeight: FontWeight.w600)),
           subtitle: Text('$position',
               style: const TextStyle(
-                  color: SportSphereColors.muted, fontSize: 12)),
+                  color: PlayifyColors.muted, fontSize: 12)),
         );
       },
     );

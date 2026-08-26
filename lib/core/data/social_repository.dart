@@ -592,10 +592,10 @@ class SocialRepository {
         final email = (_sb.auth.currentUser?.email ?? '').toLowerCase();
         final isAdmin = role == 'admin' ||
             role == 'official' ||
-            handle == 'sportsphere' ||
-            handle == 'sportsphere_official' ||
-            handle == 'sportsphere_app' ||
-            email == 'sportsphere.app@sportsphere.com';
+            handle == 'playify' ||
+            handle == 'playify_official' ||
+            handle == 'playify' ||
+            email == 'playify.app@playify.com';
         if (isAdmin) {
           return List<String>.from(kAllSports);
         }

@@ -1,4 +1,4 @@
-# SportSphere Edge Functions
+# Playify Edge Functions
 
 All functions require a valid JWT in the `Authorization: Bearer <token>` header
 (except `mpesa-callback`, which is invoked by Safaricom and verified via
@@ -6,7 +6,7 @@ All functions require a valid JWT in the `Authorization: Bearer <token>` header
 
 CORS is **whitelisted**, not wildcarded. Set the `ALLOWED_ORIGINS` env var to a
 comma-separated list of allowed origins (e.g.
-`https://app.sportsphere.com,https://admin.sportsphere.com`). Requests with an
+`https://app.playify.com,https://admin.playify.com`). Requests with an
 `Origin` header not in this list receive no `Access-Control-Allow-Origin`
 header.
 

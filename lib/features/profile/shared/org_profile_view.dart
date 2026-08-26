@@ -92,13 +92,13 @@ class _OrgProfileViewState extends State<OrgProfileView> {
   Widget build(BuildContext context) {
     final p = widget.profile;
     return Scaffold(
-      backgroundColor: SportSphereColors.background,
+      backgroundColor: PlayifyColors.background,
       body: SafeArea(child: Column(children: [
         Container(
           padding: const EdgeInsets.all(16),
           child: Row(children: [
             IconButton(
-              icon: const Icon(Icons.arrow_back_rounded, color: SportSphereColors.white),
+              icon: const Icon(Icons.arrow_back_rounded, color: PlayifyColors.white),
               onPressed: () => Navigator.of(context).maybePop(),
             ),
             CircleAvatar(
@@ -112,21 +112,21 @@ class _OrgProfileViewState extends State<OrgProfileView> {
             const SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Text(p.name, style: const TextStyle(color: SportSphereColors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+                Text(p.name, style: const TextStyle(color: PlayifyColors.white, fontSize: 18, fontWeight: FontWeight.w800)),
                 if (p.isVerified) ...[const SizedBox(width: 4), const Icon(Icons.verified_rounded, color: Color(0xFFFFD700), size: 16)],
               ]),
-              Text('@${p.handle}  ·  ${p.roleName}', style: const TextStyle(color: SportSphereColors.muted, fontSize: 12)),
+              Text('@${p.handle}  ·  ${p.roleName}', style: const TextStyle(color: PlayifyColors.muted, fontSize: 12)),
             ])),
             if (p.headerTrailing != null) ...[const SizedBox(width: 8), p.headerTrailing!],
           ]),
         ),
         Expanded(child: _loading
-            ? const Center(child: CircularProgressIndicator(color: SportSphereColors.electricBlue, strokeWidth: 2))
+            ? const Center(child: CircularProgressIndicator(color: PlayifyColors.electricBlue, strokeWidth: 2))
             : _posts.isEmpty
-                ? const Center(child: Text('No posts yet', style: TextStyle(color: SportSphereColors.muted)))
+                ? const Center(child: Text('No posts yet', style: TextStyle(color: PlayifyColors.muted)))
                 : RefreshIndicator(
                     onRefresh: _fetchPosts,
-                    color: SportSphereColors.electricBlue,
+                    color: PlayifyColors.electricBlue,
                     child: ListView.separated(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
                       itemCount: _posts.length,
@@ -135,7 +135,7 @@ class _OrgProfileViewState extends State<OrgProfileView> {
                         final post = _posts[i];
                         return Padding(
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: Text((post['content'] as String?) ?? '', style: const TextStyle(color: SportSphereColors.white, fontSize: 14)),
+                          child: Text((post['content'] as String?) ?? '', style: const TextStyle(color: PlayifyColors.white, fontSize: 14)),
                         );
                       },
                     ),

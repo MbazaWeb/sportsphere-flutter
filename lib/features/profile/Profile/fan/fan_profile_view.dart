@@ -170,7 +170,7 @@ class _FanProfileViewState extends State<FanProfileView>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: SportSphereColors.background,
+      backgroundColor: PlayifyColors.background,
       body: NestedScrollView(
         headerSliverBuilder: (context, innerScrolled) => [
           SliverToBoxAdapter(
@@ -278,7 +278,7 @@ class _ProfileHeader extends StatelessWidget {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      SportSphereColors.background.withValues(alpha: 0.95),
+                      PlayifyColors.background.withValues(alpha: 0.95),
                     ],
                   ),
                 ),
@@ -350,7 +350,7 @@ class _ProfileHeader extends StatelessWidget {
                         Text(
                           profile.displayName,
                           style: const TextStyle(
-                            color: SportSphereColors.white,
+                            color: PlayifyColors.white,
                             fontSize: 22,
                             fontWeight: FontWeight.w900,
                           ),
@@ -369,7 +369,7 @@ class _ProfileHeader extends StatelessWidget {
                     Text(
                       profile.atHandle,
                       style: const TextStyle(
-                        color: SportSphereColors.muted,
+                        color: PlayifyColors.muted,
                         fontSize: 14,
                       ),
                     ),
@@ -396,7 +396,7 @@ class _ProfileHeader extends StatelessWidget {
                   ),
                   child: const Icon(
                     Icons.info_outline_rounded,
-                    color: SportSphereColors.muted,
+                    color: PlayifyColors.muted,
                     size: 18,
                   ),
                 ),
@@ -482,9 +482,9 @@ class _Avatar extends StatelessWidget {
       height: radius * 2,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: SportSphereColors.background,
+        color: PlayifyColors.background,
         border: Border.all(
-          color: SportSphereColors.background,
+          color: PlayifyColors.background,
           width: 3,
         ),
         boxShadow: [
@@ -519,7 +519,7 @@ String _sanitizeAvatarUrl(String url) {
   if (url.startsWith('assets/')) return url; // local asset
   return url
       .replaceAll('sportssphere.fun', 'fffqjbrethogesgghjsn.supabase.co')
-      .replaceAll('sportsphere.fun', 'fffqjbrethogesgghjsn.supabase.co');
+      .replaceAll('playify.fun', 'fffqjbrethogesgghjsn.supabase.co');
 }
 
 class _AvatarFallback extends StatelessWidget {
@@ -548,7 +548,7 @@ class _FanOfBadge extends StatelessWidget {
         const Text(
           'Fan of ',
           style: const TextStyle(
-            color: SportSphereColors.muted,
+            color: PlayifyColors.muted,
             fontSize: 13,
           ),
         ),
@@ -606,7 +606,7 @@ class _Stat extends StatelessWidget {
         Text(
           value,
           style: const TextStyle(
-            color: SportSphereColors.white,
+            color: PlayifyColors.white,
             fontSize: 18,
             fontWeight: FontWeight.w900,
           ),
@@ -615,7 +615,7 @@ class _Stat extends StatelessWidget {
         Text(
           label,
           style: const TextStyle(
-            color: SportSphereColors.muted,
+            color: PlayifyColors.muted,
             fontSize: 11,
             fontWeight: FontWeight.w500,
           ),
@@ -665,7 +665,7 @@ class _ActionButtons extends StatelessWidget {
                     ? null
                     : const LinearGradient(
                         colors: [
-                          SportSphereColors.electricBlue,
+                          PlayifyColors.electricBlue,
                           Color(0xFF0066DD),
                         ],
                       ),
@@ -681,7 +681,7 @@ class _ActionButtons extends StatelessWidget {
                     ? null
                     : [
                         BoxShadow(
-                          color: SportSphereColors.electricBlue
+                          color: PlayifyColors.electricBlue
                               .withValues(alpha: 0.30),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
@@ -702,7 +702,7 @@ class _ActionButtons extends StatelessWidget {
                         following ? 'Following' : 'Follow',
                         style: TextStyle(
                           color: following
-                              ? SportSphereColors.muted
+                              ? PlayifyColors.muted
                               : Colors.white,
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
@@ -727,7 +727,7 @@ class _ActionButtons extends StatelessWidget {
             ),
             child: const Icon(
               Icons.mail_outline_rounded,
-              color: SportSphereColors.muted,
+              color: PlayifyColors.muted,
               size: 18,
             ),
           ),
@@ -765,7 +765,7 @@ class _EditProfileButton extends ConsumerWidget {
           child: Text(
             'Edit Profile',
             style: TextStyle(
-              color: SportSphereColors.white,
+              color: PlayifyColors.white,
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
@@ -835,11 +835,11 @@ class _SettingsButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.settings_rounded, color: SportSphereColors.white, size: 16),
+              Icon(Icons.settings_rounded, color: PlayifyColors.white, size: 16),
               SizedBox(width: 6),
               Text('Settings',
                   style: TextStyle(
-                      color: SportSphereColors.white,
+                      color: PlayifyColors.white,
                       fontSize: 14,
                       fontWeight: FontWeight.w700)),
             ],
@@ -867,18 +867,18 @@ class _SettingsButton extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
                 child: Row(
                   children: [
-                    const Icon(Icons.settings_rounded, color: SportSphereColors.white),
+                    const Icon(Icons.settings_rounded, color: PlayifyColors.white),
                     const SizedBox(width: 10),
                     const Text('Settings',
                         style: TextStyle(
-                            color: SportSphereColors.white,
+                            color: PlayifyColors.white,
                             fontSize: 18,
                             fontWeight: FontWeight.w800)),
                     const Spacer(),
                     GestureDetector(
                       onTap: () => Navigator.pop(sheetCtx),
                       child: const Icon(Icons.close_rounded,
-                          color: SportSphereColors.muted, size: 22),
+                          color: PlayifyColors.muted, size: 22),
                     ),
                   ],
                 ),
@@ -973,9 +973,9 @@ class _SettingsButton extends StatelessWidget {
                     builder: (d) => AlertDialog(
                       backgroundColor: const Color(0xFF071422),
                       title: const Text('Log out?',
-                          style: TextStyle(color: SportSphereColors.white)),
+                          style: TextStyle(color: PlayifyColors.white)),
                       content: const Text('You will be signed out of this account.',
-                          style: TextStyle(color: SportSphereColors.muted)),
+                          style: TextStyle(color: PlayifyColors.muted)),
                       actions: [
                         TextButton(
                             onPressed: () => Navigator.pop(d, false),
@@ -1036,12 +1036,12 @@ class _SettingsTile extends StatelessWidget {
       leading: Icon(icon, color: iconColor ?? const Color(0xFF168CFF)),
       title: Text(label,
           style: const TextStyle(
-              color: SportSphereColors.white, fontWeight: FontWeight.w600)),
+              color: PlayifyColors.white, fontWeight: FontWeight.w600)),
       subtitle: subtitle != null
           ? Text(subtitle!,
-              style: const TextStyle(color: SportSphereColors.muted, fontSize: 12))
+              style: const TextStyle(color: PlayifyColors.muted, fontSize: 12))
           : null,
-      trailing: const Icon(Icons.chevron_right_rounded, color: SportSphereColors.muted),
+      trailing: const Icon(Icons.chevron_right_rounded, color: PlayifyColors.muted),
       onTap: onTap,
     );
   }
@@ -1058,11 +1058,11 @@ class _ProfileTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: SportSphereColors.background,
+      color: PlayifyColors.background,
       child: TabBar(
         controller: controller,
-        labelColor: SportSphereColors.white,
-        unselectedLabelColor: SportSphereColors.muted,
+        labelColor: PlayifyColors.white,
+        unselectedLabelColor: PlayifyColors.muted,
         labelStyle: const TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.w700,
@@ -1073,7 +1073,7 @@ class _ProfileTabBar extends StatelessWidget {
         ),
         indicator: UnderlineTabIndicator(
           borderSide: const BorderSide(
-            color: SportSphereColors.sportGreen,
+            color: PlayifyColors.sportGreen,
             width: 2.5,
           ),
           borderRadius: BorderRadius.circular(4),
@@ -1299,7 +1299,7 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
   Widget build(BuildContext context) {
     if (_loading) {
       return const Center(child: CircularProgressIndicator(
-          color: SportSphereColors.electricBlue, strokeWidth: 2));
+          color: PlayifyColors.electricBlue, strokeWidth: 2));
     }
     if (_items.isEmpty) {
       return Center(child: Padding(
@@ -1309,19 +1309,19 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
               color: widget.profile.fanOfAccent.withValues(alpha: 0.35)),
           const SizedBox(height: 16),
           const Text('No posts yet',
-              style: TextStyle(color: SportSphereColors.white,
+              style: TextStyle(color: PlayifyColors.white,
                   fontSize: 18, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           Text('Posts from ${widget.profile.displayName} will appear here.',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: SportSphereColors.muted, fontSize: 14)),
+              style: const TextStyle(color: PlayifyColors.muted, fontSize: 14)),
         ]),
       ));
     }
 
     return RefreshIndicator(
       onRefresh: _fetchPosts,
-      color: SportSphereColors.electricBlue,
+      color: PlayifyColors.electricBlue,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 120),
@@ -1351,7 +1351,7 @@ class _AboutTab extends StatelessWidget {
             child: Text(
               profile.bio,
               style: const TextStyle(
-                color: SportSphereColors.white,
+                color: PlayifyColors.white,
                 fontSize: 15,
                 height: 1.5,
               ),
@@ -1373,28 +1373,28 @@ class _AboutTab extends StatelessWidget {
                 ),
               _AboutRow(
                 icon: Icons.sports_soccer_rounded,
-                iconColor: SportSphereColors.electricBlue,
+                iconColor: PlayifyColors.electricBlue,
                 label: 'Favourite sport',
                 value: profile.sport,
               ),
               if (profile.location.isNotEmpty)
                 _AboutRow(
                   icon: Icons.place_rounded,
-                  iconColor: SportSphereColors.sportOrange,
+                  iconColor: PlayifyColors.sportOrange,
                   label: 'Location',
                   value: profile.location,
                 ),
               if (profile.isOwnProfile && (profile.email?.isNotEmpty ?? false))
                 _AboutRow(
                   icon: Icons.email_outlined,
-                  iconColor: SportSphereColors.brightBlue,
+                  iconColor: PlayifyColors.brightBlue,
                   label: 'Email',
                   value: profile.email!,
                 ),
               _AboutRow(
                 icon: Icons.calendar_today_rounded,
-                iconColor: SportSphereColors.sportGreen,
-                label: 'Joined SportSphere',
+                iconColor: PlayifyColors.sportGreen,
+                label: 'Joined Playify',
                 value: DateFormat('MMMM yyyy').format(profile.joinedDate),
                 isLast: true,
               ),
@@ -1428,7 +1428,7 @@ class _AboutSection extends StatelessWidget {
           Text(
             title.toUpperCase(),
             style: TextStyle(
-              color: SportSphereColors.muted.withValues(alpha: 0.7),
+              color: PlayifyColors.muted.withValues(alpha: 0.7),
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.1,
@@ -1481,7 +1481,7 @@ class _AboutRow extends StatelessWidget {
                 child: Text(
                   label,
                   style: const TextStyle(
-                    color: SportSphereColors.muted,
+                    color: PlayifyColors.muted,
                     fontSize: 13,
                   ),
                 ),
@@ -1489,7 +1489,7 @@ class _AboutRow extends StatelessWidget {
               Text(
                 value,
                 style: TextStyle(
-                  color: valueColor ?? SportSphereColors.white,
+                  color: valueColor ?? PlayifyColors.white,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1524,7 +1524,7 @@ class _MoreSheet extends ConsumerWidget {
         content: const Text('Are you sure you want to log out?', style: TextStyle(color: Color(0xFF8A9BB0))),
         actions: [
           TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel', style: TextStyle(color: Color(0xFF8A9BB0)))),
-          TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Log Out', style: TextStyle(color: SportSphereColors.danger))),
+          TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Log Out', style: TextStyle(color: PlayifyColors.danger))),
         ],
       ),
     );
@@ -1537,7 +1537,7 @@ class _MoreSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       decoration: const BoxDecoration(
-        color: SportSphereColors.surface,
+        color: PlayifyColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 36),
@@ -1598,7 +1598,7 @@ class _SheetOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isDestructive ? SportSphereColors.danger : SportSphereColors.white;
+    final color = isDestructive ? PlayifyColors.danger : PlayifyColors.white;
     return GestureDetector(
       onTap: onTap,
       child: Padding(

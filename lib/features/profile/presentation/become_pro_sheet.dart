@@ -146,10 +146,10 @@ class _BecomeProSheetState extends ConsumerState<BecomeProSheet> {
         const SizedBox(height: 16),
 
         const Text('Become PRO', style: TextStyle(
-            fontSize: 22, fontWeight: FontWeight.w900, color: SportSphereColors.white)),
+            fontSize: 22, fontWeight: FontWeight.w900, color: PlayifyColors.white)),
         const SizedBox(height: 4),
         const Text('Choose your role. Admin will review within 24 hours.',
-            style: TextStyle(color: SportSphereColors.muted, fontSize: 13)),
+            style: TextStyle(color: PlayifyColors.muted, fontSize: 13)),
         const SizedBox(height: 20),
 
         // Role grid
@@ -175,11 +175,11 @@ class _BecomeProSheetState extends ConsumerState<BecomeProSheet> {
                   ),
                 ),
                 child: Row(children: [
-                  Icon(r.icon, color: sel ? r.color : SportSphereColors.muted, size: 20),
+                  Icon(r.icon, color: sel ? r.color : PlayifyColors.muted, size: 20),
                   const SizedBox(width: 8),
                   Flexible(child: Text(r.label,
                       style: TextStyle(
-                          color: sel ? r.color : SportSphereColors.white,
+                          color: sel ? r.color : PlayifyColors.white,
                           fontWeight: FontWeight.w700, fontSize: 12),
                       overflow: TextOverflow.ellipsis)),
                 ]),
@@ -200,17 +200,17 @@ class _BecomeProSheetState extends ConsumerState<BecomeProSheet> {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               color: (_message!.startsWith('Your') || _message!.startsWith('Request'))
-                  ? SportSphereColors.sportGreen.withValues(alpha: 0.1)
+                  ? PlayifyColors.sportGreen.withValues(alpha: 0.1)
                   : const Color(0xFFE31B23).withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
                 color: (_message!.startsWith('Your') || _message!.startsWith('Request'))
-                    ? SportSphereColors.sportGreen.withValues(alpha: 0.3)
+                    ? PlayifyColors.sportGreen.withValues(alpha: 0.3)
                     : const Color(0xFFE31B23).withValues(alpha: 0.25),
               ),
             ),
             child: Text(_message!,
-                style: const TextStyle(color: SportSphereColors.white, fontSize: 13, height: 1.4)),
+                style: const TextStyle(color: PlayifyColors.white, fontSize: 13, height: 1.4)),
           ),
         ],
 
@@ -220,7 +220,7 @@ class _BecomeProSheetState extends ConsumerState<BecomeProSheet> {
           child: FilledButton(
             onPressed: (_saving || _selected == null) ? null : _submit,
             style: FilledButton.styleFrom(
-              backgroundColor: _selected?.color ?? SportSphereColors.electricBlue,
+              backgroundColor: _selected?.color ?? PlayifyColors.electricBlue,
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),

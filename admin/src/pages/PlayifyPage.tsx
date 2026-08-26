@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { createOfficialPost } from '../lib/api'
 
-export function SportSpherePage() {
+export function playifyPage() {
   const [content, setContent] = useState('')
   const [mediaUrl, setMediaUrl] = useState('')
   const [type, setType] = useState('text')
@@ -12,7 +12,7 @@ export function SportSpherePage() {
     try {
       setErr(null)
       await createOfficialPost(content, mediaUrl ? [mediaUrl] : [], type)
-      setMsg('Published to SportSphere feed')
+      setMsg('Published to playify feed')
       setContent('')
       setMediaUrl('')
     } catch (e: any) {
@@ -22,7 +22,7 @@ export function SportSpherePage() {
 
   return (
     <div>
-      <h1 className="page-title">SportSphere Official</h1>
+      <h1 className="page-title">playify Official</h1>
       <p className="page-sub">Create posts, polls, and predictions from the official account.</p>
 
       <div className="card stack" style={{ maxWidth: 640 }}>
@@ -47,7 +47,7 @@ export function SportSpherePage() {
       <div className="card" style={{ marginTop: 16 }}>
         <h3>Official accounts</h3>
         <p className="hint">
-          Use <strong>official@sportsphere.app</strong> (SportSphere Official) for platform posts.
+          Use <strong>official@playify.app</strong> (playify Official) for platform posts.
           Team accounts created at seed can post as clubs after claim approval.
         </p>
       </div>

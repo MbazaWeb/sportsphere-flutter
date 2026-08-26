@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/colors.dart';
 
-/// Pitch / grass palette for SportSphere forms.
+/// Pitch / grass palette for Playify forms.
 class GrassForm {
   GrassForm._();
 
@@ -268,7 +268,7 @@ class GrassTextField extends StatelessWidget {
         onTap: onTap,
         onChanged: onChanged,
         style: const TextStyle(
-          color: SportSphereColors.white,
+          color: PlayifyColors.white,
           fontSize: 14,
           fontWeight: FontWeight.w500,
         ),
@@ -277,12 +277,12 @@ class GrassTextField extends StatelessWidget {
           labelText: label,
           hintText: hint,
           labelStyle: const TextStyle(
-            color: SportSphereColors.muted,
+            color: PlayifyColors.muted,
             fontSize: 12,
             fontWeight: FontWeight.w600,
           ),
           hintStyle: TextStyle(
-            color: SportSphereColors.muted.withValues(alpha: 0.55),
+            color: PlayifyColors.muted.withValues(alpha: 0.55),
             fontSize: 13,
           ),
           prefixIcon: icon == null
@@ -304,12 +304,12 @@ class GrassTextField extends StatelessWidget {
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: SportSphereColors.danger),
+            borderSide: const BorderSide(color: PlayifyColors.danger),
           ),
           focusedErrorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
             borderSide:
-                const BorderSide(color: SportSphereColors.danger, width: 1.6),
+                const BorderSide(color: PlayifyColors.danger, width: 1.6),
           ),
         ),
       ),
@@ -529,12 +529,12 @@ class GrassDropdown<T> extends StatelessWidget {
         onChanged: onChanged,
         validator: validator,
         dropdownColor: GrassForm.sheetBg,
-        style: const TextStyle(color: SportSphereColors.white, fontSize: 14),
+        style: const TextStyle(color: PlayifyColors.white, fontSize: 14),
         icon: const Icon(Icons.arrow_drop_down_rounded, color: GrassForm.greenLine),
         decoration: InputDecoration(
           labelText: label,
           labelStyle: const TextStyle(
-            color: SportSphereColors.muted,
+            color: PlayifyColors.muted,
             fontSize: 12,
             fontWeight: FontWeight.w600,
           ),
@@ -558,12 +558,12 @@ class GrassDropdown<T> extends StatelessWidget {
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: SportSphereColors.danger),
+            borderSide: const BorderSide(color: PlayifyColors.danger),
           ),
           focusedErrorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
             borderSide:
-                const BorderSide(color: SportSphereColors.danger, width: 1.6),
+                const BorderSide(color: PlayifyColors.danger, width: 1.6),
           ),
         ),
       ),

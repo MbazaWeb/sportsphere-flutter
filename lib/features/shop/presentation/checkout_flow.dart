@@ -188,10 +188,10 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
             ShopItemKind.merch => 'Checkout',
           },
           style: const TextStyle(
-              color: SportSphereColors.white, fontSize: 20, fontWeight: FontWeight.w900),
+              color: PlayifyColors.white, fontSize: 20, fontWeight: FontWeight.w900),
         ),
         Text(widget.catalog.sellerName,
-            style: const TextStyle(color: SportSphereColors.muted, fontSize: 13)),
+            style: const TextStyle(color: PlayifyColors.muted, fontSize: 13)),
         const SizedBox(height: 16),
         GlassContainer(
           radius: 18,
@@ -213,9 +213,9 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
                 children: [
                   Text(item.name,
                       style: const TextStyle(
-                          color: SportSphereColors.white, fontWeight: FontWeight.w700)),
+                          color: PlayifyColors.white, fontWeight: FontWeight.w700)),
                   Text(item.subtitle,
-                      style: const TextStyle(color: SportSphereColors.muted, fontSize: 12)),
+                      style: const TextStyle(color: PlayifyColors.muted, fontSize: 12)),
                 ],
               ),
             ),
@@ -239,7 +239,7 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
                   ),
                   child: Text(_fmt(v),
                       style: TextStyle(
-                        color: on ? accent : SportSphereColors.white,
+                        color: on ? accent : PlayifyColors.white,
                         fontWeight: FontWeight.w700,
                         fontSize: 12,
                       )),
@@ -250,14 +250,14 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
         ] else if (item.kind != ShopItemKind.membership) ...[
           const SizedBox(height: 16),
           Row(children: [
-            const Text('Quantity', style: TextStyle(color: SportSphereColors.muted)),
+            const Text('Quantity', style: TextStyle(color: PlayifyColors.muted)),
             const Spacer(),
             _QtyBtn(icon: Icons.remove, onTap: () { if (_qty > 1) setState(() => _qty--); }),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14),
               child: Text('$_qty',
                   style: const TextStyle(
-                      color: SportSphereColors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+                      color: PlayifyColors.white, fontWeight: FontWeight.w800, fontSize: 16)),
             ),
             _QtyBtn(icon: Icons.add, onTap: () => setState(() => _qty++)),
           ]),
@@ -268,13 +268,13 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
           TextField(
             controller: _phoneCtrl,
             keyboardType: TextInputType.phone,
-            style: const TextStyle(color: SportSphereColors.white),
+            style: const TextStyle(color: PlayifyColors.white),
             decoration: InputDecoration(
               hintText: _method.toLowerCase().contains('pesa')
                   ? 'M-Pesa phone (07… or 254…)'
                   : 'Airtel Money phone',
-              hintStyle: const TextStyle(color: SportSphereColors.muted, fontSize: 13),
-              prefixIcon: const Icon(Icons.phone_rounded, color: SportSphereColors.muted, size: 20),
+              hintStyle: const TextStyle(color: PlayifyColors.muted, fontSize: 13),
+              prefixIcon: const Icon(Icons.phone_rounded, color: PlayifyColors.muted, size: 20),
               filled: true,
               fillColor: Colors.white.withValues(alpha: 0.04),
               border: OutlineInputBorder(
@@ -311,7 +311,7 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
                   ),
                   child: Text(m,
                       style: TextStyle(
-                        color: _method == m ? accent : SportSphereColors.white,
+                        color: _method == m ? accent : PlayifyColors.white,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                       )),
@@ -323,11 +323,11 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
         ]),
         const SizedBox(height: 20),
         Row(children: [
-          const Text('Total', style: TextStyle(color: SportSphereColors.muted)),
+          const Text('Total', style: TextStyle(color: PlayifyColors.muted)),
           const Spacer(),
           Text(_fmt(_total),
               style: const TextStyle(
-                  color: SportSphereColors.white, fontSize: 20, fontWeight: FontWeight.w900)),
+                  color: PlayifyColors.white, fontSize: 20, fontWeight: FontWeight.w900)),
         ]),
         const SizedBox(height: 14),
         GestureDetector(
@@ -361,7 +361,7 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
                 : _methodKey(_method) == 'airtel'
                     ? 'Airtel Money payment coming soon'
                     : 'Card payments coming soon',
-            style: const TextStyle(color: SportSphereColors.muted, fontSize: 11),
+            style: const TextStyle(color: PlayifyColors.muted, fontSize: 11),
           ),
         ),
       ],
@@ -376,11 +376,11 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
         const SizedBox(height: 12),
         const Text('Order recorded',
             style: TextStyle(
-                color: SportSphereColors.white, fontSize: 20, fontWeight: FontWeight.w900)),
+                color: PlayifyColors.white, fontSize: 20, fontWeight: FontWeight.w900)),
         const SizedBox(height: 6),
-        Text('${_fmt(_total)} via $_method\nA receipt was sent to your SportSphere inbox.',
+        Text('${_fmt(_total)} via $_method\nA receipt was sent to your Playify inbox.',
             textAlign: TextAlign.center,
-            style: const TextStyle(color: SportSphereColors.muted, height: 1.4)),
+            style: const TextStyle(color: PlayifyColors.muted, height: 1.4)),
         const SizedBox(height: 22),
         GestureDetector(
           onTap: () => Navigator.pop(context),
@@ -392,7 +392,7 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
             ),
             child: const Center(
               child: Text('Done',
-                  style: TextStyle(color: SportSphereColors.white, fontWeight: FontWeight.w800)),
+                  style: TextStyle(color: PlayifyColors.white, fontWeight: FontWeight.w800)),
             ),
           ),
         ),
@@ -418,7 +418,7 @@ class _QtyBtn extends StatelessWidget {
           color: Colors.white.withValues(alpha: 0.07),
           border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
         ),
-        child: Icon(icon, size: 16, color: SportSphereColors.white),
+        child: Icon(icon, size: 16, color: PlayifyColors.white),
       ),
     );
   }

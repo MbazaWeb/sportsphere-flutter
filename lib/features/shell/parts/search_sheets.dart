@@ -88,14 +88,14 @@ class _SearchSheetState extends State<_SearchSheet> {
         child: Container(
           height: MediaQuery.of(context).size.height * 0.82,
           decoration: BoxDecoration(
-            color: SportSphereColors.background.withValues(alpha: 0.96),
+            color: PlayifyColors.background.withValues(alpha: 0.96),
             borderRadius: BorderRadius.circular(28),
             border: Border.all(
-              color: SportSphereColors.white.withValues(alpha: 0.10),
+              color: PlayifyColors.white.withValues(alpha: 0.10),
             ),
             boxShadow: [
               BoxShadow(
-                color: SportSphereColors.black.withValues(alpha: 0.42),
+                color: PlayifyColors.black.withValues(alpha: 0.42),
                 blurRadius: 40,
                 spreadRadius: -10,
               ),
@@ -109,7 +109,7 @@ class _SearchSheetState extends State<_SearchSheet> {
                 width: 42,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: SportSphereColors.white.withValues(alpha: 0.18),
+                  color: PlayifyColors.white.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -118,10 +118,10 @@ class _SearchSheetState extends State<_SearchSheet> {
                 padding: const EdgeInsets.fromLTRB(16, 18, 16, 12),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: SportSphereColors.white.withValues(alpha: 0.055),
+                    color: PlayifyColors.white.withValues(alpha: 0.055),
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(
-                      color: SportSphereColors.electricBlue
+                      color: PlayifyColors.electricBlue
                           .withValues(alpha: 0.20),
                     ),
                   ),
@@ -130,20 +130,20 @@ class _SearchSheetState extends State<_SearchSheet> {
                     focusNode: _focusNode,
                     autofocus: true,
                     style: const TextStyle(
-                      color: SportSphereColors.white,
+                      color: PlayifyColors.white,
                       fontSize: 16,
                     ),
-                    cursorColor: SportSphereColors.electricBlue,
+                    cursorColor: PlayifyColors.electricBlue,
                     decoration: InputDecoration(
                       border: InputBorder.none,
                       prefixIcon: const Icon(
                         Icons.search_rounded,
-                        color: SportSphereColors.electricBlue,
+                        color: PlayifyColors.electricBlue,
                       ),
                       hintText:
                           'Search players, teams, fans, posts...',
                       hintStyle: TextStyle(
-                        color: SportSphereColors.muted
+                        color: PlayifyColors.muted
                             .withValues(alpha: 0.82),
                       ),
                       suffixIcon: _query.isEmpty
@@ -152,7 +152,7 @@ class _SearchSheetState extends State<_SearchSheet> {
                               onPressed: _controller.clear,
                               icon: const Icon(
                                 Icons.close_rounded,
-                                color: SportSphereColors.muted,
+                                color: PlayifyColors.muted,
                               ),
                             ),
                     ),
@@ -165,8 +165,8 @@ class _SearchSheetState extends State<_SearchSheet> {
                   padding: EdgeInsets.only(bottom: 8),
                   child: LinearProgressIndicator(
                     minHeight: 2,
-                    backgroundColor: SportSphereColors.transparent,
-                    color: SportSphereColors.electricBlue,
+                    backgroundColor: PlayifyColors.transparent,
+                    color: PlayifyColors.electricBlue,
                   ),
                 ),
 
@@ -177,7 +177,7 @@ class _SearchSheetState extends State<_SearchSheet> {
                         ? const Center(
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: SportSphereColors.electricBlue,
+                              color: PlayifyColors.electricBlue,
                             ),
                           )
                         : _results.isEmpty
@@ -185,7 +185,7 @@ class _SearchSheetState extends State<_SearchSheet> {
                                 child: Text(
                                   'No results for "$_query"',
                                   style: TextStyle(
-                                    color: SportSphereColors.muted
+                                    color: PlayifyColors.muted
                                         .withValues(alpha: 0.7),
                                     fontSize: 14,
                                   ),
@@ -248,10 +248,10 @@ class _SearchResultTile extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: SportSphereColors.white.withValues(alpha: 0.035),
+            color: PlayifyColors.white.withValues(alpha: 0.035),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: SportSphereColors.white.withValues(alpha: 0.06),
+              color: PlayifyColors.white.withValues(alpha: 0.06),
             ),
           ),
           child: Row(
@@ -260,7 +260,7 @@ class _SearchResultTile extends StatelessWidget {
                 CircleAvatar(
                   radius: 22,
                   backgroundImage: NetworkImage(item['avatar'] as String),
-                  backgroundColor: SportSphereColors.surface2,
+                  backgroundColor: PlayifyColors.surface2,
                 )
               else
                 Container(
@@ -268,15 +268,15 @@ class _SearchResultTile extends StatelessWidget {
                   height: 44,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: SportSphereColors.surface2,
+                    color: PlayifyColors.surface2,
                     border: Border.all(
-                      color: SportSphereColors.electricBlue
+                      color: PlayifyColors.electricBlue
                           .withValues(alpha: 0.18),
                     ),
                   ),
                   child: Icon(
                     _icon,
-                    color: SportSphereColors.electricBlue,
+                    color: PlayifyColors.electricBlue,
                     size: 21,
                   ),
                 ),
@@ -290,7 +290,7 @@ class _SearchResultTile extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: SportSphereColors.white,
+                        color: PlayifyColors.white,
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
                       ),
@@ -301,7 +301,7 @@ class _SearchResultTile extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: SportSphereColors.muted,
+                        color: PlayifyColors.muted,
                         fontSize: 12,
                       ),
                     ),
@@ -310,7 +310,7 @@ class _SearchResultTile extends StatelessWidget {
               ),
               const Icon(
                 Icons.chevron_right_rounded,
-                color: SportSphereColors.muted,
+                color: PlayifyColors.muted,
                 size: 20,
               ),
             ],
@@ -411,14 +411,14 @@ class _SearchEmptyState extends StatelessWidget {
             Icon(
               Icons.manage_search_rounded,
               size: 54,
-              color: SportSphereColors.electricBlue
+              color: PlayifyColors.electricBlue
                   .withValues(alpha: 0.72),
             ),
             const SizedBox(height: 16),
             const Text(
-              'Search SportSphere',
+              'Search Playify',
               style: TextStyle(
-                color: SportSphereColors.white,
+                color: PlayifyColors.white,
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
               ),
@@ -428,7 +428,7 @@ class _SearchEmptyState extends StatelessWidget {
               'Find players, teams, coaches, fans, analysts and posts.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: SportSphereColors.muted
+                color: PlayifyColors.muted
                     .withValues(alpha: 0.9),
                 fontSize: 13,
               ),
@@ -567,9 +567,9 @@ class _MessageSheetState extends State<_MessageSheet> {
         child: Container(
           constraints: const BoxConstraints(maxHeight: 620),
           decoration: BoxDecoration(
-            color: SportSphereColors.background.withValues(alpha: 0.97),
+            color: PlayifyColors.background.withValues(alpha: 0.97),
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: SportSphereColors.white.withValues(alpha: 0.10)),
+            border: Border.all(color: PlayifyColors.white.withValues(alpha: 0.10)),
           ),
           child: Column(
             children: [
@@ -578,7 +578,7 @@ class _MessageSheetState extends State<_MessageSheet> {
                 width: 42,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: SportSphereColors.white.withValues(alpha: 0.18),
+                  color: PlayifyColors.white.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -588,7 +588,7 @@ class _MessageSheetState extends State<_MessageSheet> {
                   children: [
                     if (_peerId != null)
                       IconButton(
-                        icon: const Icon(Icons.arrow_back, color: SportSphereColors.white70),
+                        icon: const Icon(Icons.arrow_back, color: PlayifyColors.white70),
                         onPressed: () {
                           _unsubscribe();
                           setState(() {
@@ -608,7 +608,7 @@ class _MessageSheetState extends State<_MessageSheet> {
                                 ? '${_peerLabel ?? 'Chat'}  ·  @$_peerHandle'
                                 : (_peerLabel ?? 'Chat')),
                         style: const TextStyle(
-                          color: SportSphereColors.white,
+                          color: PlayifyColors.white,
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
                         ),
@@ -622,10 +622,10 @@ class _MessageSheetState extends State<_MessageSheet> {
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: TextField(
                     controller: _search,
-                    style: const TextStyle(color: SportSphereColors.white),
+                    style: const TextStyle(color: PlayifyColors.white),
                     decoration: InputDecoration(
                       hintText: 'Search people to message',
-                      hintStyle: const TextStyle(color: SportSphereColors.white38),
+                      hintStyle: const TextStyle(color: PlayifyColors.white38),
                       suffixIcon: IconButton(
                         icon: const Icon(Icons.search),
                         onPressed: () async {
@@ -650,11 +650,11 @@ class _MessageSheetState extends State<_MessageSheet> {
                             dense: true,
                             title: Text(
                               '${u['name'] ?? u['handle']}',
-                              style: const TextStyle(color: SportSphereColors.white),
+                              style: const TextStyle(color: PlayifyColors.white),
                             ),
                             subtitle: Text(
                               '@${u['handle']}',
-                              style: const TextStyle(color: SportSphereColors.white54),
+                              style: const TextStyle(color: PlayifyColors.white54),
                             ),
                             onTap: () => _openPeer(
                               '${u['id']}',
@@ -673,7 +673,7 @@ class _MessageSheetState extends State<_MessageSheet> {
                               child: Text(
                                 'No conversations yet.\nSearch a user to start a DM.',
                                 textAlign: TextAlign.center,
-                                style: TextStyle(color: SportSphereColors.white54),
+                                style: TextStyle(color: PlayifyColors.white54),
                               ),
                             )
                           : ListView.builder(
@@ -693,14 +693,14 @@ class _MessageSheetState extends State<_MessageSheet> {
                                     child: av == null || av.isEmpty
                                         ? Text(
                                             name.isNotEmpty ? name[0].toUpperCase() : '?',
-                                            style: const TextStyle(color: SportSphereColors.white),
+                                            style: const TextStyle(color: PlayifyColors.white),
                                           )
                                         : null,
                                   ),
                                   title: Text(
                                     name,
                                     style: const TextStyle(
-                                      color: SportSphereColors.white,
+                                      color: PlayifyColors.white,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
@@ -710,7 +710,7 @@ class _MessageSheetState extends State<_MessageSheet> {
                                         : '${m['content'] ?? ''}',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(color: SportSphereColors.white54),
+                                    style: const TextStyle(color: PlayifyColors.white54),
                                   ),
                                   onTap: () => _openPeer(
                                     peer,
@@ -745,14 +745,14 @@ class _MessageSheetState extends State<_MessageSheet> {
                                 ),
                                 decoration: BoxDecoration(
                                   color: mine
-                                      ? SportSphereColors.electricBlue
+                                      ? PlayifyColors.electricBlue
                                           .withValues(alpha: 0.35)
-                                      : SportSphereColors.white.withValues(alpha: 0.08),
+                                      : PlayifyColors.white.withValues(alpha: 0.08),
                                   borderRadius: BorderRadius.circular(14),
                                 ),
                                 child: Text(
                                   '${m['content']}',
-                                  style: const TextStyle(color: SportSphereColors.white),
+                                  style: const TextStyle(color: PlayifyColors.white),
                                 ),
                               ),
                             );
@@ -766,17 +766,17 @@ class _MessageSheetState extends State<_MessageSheet> {
                       Expanded(
                         child: TextField(
                           controller: _compose,
-                          style: const TextStyle(color: SportSphereColors.white),
+                          style: const TextStyle(color: PlayifyColors.white),
                           decoration: const InputDecoration(
                             hintText: 'Message…',
-                            hintStyle: TextStyle(color: SportSphereColors.white38),
+                            hintStyle: TextStyle(color: PlayifyColors.white38),
                           ),
                         ),
                       ),
                       IconButton(
                         onPressed: _send,
                         icon: const Icon(Icons.send_rounded,
-                            color: SportSphereColors.electricBlue),
+                            color: PlayifyColors.electricBlue),
                       ),
                     ],
                   ),
@@ -810,10 +810,10 @@ class _ActivitySheet extends StatelessWidget {
         child: Container(
           constraints: const BoxConstraints(maxHeight: 620),
           decoration: BoxDecoration(
-            color: SportSphereColors.background.withValues(alpha: 0.97),
+            color: PlayifyColors.background.withValues(alpha: 0.97),
             borderRadius: BorderRadius.circular(28),
             border: Border.all(
-              color: SportSphereColors.white.withValues(alpha: 0.10),
+              color: PlayifyColors.white.withValues(alpha: 0.10),
             ),
           ),
           child: Column(
@@ -824,7 +824,7 @@ class _ActivitySheet extends StatelessWidget {
                 width: 42,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: SportSphereColors.white.withValues(alpha: 0.18),
+                  color: PlayifyColors.white.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -834,13 +834,13 @@ class _ActivitySheet extends StatelessWidget {
                   children: [
                     Icon(
                       icon,
-                      color: SportSphereColors.electricBlue,
+                      color: PlayifyColors.electricBlue,
                     ),
                     const SizedBox(width: 10),
                     Text(
                       title,
                       style: const TextStyle(
-                        color: SportSphereColors.white,
+                        color: PlayifyColors.white,
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                       ),
@@ -869,10 +869,10 @@ class _ActivitySheet extends StatelessWidget {
                       return Container(
                         padding: const EdgeInsets.all(13),
                         decoration: BoxDecoration(
-                          color: SportSphereColors.white.withValues(alpha: 0.035),
+                          color: PlayifyColors.white.withValues(alpha: 0.035),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: SportSphereColors.white.withValues(alpha: 0.06),
+                            color: PlayifyColors.white.withValues(alpha: 0.06),
                           ),
                         ),
                         child: Row(
@@ -882,11 +882,11 @@ class _ActivitySheet extends StatelessWidget {
                               height: 44,
                               decoration: const BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: SportSphereColors.surface2,
+                                color: PlayifyColors.surface2,
                               ),
                               child: Icon(
                                 item.icon,
-                                color: SportSphereColors.electricBlue,
+                                color: PlayifyColors.electricBlue,
                                 size: 20,
                               ),
                             ),
@@ -899,7 +899,7 @@ class _ActivitySheet extends StatelessWidget {
                                   Text(
                                     item.title,
                                     style: const TextStyle(
-                                      color: SportSphereColors.white,
+                                      color: PlayifyColors.white,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
@@ -907,7 +907,7 @@ class _ActivitySheet extends StatelessWidget {
                                   Text(
                                     item.subtitle,
                                     style: const TextStyle(
-                                      color: SportSphereColors.muted,
+                                      color: PlayifyColors.muted,
                                       fontSize: 12,
                                     ),
                                   ),
@@ -917,7 +917,7 @@ class _ActivitySheet extends StatelessWidget {
                             Text(
                               item.time,
                               style: const TextStyle(
-                                color: SportSphereColors.muted,
+                                color: PlayifyColors.muted,
                                 fontSize: 10,
                               ),
                             ),

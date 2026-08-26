@@ -116,7 +116,7 @@ class NotificationsNotifier extends Notifier<NotificationsState> {
             state = state.copyWith(items: unique.take(50).toList());
             unawaited(LocalNotificationService.instance.show(
               title: item.title,
-              body: item.subtitle.isEmpty ? 'Open SportSphere' : item.subtitle,
+              body: item.subtitle.isEmpty ? 'Open Playify' : item.subtitle,
               payload: item.id,
             ));
             if (kDebugMode) {

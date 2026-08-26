@@ -107,19 +107,19 @@ class _CommunityProfileViewState extends State<CommunityProfileView> {
   Widget build(BuildContext context) {
     if (_loading) {
       return const Scaffold(
-        backgroundColor: SportSphereColors.background,
+        backgroundColor: PlayifyColors.background,
         body: Center(child: CircularProgressIndicator(
-            color: SportSphereColors.electricBlue, strokeWidth: 2)),
+            color: PlayifyColors.electricBlue, strokeWidth: 2)),
       );
     }
 
     if (_error != null || _data == null) {
       return Scaffold(
-        backgroundColor: SportSphereColors.background,
-        appBar: AppBar(backgroundColor: SportSphereColors.background,
+        backgroundColor: PlayifyColors.background,
+        appBar: AppBar(backgroundColor: PlayifyColors.background,
             leading: BackButton(onPressed: () => context.pop())),
         body: Center(child: Text(_error ?? 'Not found',
-            style: const TextStyle(color: SportSphereColors.muted))),
+            style: const TextStyle(color: PlayifyColors.muted))),
       );
     }
 
@@ -160,22 +160,22 @@ class _CommunityProfileViewState extends State<CommunityProfileView> {
             ),
           PersonAboutField(
             icon: Icons.people_rounded,
-            iconColor: SportSphereColors.sportGreen,
+            iconColor: PlayifyColors.sportGreen,
             label: 'Members',
             value: _fmt(memberCount),
           ),
           if (teamName.isNotEmpty)
             PersonAboutField(
               icon: Icons.sports_soccer_rounded,
-              iconColor: SportSphereColors.sportOrange,
+              iconColor: PlayifyColors.sportOrange,
               label: 'Supported Team',
               value: teamName,
             ),
         ],
         headerTrailing: FilledButton.icon(
           style: FilledButton.styleFrom(
-            backgroundColor: _joined ? SportSphereColors.muted.withValues(alpha: 0.2) : accent,
-            foregroundColor: _joined ? SportSphereColors.muted : SportSphereColors.white,
+            backgroundColor: _joined ? PlayifyColors.muted.withValues(alpha: 0.2) : accent,
+            foregroundColor: _joined ? PlayifyColors.muted : PlayifyColors.white,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           ),
           onPressed: _busyJoin ? null : _toggleMembership,
@@ -195,7 +195,7 @@ class _CommunityProfileViewState extends State<CommunityProfileView> {
       final h = hex.replaceAll('#', '');
       return Color(int.parse('FF$h', radix: 16));
     } catch (_) {
-      return SportSphereColors.electricBlue;
+      return PlayifyColors.electricBlue;
     }
   }
 

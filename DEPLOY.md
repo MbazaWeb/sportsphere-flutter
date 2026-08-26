@@ -1,4 +1,4 @@
-# SportSphere deployment
+# Playify deployment
 
 ## Supabase (already used by the app)
 
@@ -25,7 +25,7 @@ SSH example (password provided privately):
 
 ```bash
 ssh deploy@104.152.50.173
-# rsync admin/dist to /var/www/sportsphere-admin
+# rsync admin/dist to /var/www/playify-admin
 ```
 
 ## Flutter Android Play Store release

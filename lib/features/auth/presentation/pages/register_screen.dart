@@ -167,13 +167,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.dark(
-              primary: SportSphereColors.electricBlue,
+              primary: PlayifyColors.electricBlue,
               onPrimary: Colors.white,
-              surface: SportSphereColors.surface2,
-              onSurface: SportSphereColors.white,
+              surface: PlayifyColors.surface2,
+              onSurface: PlayifyColors.white,
             ),
             dialogTheme: DialogThemeData(
-              backgroundColor: SportSphereColors.surface,
+              backgroundColor: PlayifyColors.surface,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(24),
               ),
@@ -303,7 +303,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: SportSphereColors.surface2,
+        backgroundColor: PlayifyColors.surface2,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
@@ -315,7 +315,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     final auth = ref.watch(authControllerProvider);
 
     return Scaffold(
-      backgroundColor: SportSphereColors.background,
+      backgroundColor: PlayifyColors.background,
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
@@ -323,12 +323,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
           const Positioned(
             top: -100,
             right: -80,
-            child: const _Orb(color: SportSphereColors.electricBlue, size: 340),
+            child: const _Orb(color: PlayifyColors.electricBlue, size: 340),
           ),
           const Positioned(
             bottom: 80,
             left: -100,
-            child: const _Orb(color: SportSphereColors.sportGreen, size: 280),
+            child: const _Orb(color: PlayifyColors.sportGreen, size: 280),
           ),
 
           SafeArea(
@@ -347,7 +347,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                             onPressed: () => context.pop(),
                             icon: const Icon(
                               Icons.arrow_back_ios_new_rounded,
-                              color: SportSphereColors.white,
+                              color: PlayifyColors.white,
                               size: 20,
                             ),
                           ),
@@ -355,7 +355,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                             child: Text(
                               'Create Account',
                               style: TextStyle(
-                                color: SportSphereColors.white,
+                                color: PlayifyColors.white,
                                 fontSize: 20,
                                 fontWeight: FontWeight.w800,
                               ),
@@ -365,14 +365,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
-                              color: SportSphereColors.electricBlue.withValues(alpha: 0.12),
+                              color: PlayifyColors.electricBlue.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: SportSphereColors.electricBlue.withValues(alpha: 0.4)),
+                              border: Border.all(color: PlayifyColors.electricBlue.withValues(alpha: 0.4)),
                             ),
                             child: const Row(children: [
-                              Icon(Icons.looks_one_rounded, color: SportSphereColors.electricBlue, size: 14),
+                              Icon(Icons.looks_one_rounded, color: PlayifyColors.electricBlue, size: 14),
                               SizedBox(width: 4),
-                              Text('Step 1 of 2', style: TextStyle(color: SportSphereColors.electricBlue,
+                              Text('Step 1 of 2', style: TextStyle(color: PlayifyColors.electricBlue,
                                   fontSize: 11, fontWeight: FontWeight.w700)),
                             ]),
                           ),
@@ -383,11 +383,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: SportSphereColors.sportGreen
+                              color: PlayifyColors.sportGreen
                                   .withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: SportSphereColors.sportGreen
+                                color: PlayifyColors.sportGreen
                                     .withValues(alpha: 0.4),
                               ),
                             ),
@@ -395,14 +395,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                               children: [
                                 const Icon(
                                   Icons.favorite_rounded,
-                                  color: SportSphereColors.sportGreen,
+                                  color: PlayifyColors.sportGreen,
                                   size: 14,
                                 ),
                                 const SizedBox(width: 5),
                                 const Text(
                                   'Fan Account',
                                   style: const TextStyle(
-                                    color: SportSphereColors.sportGreen,
+                                    color: PlayifyColors.sportGreen,
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -611,16 +611,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                     Container(
                                       padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: SportSphereColors.electricBlue.withValues(alpha: 0.08),
+                                        color: PlayifyColors.electricBlue.withValues(alpha: 0.08),
                                         borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: SportSphereColors.electricBlue.withValues(alpha: 0.2)),
+                                        border: Border.all(color: PlayifyColors.electricBlue.withValues(alpha: 0.2)),
                                       ),
                                       child: const Row(children: [
-                                        Icon(Icons.arrow_forward_rounded, color: SportSphereColors.electricBlue, size: 16),
+                                        Icon(Icons.arrow_forward_rounded, color: PlayifyColors.electricBlue, size: 16),
                                         SizedBox(width: 8),
                                         Expanded(child: Text(
                                           'Next: choose your favourite teams and upload a photo',
-                                          style: TextStyle(color: SportSphereColors.electricBlue, fontSize: 12),
+                                          style: TextStyle(color: PlayifyColors.electricBlue, fontSize: 12),
                                         )),
                                       ]),
                                     ),
@@ -651,7 +651,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                               child: RichText(
                                 text: TextSpan(
                                   style: TextStyle(
-                                    color: SportSphereColors.muted
+                                    color: PlayifyColors.muted
                                         .withValues(alpha: 0.8),
                                     fontSize: 14,
                                   ),
@@ -662,7 +662,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                       text: 'Log In',
                                       style: const TextStyle(
                                         color:
-                                            SportSphereColors.electricBlue,
+                                            PlayifyColors.electricBlue,
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
@@ -704,7 +704,7 @@ class _MiniLogo extends StatelessWidget {
         Text(
           'Join the sports community',
           style: TextStyle(
-            color: SportSphereColors.muted.withValues(alpha: 0.8),
+            color: PlayifyColors.muted.withValues(alpha: 0.8),
             fontSize: 11,
           ),
         ),
@@ -747,11 +747,11 @@ class _Field extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         color: focused
-            ? SportSphereColors.electricBlue.withValues(alpha: 0.06)
+            ? PlayifyColors.electricBlue.withValues(alpha: 0.06)
             : Colors.white.withValues(alpha: 0.04),
         border: Border.all(
           color: focused
-              ? SportSphereColors.electricBlue.withValues(alpha: 0.55)
+              ? PlayifyColors.electricBlue.withValues(alpha: 0.55)
               : Colors.white.withValues(alpha: 0.10),
           width: focused ? 1.5 : 1,
         ),
@@ -765,23 +765,23 @@ class _Field extends StatelessWidget {
           keyboardType: keyboard,
           obscureText: obscure,
           style: const TextStyle(
-            color: SportSphereColors.white,
+            color: PlayifyColors.white,
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
-          cursorColor: SportSphereColors.electricBlue,
+          cursorColor: PlayifyColors.electricBlue,
           decoration: InputDecoration(
             labelText: label,
             labelStyle: TextStyle(
               color: focused
-                  ? SportSphereColors.electricBlue
-                  : SportSphereColors.muted,
+                  ? PlayifyColors.electricBlue
+                  : PlayifyColors.muted,
               fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
             hintText: hint,
             hintStyle: TextStyle(
-              color: SportSphereColors.muted.withValues(alpha: 0.5),
+              color: PlayifyColors.muted.withValues(alpha: 0.5),
               fontSize: 13,
             ),
             prefixIcon: Padding(
@@ -789,8 +789,8 @@ class _Field extends StatelessWidget {
               child: Icon(
                 icon,
                 color: focused
-                    ? SportSphereColors.electricBlue
-                    : SportSphereColors.muted,
+                    ? PlayifyColors.electricBlue
+                    : PlayifyColors.muted,
                 size: 18,
               ),
             ),
@@ -837,11 +837,11 @@ class _TapField extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           color: filled
-              ? SportSphereColors.electricBlue.withValues(alpha: 0.06)
+              ? PlayifyColors.electricBlue.withValues(alpha: 0.06)
               : Colors.white.withValues(alpha: 0.04),
           border: Border.all(
             color: filled
-                ? SportSphereColors.electricBlue.withValues(alpha: 0.45)
+                ? PlayifyColors.electricBlue.withValues(alpha: 0.45)
                 : Colors.white.withValues(alpha: 0.10),
           ),
         ),
@@ -850,8 +850,8 @@ class _TapField extends StatelessWidget {
             Icon(
               icon,
               color: filled
-                  ? SportSphereColors.electricBlue
-                  : SportSphereColors.muted,
+                  ? PlayifyColors.electricBlue
+                  : PlayifyColors.muted,
               size: 18,
             ),
             const SizedBox(width: 10),
@@ -863,8 +863,8 @@ class _TapField extends StatelessWidget {
                     label,
                     style: TextStyle(
                       color: filled
-                          ? SportSphereColors.electricBlue
-                          : SportSphereColors.muted,
+                          ? PlayifyColors.electricBlue
+                          : PlayifyColors.muted,
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
@@ -874,8 +874,8 @@ class _TapField extends StatelessWidget {
                     value ?? placeholder,
                     style: TextStyle(
                       color: filled
-                          ? SportSphereColors.white
-                          : SportSphereColors.muted.withValues(alpha: 0.55),
+                          ? PlayifyColors.white
+                          : PlayifyColors.muted.withValues(alpha: 0.55),
                       fontSize: 14,
                       fontWeight:
                           filled ? FontWeight.w600 : FontWeight.w400,
@@ -886,7 +886,7 @@ class _TapField extends StatelessWidget {
             ),
             const Icon(
               Icons.chevron_right_rounded,
-              color: SportSphereColors.muted,
+              color: PlayifyColors.muted,
               size: 20,
             ),
           ],
@@ -937,7 +937,7 @@ class _CountryPickerState extends State<_CountryPicker> {
     return Container(
       height: MediaQuery.of(context).size.height * 0.78,
       decoration: const BoxDecoration(
-        color: SportSphereColors.surface,
+        color: PlayifyColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Column(
@@ -959,7 +959,7 @@ class _CountryPickerState extends State<_CountryPicker> {
                   child: Text(
                     'Select Country',
                     style: TextStyle(
-                      color: SportSphereColors.white,
+                      color: PlayifyColors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
                     ),
@@ -969,7 +969,7 @@ class _CountryPickerState extends State<_CountryPicker> {
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(
                     Icons.close_rounded,
-                    color: SportSphereColors.muted,
+                    color: PlayifyColors.muted,
                   ),
                 ),
               ],
@@ -989,20 +989,20 @@ class _CountryPickerState extends State<_CountryPicker> {
                 controller: _searchCtrl,
                 autofocus: true,
                 style: const TextStyle(
-                  color: SportSphereColors.white,
+                  color: PlayifyColors.white,
                   fontSize: 14,
                 ),
-                cursorColor: SportSphereColors.electricBlue,
+                cursorColor: PlayifyColors.electricBlue,
                 decoration: InputDecoration(
                   border: InputBorder.none,
                   prefixIcon: const Icon(
                     Icons.search_rounded,
-                    color: SportSphereColors.muted,
+                    color: PlayifyColors.muted,
                     size: 20,
                   ),
                   hintText: 'Search country…',
                   hintStyle: TextStyle(
-                    color: SportSphereColors.muted.withValues(alpha: 0.6),
+                    color: PlayifyColors.muted.withValues(alpha: 0.6),
                     fontSize: 14,
                   ),
                   contentPadding: const EdgeInsets.symmetric(vertical: 14),
@@ -1036,8 +1036,8 @@ class _CountryPickerState extends State<_CountryPicker> {
                     c,
                     style: TextStyle(
                       color: selected
-                          ? SportSphereColors.electricBlue
-                          : SportSphereColors.white,
+                          ? PlayifyColors.electricBlue
+                          : PlayifyColors.white,
                       fontWeight: selected
                           ? FontWeight.w700
                           : FontWeight.w500,
@@ -1047,7 +1047,7 @@ class _CountryPickerState extends State<_CountryPicker> {
                   trailing: selected
                       ? const Icon(
                           Icons.check_rounded,
-                          color: SportSphereColors.electricBlue,
+                          color: PlayifyColors.electricBlue,
                           size: 20,
                         )
                       : null,
@@ -1069,10 +1069,10 @@ class _FanNote extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: SportSphereColors.sportGreen.withValues(alpha: 0.08),
+        color: PlayifyColors.sportGreen.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: SportSphereColors.sportGreen.withValues(alpha: 0.25),
+          color: PlayifyColors.sportGreen.withValues(alpha: 0.25),
         ),
       ),
       child: Row(
@@ -1080,7 +1080,7 @@ class _FanNote extends StatelessWidget {
         children: [
           const Icon(
             Icons.info_outline_rounded,
-            color: SportSphereColors.sportGreen,
+            color: PlayifyColors.sportGreen,
             size: 18,
           ),
           const SizedBox(width: 10),
@@ -1088,7 +1088,7 @@ class _FanNote extends StatelessWidget {
             child: Text(
               'You will start as a Fan - follow teams, vote in polls, predict matches and join communities. Upgrade to a Pro role anytime.',
               style: TextStyle(
-                color: SportSphereColors.white.withValues(alpha: 0.82),
+                color: PlayifyColors.white.withValues(alpha: 0.82),
                 fontSize: 12.5,
                 height: 1.5,
               ),
@@ -1158,11 +1158,11 @@ class _PrimaryButton extends StatelessWidget {
           gradient: LinearGradient(
             colors: loading
                 ? [
-                    SportSphereColors.electricBlue.withValues(alpha: 0.6),
+                    PlayifyColors.electricBlue.withValues(alpha: 0.6),
                     const Color(0xFF0055BB).withValues(alpha: 0.6),
                   ]
                 : [
-                    SportSphereColors.electricBlue,
+                    PlayifyColors.electricBlue,
                     const Color(0xFF0066DD),
                   ],
           ),
@@ -1170,7 +1170,7 @@ class _PrimaryButton extends StatelessWidget {
               ? []
               : [
                   BoxShadow(
-                    color: SportSphereColors.electricBlue
+                    color: PlayifyColors.electricBlue
                         .withValues(alpha: 0.40),
                     blurRadius: 22,
                     offset: const Offset(0, 8),
@@ -1212,22 +1212,22 @@ class _ErrorBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
       decoration: BoxDecoration(
-        color: SportSphereColors.danger.withValues(alpha: 0.12),
+        color: PlayifyColors.danger.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: SportSphereColors.danger.withValues(alpha: 0.35),
+          color: PlayifyColors.danger.withValues(alpha: 0.35),
         ),
       ),
       child: Row(
         children: [
           const Icon(Icons.error_outline_rounded,
-              color: SportSphereColors.danger, size: 18),
+              color: PlayifyColors.danger, size: 18),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
               style: const TextStyle(
-                color: SportSphereColors.white,
+                color: PlayifyColors.white,
                 fontSize: 13,
               ),
             ),
@@ -1236,7 +1236,7 @@ class _ErrorBanner extends StatelessWidget {
             onTap: onDismiss,
             child: const Icon(
               Icons.close_rounded,
-              color: SportSphereColors.muted,
+              color: PlayifyColors.muted,
               size: 18,
             ),
           ),
@@ -1253,7 +1253,7 @@ class _TermsText extends StatelessWidget {
       textAlign: TextAlign.center,
       text: TextSpan(
         style: TextStyle(
-          color: SportSphereColors.muted.withValues(alpha: 0.75),
+          color: PlayifyColors.muted.withValues(alpha: 0.75),
           fontSize: 12,
           height: 1.6,
         ),
@@ -1262,7 +1262,7 @@ class _TermsText extends StatelessWidget {
           const TextSpan(
             text: 'Terms of Service',
             style: const TextStyle(
-              color: SportSphereColors.electricBlue,
+              color: PlayifyColors.electricBlue,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1270,7 +1270,7 @@ class _TermsText extends StatelessWidget {
           const TextSpan(
             text: 'Privacy Policy',
             style: const TextStyle(
-              color: SportSphereColors.electricBlue,
+              color: PlayifyColors.electricBlue,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1392,7 +1392,7 @@ class _FanSetupSheetState extends State<_FanSetupSheet> {
               FilledButton(
                 onPressed: () => Navigator.pop(context, true),
                 style: FilledButton.styleFrom(
-                  backgroundColor: SportSphereColors.electricBlue,
+                  backgroundColor: PlayifyColors.electricBlue,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 ),
                 child: const Text('Done', style: TextStyle(fontWeight: FontWeight.w800)),
@@ -1412,17 +1412,17 @@ class _FanSetupSheetState extends State<_FanSetupSheet> {
                 child: Stack(children: [
                   CircleAvatar(
                     radius: 36,
-                    backgroundColor: SportSphereColors.electricBlue.withValues(alpha: 0.15),
+                    backgroundColor: PlayifyColors.electricBlue.withValues(alpha: 0.15),
                     backgroundImage: widget.avatarUrl != null && widget.avatarUrl!.startsWith('http')
                         ? NetworkImage(widget.avatarUrl!) : null,
                     child: widget.avatarUrl == null
-                        ? const Icon(Icons.person_rounded, color: SportSphereColors.electricBlue, size: 32)
+                        ? const Icon(Icons.person_rounded, color: PlayifyColors.electricBlue, size: 32)
                         : null,
                   ),
                   Positioned(right: 0, bottom: 0, child: Container(
                     width: 24, height: 24,
                     decoration: const BoxDecoration(
-                      shape: BoxShape.circle, color: SportSphereColors.electricBlue),
+                      shape: BoxShape.circle, color: PlayifyColors.electricBlue),
                     child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 14),
                   )),
                 ]),
@@ -1451,7 +1451,7 @@ class _FanSetupSheetState extends State<_FanSetupSheet> {
               const Spacer(),
               Text('${_selected.length}/3',
                   style: TextStyle(color: _selected.length >= 3
-                      ? SportSphereColors.sportGreen : Colors.white.withValues(alpha: 0.4),
+                      ? PlayifyColors.sportGreen : Colors.white.withValues(alpha: 0.4),
                       fontWeight: FontWeight.w700)),
             ]),
           ),
@@ -1487,7 +1487,7 @@ class _FanSetupSheetState extends State<_FanSetupSheet> {
           // Teams list
           Expanded(child: _loading
               ? const Center(child: CircularProgressIndicator(
-                  color: SportSphereColors.electricBlue, strokeWidth: 2))
+                  color: PlayifyColors.electricBlue, strokeWidth: 2))
               : ListView.builder(
                   controller: sc,
                   padding: const EdgeInsets.fromLTRB(12, 4, 12, 80),
@@ -1515,31 +1515,31 @@ class _FanSetupSheetState extends State<_FanSetupSheet> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(14),
                           color: isSelected
-                              ? SportSphereColors.electricBlue.withValues(alpha: 0.12)
+                              ? PlayifyColors.electricBlue.withValues(alpha: 0.12)
                               : Colors.white.withValues(alpha: 0.04),
                           border: Border.all(color: isSelected
-                              ? SportSphereColors.electricBlue.withValues(alpha: 0.5)
+                              ? PlayifyColors.electricBlue.withValues(alpha: 0.5)
                               : Colors.white.withValues(alpha: 0.07)),
                         ),
                         child: Row(children: [
                           // Team logo
                           CircleAvatar(
                             radius: 18,
-                            backgroundColor: SportSphereColors.electricBlue.withValues(alpha: 0.12),
+                            backgroundColor: PlayifyColors.electricBlue.withValues(alpha: 0.12),
                             backgroundImage: (logo != null && logo.startsWith('http'))
                                 ? NetworkImage(logo) : null,
                             child: (logo == null || !logo.startsWith('http'))
                                 ? const Icon(Icons.shield_rounded,
-                                    color: SportSphereColors.electricBlue, size: 18) : null,
+                                    color: PlayifyColors.electricBlue, size: 18) : null,
                           ),
                           const SizedBox(width: 12),
                           Expanded(child: Text(name,
                               style: TextStyle(
-                                color: isSelected ? SportSphereColors.electricBlue : Colors.white,
+                                color: isSelected ? PlayifyColors.electricBlue : Colors.white,
                                 fontWeight: FontWeight.w600, fontSize: 14))),
                           if (isSelected)
                             const Icon(Icons.check_circle_rounded,
-                                color: SportSphereColors.electricBlue, size: 22)
+                                color: PlayifyColors.electricBlue, size: 22)
                           else if (!canSelect)
                             Icon(Icons.lock_rounded,
                                 color: Colors.white.withValues(alpha: 0.2), size: 18),

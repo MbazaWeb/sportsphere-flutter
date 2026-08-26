@@ -1,12 +1,12 @@
-# SportSphere Admin Console
+# playify Admin Console
 
-Web admin for the SportSphere Flutter app. Uses the **same Supabase project** (Auth + REST + Storage).
+Web admin for the playify Flutter app. Uses the **same Supabase project** (Auth + REST + Storage).
 
 ## Pages
 
 1. **Dashboard** — summary cards, charts, DB health  
 2. **User Management** — roles, verify, claim approve/reject  
-3. **SportSphere** — official posts / polls / predictions  
+3. **playify** — official posts / polls / predictions  
 4. **League · Team · Player** — entity management  
 5. **Match Updates** — create match, FT results, postpone  
 6. **Posts & News** — moderation delete  
@@ -23,7 +23,7 @@ npm run dev
 
 Open http://localhost:5173  
 
-Sign in with an official account (e.g. `official@sportsphere.app`).
+Sign in with an official account (e.g. `official@playify.app`).
 
 ## API
 

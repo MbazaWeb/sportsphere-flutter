@@ -1,5 +1,5 @@
 /**
- * SportSphere Admin API helpers — thin layer over Supabase tables
+ * playify Admin API helpers — thin layer over Supabase tables
  * used by both the Flutter app and this admin console.
  */
 import { supabase, type MatchRow, type Profile, type PostRow, type TeamRow, type LeagueRow, type PlayerRow, type CoachRow, type NewsRow, ROLE_CONFIGS } from './supabase'
@@ -312,7 +312,7 @@ export async function createOfficialPost(content: string, mediaUrls: string[] = 
       content,
       postType,
       mediaUrls,
-      hashtags: ['#SportSphere'],
+      hashtags: ['#playify'],
       sportTag: 'football',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

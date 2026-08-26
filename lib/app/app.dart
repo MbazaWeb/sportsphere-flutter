@@ -17,8 +17,8 @@ import '../../features/profile/templates/role_profile_shell.dart';
 import '../../features/shell/app_shell.dart';
 import '../../splash_screen.dart';
 
-class SportSphereApp extends ConsumerWidget {
-  const SportSphereApp({super.key});
+class PlayifyApp extends ConsumerWidget {
+  const PlayifyApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -143,7 +143,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.home,
         pageBuilder: (_, state) => const NoTransitionPage(
           key: ValueKey('home'),
-          child: SportSphereShell(),
+          child: PlayifyShell(),
         ),
       ),
 

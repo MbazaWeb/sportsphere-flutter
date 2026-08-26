@@ -39,7 +39,7 @@ class NewsArticle {
       summary: r['summary'] as String? ?? r['body'] as String? ?? '',
       body: r['body'] as String? ?? '',
       category: r['category'] as String? ?? 'updates',
-      source: r['source'] as String? ?? 'SportSphere',
+      source: r['source'] as String? ?? 'Playify',
       sourceUrl: r['source_url'] as String?,
       imageUrl: r['imageUrl'] as String?,
       isBreaking: r['is_breaking'] == true || r['category'] == 'breaking',

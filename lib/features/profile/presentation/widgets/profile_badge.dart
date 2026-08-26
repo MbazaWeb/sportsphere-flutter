@@ -13,7 +13,7 @@ class ProfileBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? SportSphereColors.electricBlue;
+    final c = color ?? PlayifyColors.electricBlue;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(

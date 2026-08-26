@@ -224,7 +224,7 @@ class _PlayerProfileViewState extends State<PlayerProfileView>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: SportSphereColors.background,
+      backgroundColor: PlayifyColors.background,
       body: NestedScrollView(
         headerSliverBuilder: (context, _) => [
           SliverToBoxAdapter(
@@ -427,7 +427,7 @@ class _PlayerHeader extends StatelessWidget {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      SportSphereColors.background.withValues(alpha: 0.97),
+                      PlayifyColors.background.withValues(alpha: 0.97),
                     ],
                   ),
                 ),
@@ -496,7 +496,7 @@ class _PlayerHeader extends StatelessWidget {
                           child: Text(
                             profile.displayName,
                             style: const TextStyle(
-                              color: SportSphereColors.white,
+                              color: PlayifyColors.white,
                               fontSize: 22,
                               fontWeight: FontWeight.w900,
                               height: 1.1,
@@ -516,7 +516,7 @@ class _PlayerHeader extends StatelessWidget {
                     Text(
                       profile.atHandle,
                       style: const TextStyle(
-                        color: SportSphereColors.muted, fontSize: 14,
+                        color: PlayifyColors.muted, fontSize: 14,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -558,7 +558,7 @@ class _PlayerHeader extends StatelessWidget {
                       border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
                     ),
                     child: const Icon(Icons.info_outline_rounded,
-                        color: SportSphereColors.muted, size: 18),
+                        color: PlayifyColors.muted, size: 18),
                   ),
                 ),
               ),
@@ -661,7 +661,7 @@ class _PlayerHeader extends StatelessWidget {
                               ? null
                               : const LinearGradient(
                                   colors: [
-                                    SportSphereColors.electricBlue,
+                                    PlayifyColors.electricBlue,
                                     Color(0xFF0066DD),
                                   ],
                                 ),
@@ -675,7 +675,7 @@ class _PlayerHeader extends StatelessWidget {
                               ? null
                               : [
                                   BoxShadow(
-                                    color: SportSphereColors.electricBlue.withValues(alpha: 0.30),
+                                    color: PlayifyColors.electricBlue.withValues(alpha: 0.30),
                                     blurRadius: 12,
                                     offset: const Offset(0, 4),
                                   ),
@@ -685,7 +685,7 @@ class _PlayerHeader extends StatelessWidget {
                           child: Text(
                             following ? 'Following' : 'Follow',
                             style: TextStyle(
-                              color: following ? SportSphereColors.muted : Colors.white,
+                              color: following ? PlayifyColors.muted : Colors.white,
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
                             ),
@@ -712,7 +712,7 @@ class _PlayerHeader extends StatelessWidget {
                         border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
                       ),
                       child: const Icon(Icons.mail_outline_rounded,
-                          color: SportSphereColors.muted, size: 18),
+                          color: PlayifyColors.muted, size: 18),
                     ),
                   ),
                 ),
@@ -773,11 +773,11 @@ class _PlayerTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: SportSphereColors.background,
+      color: PlayifyColors.background,
       child: TabBar(
         controller: controller,
-        labelColor: SportSphereColors.white,
-        unselectedLabelColor: SportSphereColors.muted,
+        labelColor: PlayifyColors.white,
+        unselectedLabelColor: PlayifyColors.muted,
         labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
         unselectedLabelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         indicator: UnderlineTabIndicator(
@@ -940,22 +940,22 @@ class _SportlightsTabState extends State<_SportlightsTab> {
             ),
             padding: const EdgeInsets.fromLTRB(24, 48, 24, 120),
             children: const [
-              Icon(Icons.bolt_rounded, color: SportSphereColors.muted, size: 40),
+              Icon(Icons.bolt_rounded, color: PlayifyColors.muted, size: 40),
               SizedBox(height: 12),
               Text(
                 'No posts yet',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: SportSphereColors.white,
+                  color: PlayifyColors.white,
                   fontWeight: FontWeight.w700,
                   fontSize: 16,
                 ),
               ),
               SizedBox(height: 8),
               Text(
-                'When this player posts on SportSphere, it will show here.',
+                'When this player posts on Playify, it will show here.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: SportSphereColors.muted, height: 1.4),
+                style: TextStyle(color: PlayifyColors.muted, height: 1.4),
               ),
             ],
           );
@@ -1007,7 +1007,7 @@ class _AboutTab extends StatelessWidget {
             title: 'Bio',
             child: Text(profile.bio,
                 style: const TextStyle(
-                  color: SportSphereColors.white,
+                  color: PlayifyColors.white,
                   fontSize: 15,
                   height: 1.5,
                 )),
@@ -1022,7 +1022,7 @@ class _AboutTab extends StatelessWidget {
             children: [
               AboutRow(
                 icon: Icons.person_rounded,
-                iconColor: SportSphereColors.electricBlue,
+                iconColor: PlayifyColors.electricBlue,
                 label: 'Full name',
                 value: profile.fullName,
               ),
@@ -1034,25 +1034,25 @@ class _AboutTab extends StatelessWidget {
               ),
               AboutRow(
                 icon: Icons.flag_rounded,
-                iconColor: SportSphereColors.sportOrange,
+                iconColor: PlayifyColors.sportOrange,
                 label: 'Nationality',
                 value: profile.nationality,
               ),
               AboutRow(
                 icon: Icons.cake_outlined,
-                iconColor: SportSphereColors.sportGreen,
+                iconColor: PlayifyColors.sportGreen,
                 label: 'Date of birth',
                 value: '${DateFormat('dd MMM yyyy').format(profile.dob)} (age ${profile.age})',
               ),
               AboutRow(
                 icon: Icons.straighten_rounded,
-                iconColor: SportSphereColors.brightBlue,
+                iconColor: PlayifyColors.brightBlue,
                 label: 'Height',
                 value: '${profile.heightCm} cm',
               ),
               AboutRow(
                 icon: Icons.back_hand_rounded,
-                iconColor: SportSphereColors.sportOrange,
+                iconColor: PlayifyColors.sportOrange,
                 label: 'Preferred foot',
                 value: profile.preferredFoot,
                 isLast: true,
@@ -1077,19 +1077,19 @@ class _AboutTab extends StatelessWidget {
               ),
               AboutRow(
                 icon: Icons.emoji_events_rounded,
-                iconColor: SportSphereColors.sportGreen,
+                iconColor: PlayifyColors.sportGreen,
                 label: 'League',
                 value: profile.currentLeague,
               ),
               AboutRow(
                 icon: Icons.tag_rounded,
-                iconColor: SportSphereColors.electricBlue,
+                iconColor: PlayifyColors.electricBlue,
                 label: 'Squad number',
                 value: '#${profile.squadNumber}',
               ),
               AboutRow(
                 icon: Icons.handshake_rounded,
-                iconColor: SportSphereColors.muted,
+                iconColor: PlayifyColors.muted,
                 label: 'Contract',
                 value: profile.contractStatus,
                 isLast: true,
@@ -1104,7 +1104,7 @@ class _AboutTab extends StatelessWidget {
             title: 'Playify',
             child: AboutRow(
               icon: Icons.calendar_today_rounded,
-              iconColor: SportSphereColors.electricBlue,
+              iconColor: PlayifyColors.electricBlue,
               label: 'Joined',
               value: DateFormat('MMMM yyyy').format(profile.joinedDate!),
               isLast: true,
@@ -1243,7 +1243,7 @@ class _FilterPill extends StatelessWidget {
       children: [
         Text(label,
             style: TextStyle(
-              color: SportSphereColors.muted.withValues(alpha: 0.75),
+              color: PlayifyColors.muted.withValues(alpha: 0.75),
               fontSize: 11,
               fontWeight: FontWeight.w600,
             )),
@@ -1251,7 +1251,7 @@ class _FilterPill extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: SportSphereColors.surface2,
+            color: PlayifyColors.surface2,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
           ),
@@ -1259,14 +1259,14 @@ class _FilterPill extends StatelessWidget {
             child: DropdownButton<String>(
               value: value,
               isExpanded: true,
-              dropdownColor: SportSphereColors.surface2,
+              dropdownColor: PlayifyColors.surface2,
               style: const TextStyle(
-                color: SportSphereColors.white,
+                color: PlayifyColors.white,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),
               icon: const Icon(Icons.expand_more_rounded,
-                  color: SportSphereColors.muted, size: 18),
+                  color: PlayifyColors.muted, size: 18),
               items: options
                   .map((o) => DropdownMenuItem(value: o, child: Text(o)))
                   .toList(),
@@ -1291,11 +1291,11 @@ class _SectionHeader extends StatelessWidget {
     return Row(
       children: [
         const Icon(Icons.bar_chart_rounded,
-            color: SportSphereColors.muted, size: 16),
+            color: PlayifyColors.muted, size: 16),
         const SizedBox(width: 8),
         Text(title.toUpperCase(),
             style: TextStyle(
-              color: SportSphereColors.muted.withValues(alpha: 0.8),
+              color: PlayifyColors.muted.withValues(alpha: 0.8),
               fontSize: 11,
               fontWeight: FontWeight.w800,
               letterSpacing: 1.1,
@@ -1304,7 +1304,7 @@ class _SectionHeader extends StatelessWidget {
           const Spacer(),
           Text(season,
               style: TextStyle(
-                color: SportSphereColors.muted.withValues(alpha: 0.55),
+                color: PlayifyColors.muted.withValues(alpha: 0.55),
                 fontSize: 11,
               )),
         ],
@@ -1322,11 +1322,11 @@ class _StatsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rows = [
-      _StatEntry(icon: Icons.calendar_today_rounded, iconColor: SportSphereColors.electricBlue, label: 'Appearances', value: '${stats.appearances}'),
-      _StatEntry(icon: Icons.play_arrow_rounded, iconColor: SportSphereColors.sportGreen, label: 'Starts', value: '${stats.starts}'),
+      _StatEntry(icon: Icons.calendar_today_rounded, iconColor: PlayifyColors.electricBlue, label: 'Appearances', value: '${stats.appearances}'),
+      _StatEntry(icon: Icons.play_arrow_rounded, iconColor: PlayifyColors.sportGreen, label: 'Starts', value: '${stats.starts}'),
       _StatEntry(icon: Icons.sports_soccer_rounded, iconColor: const Color(0xFFE31B23), label: 'Goals', value: '${stats.goals}'),
-      _StatEntry(icon: Icons.assistant_rounded, iconColor: SportSphereColors.sportOrange, label: 'Assists', value: '${stats.assists}'),
-      _StatEntry(icon: Icons.timer_outlined, iconColor: SportSphereColors.brightBlue, label: 'Minutes', value: _fmtMin(stats.minutes)),
+      _StatEntry(icon: Icons.assistant_rounded, iconColor: PlayifyColors.sportOrange, label: 'Assists', value: '${stats.assists}'),
+      _StatEntry(icon: Icons.timer_outlined, iconColor: PlayifyColors.brightBlue, label: 'Minutes', value: _fmtMin(stats.minutes)),
       _StatEntry(icon: Icons.square_rounded, iconColor: const Color(0xFFFFD700), label: 'Yellow Cards', value: '${stats.yellowCards}'),
       _StatEntry(icon: Icons.square_rounded, iconColor: const Color(0xFFE31B23), label: 'Red Cards', value: '${stats.redCards}'),
     ];
@@ -1350,9 +1350,9 @@ class _CareerTotalsGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final rows = [
       _StatEntry(icon: Icons.sports_soccer_rounded, iconColor: const Color(0xFFE31B23), label: 'Goals', value: '${profile.allTimeGoals}'),
-      _StatEntry(icon: Icons.assistant_rounded, iconColor: SportSphereColors.sportOrange, label: 'Assists', value: '${profile.allTimeAssists}'),
-      _StatEntry(icon: Icons.calendar_today_rounded, iconColor: SportSphereColors.electricBlue, label: 'Appearances', value: '${profile.allTimeAppearances}'),
-      _StatEntry(icon: Icons.timer_outlined, iconColor: SportSphereColors.brightBlue, label: 'Minutes', value: _fmtMin(profile.allTimeMinutes)),
+      _StatEntry(icon: Icons.assistant_rounded, iconColor: PlayifyColors.sportOrange, label: 'Assists', value: '${profile.allTimeAssists}'),
+      _StatEntry(icon: Icons.calendar_today_rounded, iconColor: PlayifyColors.electricBlue, label: 'Appearances', value: '${profile.allTimeAppearances}'),
+      _StatEntry(icon: Icons.timer_outlined, iconColor: PlayifyColors.brightBlue, label: 'Minutes', value: _fmtMin(profile.allTimeMinutes)),
       _StatEntry(icon: Icons.square_rounded, iconColor: const Color(0xFFFFD700), label: 'Yellow Cards', value: '${profile.allTimeYellowCards}'),
       _StatEntry(icon: Icons.square_rounded, iconColor: const Color(0xFFE31B23), label: 'Red Cards', value: '${profile.allTimeRedCards}'),
     ];
@@ -1419,13 +1419,13 @@ class _StatCard extends StatelessWidget {
                     Expanded(
                       child: Text(e.label,
                           style: const TextStyle(
-                            color: SportSphereColors.muted,
+                            color: PlayifyColors.muted,
                             fontSize: 14,
                           )),
                     ),
                     Text(e.value,
                         style: const TextStyle(
-                          color: SportSphereColors.white,
+                          color: PlayifyColors.white,
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
                         )),
@@ -1538,7 +1538,7 @@ class _CareerRow extends StatelessWidget {
                     style: TextStyle(
                       color: isFirst
                           ? accent
-                          : SportSphereColors.muted.withValues(alpha: 0.7),
+                          : PlayifyColors.muted.withValues(alpha: 0.7),
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.3,
@@ -1549,7 +1549,7 @@ class _CareerRow extends StatelessWidget {
                   // Club name
                   Text(entry.clubName,
                       style: TextStyle(
-                        color: isFirst ? SportSphereColors.white : SportSphereColors.muted,
+                        color: isFirst ? PlayifyColors.white : PlayifyColors.muted,
                         fontSize: 15,
                         fontWeight: isFirst ? FontWeight.w800 : FontWeight.w600,
                       )),
@@ -1560,7 +1560,7 @@ class _CareerRow extends StatelessWidget {
                       [if (entry.country.isNotEmpty) entry.country,
                         if (entry.leagueName != null) entry.leagueName!].join(' · '),
                       style: TextStyle(
-                        color: SportSphereColors.muted.withValues(alpha: 0.65),
+                        color: PlayifyColors.muted.withValues(alpha: 0.65),
                         fontSize: 12,
                       ),
                     ),
@@ -1600,13 +1600,13 @@ class _MiniStat extends StatelessWidget {
       children: [
         Text('$value ',
             style: const TextStyle(
-              color: SportSphereColors.white,
+              color: PlayifyColors.white,
               fontSize: 12,
               fontWeight: FontWeight.w800,
             )),
         Text(label,
             style: TextStyle(
-              color: SportSphereColors.muted.withValues(alpha: 0.7),
+              color: PlayifyColors.muted.withValues(alpha: 0.7),
               fontSize: 12,
             )),
       ],

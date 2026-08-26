@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sportsphere_app/features/auth/domain/auth_state.dart';
+import 'package:playify/features/auth/domain/auth_state.dart';
 
 void main() {
   group('AuthState', () {

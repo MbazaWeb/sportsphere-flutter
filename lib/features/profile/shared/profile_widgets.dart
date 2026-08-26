@@ -234,8 +234,8 @@ class ProfileAvatar extends StatelessWidget {
       height: radius * 2,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: SportSphereColors.background,
-        border: Border.all(color: SportSphereColors.background, width: 3),
+        color: PlayifyColors.background,
+        border: Border.all(color: PlayifyColors.background, width: 3),
         boxShadow: [
           BoxShadow(
             color: accentColor.withValues(alpha: 0.28),
@@ -293,7 +293,7 @@ class ProfileStat extends StatelessWidget {
           Text(
             value,
             style: const TextStyle(
-              color: SportSphereColors.white,
+              color: PlayifyColors.white,
               fontSize: 17,
               fontWeight: FontWeight.w900,
             ),
@@ -302,7 +302,7 @@ class ProfileStat extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              color: SportSphereColors.muted,
+              color: PlayifyColors.muted,
               fontSize: 11,
               fontWeight: FontWeight.w500,
             ),
@@ -475,7 +475,7 @@ class _ProfilePostCardState extends State<ProfilePostCard> {
                         children: [
                           Text(widget.authorName,
                               style: const TextStyle(
-                                color: SportSphereColors.white,
+                                color: PlayifyColors.white,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
                               )),
@@ -488,7 +488,7 @@ class _ProfilePostCardState extends State<ProfilePostCard> {
                       ),
                       Text('${widget.authorHandle} · ${post.timeAgo}',
                           style: TextStyle(
-                            color: SportSphereColors.muted.withValues(alpha: 0.75),
+                            color: PlayifyColors.muted.withValues(alpha: 0.75),
                             fontSize: 12,
                           )),
                     ],
@@ -501,7 +501,7 @@ class _ProfilePostCardState extends State<ProfilePostCard> {
                     onTap: () {
                       showModalBottomSheet<void>(
                         context: context,
-                        backgroundColor: SportSphereColors.card,
+                        backgroundColor: PlayifyColors.card,
                         shape: const RoundedRectangleBorder(
                           borderRadius:
                               BorderRadius.vertical(top: Radius.circular(20)),
@@ -512,7 +512,7 @@ class _ProfilePostCardState extends State<ProfilePostCard> {
                             children: [
                               ListTile(
                                 leading: const Icon(Icons.link_rounded,
-                                    color: SportSphereColors.muted),
+                                    color: PlayifyColors.muted),
                                 title: const Text('Copy link'),
                                 onTap: () {
                                   Navigator.pop(context);
@@ -524,7 +524,7 @@ class _ProfilePostCardState extends State<ProfilePostCard> {
                               ),
                               ListTile(
                                 leading: const Icon(Icons.share_rounded,
-                                    color: SportSphereColors.muted),
+                                    color: PlayifyColors.muted),
                                 title: const Text('Share post'),
                                 onTap: () {
                                   Navigator.pop(context);
@@ -535,7 +535,7 @@ class _ProfilePostCardState extends State<ProfilePostCard> {
                               ),
                               ListTile(
                                 leading: const Icon(Icons.flag_outlined,
-                                    color: SportSphereColors.muted),
+                                    color: PlayifyColors.muted),
                                 title: const Text('Report'),
                                 onTap: () {
                                   Navigator.pop(context);
@@ -552,7 +552,7 @@ class _ProfilePostCardState extends State<ProfilePostCard> {
                       );
                     },
                     child: const Icon(Icons.more_vert_rounded,
-                        color: SportSphereColors.muted, size: 20),
+                        color: PlayifyColors.muted, size: 20),
                   ),
                 ),
               ],
@@ -564,7 +564,7 @@ class _ProfilePostCardState extends State<ProfilePostCard> {
             RichText(
               text: TextSpan(
                 style: const TextStyle(
-                  color: SportSphereColors.white,
+                  color: PlayifyColors.white,
                   fontSize: 15,
                   height: 1.45,
                 ),
@@ -624,13 +624,13 @@ class _ProfilePostCardState extends State<ProfilePostCard> {
                       children: [
                         Icon(
                           _liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                          color: _liked ? SportSphereColors.danger : SportSphereColors.muted,
+                          color: _liked ? PlayifyColors.danger : PlayifyColors.muted,
                           size: 20,
                         ),
                         const SizedBox(width: 5),
                         Text(formatCount(likes),
                             style: TextStyle(
-                              color: _liked ? SportSphereColors.danger : SportSphereColors.muted,
+                              color: _liked ? PlayifyColors.danger : PlayifyColors.muted,
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                             )),
@@ -721,11 +721,11 @@ class _EngagementBtn extends StatelessWidget {
         onTap: onTap ?? () {},
         child: Row(
           children: [
-            Icon(icon, color: SportSphereColors.muted, size: 19),
+            Icon(icon, color: PlayifyColors.muted, size: 19),
             const SizedBox(width: 5),
             Text(label,
                 style: const TextStyle(
-                  color: SportSphereColors.muted,
+                  color: PlayifyColors.muted,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 )),
@@ -1210,7 +1210,7 @@ class AboutSection extends StatelessWidget {
         children: [
           Text(title.toUpperCase(),
               style: TextStyle(
-                color: SportSphereColors.muted.withValues(alpha: 0.7),
+                color: PlayifyColors.muted.withValues(alpha: 0.7),
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1.1,
@@ -1262,13 +1262,13 @@ class AboutRow extends StatelessWidget {
               Expanded(
                 child: Text(label,
                     style: const TextStyle(
-                      color: SportSphereColors.muted,
+                      color: PlayifyColors.muted,
                       fontSize: 13,
                     )),
               ),
               Text(value,
                   style: TextStyle(
-                    color: valueColor ?? SportSphereColors.white,
+                    color: valueColor ?? PlayifyColors.white,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   )),
@@ -1297,7 +1297,7 @@ class ProfileMoreSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: SportSphereColors.surface,
+        color: PlayifyColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 36),
@@ -1324,15 +1324,15 @@ class ProfileMoreSheet extends StatelessWidget {
                       children: [
                         Icon(o.icon,
                             color: o.destructive
-                                ? SportSphereColors.danger
-                                : SportSphereColors.white,
+                                ? PlayifyColors.danger
+                                : PlayifyColors.white,
                             size: 22),
                         const SizedBox(width: 16),
                         Text(o.label,
                             style: TextStyle(
                               color: o.destructive
-                                  ? SportSphereColors.danger
-                                  : SportSphereColors.white,
+                                  ? PlayifyColors.danger
+                                  : PlayifyColors.white,
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             )),
@@ -1389,17 +1389,17 @@ class _ProfilePollWidgetState extends State<_ProfilePollWidget> {
       decoration: BoxDecoration(
         color: const Color(0xFF092B4A),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: SportSphereColors.electricBlue.withValues(alpha: 0.4)),
+        border: Border.all(color: PlayifyColors.electricBlue.withValues(alpha: 0.4)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          const Icon(Icons.poll_rounded, color: SportSphereColors.electricBlue, size: 16),
+          const Icon(Icons.poll_rounded, color: PlayifyColors.electricBlue, size: 16),
           const SizedBox(width: 6),
-          const Text('POLL', style: TextStyle(color: SportSphereColors.electricBlue,
+          const Text('POLL', style: TextStyle(color: PlayifyColors.electricBlue,
               fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.1)),
           const Spacer(),
           if (total > 0) Text('$total vote${total == 1 ? '' : 's'}',
-              style: const TextStyle(color: SportSphereColors.muted, fontSize: 11)),
+              style: const TextStyle(color: PlayifyColors.muted, fontSize: 11)),
         ]),
         const SizedBox(height: 10),
         ...List.generate(options.length, (i) {
@@ -1427,7 +1427,7 @@ class _ProfilePollWidgetState extends State<_ProfilePollWidget> {
                     borderRadius: BorderRadius.circular(8),
                     color: Colors.white.withValues(alpha: 0.06),
                     border: Border.all(color: voted
-                        ? SportSphereColors.electricBlue
+                        ? PlayifyColors.electricBlue
                         : Colors.white.withValues(alpha: 0.1)),
                   ),
                 ),
@@ -1439,7 +1439,7 @@ class _ProfilePollWidgetState extends State<_ProfilePollWidget> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(8),
                         color: voted
-                            ? SportSphereColors.electricBlue.withValues(alpha: 0.25)
+                            ? PlayifyColors.electricBlue.withValues(alpha: 0.25)
                             : Colors.white.withValues(alpha: 0.08),
                       ),
                     ),
@@ -1449,16 +1449,16 @@ class _ProfilePollWidgetState extends State<_ProfilePollWidget> {
                   child: Row(children: [
                     if (voted) ...[
                       const Icon(Icons.check_circle_rounded,
-                          color: SportSphereColors.electricBlue, size: 14),
+                          color: PlayifyColors.electricBlue, size: 14),
                       const SizedBox(width: 6),
                     ],
                     Expanded(child: Text(options[i],
                         style: TextStyle(
-                            color: voted ? SportSphereColors.electricBlue : SportSphereColors.white,
+                            color: voted ? PlayifyColors.electricBlue : PlayifyColors.white,
                             fontSize: 13, fontWeight: FontWeight.w600))),
                     if (_voted != null)
                       Text('$pct%', style: const TextStyle(
-                          color: SportSphereColors.muted, fontSize: 12)),
+                          color: PlayifyColors.muted, fontSize: 12)),
                   ]),
                 ),
               ]),

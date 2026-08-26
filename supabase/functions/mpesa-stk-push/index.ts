@@ -1,4 +1,4 @@
-// SportSphere — Safaricom Daraja STK Push (Lipa Na M-Pesa Online)
+// Playify — Safaricom Daraja STK Push (Lipa Na M-Pesa Online)
 // Secrets: MPESA_CONSUMER_KEY, MPESA_CONSUMER_SECRET, MPESA_SHORTCODE,
 //          MPESA_PASSKEY, MPESA_ENV (sandbox|production)
 //
@@ -173,7 +173,7 @@ serve(async (req) => {
           PhoneNumber: phone,
           CallBackURL: callback,
           AccountReference: orderId.slice(0, 12),
-          TransactionDesc: "SportSphere",
+          TransactionDesc: "Playify",
         }),
       },
     );

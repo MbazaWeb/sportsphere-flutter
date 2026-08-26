@@ -53,7 +53,7 @@ class _ScoresPageState extends ConsumerState<ScoresPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: SportSphereColors.background,
+      backgroundColor: PlayifyColors.background,
       floatingActionButton: _isAdmin
           ? FloatingActionButton.extended(
               onPressed: () => openAdminLiveControl(context, ref),
@@ -87,9 +87,9 @@ class _ScoresPageState extends ConsumerState<ScoresPage>
         ),
         bottom: TabBar(
           controller: _mainTabController,
-          indicatorColor: SportSphereColors.electricBlue,
-          labelColor: SportSphereColors.electricBlue,
-          unselectedLabelColor: SportSphereColors.muted,
+          indicatorColor: PlayifyColors.electricBlue,
+          labelColor: PlayifyColors.electricBlue,
+          unselectedLabelColor: PlayifyColors.muted,
           tabs: const [
             Tab(text: 'Matches'),
             Tab(text: 'Standings'),
@@ -122,8 +122,8 @@ class _MatchesView extends ConsumerWidget {
           isScrollable: true,
           tabAlignment: TabAlignment.start,
           indicatorSize: TabBarIndicatorSize.label,
-          labelColor: SportSphereColors.electricBlue,
-          unselectedLabelColor: SportSphereColors.muted,
+          labelColor: PlayifyColors.electricBlue,
+          unselectedLabelColor: PlayifyColors.muted,
           labelStyle: const TextStyle(fontWeight: FontWeight.w700),
           tabs: const [
             Tab(text: 'Live'),
@@ -211,7 +211,7 @@ class _MatchListSkeletonState extends State<_MatchListSkeleton>
                 width: 140,
                 height: 12,
                 decoration: BoxDecoration(
-                  color: SportSphereColors.surface2,
+                  color: PlayifyColors.surface2,
                   borderRadius: BorderRadius.circular(6),
                 ),
               ),
@@ -257,14 +257,14 @@ class _SkeletonAvatar extends StatelessWidget {
             height: 50,
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              color: SportSphereColors.surface2,
+              color: PlayifyColors.surface2,
             ),
           ),
           const SizedBox(height: 8),
           Container(
             width: 60,
             height: 10,
-            color: SportSphereColors.surface2,
+            color: PlayifyColors.surface2,
           ),
         ],
       );
@@ -278,13 +278,13 @@ class _SkeletonScore extends StatelessWidget {
           Container(
             width: 50,
             height: 22,
-            color: SportSphereColors.surface2,
+            color: PlayifyColors.surface2,
           ),
           const SizedBox(height: 6),
           Container(
             width: 32,
             height: 10,
-            color: SportSphereColors.surface2,
+            color: PlayifyColors.surface2,
           ),
         ],
       );
@@ -299,7 +299,7 @@ class _SkeletonAction extends StatelessWidget {
             width: 16,
             height: 16,
             decoration: const BoxDecoration(
-              color: SportSphereColors.surface2,
+              color: PlayifyColors.surface2,
               shape: BoxShape.circle,
             ),
           ),
@@ -307,7 +307,7 @@ class _SkeletonAction extends StatelessWidget {
           Container(
             width: 32,
             height: 10,
-            color: SportSphereColors.surface2,
+            color: PlayifyColors.surface2,
           ),
         ],
       );
@@ -332,14 +332,14 @@ class _LiveMatchList extends ConsumerWidget {
                 height: 8,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  color: SportSphereColors.danger,
+                  color: PlayifyColors.danger,
                 ),
               ),
               const SizedBox(width: 8),
               const Text(
                 'Live now',
                 style: TextStyle(
-                  color: SportSphereColors.white,
+                  color: PlayifyColors.white,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -347,7 +347,7 @@ class _LiveMatchList extends ConsumerWidget {
               Text(
                 'Updates in real time',
                 style: TextStyle(
-                  color: SportSphereColors.muted,
+                  color: PlayifyColors.muted,
                   fontSize: 11,
                 ),
               ),
@@ -377,12 +377,12 @@ class _TodayMatchList extends ConsumerWidget {
           child: Row(
             children: [
               const Icon(Icons.today_rounded,
-                  color: SportSphereColors.electricBlue, size: 16),
+                  color: PlayifyColors.electricBlue, size: 16),
               const SizedBox(width: 6),
               Text(
                 'Today · ${DateFormat('EEE, d MMM').format(today)}',
                 style: const TextStyle(
-                  color: SportSphereColors.white,
+                  color: PlayifyColors.white,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -490,14 +490,14 @@ class _MatchListBodyState extends ConsumerState<_MatchListBody> {
             children: [
               const Icon(
                 Icons.wifi_off_rounded,
-                color: SportSphereColors.muted,
+                color: PlayifyColors.muted,
                 size: 42,
               ),
               const SizedBox(height: 12),
               const Text(
                 'Could not load matches',
                 style: TextStyle(
-                  color: SportSphereColors.white,
+                  color: PlayifyColors.white,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -505,7 +505,7 @@ class _MatchListBodyState extends ConsumerState<_MatchListBody> {
               Text(
                 friendlyError(e, fallback: 'Check your connection and try again. Guests can view scores without signing in.'),
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: SportSphereColors.muted, fontSize: 13),
+                style: const TextStyle(color: PlayifyColors.muted, fontSize: 13),
               ),
               const SizedBox(height: 12),
               TextButton(
@@ -519,7 +519,7 @@ class _MatchListBodyState extends ConsumerState<_MatchListBody> {
       data: (matches) => matches.isEmpty
           ? _EmptyMatches(title: widget.emptyTitle, hint: widget.emptyHint)
           : RefreshIndicator(
-              color: SportSphereColors.electricBlue,
+              color: PlayifyColors.electricBlue,
               onRefresh: () async {
                 ref.invalidate(widget.provider);
                 // Wait for the new future to settle so the indicator stays
@@ -578,14 +578,14 @@ class _EmptyMatches extends StatelessWidget {
         children: [
           Icon(
             Icons.sports_score_rounded,
-            color: SportSphereColors.muted.withValues(alpha: 0.5),
+            color: PlayifyColors.muted.withValues(alpha: 0.5),
             size: 48,
           ),
           const SizedBox(height: 12),
           Text(
             title,
             style: const TextStyle(
-              color: SportSphereColors.white,
+              color: PlayifyColors.white,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -596,7 +596,7 @@ class _EmptyMatches extends StatelessWidget {
               hint,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: SportSphereColors.muted,
+                color: PlayifyColors.muted,
                 fontSize: 12,
               ),
             ),
@@ -738,7 +738,7 @@ class _StandingsViewState extends State<_StandingsView> {
                           const Text(
                             'Could not load standings',
                             style: TextStyle(
-                              color: SportSphereColors.white,
+                              color: PlayifyColors.white,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -749,7 +749,7 @@ class _StandingsViewState extends State<_StandingsView> {
                               fallback: 'Pull to retry. Guests can view standings without signing in.',
                             ),
                             textAlign: TextAlign.center,
-                            style: const TextStyle(color: SportSphereColors.muted, fontSize: 13),
+                            style: const TextStyle(color: PlayifyColors.muted, fontSize: 13),
                           ),
                         ],
                       ),
@@ -765,7 +765,7 @@ class _StandingsViewState extends State<_StandingsView> {
                         'No finished matches yet for ${_league.isEmpty ? 'this league' : _league}.\nAdmin: update scores in Match Updates to fill the table.',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
-                            color: SportSphereColors.muted, height: 1.4),
+                            color: PlayifyColors.muted, height: 1.4),
                       ),
                     ),
                   );
@@ -811,13 +811,13 @@ class _StandingsHeader extends StatelessWidget {
             width: 28,
             child: Text('#',
                 style: TextStyle(
-                    color: SportSphereColors.muted,
+                    color: PlayifyColors.muted,
                     fontSize: 12,
                     fontWeight: FontWeight.w600))),
         const Expanded(
             child: Text('Team',
                 style: TextStyle(
-                    color: SportSphereColors.muted,
+                    color: PlayifyColors.muted,
                     fontSize: 12,
                     fontWeight: FontWeight.w600))),
         const SizedBox(
@@ -825,7 +825,7 @@ class _StandingsHeader extends StatelessWidget {
             child: Text('P',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    color: SportSphereColors.muted,
+                    color: PlayifyColors.muted,
                     fontSize: 12,
                     fontWeight: FontWeight.w600))),
         const SizedBox(
@@ -833,7 +833,7 @@ class _StandingsHeader extends StatelessWidget {
             child: Text('W',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    color: SportSphereColors.muted,
+                    color: PlayifyColors.muted,
                     fontSize: 12,
                     fontWeight: FontWeight.w600))),
         if (showDraws)
@@ -842,7 +842,7 @@ class _StandingsHeader extends StatelessWidget {
               child: Text('D',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                      color: SportSphereColors.muted,
+                      color: PlayifyColors.muted,
                       fontSize: 12,
                       fontWeight: FontWeight.w600))),
         const SizedBox(
@@ -850,7 +850,7 @@ class _StandingsHeader extends StatelessWidget {
             child: Text('L',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    color: SportSphereColors.muted,
+                    color: PlayifyColors.muted,
                     fontSize: 12,
                     fontWeight: FontWeight.w600))),
         const SizedBox(
@@ -858,7 +858,7 @@ class _StandingsHeader extends StatelessWidget {
             child: Text('GD',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    color: SportSphereColors.muted,
+                    color: PlayifyColors.muted,
                     fontSize: 12,
                     fontWeight: FontWeight.w600))),
         const SizedBox(
@@ -866,7 +866,7 @@ class _StandingsHeader extends StatelessWidget {
             child: Text('Pts',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    color: SportSphereColors.muted,
+                    color: PlayifyColors.muted,
                     fontSize: 12,
                     fontWeight: FontWeight.w700))),
       ],
@@ -897,9 +897,9 @@ class _StandingRow extends StatelessWidget {
         border: Border(
           left: BorderSide(
             color: isTop4
-                ? SportSphereColors.electricBlue
+                ? PlayifyColors.electricBlue
                 : isTop6
-                    ? SportSphereColors.sportOrange.withValues(alpha: 0.5)
+                    ? PlayifyColors.sportOrange.withValues(alpha: 0.5)
                     : Colors.transparent,
             width: 2,
           ),
@@ -913,8 +913,8 @@ class _StandingRow extends StatelessWidget {
               '$rank',
               style: TextStyle(
                 color: isTop4
-                    ? SportSphereColors.electricBlue
-                    : SportSphereColors.muted,
+                    ? PlayifyColors.electricBlue
+                    : PlayifyColors.muted,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),
@@ -926,7 +926,7 @@ class _StandingRow extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                color: SportSphereColors.white,
+                color: PlayifyColors.white,
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
@@ -943,7 +943,7 @@ class _StandingRow extends StatelessWidget {
               '${data.points}',
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: SportSphereColors.white,
+                color: PlayifyColors.white,
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
               ),
@@ -959,7 +959,7 @@ class _StandingRow extends StatelessWidget {
         child: Text(
           v,
           textAlign: TextAlign.center,
-          style: const TextStyle(color: SportSphereColors.muted, fontSize: 12),
+          style: const TextStyle(color: PlayifyColors.muted, fontSize: 12),
         ),
       );
 }
@@ -1010,32 +1010,32 @@ class _StandingsSkeletonState extends State<_StandingsSkeleton>
                   Container(
                       width: 28,
                       height: 12,
-                      color: SportSphereColors.surface2),
+                      color: PlayifyColors.surface2),
                   const SizedBox(width: 8),
                   Container(
                       width: 100,
                       height: 12,
-                      color: SportSphereColors.surface2),
+                      color: PlayifyColors.surface2),
                   const Spacer(),
                   Container(
                       width: 28,
                       height: 12,
-                      color: SportSphereColors.surface2),
+                      color: PlayifyColors.surface2),
                   const SizedBox(width: 6),
                   Container(
                       width: 28,
                       height: 12,
-                      color: SportSphereColors.surface2),
+                      color: PlayifyColors.surface2),
                   const SizedBox(width: 6),
                   Container(
                       width: 28,
                       height: 12,
-                      color: SportSphereColors.surface2),
+                      color: PlayifyColors.surface2),
                   const SizedBox(width: 6),
                   Container(
                       width: 36,
                       height: 12,
-                      color: SportSphereColors.surface2),
+                      color: PlayifyColors.surface2),
                 ],
               ),
               const SizedBox(height: 14),
@@ -1069,19 +1069,19 @@ class _Dropdown extends StatelessWidget {
       children: [
         Text(label,
             style: const TextStyle(
-                color: SportSphereColors.muted, fontSize: 11)),
+                color: PlayifyColors.muted, fontSize: 11)),
         const SizedBox(height: 6),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: SportSphereColors.surface2,
+            color: PlayifyColors.surface2,
             borderRadius: BorderRadius.circular(12),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: value,
               isExpanded: true,
-              dropdownColor: SportSphereColors.surface2,
+              dropdownColor: PlayifyColors.surface2,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 13,
@@ -1136,7 +1136,7 @@ class _DatedMatchList extends ConsumerWidget {
               Expanded(
                 child: Text(DateFormat('EEE, d MMM').format(selected),
                     style: const TextStyle(
-                        color: SportSphereColors.white,
+                        color: PlayifyColors.white,
                         fontWeight: FontWeight.w700)),
               ),
               TextButton.icon(
@@ -1182,11 +1182,11 @@ class _DatedMatchList extends ConsumerWidget {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     color: on
-                        ? SportSphereColors.electricBlue.withValues(alpha: 0.2)
-                        : SportSphereColors.surface2,
+                        ? PlayifyColors.electricBlue.withValues(alpha: 0.2)
+                        : PlayifyColors.surface2,
                     border: Border.all(
                         color: on
-                            ? SportSphereColors.electricBlue
+                            ? PlayifyColors.electricBlue
                             : Colors.white24),
                   ),
                   child: Column(
@@ -1195,12 +1195,12 @@ class _DatedMatchList extends ConsumerWidget {
                       Text(DateFormat('E').format(d),
                           style: TextStyle(
                               color: on
-                                  ? SportSphereColors.electricBlue
-                                  : SportSphereColors.muted,
+                                  ? PlayifyColors.electricBlue
+                                  : PlayifyColors.muted,
                               fontSize: 11)),
                       Text('${d.day}',
                           style: TextStyle(
-                              color: SportSphereColors.white,
+                              color: PlayifyColors.white,
                               fontWeight: FontWeight.w800)),
                     ],
                   ),

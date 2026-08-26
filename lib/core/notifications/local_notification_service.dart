@@ -40,7 +40,7 @@ class LocalNotificationService {
     if (kIsWeb) return; // web uses in-app badge only
 
     const android = AndroidNotificationDetails(
-      'sportsphere_realtime',
+      'playify_realtime',
       'Playify',
       channelDescription: 'Likes, comments, follows, and official updates',
       importance: Importance.high,
