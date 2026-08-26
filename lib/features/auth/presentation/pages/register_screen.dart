@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../auth_controller.dart';
@@ -200,6 +202,36 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     }
   }
 
+  // ── Step 2 state ──────────────────────────────────────────────────────────
+  final Set<String> _favTeamIds = {};
+  final Set<String> _favTeamNames = {};
+  String? _avatarUrl;
+
+  Future<bool?> _showFanSetup() {
+    return showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _FanSetupSheet(
+        favTeamIds: _favTeamIds,
+        favTeamNames: _favTeamNames,
+        avatarUrl: _avatarUrl,
+        onAvatarChanged: (url) => setState(() => _avatarUrl = url),
+        onTeamToggled: (id, name, selected) {
+          setState(() {
+            if (selected) {
+              _favTeamIds.add(id);
+              _favTeamNames.add(name);
+            } else {
+              _favTeamIds.remove(id);
+              _favTeamNames.remove(name);
+            }
+          });
+        },
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
     if (!(_formKey.currentState?.validate() ?? false)) return;
@@ -213,6 +245,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     }
     HapticFeedback.lightImpact();
 
+    // Show Step 2 — Fan Setup
+    final confirmed = await _showFanSetup();
+    if (confirmed != true) return; // user cancelled
+
     final ok = await ref.read(authControllerProvider.notifier).register(
           firstName: _firstNameCtrl.text.trim(),
           lastName: _lastNameCtrl.text.trim(),
@@ -221,6 +257,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
           country: _country!,
           dob: _dob!,
           password: _passwordCtrl.text,
+          favTeamIds: _favTeamIds.toList(),
+          avatarUrl: _avatarUrl,
         );
 
     if (!mounted) return;
@@ -1230,5 +1268,274 @@ class _Orb extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// ── Fan Setup Sheet (Step 2 of registration) ─────────────────────────────────
+
+class _FanSetupSheet extends StatefulWidget {
+  final Set<String> favTeamIds;
+  final Set<String> favTeamNames;
+  final String? avatarUrl;
+  final ValueChanged<String?> onAvatarChanged;
+  final void Function(String id, String name, bool selected) onTeamToggled;
+
+  const _FanSetupSheet({
+    required this.favTeamIds,
+    required this.favTeamNames,
+    required this.avatarUrl,
+    required this.onAvatarChanged,
+    required this.onTeamToggled,
+  });
+
+  @override
+  State<_FanSetupSheet> createState() => _FanSetupSheetState();
+}
+
+class _FanSetupSheetState extends State<_FanSetupSheet> {
+  List<Map<String, dynamic>> _teams = [];
+  bool _loading = true;
+  final _search = TextEditingController();
+  String _query = '';
+  late Set<String> _selected;
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = Set.from(widget.favTeamIds);
+    _loadTeams();
+  }
+
+  Future<void> _loadTeams() async {
+    try {
+      final rows = await Supabase.instance.client
+          .from('Team').select('id, name, logoUrl')
+          .order('name').limit(200);
+      if (mounted) setState(() {
+        _teams = List<Map<String, dynamic>>.from(rows as List);
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  void dispose() { _search.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = _teams.where((t) =>
+        _query.isEmpty ||
+        (t['name'] as String? ?? '').toLowerCase().contains(_query.toLowerCase())).toList();
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.92,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (_, sc) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF071420),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(children: [
+          // Handle
+          Container(width: 40, height: 4, margin: const EdgeInsets.only(top: 12, bottom: 20),
+              decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+
+          // Header
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(children: [
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Fan Setup', style: TextStyle(color: Colors.white,
+                    fontSize: 22, fontWeight: FontWeight.w900)),
+                Text('Step 2 of 2', style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 13)),
+              ]),
+              const Spacer(),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: SportSphereColors.electricBlue,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                ),
+                child: const Text('Done', style: TextStyle(fontWeight: FontWeight.w800)),
+              ),
+            ]),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Avatar section
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(children: [
+              // Avatar preview
+              GestureDetector(
+                onTap: _pickAvatar,
+                child: Stack(children: [
+                  CircleAvatar(
+                    radius: 36,
+                    backgroundColor: SportSphereColors.electricBlue.withValues(alpha: 0.15),
+                    backgroundImage: widget.avatarUrl != null && widget.avatarUrl!.startsWith('http')
+                        ? NetworkImage(widget.avatarUrl!) : null,
+                    child: widget.avatarUrl == null
+                        ? const Icon(Icons.person_rounded, color: SportSphereColors.electricBlue, size: 32)
+                        : null,
+                  ),
+                  Positioned(right: 0, bottom: 0, child: Container(
+                    width: 24, height: 24,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle, color: SportSphereColors.electricBlue),
+                    child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 14),
+                  )),
+                ]),
+              ),
+              const SizedBox(width: 16),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Profile Photo', style: TextStyle(color: Colors.white,
+                    fontWeight: FontWeight.w700, fontSize: 15)),
+                const SizedBox(height: 4),
+                Text('Optional — tap to upload', style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.45), fontSize: 12)),
+              ])),
+            ]),
+          ),
+
+          const SizedBox(height: 20),
+          const Divider(color: Colors.white12, height: 1),
+          const SizedBox(height: 16),
+
+          // Team selection header
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(children: [
+              const Text('Favourite Teams', style: TextStyle(color: Colors.white,
+                  fontSize: 16, fontWeight: FontWeight.w800)),
+              const Spacer(),
+              Text('${_selected.length}/3',
+                  style: TextStyle(color: _selected.length >= 3
+                      ? SportSphereColors.sportGreen : Colors.white.withValues(alpha: 0.4),
+                      fontWeight: FontWeight.w700)),
+            ]),
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Text('Pick up to 3 teams you support',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 12)),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Search
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              controller: _search,
+              style: const TextStyle(color: Colors.white),
+              onChanged: (v) => setState(() => _query = v),
+              decoration: InputDecoration(
+                hintText: 'Search teams…',
+                hintStyle: const TextStyle(color: Colors.white38),
+                prefixIcon: const Icon(Icons.search_rounded, color: Colors.white38, size: 20),
+                filled: true, fillColor: Colors.white.withValues(alpha: 0.06),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none), isDense: true,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // Teams list
+          Expanded(child: _loading
+              ? const Center(child: CircularProgressIndicator(
+                  color: SportSphereColors.electricBlue, strokeWidth: 2))
+              : ListView.builder(
+                  controller: sc,
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 80),
+                  itemCount: filtered.length,
+                  itemBuilder: (_, i) {
+                    final t = filtered[i];
+                    final id = t['id']?.toString() ?? '';
+                    final name = t['name']?.toString() ?? '';
+                    final logo = t['logoUrl'] as String?;
+                    final isSelected = _selected.contains(id);
+                    final canSelect = isSelected || _selected.length < 3;
+
+                    return GestureDetector(
+                      onTap: canSelect ? () {
+                        setState(() {
+                          if (isSelected) _selected.remove(id);
+                          else _selected.add(id);
+                        });
+                        widget.onTeamToggled(id, name, !isSelected);
+                      } : null,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          color: isSelected
+                              ? SportSphereColors.electricBlue.withValues(alpha: 0.12)
+                              : Colors.white.withValues(alpha: 0.04),
+                          border: Border.all(color: isSelected
+                              ? SportSphereColors.electricBlue.withValues(alpha: 0.5)
+                              : Colors.white.withValues(alpha: 0.07)),
+                        ),
+                        child: Row(children: [
+                          // Team logo
+                          CircleAvatar(
+                            radius: 18,
+                            backgroundColor: SportSphereColors.electricBlue.withValues(alpha: 0.12),
+                            backgroundImage: (logo != null && logo.startsWith('http'))
+                                ? NetworkImage(logo) : null,
+                            child: (logo == null || !logo.startsWith('http'))
+                                ? const Icon(Icons.shield_rounded,
+                                    color: SportSphereColors.electricBlue, size: 18) : null,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(child: Text(name,
+                              style: TextStyle(
+                                color: isSelected ? SportSphereColors.electricBlue : Colors.white,
+                                fontWeight: FontWeight.w600, fontSize: 14))),
+                          if (isSelected)
+                            const Icon(Icons.check_circle_rounded,
+                                color: SportSphereColors.electricBlue, size: 22)
+                          else if (!canSelect)
+                            Icon(Icons.lock_rounded,
+                                color: Colors.white.withValues(alpha: 0.2), size: 18),
+                        ]),
+                      ),
+                    );
+                  },
+                )),
+        ]),
+      ),
+    );
+  }
+
+  Future<void> _pickAvatar() async {
+    // On web use html input; on mobile use image_picker
+    try {
+      final picker = ImagePicker();
+      final file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      final uid = Supabase.instance.client.auth.currentUser?.id
+          ?? DateTime.now().millisecondsSinceEpoch.toString();
+      final path = 'avatars/$uid.jpg';
+      await Supabase.instance.client.storage.from('avatars').uploadBinary(
+        path, bytes, fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: true));
+      final url = Supabase.instance.client.storage.from('avatars').getPublicUrl(path);
+      widget.onAvatarChanged(url);
+      if (mounted) setState(() {});
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not upload photo: $e')));
+    }
   }
 }

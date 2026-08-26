@@ -133,6 +133,8 @@ class AuthController extends Notifier<AuthState> {
     required String country,
     required DateTime dob,
     String password = '',
+    List<String> favTeamIds = const [],
+    String? avatarUrl,
   }) async {
     if (password.isEmpty) {
       debugPrint('[AuthController.register] rejected: empty password');
@@ -152,6 +154,8 @@ class AuthController extends Notifier<AuthState> {
             country: country,
             dob: dob,
             password: password,
+            favTeamIds: favTeamIds,
+            avatarUrl: avatarUrl,
           );
       state = AuthState(
         status: AuthStatus.authenticated,

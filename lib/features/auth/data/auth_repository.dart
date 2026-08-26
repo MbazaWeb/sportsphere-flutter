@@ -66,6 +66,8 @@ class AuthRepository {
     required String country,
     required DateTime dob,
     required String password,
+    List<String> favTeamIds = const [],
+    String? avatarUrl,
   }) async {
     // C1 — Defence in depth: the controller already rejects empty passwords,
     // but enforce it at the repository boundary too so a future caller can
@@ -83,13 +85,27 @@ class AuthRepository {
         'handle': handle,
         'country': country,
         'dob': dob.toIso8601String(),
-        'avatar_url': 'assets/images/Playify_logo.png', // default Playify avatar
+        'avatar_url': avatarUrl ?? 'assets/images/Playify_logo.png',
         'role': 'fan',
       },
     );
 
     final user = response.user;
     if (user == null) throw Exception('Registration failed');
+
+    // Save favourite team follows
+    if (favTeamIds.isNotEmpty) {
+      try {
+        for (final teamId in favTeamIds) {
+          await _supabase.from('entity_follows').upsert({
+            'follower_id': user.id,
+            'entity_type': 'team',
+            'entity_id': teamId,
+            'is_fan': true,
+          });
+        }
+      } catch (_) {}
+    }
 
     // Read role from profiles table — trigger should have created the row
     return _profileFromDb(user);
