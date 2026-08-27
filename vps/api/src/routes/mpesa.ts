@@ -52,7 +52,7 @@ mpesaRouter.post('/stk', async (c) => {
   const amount = Math.max(1, Math.round(Number((order as any).amountTzs ?? 0)))
   const shortcode = Bun.env.MPESA_SHORTCODE ?? '174379'
   const passkey   = Bun.env.MPESA_PASSKEY   ?? ''
-  const callback  = Bun.env.MPESA_CALLBACK_URL ?? `https://api.playify.app/v1/mpesa/callback`
+  const callback  = Bun.env.MPESA_CALLBACK_URL ?? `https://playifysport.fun/v1/mpesa/callback`
 
   if (!Bun.env.MPESA_CONSUMER_KEY) return c.json({ error: 'M-Pesa not configured' }, 503)
 

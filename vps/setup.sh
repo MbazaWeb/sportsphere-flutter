@@ -15,7 +15,7 @@ MINIO_ROOT_PASS="${MINIO_ROOT_PASS:-$(openssl rand -hex 24)}"
 SOKETI_APP_ID="${SOKETI_APP_ID:-playify}"
 SOKETI_APP_KEY="${SOKETI_APP_KEY:-$(openssl rand -hex 16)}"
 SOKETI_APP_SECRET="${SOKETI_APP_SECRET:-$(openssl rand -hex 32)}"
-DOMAIN="${DOMAIN:-api.playify.app}"
+DOMAIN="${DOMAIN:-playifysport.fun}"
 
 echo "================================================================"
 echo " Playify VPS Setup — Hetzner CX22"
@@ -237,7 +237,7 @@ server {
     }
 
     # ── Hono API — catch-all (/health /v1/* /v1/mpesa/callback etc.) ─────
-    # Flutter calls https://api.playify.app/v1/... directly (no /api prefix)
+    # Flutter calls https://playifysport.fun/v1/... directly (no /api prefix)
     location / {
         proxy_pass         http://127.0.0.1:3000;
         proxy_http_version 1.1;

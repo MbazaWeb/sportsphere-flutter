@@ -20,7 +20,7 @@ const s3 = new S3Client({
   forcePathStyle: true,   // required for MinIO
 })
 
-const CDN = () => Bun.env.CDN_BASE_URL ?? 'https://api.playify.app/storage'
+const CDN = () => Bun.env.CDN_BASE_URL ?? 'https://playifysport.fun/storage'
 const BUCKET = 'media'
 
 // Image variant specs — matches storage strategy from our schema design
