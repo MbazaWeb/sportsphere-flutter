@@ -61,33 +61,45 @@ dump_table 'public."User"'             'User'               '"id","name","email"
 dump_table 'public."Role"'             'Role'               '*'
 dump_table 'public."Sport"'            'Sport'              '"id","name","slug","icon","category","description","tags","isActive","displayOrder","createdAt","updatedAt"'
 dump_table 'public."League"'           'League'             '"id","name","slug","country","logoUrl","type","season","verified","isActive","description","metadata","createdAt","updatedAt"'
-dump_table 'public."Team"'             'Team'               '"id","leagueId","sportId","accountUserId","isClaimable","identityStatus","claimStatus","name","slug","shortName","city","country","logoUrl","primaryColor","venue","foundedYear","source","verified","isActive","description","metadata","createdAt","updatedAt"'
-dump_table 'public."Player"'           'Player'             '"id","teamId","leagueId","sportId","accountUserId","isClaimable","identityStatus","claimStatus","name","slug","firstName","lastName","position","nationality","photoUrl","dateOfBirth","heightCm","weightKg","shirtNumber","verified","isActive","metadata","createdAt","updatedAt"'
+dump_table 'public."Team"'             'Team'               '"id","leagueId","sportId","name","slug","shortName","city","country","logoUrl","venue","foundedYear","source","verified","isActive","description","metadata","createdAt","updatedAt","accountUserId","isClaimable","competitive_level","organization_type","gender","age_category","geographic_scope","sport_slug","sport_variant","primaryColor","identity_status"'
+dump_table 'public."Player"'           'Player'             '"id","teamId","leagueId","sportId","name","slug","firstName","lastName","position","nationality","photoUrl","dateOfBirth","heightCm","weightKg","shirtNumber","verified","isActive","metadata","createdAt","updatedAt","isClaimable","accountUserId","player_type","gender","age_category","career_level","sport_slug","identity_status"'
 dump_table 'public."Coach"'            'Coach'              '"id","teamId","leagueId","sportId","name","slug","firstName","lastName","nationality","photoUrl","dateOfBirth","role","verified","isActive","metadata","createdAt","updatedAt"'
 dump_table 'public."Match"'            'Match'              '"id","league","homeTeam","awayTeam","homeScore","awayScore","status","minute","venue","kickoffAt","events","lineups","stats","homeBadge","awayBadge","season","externalId","continent","country","createdAt","updatedAt"'
-dump_table 'public."Community"'        'Community'          '"id","name","description","topic","teamId","memberCount","createdById","createdAt"'
+dump_table 'public."Community"'        'Community'          '"id","name","description","topic","memberCount","createdById","createdAt"'
 dump_table 'public."NewsItem"'         'NewsItem'           '"id","title","slug","body","summary","imageUrl","category","tags","status","source","source_url","is_breaking","likeCount","commentCount","shareCount","viewCount","publishedAt","createdAt","updatedAt"'
 dump_table 'public."Post"'             'Post'               '"id","userId","content","postType","mediaUrls","hashtags","teamTag","playerTag","communityId","sportTag","matchId","isBreaking","likeCount","commentCount","shareCount","viewCount","createdAt","updatedAt"'
 dump_table 'public."Poll"'             'Poll'               '"id","postId","matchId","question","options","totalVotes","endsAt","createdAt"'
-dump_table 'public."Prediction"'       'Prediction'         '"id","userId","matchId","postId","homeTeam","awayTeam","predictedHome","predictedAway","outcome","confidence","result","isCorrect","closedAt","pointsEarned","createdAt"'
+dump_table 'public."Prediction"'       'Prediction'         '"id","userId","matchId","postId","homeTeam","awayTeam","predictedHome","predictedAway","confidence","result","isCorrect","pointsEarned","createdAt","outcome"'
 dump_table 'public."Follow"'           'Follow'             '"followerId","followingId","createdAt"'
 dump_table 'public."PostLike"'         'PostLike'           '"postId","userId","createdAt"'
 dump_table 'public."PostShare"'        'PostShare'          '"postId","userId","createdAt"'
 dump_table 'public."Comment"'          'Comment'            '"id","postId","userId","content","parentId","mentionedUserIds","mediaUrls","mediaType","likeCount","createdAt"'
 dump_table 'public."CommentLike"'      'CommentLike'        '"commentId","userId","createdAt"'
-dump_table 'public."PollVote"'         'PollVote'           '"id","pollId","userId","optionIndex","createdAt"'
+dump_table 'public."PollVote"'         'PollVote'           '"id","pollId","userId","optionIdx","createdAt"'
 dump_table 'public."CommunityMember"'  'CommunityMember'    '"communityId","userId","role","joinedAt"'
 dump_table 'public."UserFavorite"'     'UserFavorite'       '"id","userId","targetType","targetId","targetName","targetHandle","createdAt"'
-dump_table 'public."UserSport"'        'UserSport'          '"id","userId","sportId","isPrimary","weight","createdAt"'
+dump_table 'public."UserSport"'        'UserSport'          '"id","userId","sportId","createdAt","is_primary","weight"'
 dump_table 'public."Message"'          'Message'            '"id","senderId","receiverId","content","isRead","createdAt"'
 dump_table 'public."Notification"'     'Notification'       '"id","userId","type","title","body","isRead","actorId","referenceId","targetId","targetType","createdAt"'
-dump_table 'public."ShopOrder"'        'ShopOrder'          '"id","userId","sellerHandle","sellerName","itemId","itemName","kind","quantity","unitPriceTzs","amountTzs","status","paymentMethod","paymentRef","createdAt","updatedAt"'
+dump_table 'public."ShopOrder"'        'ShopOrder'          '"id","userId","sellerHandle","sellerName","itemId","itemName","kind","quantity","unitPriceTzs","amountTzs","status","createdAt","paymentMethod","paymentRef"'
 dump_table 'public."ClaimRequest"'     'ClaimRequest'       '"id","userId","profileType","profileId","profileName","leagueId","teamId","playerId","coachId","claimEmail","claimPhone","evidenceNotes","evidenceUrls","status","reviewerId","reviewNotes","submittedAt","reviewedAt"'
 dump_table 'public."VerificationRequest"' 'VerificationRequest' '"id","userId","role","roleData","roleId","roleTypeId","status","adminNotes","reviewedBy","submittedAt","reviewedAt"'
 dump_table 'public.device_tokens'      'device_tokens'      '"user_id","token","platform","updated_at"'
 dump_table 'public.entity_follows'     'entity_follows'     '"id","follower_id","entity_type","entity_id","account_uid","is_fan","created_at"'
 dump_table 'public.fans'               'fans'               '"fan_id","target_id","created_at"'
 dump_table 'public.taxonomy_term'      'taxonomy_term'      '"domain","slug","label","parent_slug","sort_order"'
+
+# Fix PollVote column name: Supabase=optionIdx, VPS=optionIndex
+if [ -f "$BACKUP_DIR/PollVote.csv" ]; then
+  sed -i '1s/optionIdx/optionIndex/' "$BACKUP_DIR/PollVote.csv"
+  echo "  Fixed PollVote: optionIdx → optionIndex"
+fi
+
+# Fix UserSport: is_primary → isPrimary
+if [ -f "$BACKUP_DIR/UserSport.csv" ]; then
+  sed -i '1s/is_primary/isPrimary/' "$BACKUP_DIR/UserSport.csv"
+  echo "  Fixed UserSport: is_primary → isPrimary"
+fi
 
 ok "Export complete"
 
