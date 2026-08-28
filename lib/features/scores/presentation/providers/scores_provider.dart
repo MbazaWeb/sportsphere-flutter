@@ -1,3 +1,4 @@
+import '../../../core/realtime/soketi_service.dart';
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,16 +21,29 @@ final scoresRepositoryProvider = Provider<ScoresRepository>(
 //
 // Every time a Match row changes (insert/update/delete) we bump a counter so
 // any provider that calls `ref.watch(matchRealtimeTickProvider)` re-fetches.
-// Realtime polling every 20s — replaces Supabase channel (Soketi wiring next)
+// Realtime via Soketi WebSocket with 20s polling fallback
 final matchRealtimeTickProvider = StreamProvider<int>((ref) {
   final controller = StreamController<int>.broadcast();
   var n = 0;
   controller.add(n);
+
+  // Soketi stream — fires instantly on match.updated events
+  StreamSubscription<Map<String, dynamic>>? soketiSub;
+  try {
+    soketiSub = SoketiService.instance.matchUpdates.listen((_) {
+      n += 1;
+      if (!controller.isClosed) controller.add(n);
+    });
+  } catch (_) {}
+
+  // Polling fallback — every 20s regardless of Soketi status
   final timer = Timer.periodic(const Duration(seconds: 20), (_) {
     n += 1;
-    controller.add(n);
+    if (!controller.isClosed) controller.add(n);
   });
+
   ref.onDispose(() {
+    soketiSub?.cancel();
     timer.cancel();
     controller.close();
   });

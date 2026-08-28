@@ -1,3 +1,4 @@
+import { broadcast } from './realtime.js'
 // vps/api/src/routes/admin.ts — admin routes (JWT + admin role required)
 import { Hono } from 'hono'
 import { query, queryOne, execute } from '../lib/db.js'
@@ -119,6 +120,12 @@ adminRouter.patch('/matches/:id', async (c) => {
   if (!sets.length) return c.json({ error: 'Nothing to update' }, 400)
   params.push(id)
   await execute(`UPDATE public."Match" SET ${sets.join(',')}, "updatedAt"=NOW() WHERE id=$${params.length}`, params)
+  // Broadcast score update to all connected clients instantly
+  const updated = await queryOne(`SELECT * FROM public."Match" WHERE id=$1`, [id])
+  if (updated) {
+    await broadcast('public:matches', 'score.updated', updated)
+    await broadcast('public:matches', 'match.updated', updated)
+  }
   return c.json({ ok: true })
 })
 

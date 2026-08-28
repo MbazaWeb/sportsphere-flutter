@@ -1,3 +1,4 @@
+import { broadcast } from './realtime.js'
 // vps/api/src/routes/social.ts
 // Handles: posts, likes, comments, follows, fans, communities, profiles
 import { Hono } from 'hono'
@@ -86,6 +87,8 @@ socialRouter.post('/posts', async (c) => {
      b.communityId??null, b.matchId??null, b.isBreaking??false]
   )
   await execute(`UPDATE public.profiles SET post_count=COALESCE(post_count,0)+1 WHERE id::text=$1`, [userId])
+  // Broadcast to feed channel so all connected clients see new posts instantly
+  await broadcast('public:feed', 'post.created', rows[0])
   return c.json({ ok: true, post: rows[0] }, 201)
 })
 

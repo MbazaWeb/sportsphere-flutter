@@ -24,6 +24,7 @@ import { socialRouter }    from './routes/social.js'
 import { newsRouter }     from './routes/news.js'
 import { authRouter }     from './routes/auth.js'
 import { shopRouter }     from './routes/shop.js'
+import { realtimeRouter } from './routes/realtime.js'
 
 const app = new Hono()
 
@@ -48,8 +49,11 @@ app.route('/v1/matches', matchRouter)
 
 
 
-// News: public read, no JWT needed (guests can browse)
+// News: public read (guests)
 app.route('/v1/news', newsRouter)
+
+// Soketi channel auth (requires JWT inside handler)
+app.route('/v1/realtime', realtimeRouter)
 
 // M-Pesa callback — Safaricom sends no JWT, verified by BusinessShortCode
 app.post('/v1/mpesa/callback', mpesaCallbackHandler)
@@ -109,6 +113,7 @@ app.route('/v1/notifications', notifRouter)
 app.route('/v1/ai',            aiRouter)
 app.route('/v1/social',        socialRouter)
 app.route('/v1/shop',          shopRouter)
+app.route('/v1/realtime',      realtimeRouter)
 // news mounted above in public section
 
 // ── Admin routes (JWT + admin role) ───────────────────────────────────────────

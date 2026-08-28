@@ -174,6 +174,17 @@ class AuthRepository {
       }
     }
 
+    // Become fan of selected teams (best-effort, after JWT obtained)
+    if (favTeamIds.isNotEmpty) {
+      for (final teamId in favTeamIds) {
+        try {
+          await _vps.becomeFan('team', teamId);
+        } catch (e) {
+          debugPrint('[AUTH] becomeFan(\$teamId): \$e');
+        }
+      }
+    }
+
     return _profileFrom(data);
   }
 

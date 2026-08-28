@@ -1,0 +1,20 @@
+{
+  "debug": false,
+  "host": "127.0.0.1",
+  "port": 6001,
+  "appManager.driver": "array",
+  "appManager.array.apps": [
+    {
+      "id": "playify-app",
+      "key": "playify-app-key",
+      "secret": "playify-secret",
+      "webhooks": [],
+      "maxConnections": 1000,
+      "enableClientMessages": true,
+      "enabled": true,
+      "maxBackendEventsPerSecond": 100,
+      "maxClientEventsPerSecond": 100,
+      "maxReadRequestsPerSecond": 1000
+    }
+  ]
+}
