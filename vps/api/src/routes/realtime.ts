@@ -8,11 +8,6 @@ import { query } from '../lib/db.js'
 
 export const realtimeRouter = new Hono()
 
-const SOKETI_APP_ID  = Bun.env.SOKETI_APP_ID  ?? 'playify-app'
-const SOKETI_APP_KEY = Bun.env.SOKETI_APP_KEY  ?? 'playify-app-key'
-const SOKETI_SECRET  = Bun.env.SOKETI_SECRET   ?? 'playify-secret'
-const SOKETI_HOST    = Bun.env.SOKETI_HOST     ?? 'localhost'
-const SOKETI_PORT    = Number(Bun.env.SOKETI_PORT ?? 6001)
 
 // ── POST /v1/realtime/auth ─────────────────────────────────────────────────────
 // Called by the Flutter Pusher client to authenticate private/presence channels.
@@ -59,42 +54,20 @@ realtimeRouter.post('/auth', async (c) => {
   return c.json({ auth, ...(channelData ? { channel_data: channelData } : {}) })
 })
 
-// ── Broadcast helper — used internally by other routes ─────────────────────────
-export async function broadcast(channel: string, event: string, data: unknown) {
-  try {
-    const body = JSON.stringify({
-      name:     event,
-      channels: [channel],
-      data:     JSON.stringify(data),
-    })
-    const timestamp  = Math.floor(Date.now() / 1000).toString()
-    const bodyMd5    = Bun.hash(body).toString(16).padStart(32,'0')
-    const toSign     = `POST\n/apps/${SOKETI_APP_ID}/events\n` +
-      `auth_key=${SOKETI_APP_KEY}&auth_timestamp=${timestamp}&auth_version=1.0&body_md5=${bodyMd5}`
-    const signature  = createHmac('sha256', SOKETI_SECRET).update(toSign).digest('hex')
-    const url = `http://${SOKETI_HOST}:${SOKETI_PORT}/apps/${SOKETI_APP_ID}/events?` +
-      `auth_key=${SOKETI_APP_KEY}&auth_timestamp=${timestamp}&auth_version=1.0&body_md5=${bodyMd5}&auth_signature=${signature}`
+// ── Broadcast helper — in-process WebSocket broadcast ────────────────────────
+import { broadcastToChannel } from '../lib/pusher_ws.js'
 
-    await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-    })
+export function broadcast(channel: string, event: string, data: unknown): Promise<void> {
+  try {
+    broadcastToChannel(channel, event, data)
   } catch (e) {
-    // Non-fatal — clients fall back to polling
-    console.warn('[Soketi] broadcast failed:', e)
+    console.warn('[WS] broadcast failed:', e)
   }
+  return Promise.resolve()
 }
 
 // ── GET /v1/realtime/status ────────────────────────────────────────────────────
 realtimeRouter.get('/status', async (c) => {
-  try {
-    const res = await fetch(`http://${SOKETI_HOST}:${SOKETI_PORT}/apps/${SOKETI_APP_ID}/channels`, {
-      headers: { 'Content-Type': 'application/json' }
-    })
-    const data = await res.json()
-    return c.json({ ok: true, soketi: data })
-  } catch (e) {
-    return c.json({ ok: false, error: String(e) })
-  }
+  const { getStats } = await import('../lib/pusher_ws.js')
+  return c.json({ ok: true, ws: getStats() })
 })
