@@ -53,8 +53,48 @@ class UserProfile {
   /// Number of users this user is following.
   final int followingCount;
 
-  String get displayName => '$firstName $lastName';
-  String get atHandle => '@$handle';
+  String get displayName => '\$firstName \$lastName';
+  String get atHandle => '@\$handle';
+
+  UserProfile copyWith({
+    String? firstName,
+    String? lastName,
+    String? email,
+    String? handle,
+    String? country,
+    DateTime? dob,
+    DateTime? joinedDate,
+    String? role,
+    String? avatarUrl,
+    String? coverUrl,
+    bool? isVerified,
+    String? themeColor,
+    List<String>? fanBadges,
+    String? bio,
+    DateTime? createdAt,
+    int? postCount,
+    int? followerCount,
+    int? followingCount,
+  }) => UserProfile(
+    firstName:      firstName     ?? this.firstName,
+    lastName:       lastName      ?? this.lastName,
+    email:          email         ?? this.email,
+    handle:         handle        ?? this.handle,
+    country:        country       ?? this.country,
+    dob:            dob           ?? this.dob,
+    joinedDate:     joinedDate    ?? this.joinedDate,
+    role:           role          ?? this.role,
+    avatarUrl:      avatarUrl     ?? this.avatarUrl,
+    coverUrl:       coverUrl      ?? this.coverUrl,
+    isVerified:     isVerified    ?? this.isVerified,
+    themeColor:     themeColor    ?? this.themeColor,
+    fanBadges:      fanBadges     ?? this.fanBadges,
+    bio:            bio           ?? this.bio,
+    createdAt:      createdAt     ?? this.createdAt,
+    postCount:      postCount     ?? this.postCount,
+    followerCount:  followerCount ?? this.followerCount,
+    followingCount: followingCount?? this.followingCount,
+  );
 }
 
 // ── Auth status ────────────────────────────────────────────────────────────────

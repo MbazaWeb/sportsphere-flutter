@@ -89,6 +89,21 @@ class VpsRepository {
     return url;
   }
 
+  /// Upload avatar from raw bytes (used during registration before session exists).
+  Future<String> uploadAvatarBytes(Uint8List bytes, {String ext = 'jpg'}) async {
+    final form = FormData.fromMap({
+      'file': MultipartFile.fromBytes(
+        bytes,
+        filename: 'avatar.$ext',
+        contentType: DioMediaType.parse(ext == 'png' ? 'image/png' : 'image/jpeg'),
+      ),
+    });
+    final res = await _client.upload<Map<String, dynamic>>('/v1/media/avatar', form);
+    final url = res.data?['url'] as String?;
+    if (url == null || url.isEmpty) throw ApiException(message: 'Avatar upload failed');
+    return url;
+  }
+
   /// Upload a video. Returns {url, key}.
   Future<Map<String, String>> uploadVideo({
     required XFile file,

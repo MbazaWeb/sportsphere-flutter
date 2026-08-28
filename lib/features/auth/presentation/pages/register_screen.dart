@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -1555,19 +1556,22 @@ class _FanSetupSheetState extends State<_FanSetupSheet> {
   }
 
   Future<void> _pickAvatar() async {
-    // On web use html input; on mobile use image_picker
+    // Pick image and show preview locally.
+    // Actual upload happens AFTER registration (needs JWT).
     try {
       final picker = ImagePicker();
       final file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
       if (file == null) return;
       final bytes = await file.readAsBytes();
-      // Upload via VPS → Cloudflare R2
-      final url = await VpsRepository().uploadAvatarBytes(bytes);
-      widget.onAvatarChanged(url);
+      // Store as data URI for local preview — upload to R2 after login
+      final ext = file.name.split('.').last.toLowerCase();
+      final mime = ext == 'png' ? 'image/png' : 'image/jpeg';
+      final dataUri = 'data:$mime;base64,${base64Encode(bytes)}';
+      widget.onAvatarChanged(dataUri);
       if (mounted) setState(() {});
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not upload photo: $e')));
+        SnackBar(content: Text('Could not pick photo: $e')));
     }
   }
 }

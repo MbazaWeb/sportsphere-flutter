@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+import 'dart:convert';
 // lib/features/auth/data/auth_repository.dart
 // All auth via VPS API — JWT stored locally, no Supabase SDK dependency.
 
@@ -136,7 +138,7 @@ class AuthRepository {
     required DateTime dob,
     required String password,
     List<String> favTeamIds = const [],
-    String? avatarUrl,
+    String? avatarUrl,  // data URI (base64) OR null
   }) async {
     if (password.isEmpty) throw ArgumentError('Password is required');
 
@@ -151,6 +153,27 @@ class AuthRepository {
       role:      'fan',
     );
     await _saveSession(data);
+
+    // Upload avatar AFTER session saved — now we have a JWT
+    if (avatarUrl != null && avatarUrl.startsWith('data:')) {
+      try {
+        final comma = avatarUrl.indexOf(',');
+        if (comma >= 0) {
+          final bytes = base64Decode(avatarUrl.substring(comma + 1));
+          final ext   = avatarUrl.contains('image/png') ? 'png' : 'jpg';
+          final cdnUrl = await _vps.uploadAvatarBytes(bytes, ext: ext);
+          // Patch profile with real CDN URL
+          await _vps.updateProfile({'avatar_url': cdnUrl});
+          // Return updated profile with avatar
+          final profile = _profileFrom(data);
+          return profile.copyWith(avatarUrl: cdnUrl);
+        }
+      } catch (e) {
+        debugPrint('[AUTH] avatar upload after register: \$e');
+        // Non-fatal — user can upload avatar later
+      }
+    }
+
     return _profileFrom(data);
   }
 
