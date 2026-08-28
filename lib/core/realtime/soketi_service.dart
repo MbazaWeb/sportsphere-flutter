@@ -9,8 +9,11 @@
 //   private:chat-{threadId} — DM thread (auth required)
 
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:pusher_channels_flutter/pusher_channels_flutter.dart';
+
+import '../../app/config/env.dart';
 
 class SoketiService {
   SoketiService._();
@@ -43,8 +46,34 @@ class SoketiService {
         apiKey:  'playify-app-key',
         cluster: 'mt1',
         useTLS:  true,
-        authEndpoint: 'https://playifysport.fun/v1/realtime/auth',
-        authParams: {'Authorization': 'Bearer $accessToken'},
+        // #FIX-AUTH — authEndpoint/authParams are pusher-js only: the
+        // Android/iOS SDKs ignore them (and authParams expects
+        // Map<String, Map<String, String>>, which made the Bearer header
+        // a compile error). onAuthorizer is the cross-platform hook —
+        // we perform the channel-auth POST ourselves and attach the
+        // user's JWT, returning the VPS-signed auth map to the SDK.
+        onAuthorizer: (String channelName, String socketId, dynamic options) async {
+          try {
+            final res = await Dio(BaseOptions(
+              connectTimeout: AppEnv.connectTimeout,
+              receiveTimeout: AppEnv.receiveTimeout,
+            )).post<Map<String, dynamic>>(
+              '${AppEnv.apiBaseUrl}/v1/realtime/auth',
+              data: 'socket_id=${Uri.encodeQueryComponent(socketId)}'
+                    '&channel_name=${Uri.encodeQueryComponent(channelName)}',
+              options: Options(headers: <String, String>{
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Authorization': 'Bearer $accessToken',
+              }),
+            );
+            final data = res.data;
+            if (data == null) return <String, dynamic>{};
+            return Map<String, dynamic>.from(data);
+          } catch (e) {
+            debugPrint('[Soketi] authorize $channelName failed: $e');
+            return <String, dynamic>{};
+          }
+        },
         onConnectionStateChange: (cur, prev) {
           _connected = cur == 'CONNECTED';
           debugPrint('[Soketi] $prev → $cur');
