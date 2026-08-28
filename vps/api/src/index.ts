@@ -128,6 +128,12 @@ app.use('/v1/admin/*', adminMiddleware)
 app.route('/v1/admin', adminRouter)
 
 // ── Error handlers ────────────────────────────────────────────────────────────
+app.get('/app-debug', (c) => {
+  const h: Record<string,string> = {}
+  c.req.raw.headers.forEach((v,k) => { h[k]=v })
+  return c.json({ headers: h, url: c.req.url })
+})
+
 app.notFound((c) => c.json({ error: 'Not found' }, 404))
 app.onError((err, c) => {
   console.error('[API Error]', err)
