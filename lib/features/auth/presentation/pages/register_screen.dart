@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -7,9 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/data/vps_repository.dart';
 
+import '../../../../core/data/vps_repository.dart';
+import '../../../../core/data/vps_supabase_compat.dart';
 import '../../../../core/theme/colors.dart';
 import '../auth_controller.dart';
 
@@ -1331,52 +1330,25 @@ class _FanSetupSheet extends StatefulWidget {
 
 class _FanSetupSheetState extends State<_FanSetupSheet> {
   List<Map<String, dynamic>> _teams = [];
-  List<Map<String, dynamic>> _sports = [];
-  final Set<String> _selectedSports = {};
   bool _loading = true;
   final _search = TextEditingController();
   String _query = '';
   late Set<String> _selected;
 
-  // Curated sport list shown when VPS sports empty
-  static const _defaultSports = [
-    {'id': 'sport-football',   'name': 'Football',    'icon': '⚽', 'slug': 'football'},
-    {'id': 'sport-basketball', 'name': 'Basketball',  'icon': '🏀', 'slug': 'basketball'},
-    {'id': 'sport-athletics',  'name': 'Athletics',   'icon': '🏃', 'slug': 'athletics'},
-    {'id': 'sport-tennis',     'name': 'Tennis',      'icon': '🎾', 'slug': 'tennis'},
-    {'id': 'sport-volleyball', 'name': 'Volleyball',  'icon': '🏐', 'slug': 'volleyball'},
-    {'id': 'sport-cricket',    'name': 'Cricket',     'icon': '🏏', 'slug': 'cricket'},
-    {'id': 'sport-boxing',     'name': 'Boxing',      'icon': '🥊', 'slug': 'boxing'},
-    {'id': 'sport-swimming',   'name': 'Swimming',    'icon': '🏊', 'slug': 'swimming'},
-  ];
-
   @override
   void initState() {
     super.initState();
     _selected = Set.from(widget.favTeamIds);
-    _loadAll();
-  }
-
-  Future<void> _loadAll() async {
-    await Future.wait([_loadSports(), _loadTeams()]);
-  }
-
-  Future<void> _loadSports() async {
-    try {
-      final res = await VpsRepository().get<Map<String, dynamic>>('/v1/social/sports');
-      final rows = (res.data?['sports'] as List? ?? []).cast<Map<String, dynamic>>();
-      if (mounted) setState(() => _sports = rows.isNotEmpty ? rows : List.from(_defaultSports));
-    } catch (_) {
-      if (mounted) setState(() => _sports = List.from(_defaultSports));
-    }
+    _loadTeams();
   }
 
   Future<void> _loadTeams() async {
     try {
-      final res = await VpsRepository().get<Map<String, dynamic>>('/v1/admin/teams', query: {'limit': 200});
-      final rows = (res.data?['teams'] as List? ?? []).cast<Map<String, dynamic>>();
+      final rows = await VpsSupabaseCompat.client
+          .from('Team').select('id, name, logoUrl')
+          .order('name').limit(200);
       if (mounted) setState(() {
-        _teams = rows;
+        _teams = List<Map<String, dynamic>>.from(rows as List);
         _loading = false;
       });
     } catch (_) {
@@ -1419,31 +1391,12 @@ class _FanSetupSheetState extends State<_FanSetupSheet> {
               ]),
               const Spacer(),
               FilledButton(
-                onPressed: () async {
-                  // Save sports selection (best-effort, non-blocking)
-                  if (_selectedSports.isNotEmpty) {
-                    try {
-                      await VpsRepository().post<void>('/v1/social/my-sports', data: {
-                        'slugs': _selectedSports.toList(),
-                        'primary': _selectedSports.first,
-                      });
-                    } catch (_) {}
-                  }
-                  if (context.mounted) Navigator.pop(context, true);
-                },
+                onPressed: () => Navigator.pop(context, true),
                 style: FilledButton.styleFrom(
                   backgroundColor: PlayifyColors.electricBlue,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 ),
                 child: const Text('Done', style: TextStyle(fontWeight: FontWeight.w800)),
-              ),
-              const SizedBox(width: 8),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: Text('Skip', style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.45),
-                  fontSize: 13,
-                )),
               ),
             ]),
           ),
@@ -1487,67 +1440,6 @@ class _FanSetupSheetState extends State<_FanSetupSheet> {
           ),
 
           const SizedBox(height: 20),
-          const Divider(color: Colors.white12, height: 1),
-          const SizedBox(height: 16),
-
-          // ── Sport selection ──────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Favourite Sports', style: TextStyle(color: Colors.white,
-                  fontSize: 16, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 4),
-              Text('Pick the sports you follow (optional)',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 12)),
-              const SizedBox(height: 12),
-              Wrap(spacing: 8, runSpacing: 8,
-                children: _sports.map((s) {
-                  final slug = s['slug']?.toString() ?? s['id']?.toString() ?? '';
-                  final name = s['name']?.toString() ?? '';
-                  final icon = s['icon']?.toString() ?? '🏅';
-                  final selected = _selectedSports.contains(slug);
-                  return GestureDetector(
-                    onTap: () => setState(() {
-                      if (selected) _selectedSports.remove(slug);
-                      else _selectedSports.add(slug);
-                    }),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 160),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(99),
-                        color: selected
-                            ? PlayifyColors.electricBlue.withValues(alpha: 0.15)
-                            : Colors.white.withValues(alpha: 0.05),
-                        border: Border.all(
-                          color: selected
-                              ? PlayifyColors.electricBlue
-                              : Colors.white.withValues(alpha: 0.12),
-                          width: selected ? 1.5 : 1,
-                        ),
-                      ),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Text(icon, style: const TextStyle(fontSize: 16)),
-                        const SizedBox(width: 6),
-                        Text(name, style: TextStyle(
-                          color: selected ? PlayifyColors.electricBlue : Colors.white,
-                          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                          fontSize: 13,
-                        )),
-                        if (selected) ...[
-                          const SizedBox(width: 4),
-                          Icon(Icons.check_rounded, size: 14,
-                              color: PlayifyColors.electricBlue),
-                        ],
-                      ]),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ]),
-          ),
-
-          const SizedBox(height: 16),
           const Divider(color: Colors.white12, height: 1),
           const SizedBox(height: 16),
 
@@ -1663,22 +1555,27 @@ class _FanSetupSheetState extends State<_FanSetupSheet> {
   }
 
   Future<void> _pickAvatar() async {
-    // Pick image and show preview locally.
-    // Actual upload happens AFTER registration (needs JWT).
+    // On web use html input; on mobile use image_picker
     try {
       final picker = ImagePicker();
       final file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
       if (file == null) return;
       final bytes = await file.readAsBytes();
-      // Store as data URI for local preview — upload to R2 after login
-      final ext = file.name.split('.').last.toLowerCase();
-      final mime = ext == 'png' ? 'image/png' : 'image/jpeg';
-      final dataUri = 'data:$mime;base64,${base64Encode(bytes)}';
-      widget.onAvatarChanged(dataUri);
+      final uid = VpsSupabaseCompat.client.auth.currentUser?.id
+          ?? DateTime.now().millisecondsSinceEpoch.toString();
+      // Upload via VPS media endpoint (returns CDN URL directly)
+      final urls = await const VpsRepository().uploadImageBytes(
+        bytes: bytes,
+        filename: 'avatar_$uid.jpg',
+        folder: 'avatars',
+        mimeType: 'image/jpeg',
+      );
+      final url = urls['full'] ?? urls.values.first;
+      widget.onAvatarChanged(url);
       if (mounted) setState(() {});
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not pick photo: $e')));
+        SnackBar(content: Text('Could not upload photo: $e')));
     }
   }
 }

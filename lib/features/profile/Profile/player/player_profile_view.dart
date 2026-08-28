@@ -246,7 +246,7 @@ class _PlayerProfileViewState extends State<PlayerProfileView>
                   if (mounted) setState(() => _following = !next);
                 }
               },
-              onBecomeFan: () async {
+              onBecomeFan: AppAdmin.isSessionAdmin ? null : () async {
                 HapticFeedback.mediumImpact();
                 final next = !_isFan;
                 setState(() => _isFan = next);
@@ -365,7 +365,7 @@ class _PlayerHeader extends StatelessWidget {
   final bool following;
   final bool isFan;
   final VoidCallback onFollow;
-  final VoidCallback onBecomeFan;
+  final VoidCallback? onBecomeFan;
   final VoidCallback onBack;
   final VoidCallback onShare;
   final VoidCallback onMore;
@@ -592,7 +592,8 @@ class _PlayerHeader extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
             child: Row(
               children: [
-                // Become Fan (big)
+                // Become Fan (big) — hidden for admin/official sessions
+                if (onBecomeFan != null)
                 Expanded(
                   flex: 3,
                   child: Semantics(

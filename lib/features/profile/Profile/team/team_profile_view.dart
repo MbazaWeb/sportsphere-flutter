@@ -268,7 +268,9 @@ class _TeamProfileViewState extends State<TeamProfileView>
               busyFollow: _busyFollow,
               busyFan: _busyFan,
               onFollow: _toggleFollow,
-              onBecomeFan: _toggleFan,
+              // Hide "Become a Fan" for admin/official sessions — Official is a
+              // platform account that only follows, never fans.
+              onBecomeFan: AppAdmin.isSessionAdmin ? null : _toggleFan,
               onBack: () => Navigator.of(context).maybePop(),
               onShare: () {},
               onMore: () => _showMore(context),

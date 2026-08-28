@@ -68,7 +68,7 @@ class FanProfileModel {
   /// Raw role string from the DB ('fan' | 'player' | 'admin' | 'official' | …).
   final String role;
 
-  String get displayName => '$firstName $lastName';
+  String get displayName => isAdmin ? 'Playify Official' : '$firstName $lastName';
   String get atHandle => '@$handle';
 
   String get followerLabel {
@@ -364,18 +364,41 @@ class _ProfileHeader extends StatelessWidget {
                             size: 20,
                           ),
                         ],
+                        if (profile.isAdmin) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: PlayifyColors.electricBlue.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: PlayifyColors.electricBlue.withValues(alpha: 0.4),
+                              ),
+                            ),
+                            child: const Text(
+                              'Admin',
+                              style: TextStyle(
+                                color: PlayifyColors.electricBlue,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      profile.atHandle,
+                      profile.isAdmin
+                          ? 'Playify Official · Admin'
+                          : profile.atHandle,
                       style: const TextStyle(
                         color: PlayifyColors.muted,
                         fontSize: 14,
                       ),
                     ),
                     const SizedBox(height: 6),
-                    if (profile.fanOf.isNotEmpty)
+                    if (!profile.isAdmin && profile.fanOf.isNotEmpty)
                       _FanOfBadge(
                         teamName: profile.fanOf,
                         accent: profile.fanOfAccent,
@@ -1131,15 +1154,26 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
       final handle = widget.profile.handle.replaceAll('@', '').trim();
       final ids = <String>{};
 
-      // Get user ID from handle then fetch their posts
+      // For the Playify Official account, gather IDs from ALL legacy handles
+      // (playify, playify_official, sportsphere, etc.) so the profile feed
+      // shows posts created under any of the old aliases.
+      final handlesToQuery = <String>{handle};
+      if (widget.profile.isAdmin || kOfficialLegacyHandles.contains(handle.toLowerCase())) {
+        handlesToQuery.addAll(kOfficialLegacyHandles.map((h) => h.toLowerCase()));
+      }
+
+      // If viewing own profile, include the current session's UID
       final authId = VpsSupabaseCompat.client.auth.currentUser?.id;
       if (widget.profile.isOwnProfile && authId != null) ids.add(authId);
 
-      try {
-        final profile = await const VpsRepository().getProfile(handle);
-        final id = profile?['id']?.toString();
-        if (id != null && id.isNotEmpty) ids.add(id);
-      } catch (_) {}
+      // Resolve each handle to a user ID via VPS
+      for (final h in handlesToQuery) {
+        try {
+          final profile = await const VpsRepository().getProfile(h);
+          final id = profile?['id']?.toString();
+          if (id != null && id.isNotEmpty) ids.add(id);
+        } catch (_) {}
+      }
 
       if (ids.isEmpty) {
         if (mounted) setState(() => _loading = false);
@@ -1284,7 +1318,9 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
               style: TextStyle(color: PlayifyColors.white,
                   fontSize: 18, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
-          Text('Posts from ${widget.profile.displayName} will appear here.',
+          Text(widget.profile.isAdmin
+              ? 'Posts from Playify Official will appear here.'
+              : 'Posts from ${widget.profile.displayName} will appear here.',
               textAlign: TextAlign.center,
               style: const TextStyle(color: PlayifyColors.muted, fontSize: 14)),
         ]),
@@ -1335,7 +1371,16 @@ class _AboutTab extends StatelessWidget {
           title: 'Details',
           child: Column(
             children: [
-              if (profile.fanOf.isNotEmpty)
+              if (profile.isAdmin) ...[
+                // Official account — show "Official account" instead of "Fan of"
+                _AboutRow(
+                  icon: Icons.verified_rounded,
+                  iconColor: PlayifyColors.electricBlue,
+                  label: 'Account',
+                  value: 'Official account',
+                  valueColor: PlayifyColors.electricBlue,
+                ),
+              ] else if (profile.fanOf.isNotEmpty) ...[
                 _AboutRow(
                   icon: Icons.favorite_rounded,
                   iconColor: profile.fanOfAccent,
@@ -1343,6 +1388,7 @@ class _AboutTab extends StatelessWidget {
                   value: profile.fanOf,
                   valueColor: profile.fanOfAccent,
                 ),
+              ],
               _AboutRow(
                 icon: Icons.sports_soccer_rounded,
                 iconColor: PlayifyColors.electricBlue,
