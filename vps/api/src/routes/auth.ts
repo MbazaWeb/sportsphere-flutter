@@ -140,10 +140,16 @@ authRouter.post('/login', async (c) => {
   if (user.isBanned) return c.json({ error: 'Account suspended' }, 403)
 
   // Verify password
-  const valid = user.passwordHash
-    ? await verifyPassword(password, user.passwordHash)
-    : false
+  if (!user.passwordHash) {
+    // Migrated user — never set a VPS password yet
+    return c.json({
+      error: 'Please set your Playify password first.',
+      code:  'PASSWORD_NOT_SET',
+      hint:  'Use forgot-password to receive a reset link.',
+    }, 401)
+  }
 
+  const valid = await verifyPassword(password, user.passwordHash)
   if (!valid) return c.json({ error: 'Invalid email or password' }, 401)
 
   // Update last seen
