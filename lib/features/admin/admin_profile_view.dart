@@ -1,19 +1,33 @@
+// lib/features/admin/admin_profile_view.dart
+// Admin/Official profile — full social profile visible to all users.
+//
+// What it shows:
+//   • "Playify Official" gold badge + verified checkmark
+//   • Follower / following / post counts (real from VPS)
+//   • Posts tab — all posts by this admin (fans can interact)
+//   • About tab — bio, links, stats
+//   • Admin tab — Quick Actions + Stats (only visible to self)
+//
+// Social rules for admin:
+//   • Other users CAN follow admin → see posts in feed
+//   • Admin CAN follow other users
+//   • Admin CANNOT become fan of teams/players/coaches (by design)
+//   • Admin badge shows on every post/comment by this account
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/data/vps_supabase_compat.dart';
+import '../../core/data/vps_repository.dart';
 import '../../core/theme/colors.dart';
 import '../auth/presentation/auth_controller.dart';
 import '../profile/presentation/edit_profile_sheet.dart';
 import 'bulk_upload_screen.dart';
 
-// ══════════════════════════════════════════════════════════════════════════════
-// ADMIN PROFILE VIEW
-// Full dedicated profile for the official admin account.
-// Shows identity header, quick-action tiles, and live platform stats.
-// ══════════════════════════════════════════════════════════════════════════════
+// ── Gold admin colour ──────────────────────────────────────────────────────────
+const _kGold   = Color(0xFFFFD700);
+const _kGoldBg = Color(0xFF1A1500);
 
 class AdminProfileView extends ConsumerStatefulWidget {
   const AdminProfileView({super.key});
@@ -24,41 +38,77 @@ class AdminProfileView extends ConsumerStatefulWidget {
 class _AdminProfileViewState extends ConsumerState<AdminProfileView>
     with SingleTickerProviderStateMixin {
   late TabController _tab;
+  bool _isSelf = true; // admin is always viewing own profile here
 
-  int _users = 0, _posts = 0, _matches = 0, _teams = 0, _news = 0;
+  // Social counts
+  int _postCount = 0, _followerCount = 0, _followingCount = 0;
+
+  // Posts
+  List<Map<String, dynamic>> _posts = [];
+  bool _postsLoading = true;
+
+  // Platform stats (admin only)
+  Map<String, int> _stats = {};
   bool _statsLoading = true;
 
-  static get _sb => VpsSupabaseCompat.client;
+  static final _vps = const VpsRepository();
 
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 2, vsync: this);
-    _loadStats();
+    _tab = TabController(length: 3, vsync: this);
+    _load();
   }
 
   @override
   void dispose() { _tab.dispose(); super.dispose(); }
 
-  Future<void> _loadStats() async {
-    if (mounted) setState(() => _statsLoading = true);
+  Future<void> _load() async {
+    await Future.wait([_loadProfile(), _loadPosts(), _loadStats()]);
+  }
+
+  Future<void> _loadProfile() async {
     try {
-      // #FIX-NULLABLE — explicit <int> type args on Future.wait + each .then
-      // call so the analyzer can infer E = int (otherwise it falls back to
-      // dynamic and rejects the List<dynamic> as Iterable<Future<dynamic>>).
-      final c = await Future.wait<int>([
-        _sb.from('User').select('id').then<int>((r) => (r as List).length),
-        _sb.from('Post').select('id').then<int>((r) => (r as List).length),
-        _sb.from('Match').select('id').then<int>((r) => (r as List).length),
-        _sb.from('Team').select('id').then<int>((r) => (r as List).length),
-        _sb.from('NewsItem').select('id').then<int>((r) => (r as List).length),
-      ]);
-      if (mounted) {
-        setState(() {
-          _users = c[0]; _posts = c[1]; _matches = c[2]; _teams = c[3]; _news = c[4];
-          _statsLoading = false;
-        });
-      }
+      final auth = ref.read(authControllerProvider);
+      final userId = auth.user?.id ?? '';
+      if (userId.isEmpty) return;
+      final profile = await _vps.getProfile(userId);
+      if (mounted) setState(() {
+        _postCount      = (profile['postCount']      as int?) ?? 0;
+        _followerCount  = (profile['followerCount']  as int?) ?? 0;
+        _followingCount = (profile['followingCount'] as int?) ?? 0;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _loadPosts() async {
+    setState(() => _postsLoading = true);
+    try {
+      final userId = ref.read(authControllerProvider).user?.id ?? '';
+      if (userId.isEmpty) return;
+      final posts = await _vps.getUserPosts(userId, limit: 40);
+      if (mounted) setState(() { _posts = posts; _postsLoading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _postsLoading = false);
+    }
+  }
+
+  Future<void> _loadStats() async {
+    setState(() => _statsLoading = true);
+    try {
+      final s = await _vps.getAdminStats();
+      if (mounted) setState(() {
+        _stats = {
+          'users':        (s['users']        as num?)?.toInt() ?? 0,
+          'posts':        (s['posts']        as num?)?.toInt() ?? 0,
+          'matches':      (s['matches']      as num?)?.toInt() ?? 0,
+          'teams':        (s['teams']        as num?)?.toInt() ?? 0,
+          'players':      (s['players']      as num?)?.toInt() ?? 0,
+          'competitions': (s['competitions'] as num?)?.toInt() ?? 0,
+          'news':         (s['news']         as num?)?.toInt() ?? 0,
+        };
+        _statsLoading = false;
+      });
     } catch (_) {
       if (mounted) setState(() => _statsLoading = false);
     }
@@ -67,89 +117,109 @@ class _AdminProfileViewState extends ConsumerState<AdminProfileView>
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authControllerProvider).user;
-    if (user == null) {
-      return const Scaffold(
-        backgroundColor: PlayifyColors.background,
-        body: Center(child: CircularProgressIndicator(color: PlayifyColors.electricBlue, strokeWidth: 2)),
-      );
-    }
+    if (user == null) return const Scaffold(
+      backgroundColor: PlayifyColors.background,
+      body: Center(child: CircularProgressIndicator(color: _kGold, strokeWidth: 2)),
+    );
 
     return Scaffold(
       backgroundColor: PlayifyColors.background,
       body: NestedScrollView(
         headerSliverBuilder: (_, __) => [
-          SliverToBoxAdapter(child: _Header(user: user, onRefresh: _loadStats)),
+          SliverToBoxAdapter(child: _ProfileHeader(
+            user:           user,
+            postCount:      _postCount,
+            followerCount:  _followerCount,
+            followingCount: _followingCount,
+            onRefresh:      _load,
+          )),
           SliverPersistentHeader(
             pinned: true,
             delegate: _TabDelegate(TabBar(
               controller: _tab,
-              labelColor: PlayifyColors.white,
+              labelColor:         _kGold,
               unselectedLabelColor: PlayifyColors.muted,
-              labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-              indicator: const UnderlineTabIndicator(
-                borderSide: BorderSide(color: Color(0xFFFFD700), width: 2.5),
-              ),
-              tabs: const [Tab(text: '⚡ Quick Actions'), Tab(text: '📊 Stats')],
+              indicatorColor:     _kGold,
+              indicatorSize:      TabBarIndicatorSize.label,
+              labelStyle:         const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+              tabs: const [
+                Tab(text: 'Posts'),
+                Tab(text: 'About'),
+                Tab(text: '⚙ Admin'),
+              ],
             )),
           ),
         ],
         body: TabBarView(controller: _tab, children: [
-          _QuickActionsTab(onRefresh: _loadStats),
-          _StatsTab(
-            loading: _statsLoading,
-            users: _users, posts: _posts, matches: _matches,
-            teams: _teams, news: _news, onRefresh: _loadStats,
-          ),
+          // ── Posts tab ────────────────────────────────────────────────────────
+          _postsLoading
+              ? const Center(child: CircularProgressIndicator(color: _kGold, strokeWidth: 2))
+              : _posts.isEmpty
+                  ? _emptyPosts()
+                  : RefreshIndicator(
+                      onRefresh: _loadPosts,
+                      color: _kGold,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        itemCount: _posts.length,
+                        itemBuilder: (_, i) => _PostCard(post: _posts[i]),
+                      ),
+                    ),
+
+          // ── About tab ────────────────────────────────────────────────────────
+          _AboutTab(user: user),
+
+          // ── Admin tab ────────────────────────────────────────────────────────
+          _AdminTab(stats: _stats, loading: _statsLoading, onRefresh: _loadStats),
         ]),
       ),
     );
   }
+
+  Widget _emptyPosts() => Center(child: Column(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      const Icon(Icons.post_add_rounded, color: PlayifyColors.muted, size: 48),
+      const SizedBox(height: 12),
+      const Text('No posts yet', style: TextStyle(color: PlayifyColors.muted, fontSize: 15)),
+      const SizedBox(height: 8),
+      TextButton.icon(
+        onPressed: () => context.push('/create'),
+        icon: const Icon(Icons.add_rounded, color: _kGold),
+        label: const Text('Create post', style: TextStyle(color: _kGold, fontWeight: FontWeight.w700)),
+      ),
+    ],
+  ));
 }
 
-// ── Header ────────────────────────────────────────────────────────────────────
-
-class _Header extends ConsumerWidget {
+// ── Profile header ─────────────────────────────────────────────────────────────
+class _ProfileHeader extends ConsumerWidget {
   final dynamic user;
+  final int postCount, followerCount, followingCount;
   final VoidCallback onRefresh;
-  const _Header({required this.user, required this.onRefresh});
+  const _ProfileHeader({
+    required this.user, required this.postCount,
+    required this.followerCount, required this.followingCount,
+    required this.onRefresh,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final hasAvatar = (user.avatarUrl as String?)?.isNotEmpty == true;
-    final hasCover  = (user.coverUrl as String?)?.isNotEmpty == true;
+    final hasAvatar = (user.avatarUrl as String?)?.startsWith('http') == true;
+    final name = '${user.firstName} ${user.lastName}'.trim();
 
     return Container(
-      decoration: BoxDecoration(
-        image: hasCover ? DecorationImage(
-          image: NetworkImage(user.coverUrl as String),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(Colors.black.withValues(alpha: 0.6), BlendMode.darken),
-        ) : null,
-        gradient: !hasCover ? const LinearGradient(
-          colors: [Color(0xFF0A1628), Color(0xFF020A14)],
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
           begin: Alignment.topCenter, end: Alignment.bottomCenter,
-        ) : null,
+          colors: [Color(0xFF0F1A0A), Color(0xFF071420)],
+        ),
       ),
       child: SafeArea(bottom: false, child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           // Top bar
           Row(children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFD700).withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.5)),
-              ),
-              child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.admin_panel_settings_rounded, color: Color(0xFFFFD700), size: 14),
-                SizedBox(width: 5),
-                Text('ADMIN', style: TextStyle(
-                    color: Color(0xFFFFD700), fontSize: 11,
-                    fontWeight: FontWeight.w900, letterSpacing: 1.2)),
-              ]),
-            ),
             const Spacer(),
             IconButton(
               icon: const Icon(Icons.edit_outlined, color: PlayifyColors.muted, size: 20),
@@ -157,77 +227,100 @@ class _Header extends ConsumerWidget {
               onPressed: () => showEditProfileSheet(context, user),
             ),
             IconButton(
-              icon: const Icon(Icons.dashboard_rounded, color: Color(0xFFFFD700), size: 20),
+              icon: const Icon(Icons.dashboard_rounded, color: _kGold, size: 20),
               tooltip: 'Admin Dashboard',
               onPressed: () => context.push('/admin'),
             ),
           ]),
 
-          const SizedBox(height: 20),
-
-          // Avatar + Name
+          // Avatar + identity
           Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            // Gold-ring avatar
             Container(
               padding: const EdgeInsets.all(3),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(colors: [Color(0xFFFFD700), Color(0xFFFFA500)]),
+                gradient: const LinearGradient(colors: [_kGold, Color(0xFFFFA500)]),
+                boxShadow: [BoxShadow(color: _kGold.withValues(alpha: 0.3), blurRadius: 12)],
               ),
               child: CircleAvatar(
-                radius: 40,
+                radius: 42,
                 backgroundColor: const Color(0xFF0F1F35),
                 backgroundImage: hasAvatar ? NetworkImage(user.avatarUrl as String) : null,
                 child: !hasAvatar ? Text(
-                  (user.firstName as String).isNotEmpty ? (user.firstName as String)[0].toUpperCase() : 'A',
-                  style: const TextStyle(color: Color(0xFFFFD700), fontSize: 32, fontWeight: FontWeight.w900),
+                  name.isNotEmpty ? name[0].toUpperCase() : 'A',
+                  style: const TextStyle(color: _kGold, fontSize: 34, fontWeight: FontWeight.w900),
                 ) : null,
               ),
             ),
             const SizedBox(width: 16),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              // Name + verified
               Row(children: [
                 Flexible(child: Text(
-                  (user.firstName as String).isNotEmpty
-                      ? '${user.firstName} ${user.lastName}'.trim()
-                      : 'Admin',
-                  style: const TextStyle(color: PlayifyColors.white,
+                  name.isNotEmpty ? name : 'Playify Official',
+                  style: const TextStyle(color: Colors.white,
                       fontSize: 22, fontWeight: FontWeight.w900, height: 1.1),
                   overflow: TextOverflow.ellipsis,
                 )),
                 const SizedBox(width: 6),
-                const Icon(Icons.verified_rounded, color: Color(0xFFFFD700), size: 18),
+                const Icon(Icons.verified_rounded, color: _kGold, size: 20),
               ]),
               const SizedBox(height: 2),
               Text('@${user.handle}',
-                  style: const TextStyle(color: PlayifyColors.muted, fontSize: 14)),
-              const SizedBox(height: 4),
+                  style: const TextStyle(color: PlayifyColors.muted, fontSize: 13)),
+              const SizedBox(height: 6),
+              // "Playify Official" badge
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: PlayifyColors.electricBlue.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: PlayifyColors.electricBlue.withValues(alpha: 0.3)),
+                  color: _kGoldBg,
+                  borderRadius: BorderRadius.circular(99),
+                  border: Border.all(color: _kGold.withValues(alpha: 0.4), width: 1.5),
                 ),
-                child: const Text('Playify Official',
-                    style: TextStyle(color: PlayifyColors.electricBlue,
-                        fontSize: 11, fontWeight: FontWeight.w700)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.admin_panel_settings_rounded, color: _kGold, size: 13),
+                  const SizedBox(width: 5),
+                  const Text('Playify Official',
+                      style: TextStyle(color: _kGold, fontSize: 11, fontWeight: FontWeight.w800,
+                          letterSpacing: 0.3)),
+                ]),
               ),
             ])),
           ]),
 
           const SizedBox(height: 16),
 
+          // Bio
           if ((user.bio as String).isNotEmpty) ...[
             Text(user.bio as String,
-                style: const TextStyle(color: PlayifyColors.muted, fontSize: 13, height: 1.5)),
-            const SizedBox(height: 12),
+                style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.5)),
+            const SizedBox(height: 14),
           ],
 
+          // Counters
+          Row(children: [
+            _Counter(count: postCount,      label: 'Posts'),
+            const SizedBox(width: 24),
+            GestureDetector(
+              onTap: () => _showFollowers(context),
+              child: _Counter(count: followerCount, label: 'Followers'),
+            ),
+            const SizedBox(width: 24),
+            GestureDetector(
+              onTap: () => _showFollowing(context),
+              child: _Counter(count: followingCount, label: 'Following'),
+            ),
+          ]),
+
+          const SizedBox(height: 14),
+
+          // Admin dashboard button
           SizedBox(width: double.infinity,
             child: OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFFFFD700),
-                side: const BorderSide(color: Color(0xFFFFD700), width: 1.5),
+                foregroundColor: _kGold,
+                side: const BorderSide(color: _kGold, width: 1.5),
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
@@ -241,182 +334,347 @@ class _Header extends ConsumerWidget {
       )),
     );
   }
-}
 
-// ── Quick Actions Tab ─────────────────────────────────────────────────────────
-
-class _QuickActionsTab extends StatelessWidget {
-  final VoidCallback onRefresh;
-  const _QuickActionsTab({required this.onRefresh});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 40), children: [
-      _Section('CONTENT'),
-      _Tile(Icons.sensors_rounded,         const Color(0xFFE31B23),      'Live Match Control',       'Update scores in real time',           () => context.push('/admin')),
-      _Tile(Icons.newspaper_rounded,        PlayifyColors.sportOrange, 'Publish News',             'Breaking news and match updates',       () => context.push('/admin')),
-      _Tile(Icons.add_circle_rounded,       PlayifyColors.sportGreen,  'Schedule Match',           'Add a new fixture',                     () => context.push('/admin')),
-      const SizedBox(height: 20),
-      _Section('USERS'),
-      _Tile(Icons.people_rounded,           PlayifyColors.electricBlue,'Manage Users',             'Search, verify or moderate accounts',   () => context.push('/admin')),
-      _Tile(Icons.verified_rounded,         const Color(0xFFFFD700),       'PRO Queue',                'Review pending PRO applications',        () => context.push('/admin')),
-      const SizedBox(height: 20),
-      _Section('SYSTEM'),
-      _Tile(Icons.dashboard_rounded,        const Color(0xFF9B6DFF),       'Full Dashboard',           'All admin controls in one place',        () => context.push('/admin')),
-      _Tile(Icons.upload_file_rounded,       const Color(0xFF22C55E),       'Bulk Upload',              'Import fixtures, teams & players via CSV', () => Navigator.push(context, MaterialPageRoute(builder: (_) => BulkUploadScreen(onDone: () => Navigator.of(context).maybePop())))),
-      _Tile(Icons.refresh_rounded,          PlayifyColors.muted,       'Refresh Stats',            'Reload platform counters',               () { HapticFeedback.mediumImpact(); onRefresh(); }),
-    ]);
+  void _showFollowers(BuildContext context) {
+    // Navigate to followers list
+    context.push('/profile/${(user.handle as String).replaceAll('@','')}?tab=followers');
+  }
+  void _showFollowing(BuildContext context) {
+    context.push('/profile/${(user.handle as String).replaceAll('@','')}?tab=following');
   }
 }
 
-// ── Stats Tab ─────────────────────────────────────────────────────────────────
+// ── Counter widget ─────────────────────────────────────────────────────────────
+class _Counter extends StatelessWidget {
+  final int count; final String label;
+  const _Counter({required this.count, required this.label});
+  @override
+  Widget build(BuildContext context) => Column(children: [
+    Text(_fmt(count),
+        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+    Text(label,
+        style: const TextStyle(color: PlayifyColors.muted, fontSize: 12)),
+  ]);
+  String _fmt(int n) => n >= 1000000 ? '${(n/1000000).toStringAsFixed(1)}M'
+      : n >= 1000 ? '${(n/1000).toStringAsFixed(1)}K'
+      : '$n';
+}
 
-class _StatsTab extends StatelessWidget {
-  final bool loading;
-  final int users, posts, matches, teams, news;
-  final VoidCallback onRefresh;
-  const _StatsTab({
-    required this.loading, required this.users, required this.posts,
-    required this.matches, required this.teams, required this.news,
-    required this.onRefresh,
-  });
+// ── Post card (admin posts feed) ──────────────────────────────────────────────
+class _PostCard extends StatefulWidget {
+  final Map<String, dynamic> post;
+  const _PostCard({required this.post});
+  @override
+  State<_PostCard> createState() => _PostCardState();
+}
+
+class _PostCardState extends State<_PostCard> {
+  bool _liked = false;
+  int  _likes = 0;
+  static final _vps = const VpsRepository();
+
+  @override
+  void initState() {
+    super.initState();
+    _likes = (widget.post['likeCount'] as int?) ?? 0;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: () async => onRefresh(),
-      color: PlayifyColors.electricBlue,
-      child: ListView(physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 40), children: [
-        _Section('PLATFORM METRICS'),
-        const SizedBox(height: 12),
-        if (loading)
-          const Center(child: Padding(
-            padding: EdgeInsets.only(top: 40),
-            child: CircularProgressIndicator(color: PlayifyColors.electricBlue, strokeWidth: 2),
-          ))
-        else GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: 1.5,
-          children: [
-            _StatCard('Users',   _fmt(users),   Icons.people_rounded,         PlayifyColors.electricBlue),
-            _StatCard('Posts',   _fmt(posts),   Icons.article_rounded,         PlayifyColors.sportGreen),
-            _StatCard('Matches', _fmt(matches), Icons.sports_soccer_rounded,   const Color(0xFFE31B23)),
-            _StatCard('Teams',   _fmt(teams),   Icons.groups_rounded,          const Color(0xFF9B6DFF)),
-            _StatCard('News',    _fmt(news),    Icons.newspaper_rounded,       PlayifyColors.sportOrange),
-          ],
-        ),
-        const SizedBox(height: 24),
-        _Section('PENDING'),
-        const SizedBox(height: 10),
-        _InfoRow(Icons.warning_amber_rounded, PlayifyColors.sportOrange, 'M-Pesa Daraja secrets needed for live payments'),
-        _InfoRow(Icons.notifications_off_rounded, PlayifyColors.muted,   'FCM push not yet wired'),
-        _InfoRow(Icons.person_search_rounded, PlayifyColors.electricBlue,'PRO verification queue — check ⭐ PRO Queue tab'),
+    final p       = widget.post;
+    final content = (p['content'] as String?) ?? '';
+    final created = DateTime.tryParse(p['createdAt']?.toString() ?? '')?.toLocal();
+    final age     = _ageLabel(created);
+    final media   = (p['mediaUrls'] as List?)?.cast<String>() ?? [];
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0D1F35),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // Header
+        Padding(padding: const EdgeInsets.fromLTRB(14,14,14,10), child: Row(children: [
+          Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: _kGold, width: 1.5),
+            ),
+            child: const ClipOval(child: Center(
+              child: Icon(Icons.admin_panel_settings_rounded, color: _kGold, size: 20),
+            )),
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              const Text('Playify Official',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+              const SizedBox(width: 4),
+              const Icon(Icons.verified_rounded, color: _kGold, size: 14),
+            ]),
+            Text(age, style: const TextStyle(color: PlayifyColors.muted, fontSize: 11)),
+          ])),
+        ])),
+
+        // Content
+        if (content.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+            child: Text(content,
+                style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.5)),
+          ),
+
+        // Media
+        if (media.isNotEmpty)
+          ClipRRect(
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(0), bottomRight: Radius.circular(0)),
+            child: SizedBox(
+              height: 200,
+              child: PageView.builder(
+                itemCount: media.length,
+                itemBuilder: (_, i) => Image.network(
+                  media[i], fit: BoxFit.cover,
+                  errorBuilder: (_,__,___) => Container(
+                    color: PlayifyColors.surface,
+                    child: const Icon(Icons.broken_image_rounded, color: PlayifyColors.muted),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+        // Actions
+        Padding(padding: const EdgeInsets.fromLTRB(10, 6, 10, 10), child: Row(children: [
+          // Like
+          GestureDetector(
+            onTap: () async {
+              setState(() { _liked = !_liked; _likes += _liked ? 1 : -1; });
+              try {
+                await _vps.toggleLike(p['id'] as String);
+              } catch (_) {
+                setState(() { _liked = !_liked; _likes += _liked ? 1 : -1; });
+              }
+            },
+            child: Row(children: [
+              Icon(_liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                  color: _liked ? const Color(0xFFE31B23) : PlayifyColors.muted, size: 20),
+              const SizedBox(width: 4),
+              Text('$_likes',
+                  style: TextStyle(
+                    color: _liked ? const Color(0xFFE31B23) : PlayifyColors.muted,
+                    fontSize: 13)),
+            ]),
+          ),
+          const SizedBox(width: 20),
+          // Comment
+          GestureDetector(
+            onTap: () {/* open comments */},
+            child: Row(children: [
+              const Icon(Icons.chat_bubble_outline_rounded,
+                  color: PlayifyColors.muted, size: 19),
+              const SizedBox(width: 4),
+              Text('${(p['commentCount'] as int?) ?? 0}',
+                  style: const TextStyle(color: PlayifyColors.muted, fontSize: 13)),
+            ]),
+          ),
+          const SizedBox(width: 20),
+          // Share
+          GestureDetector(
+            onTap: () async {
+              try { await _vps.sharePost(p['id'] as String); } catch (_) {}
+            },
+            child: const Icon(Icons.share_outlined, color: PlayifyColors.muted, size: 19),
+          ),
+          const Spacer(),
+          Text('${(p['shareCount'] as int?) ?? 0} shares',
+              style: const TextStyle(color: PlayifyColors.muted, fontSize: 11)),
+        ])),
       ]),
     );
   }
 
-  String _fmt(int v) => v >= 1000 ? '${(v / 1000).toStringAsFixed(1)}K' : '$v';
+  String _ageLabel(DateTime? dt) {
+    if (dt == null) return '';
+    final d = DateTime.now().difference(dt);
+    if (d.inMinutes < 1)  return 'just now';
+    if (d.inMinutes < 60) return '${d.inMinutes}m';
+    if (d.inHours   < 24) return '${d.inHours}h';
+    if (d.inDays    < 7)  return '${d.inDays}d';
+    return '${dt.day}/${dt.month}/${dt.year}';
+  }
 }
 
-// ── Reusable widgets ──────────────────────────────────────────────────────────
+// ── About tab ─────────────────────────────────────────────────────────────────
+class _AboutTab extends StatelessWidget {
+  final dynamic user;
+  const _AboutTab({required this.user});
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.all(20),
+    children: [
+      _Section('About Playify Official', [
+        _InfoRow(Icons.info_outline_rounded, 'Playify Official',
+            'The official Playify account — announcements, features, and community updates.'),
+        _InfoRow(Icons.admin_panel_settings_rounded, 'Role', 'Platform Administrator'),
+        _InfoRow(Icons.shield_rounded, 'Status', 'Verified Official Account'),
+        _InfoRow(Icons.language_rounded, 'Website', 'playifysport.fun'),
+      ]),
+      const SizedBox(height: 16),
+      _Section('Social rules for Admin', [
+        _InfoRow(Icons.check_circle_outline_rounded, 'Can follow users',
+            'Admin follows fans, athletes and creators.', color: const Color(0xFF4CAF50)),
+        _InfoRow(Icons.check_circle_outline_rounded, 'Fans can follow admin',
+            'Following admin shows official posts in your feed.', color: const Color(0xFF4CAF50)),
+        _InfoRow(Icons.cancel_outlined, 'Cannot fan teams/players',
+            'Admin manages entities — cannot fan them.', color: PlayifyColors.muted),
+      ]),
+    ],
+  );
+}
 
 class _Section extends StatelessWidget {
-  final String t;
-  const _Section(this.t);
+  final String title; final List<Widget> children;
+  const _Section(this.title, this.children);
   @override
-  Widget build(BuildContext ctx) => Text(t,
-      style: TextStyle(color: PlayifyColors.muted.withValues(alpha: 0.7),
-          fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.2));
-}
-
-class _Tile extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String title, sub;
-  final VoidCallback onTap;
-  const _Tile(this.icon, this.color, this.title, this.sub, this.onTap);
-
-  @override
-  Widget build(BuildContext ctx) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    Text(title, style: const TextStyle(color: Colors.white,
+        fontSize: 15, fontWeight: FontWeight.w800)),
+    const SizedBox(height: 12),
+    Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF071422),
+        color: const Color(0xFF0D1F35),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
       ),
-      child: Row(children: [
-        Container(width: 40, height: 40,
-          decoration: BoxDecoration(shape: BoxShape.circle, color: color.withValues(alpha: 0.12)),
-          child: Icon(icon, color: color, size: 20),
-        ),
-        const SizedBox(width: 12),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: const TextStyle(color: PlayifyColors.white, fontWeight: FontWeight.w700, fontSize: 14)),
-          Text(sub,   style: const TextStyle(color: PlayifyColors.muted, fontSize: 12)),
-        ])),
-        Icon(Icons.chevron_right_rounded, color: PlayifyColors.muted.withValues(alpha: 0.5)),
-      ]),
+      child: Column(children: children),
     ),
-  );
-}
-
-class _StatCard extends StatelessWidget {
-  final String label, value;
-  final IconData icon;
-  final Color color;
-  const _StatCard(this.label, this.value, this.icon, this.color);
-
-  @override
-  Widget build(BuildContext ctx) => Container(
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: color.withValues(alpha: 0.2)),
-    ),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-      Icon(icon, color: color, size: 20),
-      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(value, style: TextStyle(color: color, fontSize: 22, fontWeight: FontWeight.w900, height: 1)),
-        Text(label, style: const TextStyle(color: PlayifyColors.muted, fontSize: 11)),
-      ]),
-    ]),
-  );
+  ]);
 }
 
 class _InfoRow extends StatelessWidget {
-  final IconData icon; final Color color; final String label;
-  const _InfoRow(this.icon, this.color, this.label);
+  final IconData icon; final String label, value;
+  final Color? color;
+  const _InfoRow(this.icon, this.label, this.value, {this.color});
   @override
-  Widget build(BuildContext ctx) => Container(
-    margin: const EdgeInsets.only(bottom: 8),
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.06),
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: color.withValues(alpha: 0.15)),
-    ),
-    child: Row(children: [
-      Icon(icon, color: color, size: 16),
-      const SizedBox(width: 10),
-      Expanded(child: Text(label, style: const TextStyle(color: PlayifyColors.muted, fontSize: 12))),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Icon(icon, color: color ?? PlayifyColors.muted, size: 18),
+      const SizedBox(width: 12),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: const TextStyle(color: PlayifyColors.muted, fontSize: 11,
+            fontWeight: FontWeight.w600)),
+        const SizedBox(height: 2),
+        Text(value, style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.4)),
+      ])),
     ]),
   );
 }
 
+// ── Admin tab ──────────────────────────────────────────────────────────────────
+class _AdminTab extends StatelessWidget {
+  final Map<String, int> stats;
+  final bool loading;
+  final VoidCallback onRefresh;
+  const _AdminTab({required this.stats, required this.loading, required this.onRefresh});
+
+  @override
+  Widget build(BuildContext context) => RefreshIndicator(
+    onRefresh: () async => onRefresh(),
+    color: _kGold,
+    child: ListView(padding: const EdgeInsets.all(16), children: [
+      // Quick action tiles
+      const Text('Quick Actions',
+          style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
+      const SizedBox(height: 12),
+      _ActionGrid(context),
+      const SizedBox(height: 20),
+
+      // Platform stats
+      const Text('Platform Stats',
+          style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
+      const SizedBox(height: 12),
+      loading
+          ? const Center(child: CircularProgressIndicator(color: _kGold, strokeWidth: 2))
+          : _StatsGrid(stats),
+    ]),
+  );
+
+  Widget _ActionGrid(BuildContext context) => GridView.count(
+    crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+    crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 2.2,
+    children: [
+      _Tile(context, Icons.sports_soccer_rounded, PlayifyColors.electricBlue, 'Matches', () => context.push('/admin')),
+      _Tile(context, Icons.groups_rounded, const Color(0xFF4CAF50), 'Teams', () => context.push('/admin')),
+      _Tile(context, Icons.newspaper_rounded, const Color(0xFFFF9800), 'News', () => context.push('/admin')),
+      _Tile(context, Icons.person_add_rounded, const Color(0xFF9C27B0), 'Users', () => context.push('/admin')),
+      _Tile(context, Icons.upload_file_rounded, const Color(0xFF00BCD4), 'Bulk Upload', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BulkUploadScreen()))),
+      _Tile(context, Icons.analytics_rounded, _kGold, 'Dashboard', () => context.push('/admin')),
+    ],
+  );
+
+  Widget _Tile(BuildContext ctx, IconData icon, Color color, String label, VoidCallback onTap) =>
+      GestureDetector(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
+          ),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(icon, color: color, size: 22),
+            const SizedBox(width: 8),
+            Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 13)),
+          ]),
+        ),
+      );
+
+  Widget _StatsGrid(Map<String, int> s) => GridView.count(
+    crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+    crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 2.0,
+    children: [
+      _Stat('👤 Users',        s['users']        ?? 0, PlayifyColors.electricBlue),
+      _Stat('📝 Posts',        s['posts']        ?? 0, const Color(0xFF4CAF50)),
+      _Stat('⚽ Matches',      s['matches']      ?? 0, const Color(0xFFFF9800)),
+      _Stat('🏟 Teams',        s['teams']        ?? 0, const Color(0xFF9C27B0)),
+      _Stat('🏃 Players',      s['players']      ?? 0, const Color(0xFF00BCD4)),
+      _Stat('🏆 Competitions', s['competitions'] ?? 0, _kGold),
+      _Stat('📰 News',         s['news']         ?? 0, const Color(0xFFE31B23)),
+    ],
+  );
+
+  Widget _Stat(String label, int n, Color color) => Container(
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: color.withValues(alpha: 0.2)),
+    ),
+    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      Text(_fmt(n),
+          style: TextStyle(color: color, fontSize: 22, fontWeight: FontWeight.w900)),
+      Text(label, style: const TextStyle(color: PlayifyColors.muted, fontSize: 11)),
+    ]),
+  );
+
+  String _fmt(int n) => n >= 1000000 ? '${(n/1000000).toStringAsFixed(1)}M'
+      : n >= 1000 ? '${(n/1000).toStringAsFixed(1)}K'
+      : '$n';
+}
+
+// ── Tab bar delegate ───────────────────────────────────────────────────────────
 class _TabDelegate extends SliverPersistentHeaderDelegate {
   final TabBar tabBar;
   const _TabDelegate(this.tabBar);
   @override double get minExtent => tabBar.preferredSize.height + 1;
   @override double get maxExtent => tabBar.preferredSize.height + 1;
-  @override Widget build(BuildContext _, double __, bool ___) =>
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) =>
       Container(color: PlayifyColors.background, child: tabBar);
   @override bool shouldRebuild(_TabDelegate o) => o.tabBar != tabBar;
 }

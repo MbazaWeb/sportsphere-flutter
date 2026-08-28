@@ -19,7 +19,10 @@ const kAppBallAsset = 'assets/images/playify_ball.png';
 const kAppLogoAsset = 'assets/images/playify_logo.png';
 const kAppHeaderLogoAsset = 'assets/images/playify_header_logo.png';
 
-bool isOfficialHandle(String? handle) {
+bool isOfficialHandle(String? handle, {String? role}) {
+  // Role-based: any admin gets the official badge
+  if (role == 'admin') return true;
+  // Handle-based: known official handles
   final h = (handle ?? '').replaceAll('@', '').trim().toLowerCase();
   return kOfficialLegacyHandles.contains(h);
 }
