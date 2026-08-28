@@ -72,7 +72,10 @@ app.get('/v1/social/search', async (c) => {
     dbQuery(`SELECT id, name, position, nationality FROM public."Player" WHERE name ILIKE $1 AND "isActive"=true LIMIT $2`, [pat, Math.floor(limit/3)]),
   ])
   const results = [
-    ...users.map((r: any) => ({ ...r, _kind: 'user' })),
+    ...users.map((r: any) => {
+      const kind = ['team','league','player','coach','organization'].includes(r.role) ? r.role : 'user'
+      return { ...r, _kind: kind }
+    }),
     ...leagues.map((r: any) => ({ id: r.id, handle: String(r.name||'').toLowerCase().replace(/ /g,'_'), first_name: r.name, last_name: '', role: 'league', avatar_url: null, _kind: 'league', _subtitle: `${r.country||''} · ${r.type||''}` })),
     ...teams.map((r: any) => ({ id: r.id, handle: String(r.name||'').toLowerCase().replace(/ /g,'_'), first_name: r.name, last_name: '', role: 'team', avatar_url: r.logoUrl, _kind: 'team', _subtitle: `${r.city||''} · ${r.country||''}` })),
     ...players.map((r: any) => ({ id: r.id, handle: String(r.name||'').toLowerCase().replace(/ /g,'_'), first_name: r.name, last_name: '', role: 'player', avatar_url: null, _kind: 'player', _subtitle: `${r.position||''} · ${r.nationality||''}` })),
