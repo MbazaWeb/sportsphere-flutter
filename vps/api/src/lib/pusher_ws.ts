@@ -1,120 +1,124 @@
 // vps/api/src/lib/pusher_ws.ts
-// Pure Bun WebSocket server implementing Pusher protocol.
-// Replaces Soketi — runs inside the same Bun process, zero external dependency.
-// Compatible with pusher_channels_flutter client.
-
+// Minimal Pusher-protocol WebSocket server for Bun.
 import { createHmac } from 'crypto'
 
 const APP_KEY    = Bun.env.SOKETI_APP_KEY ?? 'playify-app-key'
 const APP_SECRET = Bun.env.SOKETI_SECRET  ?? 'playify-secret'
 
-interface WsData {
-  socketId:   string
-  channels:   Set<string>
-}
+// In-memory state
+const channelSockets = new Map<string, Set<string>>()   // channel → socket ids
+const socketMap      = new Map<string, any>()            // socketId → ws
 
-// Channel → Set of socket IDs
-const channelSockets = new Map<string, Set<string>>()
-// Socket ID → WebSocket
-const socketMap      = new Map<string, ServerWebSocket<WsData>>()
-
-function genSocketId() {
+function genSocketId(): string {
   return `${Math.floor(Math.random()*999999)}.${Math.floor(Math.random()*999999)}`
 }
 
-function subscribe(ws: ServerWebSocket<WsData>, channel: string) {
-  ws.data.channels.add(channel)
-  if (!channelSockets.has(channel)) channelSockets.set(channel, new Set())
-  channelSockets.get(channel)!.add(ws.data.socketId)
-  ws.send(JSON.stringify({ event: 'pusher_internal:subscription_succeeded', channel, data: '{}' }))
-}
+// ── Public API ────────────────────────────────────────────────────────────────
 
-function unsubscribe(ws: ServerWebSocket<WsData>, channel: string) {
-  ws.data.channels.delete(channel)
-  channelSockets.get(channel)?.delete(ws.data.socketId)
-}
-
-// Broadcast to all sockets on a channel
-export function broadcastToChannel(channel: string, event: string, data: unknown, excludeSocketId?: string) {
-  const sockets = channelSockets.get(channel)
-  if (!sockets?.size) return
-  const msg = JSON.stringify({ event, channel, data: typeof data === 'string' ? data : JSON.stringify(data) })
-  for (const sid of sockets) {
-    if (sid === excludeSocketId) continue
-    socketMap.get(sid)?.send(msg)
+export function broadcastToChannel(channel: string, event: string, data: unknown, excludeId?: string) {
+  const ids = channelSockets.get(channel)
+  if (!ids?.size) return
+  const msg = JSON.stringify({ event, channel, data: JSON.stringify(data) })
+  for (const id of ids) {
+    if (id === excludeId) continue
+    try { socketMap.get(id)?.send(msg) } catch (_) {}
   }
 }
 
-// HTTP handler for Pusher channel auth (/ws/auth)
-export function handlePusherAuth(socketId: string, channelName: string, userId?: string): string {
-  if (channelName.startsWith('private:') && userId) {
-    const toSign = `${socketId}:${channelName}`
-    const auth   = `${APP_KEY}:${createHmac('sha256', APP_SECRET).update(toSign).digest('hex')}`
-    return JSON.stringify({ auth })
-  }
-  if (channelName.startsWith('presence:') && userId) {
-    const channelData = JSON.stringify({ user_id: userId })
-    const toSign      = `${socketId}:${channelName}:${channelData}`
-    const auth        = `${APP_KEY}:${createHmac('sha256', APP_SECRET).update(toSign).digest('hex')}`
-    return JSON.stringify({ auth, channel_data: channelData })
-  }
-  return JSON.stringify({ auth: `${APP_KEY}:public` })
-}
-
-// Stats
 export function getStats() {
   const channels: Record<string, number> = {}
-  for (const [ch, sockets] of channelSockets) channels[ch] = sockets.size
+  for (const [ch, ids] of channelSockets) if (ids.size) channels[ch] = ids.size
   return { connections: socketMap.size, channels }
 }
 
-type ServerWebSocket<T> = Parameters<NonNullable<Parameters<typeof Bun.serve>[0]['websocket']>['open']>[0] & { data: T }
+export function handlePusherAuth(socketId: string, channel: string, userId?: string): string {
+  const toSign = userId && channel.startsWith('private:')
+    ? `${socketId}:${channel}`
+    : `${socketId}:${channel}`
+  const sig  = createHmac('sha256', APP_SECRET).update(toSign).digest('hex')
+  const auth = `${APP_KEY}:${sig}`
+  if (channel.startsWith('presence:') && userId) {
+    const channelData = JSON.stringify({ user_id: userId })
+    const sig2 = createHmac('sha256', APP_SECRET)
+      .update(`${socketId}:${channel}:${channelData}`).digest('hex')
+    return JSON.stringify({ auth: `${APP_KEY}:${sig2}`, channel_data: channelData })
+  }
+  return JSON.stringify({ auth })
+}
+
+// ── Bun WebSocket handler ─────────────────────────────────────────────────────
 
 export const wsHandler = {
-  open(ws: ServerWebSocket<WsData>) {
-    ws.data.socketId = genSocketId()
-    ws.data.channels = new Set()
-    socketMap.set(ws.data.socketId, ws as any)
-    // Pusher connection established event
+  open(ws: any) {
+    const socketId = genSocketId()
+    ws.data = ws.data ?? {}
+    ws.data.socketId  = socketId
+    ws.data.channels  = new Set<string>()
+    socketMap.set(socketId, ws)
+    // Pusher handshake — client expects this immediately after 101
     ws.send(JSON.stringify({
       event: 'pusher:connection_established',
-      data:  JSON.stringify({ socket_id: ws.data.socketId, activity_timeout: 30 }),
+      data:  JSON.stringify({ socket_id: socketId, activity_timeout: 120 }),
     }))
+    console.log(`[WS] open  socketId=${socketId} total=${socketMap.size}`)
   },
 
-  message(ws: ServerWebSocket<WsData>, raw: string | Buffer) {
-    try {
-      const msg = JSON.parse(raw.toString()) as { event: string; channel?: string; data?: string }
-      switch (msg.event) {
-        case 'pusher:ping':
-          ws.send(JSON.stringify({ event: 'pusher:pong', data: '{}' }))
-          break
-        case 'pusher:subscribe': {
-          const d       = msg.data ? JSON.parse(msg.data as string) : {}
-          const channel = d.channel as string
-          if (!channel) break
-          subscribe(ws, channel)
-          break
-        }
-        case 'pusher:unsubscribe': {
-          const d       = msg.data ? JSON.parse(msg.data as string) : {}
-          const channel = d.channel as string
-          if (channel) unsubscribe(ws, channel)
-          break
-        }
-        default:
-          // Client events: broadcast to channel
-          if (msg.event?.startsWith('client-') && msg.channel) {
-            broadcastToChannel(msg.channel, msg.event, msg.data ?? {}, ws.data.socketId)
-          }
+  message(ws: any, raw: string | Buffer) {
+    let msg: any
+    try { msg = JSON.parse(raw.toString()) } catch { return }
+
+    switch (msg.event) {
+      case 'pusher:ping':
+        ws.send(JSON.stringify({ event: 'pusher:pong', data: '{}' }))
+        break
+
+      case 'pusher:subscribe': {
+        let d: any = {}
+        try { d = typeof msg.data === 'string' ? JSON.parse(msg.data) : msg.data } catch {}
+        const channel = d.channel as string
+        if (!channel) break
+        const socketId = ws.data?.socketId as string
+        ws.data.channels.add(channel)
+        if (!channelSockets.has(channel)) channelSockets.set(channel, new Set())
+        channelSockets.get(channel)!.add(socketId)
+        ws.send(JSON.stringify({
+          event: 'pusher_internal:subscription_succeeded',
+          channel,
+          data: '{}',
+        }))
+        console.log(`[WS] sub   channel=${channel} socketId=${socketId}`)
+        break
       }
-    } catch (_) {}
+
+      case 'pusher:unsubscribe': {
+        let d: any = {}
+        try { d = typeof msg.data === 'string' ? JSON.parse(msg.data) : msg.data } catch {}
+        const channel = d.channel as string
+        if (!channel) break
+        ws.data.channels?.delete(channel)
+        channelSockets.get(channel)?.delete(ws.data?.socketId)
+        break
+      }
+
+      default:
+        // Client events (client-*) — relay to other subscribers
+        if (msg.event?.startsWith('client-') && msg.channel) {
+          broadcastToChannel(msg.channel, msg.event, msg.data ?? {}, ws.data?.socketId)
+        }
+    }
   },
 
-  close(ws: ServerWebSocket<WsData>) {
-    for (const channel of ws.data.channels) {
-      channelSockets.get(channel)?.delete(ws.data.socketId)
+  close(ws: any) {
+    const socketId = ws.data?.socketId as string
+    if (!socketId) return
+    for (const ch of (ws.data?.channels ?? [])) {
+      channelSockets.get(ch)?.delete(socketId)
     }
-    socketMap.delete(ws.data.socketId)
+    socketMap.delete(socketId)
+    console.log(`[WS] close socketId=${socketId} total=${socketMap.size}`)
+  },
+
+  error(ws: any, err: Error) {
+    console.error('[WS] error', err.message)
   },
 }
