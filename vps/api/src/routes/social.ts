@@ -469,9 +469,17 @@ socialRouter.delete('/communities/:id/leave', async (c) => {
 })
 
 socialRouter.get('/communities/:id/member', async (c) => {
-  const userId = c.get('userId') as string
-  const row    = await queryOne(`SELECT 1 FROM public."CommunityMember" WHERE "communityId"=$1 AND "userId"=$2`, [c.req.param('id'), userId])
+  const userId = c.get('userId') as string | undefined
+  if (!userId) return c.json({ ok: true, isMember: false })
+  const row = await queryOne(`SELECT 1 FROM public."CommunityMember" WHERE "communityId"=$1 AND "userId"=$2`, [c.req.param('id'), userId])
   return c.json({ ok: true, isMember: !!row })
+})
+
+socialRouter.get('/communities/:id/membership', async (c) => {
+  const userId = c.get('userId') as string | undefined
+  if (!userId) return c.json({ ok: true, isMember: false, role: null })
+  const row = await queryOne(`SELECT role FROM public."CommunityMember" WHERE "communityId"=$1 AND "userId"=$2`, [c.req.param('id'), userId])
+  return c.json({ ok: true, isMember: !!row, role: (row as any)?.role ?? null })
 })
 
 // ── POLLS ─────────────────────────────────────────────────────────────────────

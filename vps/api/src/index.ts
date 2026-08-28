@@ -101,9 +101,17 @@ app.use('/v1/*', async (c, next) => {
     '/v1/auth/resend-confirmation',
     '/v1/auth/reset-password',
     '/v1/feed/trending',
+    '/v1/feed',
     '/v1/social/communities',
-    '/v1/notifications',
+    '/v1/social/search',
   ]
+  // Also allow community membership checks without auth — return {isMember:false}
+  if (path.startsWith('/v1/social/communities/') && path.endsWith('/membership')) {
+    return next()
+  }
+  if (path.startsWith('/v1/social/communities/') && path.endsWith('/member')) {
+    return next()
+  }
   if (publicPaths.includes(path)) return next()
   return authMiddleware(c, next)
 })
