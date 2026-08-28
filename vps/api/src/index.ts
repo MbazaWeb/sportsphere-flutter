@@ -65,6 +65,29 @@ app.get('/ws/stats', async (c) => {
   return c.json({ ok: true, ...getStats() })
 })
 
+// Trending feed — public (guests can browse)
+app.get('/v1/feed/trending', async (c) => {
+  const { query: dbQuery } = await import('./lib/db.js')
+  const limit = Math.min(Number(c.req.query('limit') ?? 20), 100)
+  const rows = await dbQuery(
+    `SELECT p.*, u.handle, u.name, u."avatarUrl", u.role
+     FROM public."Post" p JOIN public."User" u ON u.id=p."userId"
+     ORDER BY p."likeCount" DESC, p."createdAt" DESC LIMIT $1`,
+    [limit]
+  )
+  return c.json({ ok: true, posts: rows })
+})
+
+// Communities list — public
+app.get('/v1/social/communities', async (c) => {
+  const { query: dbQuery } = await import('./lib/db.js')
+  const limit = Math.min(Number(c.req.query('limit') ?? 20), 100)
+  const rows = await dbQuery(
+    `SELECT * FROM public."Community" ORDER BY "memberCount" DESC LIMIT $1`, [limit]
+  )
+  return c.json({ ok: true, communities: rows })
+})
+
 // Search: public — guests can search without JWT
 app.get('/v1/social/search', async (c) => {
   const { query: dbQuery } = await import('./lib/db.js')
