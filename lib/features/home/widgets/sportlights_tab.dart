@@ -472,6 +472,9 @@ class _SportlightsTabState extends State<SportlightsTab> {
                       '/v1/social/polls/$pollId/my-vote');
                   myVote = vRes.data?['voted'] as int?;
                   final optsList = poll['options'] as List? ?? [];
+                  // #FIX-NULLABLE — pollCountsMap is nullable; materialize
+                  // it before the []= writes (line ~560 falls back to {}).
+                  pollCountsMap ??= <int, int>{};
                   for (int i = 0; i < optsList.length; i++) {
                     pollCountsMap[i] = (optsList[i] as Map?)?['votes'] as int? ?? 0;
                   }

@@ -284,7 +284,9 @@ class AuthController extends Notifier<AuthState> {
     state = state.copyWith(isLoading: true, errorMessage: _keep);
     try {
       final repo = ref.read(authRepositoryProvider);
-      final userId = repo.currentSession?.user.id;
+      // #FIX-NULLABLE — _AuthSessionStub.user is nullable (_AuthUserStub?),
+      // so the .id access must be null-aware too.
+      final userId = repo.currentSession?.user?.id;
       if (userId == null) {
         state = state.copyWith(
           isLoading: false,

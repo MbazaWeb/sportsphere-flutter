@@ -42,7 +42,8 @@ class ProfileLoader {
     Map<String, dynamic>? row;
     try {
       row = await const VpsRepository().getProfile(key);
-      if (row.isEmpty) row = null;
+      // #FIX-NULLABLE — row is Map<String, dynamic>?; guard before isEmpty.
+      if (row != null && row.isEmpty) row = null;
     } catch (_) {}
 
     final role = (row?['role'] as String? ?? '').toLowerCase();
