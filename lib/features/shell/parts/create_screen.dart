@@ -1,3 +1,4 @@
+import '../../../core/data/vps_supabase_compat.dart';
 part of '../app_shell.dart';
 // ignore: unused_import
 import '../../../core/data/vps_repository.dart';
@@ -1233,7 +1234,7 @@ class _PollPanelState extends State<_PollPanel> {
     if (_loadingPlayers) return;
     setState(() => _loadingPlayers = true);
     try {
-      final rows = await Supabase.instance.client
+      final rows = await VpsSupabaseCompat.client
           .from('Player')
           .select('name')
           .order('name')

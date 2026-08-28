@@ -1,3 +1,4 @@
+import '../../../../core/data/vps_supabase_compat.dart';
 import '../../../core/data/vps_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -115,7 +116,7 @@ class _FanProfileViewState extends State<FanProfileView>
 
   Future<void> _seedFollowState() async {
     try {
-      final me = Supabase.instance.client.auth.currentUser?.id;
+      final me = VpsSupabaseCompat.client.auth.currentUser?.id;
       if (me == null) return;
       final targetHandle =
           widget.profile.handle.replaceAll('@', '').trim();
@@ -141,7 +142,7 @@ class _FanProfileViewState extends State<FanProfileView>
       _following = !wasFollowing;
     });
     try {
-      final me = Supabase.instance.client.auth.currentUser?.id;
+      final me = VpsSupabaseCompat.client.auth.currentUser?.id;
       if (me == null) {
         // Not signed in — revert UI and bail.
         if (mounted) setState(() => _following = wasFollowing);
@@ -1132,7 +1133,7 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
       final ids = <String>{};
 
       // Get user ID from handle then fetch their posts
-      final authId = Supabase.instance.client.auth.currentUser?.id;
+      final authId = VpsSupabaseCompat.client.auth.currentUser?.id;
       if (widget.profile.isOwnProfile && authId != null) ids.add(authId);
 
       try {
@@ -1208,7 +1209,7 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
 
         if (postType == 'prediction') {
           try {
-            final pred = await Supabase.instance.client
+            final pred = await VpsSupabaseCompat.client
                 .from('Prediction').select().eq('postId', r['id']).maybeSingle();
             if (pred != null) {
               predHome = pred['homeTeam'] as String?;

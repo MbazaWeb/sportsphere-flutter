@@ -48,3 +48,30 @@ claimsRouter.post('/reject', async (c) => {
   )
   return c.json({ ok: true, id: claimId, status: 'rejected' })
 })
+
+// GET /v1/claims/mine — user's own claim requests
+claimsRouter.get('/mine', async (c) => {
+  const userId = c.get('userId') as string
+  const rows   = await query(
+    `SELECT * FROM public."ClaimRequest" WHERE "userId"=$1 ORDER BY "submittedAt" DESC`,
+    [userId]
+  )
+  return c.json({ ok: true, claims: rows })
+})
+
+// POST /v1/claims/submit — submit a new claim
+claimsRouter.post('/submit', async (c) => {
+  const userId = c.get('userId') as string
+  const b = await c.req.json<any>()
+  const rows = await query(
+    `INSERT INTO public."ClaimRequest"
+      ("userId","profileType","profileId","profileName","claimEmail","claimPhone",
+       "evidenceNotes","teamId","playerId","coachId","leagueId","status","submittedAt")
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending',NOW())
+     RETURNING *`,
+    [userId, b.profileType, b.profileId, b.profileName,
+     b.claimEmail ?? null, b.claimPhone ?? null, b.evidenceNotes ?? null,
+     b.teamId ?? null, b.playerId ?? null, b.coachId ?? null, b.leagueId ?? null]
+  )
+  return c.json({ ok: true, claim: rows[0] }, 201)
+})

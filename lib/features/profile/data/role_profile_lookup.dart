@@ -1,3 +1,4 @@
+import '../../../core/data/vps_supabase_compat.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -7,7 +8,7 @@ import '../templates/role_profile_model.dart';
 
 /// Unified DB loader for all non-fan/team/player roles.
 Future<RoleProfileModel> lookupRoleProfile(String role, String handle) async {
-  final sb = Supabase.instance.client;
+  final sb = VpsSupabaseCompat.client;
   final key = handle.replaceAll('@', '').trim().toLowerCase();
   final roleKey =
       role.toLowerCase().replaceAll('-', '_').replaceAll(' ', '_');

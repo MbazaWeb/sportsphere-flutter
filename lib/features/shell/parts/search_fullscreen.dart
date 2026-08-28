@@ -1,3 +1,4 @@
+import '../../../core/data/vps_supabase_compat.dart';
 part of '../app_shell.dart';
 // ignore: unused_import
 import '../../../core/data/vps_repository.dart';
@@ -313,7 +314,7 @@ class _NearbyFansTab extends StatefulWidget {
 
 class _NearbyFansTabState extends State<_NearbyFansTab>
     with SingleTickerProviderStateMixin {
-  final SupabaseClient _sb = Supabase.instance.client;
+  final SupabaseClient _sb = VpsSupabaseCompat.client;
   List<Map<String, dynamic>> _fans = [];
   bool _loading = true;
   bool _scanning = false;
@@ -417,7 +418,7 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
       _myLng = position.longitude;
 
       // Save location to profile for future queries
-      if (Supabase.instance.client.auth.currentUser != null) {
+      if (VpsSupabaseCompat.client.auth.currentUser != null) {
         try {
           await VpsRepository().updateLocation(_myLat!, _myLng!);
         } catch (_) {}
@@ -1238,7 +1239,7 @@ class _FanActionButtons extends StatefulWidget {
 }
 
 class _FanActionButtonsState extends State<_FanActionButtons> {
-  final SupabaseClient _sb = Supabase.instance.client;
+  final SupabaseClient _sb = VpsSupabaseCompat.client;
   bool _following = false;
   bool _busy = false;
 
@@ -1249,7 +1250,7 @@ class _FanActionButtonsState extends State<_FanActionButtons> {
   }
 
   Future<void> _checkFollowStatus() async {
-    if (Supabase.instance.client.auth.currentUser == null) return;
+    if (VpsSupabaseCompat.client.auth.currentUser == null) return;
     try {
       final following = await VpsRepository().isFollowing(widget.uid);
       if (mounted) setState(() => _following = following);
@@ -1258,7 +1259,7 @@ class _FanActionButtonsState extends State<_FanActionButtons> {
 
   Future<void> _toggleFollow() async {
     if (_busy) return;
-    if (Supabase.instance.client.auth.currentUser == null) return;
+    if (VpsSupabaseCompat.client.auth.currentUser == null) return;
     setState(() => _busy = true);
     final wasFollowing = _following;
     setState(() => _following = !wasFollowing);

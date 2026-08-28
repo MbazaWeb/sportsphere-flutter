@@ -1,3 +1,4 @@
+import '../../../core/data/vps_supabase_compat.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -76,12 +77,12 @@ class _BecomeProSheetState extends ConsumerState<BecomeProSheet> {
       setState(() => _message = 'Please log in first.');
       return;
     }
-    final uid = Supabase.instance.client.auth.currentSession?.user.id;
+    final uid = VpsSupabaseCompat.client.auth.currentSession?.user.id;
     if (uid == null) return;
 
     setState(() { _saving = true; _message = null; });
     try {
-      final sb = Supabase.instance.client;
+      final sb = VpsSupabaseCompat.client;
       final reqId = 'pro-${role.id}-$uid-${DateTime.now().millisecondsSinceEpoch}';
       final notesText = [
         if (_entity.text.trim().isNotEmpty) 'Entity: ${_entity.text.trim()}',

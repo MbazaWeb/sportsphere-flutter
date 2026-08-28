@@ -628,3 +628,38 @@ socialRouter.get('/posts/by-tag', async (c) => {
   )
   return c.json({ ok: true, posts: rows })
 })
+
+// GET /v1/social/conversations — list all DM conversations for current user
+socialRouter.get('/conversations', async (c) => {
+  const userId = c.get('userId') as string
+  const rows = await query<any>(
+    `SELECT * FROM public."Message"
+     WHERE "senderId"=$1 OR "receiverId"=$1
+     ORDER BY "createdAt" DESC LIMIT 200`,
+    [userId]
+  )
+  // deduplicate by peer
+  const seen = new Set<string>()
+  const convs: any[] = []
+  for (const m of rows) {
+    const peer = m.senderId === userId ? m.receiverId : m.senderId
+    if (!seen.has(peer)) {
+      seen.add(peer)
+      convs.push({ ...m, peerId: peer })
+    }
+  }
+  return c.json({ ok: true, conversations: convs })
+})
+
+// GET /v1/social/users/batch?ids=id1,id2,...
+socialRouter.get('/users/batch', async (c) => {
+  const ids = (c.req.query('ids') ?? '').split(',').filter(Boolean)
+  if (!ids.length) return c.json({ ok: true, users: [] })
+  const placeholders = ids.map((_, i) => `$${i + 1}`).join(',')
+  const rows = await query(
+    `SELECT id, first_name, last_name, handle, avatar_url FROM public.profiles
+     WHERE id IN (${placeholders})`,
+    ids
+  )
+  return c.json({ ok: true, users: rows })
+})

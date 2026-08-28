@@ -146,3 +146,5 @@ adminRouter.get('/players/search', async (c) => {
   )
   return c.json({ ok: true, players: rows })
 })
+
+// POST /v1/shop/orders — create order (authenticated, non-admin)

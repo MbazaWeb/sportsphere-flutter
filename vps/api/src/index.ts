@@ -23,6 +23,7 @@ import { notifRouter }     from './routes/notifications.js'
 import { socialRouter }    from './routes/social.js'
 import { newsRouter }     from './routes/news.js'
 import { authRouter }     from './routes/auth.js'
+import { shopRouter }     from './routes/shop.js'
 
 const app = new Hono()
 
@@ -99,6 +100,7 @@ app.route('/v1/nearby',        nearbyRouter)
 app.route('/v1/notifications', notifRouter)
 app.route('/v1/ai',            aiRouter)
 app.route('/v1/social',        socialRouter)
+app.route('/v1/shop',          shopRouter)
 // news mounted above in public section
 
 // ── Admin routes (JWT + admin role) ───────────────────────────────────────────

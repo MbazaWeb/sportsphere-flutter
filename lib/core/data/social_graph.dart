@@ -1,3 +1,4 @@
+import '../../core/data/vps_supabase_compat.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -42,7 +43,7 @@ class GraphPerson {
 class SocialGraph {
   const SocialGraph();
 
-  SupabaseClient get _sb => Supabase.instance.client;
+  SupabaseClient get _sb => VpsSupabaseCompat.client;
 
   String? get _uid => _sb.auth.currentUser?.id;
   String? get currentUid => _uid;

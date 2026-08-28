@@ -275,3 +275,31 @@ authRouter.post('/forgot-password', async (c) => {
 //   used_at timestamptz,
 //   created_at timestamptz DEFAULT NOW()
 // );
+
+// PATCH /v1/auth/profile — update profile
+authRouter.patch('/profile', async (c) => {
+  const userId = c.get('userId') as string
+  const b = await c.req.json<any>()
+  const sets: string[] = []; const params: unknown[] = []
+  const add = (col: string, val: unknown) => { params.push(val); sets.push(`"${col}"=$${params.length}`) }
+  if (b.firstName  != null) add('first_name', b.firstName)
+  if (b.lastName   != null) add('last_name',  b.lastName)
+  if (b.handle     != null) add('handle',     b.handle)
+  if (b.country    != null) add('country',    b.country)
+  if (b.bio        != null) add('bio',        b.bio)
+  if (b.dob        != null) add('dob',        b.dob)
+  if (b.avatarUrl  != null) add('avatar_url', b.avatarUrl)
+  if (b.coverUrl   != null) add('cover_url',  b.coverUrl)
+  if (b.themeColor != null) add('theme_color',b.themeColor)
+  if (!sets.length) return c.json({ error: 'Nothing to update' }, 400)
+  params.push(userId)
+  await query(`UPDATE public.profiles SET ${sets.join(',')}, updated_at=NOW() WHERE id=$${params.length}::uuid`, params)
+  return c.json({ ok: true })
+})
+
+// POST /v1/auth/resend-confirmation
+authRouter.post('/resend-confirmation', async (c) => {
+  // VPS native auth doesn't require email confirmation by default
+  // This is a no-op stub for API compatibility
+  return c.json({ ok: true, message: 'Confirmation resent if email exists' })
+})

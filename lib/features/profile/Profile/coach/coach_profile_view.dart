@@ -1,3 +1,4 @@
+import '../../../../core/data/vps_supabase_compat.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -55,7 +56,7 @@ class _CoachProfileViewState extends State<CoachProfileView>
       _loading = true;
       _error = null;
     });
-    final sb = Supabase.instance.client;
+    final sb = VpsSupabaseCompat.client;
     try {
       Map<String, dynamic>? row;
       final id = widget.coachId;

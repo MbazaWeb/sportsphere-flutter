@@ -1,20 +1,20 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app/config/env.dart';
 import 'api_exception.dart';
 import 'auth_interceptor.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ApiClient — Dio wrapper for REST endpoints outside Supabase.
-//
-// The token reader now pulls from Supabase.instance.client.auth.currentSession
-// so the Bearer header always carries the current Supabase JWT.
+// ApiClient — Dio wrapper for VPS REST endpoints.
+// JWT is stored in SharedPreferences by AuthRepository after login.
 // ─────────────────────────────────────────────────────────────────────────────
 
-String? _supabaseToken() =>
-    Supabase.instance.client.auth.currentSession?.accessToken;
+Future<String?> _localToken() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getString('auth_access_token');
+}
 
 class ApiClient {
   ApiClient({
@@ -32,9 +32,8 @@ class ApiClient {
                 },
               ),
             ) {
-    // Use Supabase token by default; allow injection for tests.
     _dio.interceptors
-        .add(AuthInterceptor(readToken ?? () async => _supabaseToken()));
+        .add(AuthInterceptor(readToken ?? () async => _localToken()));
     if (kDebugMode) {
       _dio.interceptors
           .add(LogInterceptor(requestBody: false, responseBody: false));

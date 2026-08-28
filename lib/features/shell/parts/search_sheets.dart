@@ -1,3 +1,4 @@
+import '../../../core/data/vps_supabase_compat.dart';
 part of '../app_shell.dart';
 // ignore: unused_import
 import '../../../core/data/vps_repository.dart';
@@ -684,7 +685,7 @@ class _MessageSheetState extends State<_MessageSheet> {
                           itemBuilder: (_, i) {
                             final m = _thread[i];
                             final mine = m['senderId'] ==
-                                Supabase.instance.client.auth.currentUser?.id;
+                                VpsSupabaseCompat.client.auth.currentUser?.id;
                             return Align(
                               alignment: mine
                                   ? Alignment.centerRight

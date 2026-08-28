@@ -1,7 +1,10 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+// lib/features/claims/data/claim_repository.dart
+// All claim ops via VPS API — no Supabase dependency.
+
+import '../../../core/data/vps_repository.dart';
 
 class ClaimRepository {
-  SupabaseClient get _sb => Supabase.instance.client;
+  static final _vps = const VpsRepository();
 
   Future<void> submitClaim({
     required String profileType,
@@ -15,51 +18,26 @@ class ClaimRepository {
     String? coachId,
     String? leagueId,
   }) async {
-    final user = _sb.auth.currentUser;
-    if (user == null) {
-      throw StateError('Log in to claim a profile');
-    }
-
-    final profile = await _sb.from('profiles').select().eq('id', user.id).maybeSingle();
-    final first = (profile?['first_name'] as String?) ?? '';
-    final last = (profile?['last_name'] as String?) ?? '';
-    final handle = (profile?['handle'] as String?) ?? user.id.substring(0, 8);
-    final name = ('$first $last').trim().isEmpty ? handle : ('$first $last').trim();
-    final email = (profile?['email'] as String?) ?? user.email ?? '$handle@playify.local';
-
-    await _sb.from('User').upsert({
-      'id': user.id,
-      'name': name,
-      'email': email,
-      'handle': handle,
-      'role': profile?['role'] ?? 'fan',
-      'updatedAt': DateTime.now().toIso8601String(),
-    });
-
-    await _sb.from('ClaimRequest').insert({
-      'userId': user.id,
-      'profileType': profileType,
-      'profileId': profileId,
-      'profileName': profileName,
-      'claimEmail': claimEmail,
-      'claimPhone': claimPhone,
-      'evidenceNotes': evidenceNotes,
-      'teamId': teamId,
-      'playerId': playerId,
-      'coachId': coachId,
-      'leagueId': leagueId,
-      'status': 'pending',
+    await _vps.post<void>('/v1/claims/submit', data: {
+      'profileType':  profileType,
+      'profileId':    profileId,
+      'profileName':  profileName,
+      if (claimEmail     != null) 'claimEmail':     claimEmail,
+      if (claimPhone     != null) 'claimPhone':     claimPhone,
+      if (evidenceNotes  != null) 'evidenceNotes':  evidenceNotes,
+      if (teamId         != null) 'teamId':         teamId,
+      if (playerId       != null) 'playerId':       playerId,
+      if (coachId        != null) 'coachId':        coachId,
+      if (leagueId       != null) 'leagueId':       leagueId,
     });
   }
 
   Future<List<Map<String, dynamic>>> myClaims() async {
-    final user = _sb.auth.currentUser;
-    if (user == null) return [];
-    final rows = await _sb
-        .from('ClaimRequest')
-        .select()
-        .eq('userId', user.id)
-        .order('submittedAt', ascending: false);
-    return List<Map<String, dynamic>>.from(rows as List);
+    try {
+      final res = await _vps.get<Map<String, dynamic>>('/v1/claims/mine');
+      return ((res.data?['claims']) as List? ?? []).cast<Map<String, dynamic>>();
+    } catch (_) {
+      return [];
+    }
   }
 }

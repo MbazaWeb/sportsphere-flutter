@@ -1,3 +1,4 @@
+import '../../../core/data/vps_supabase_compat.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/colors.dart';
@@ -78,11 +79,11 @@ class _PersonProfileViewState extends State<PersonProfileView> {
 
   Future<void> _fetchPosts() async {
     try {
-      final row = await Supabase.instance.client
+      final row = await VpsSupabaseCompat.client
           .from('User').select('id')
           .eq('handle', widget.profile.handle).maybeSingle();
       if (row == null) { if (mounted) setState(() => _loading = false); return; }
-      final rows = await Supabase.instance.client
+      final rows = await VpsSupabaseCompat.client
           .from('Post').select()
           .eq('userId', row['id'].toString())
           .order('createdAt', ascending: false).limit(30);

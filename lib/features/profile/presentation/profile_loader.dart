@@ -1,3 +1,4 @@
+import '../../../core/data/vps_supabase_compat.dart';
 import '../../../core/admin/app_admin.dart';
 import '../../../core/branding.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +17,7 @@ import '../templates/role_profile_model.dart';
 class ProfileLoader {
   const ProfileLoader._();
 
-  static SupabaseClient get _sb => Supabase.instance.client;
+  static SupabaseClient get _sb => VpsSupabaseCompat.client;
 
   /// Live social counts for any profile id (all roles) — via VPS API.
   static Future<({int posts, int followers, int following})> _liveCounts(

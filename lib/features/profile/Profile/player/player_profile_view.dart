@@ -1,3 +1,4 @@
+import '../../../../core/data/vps_supabase_compat.dart';
 import '../../../core/data/vps_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -250,7 +251,7 @@ class _PlayerProfileViewState extends State<PlayerProfileView>
                 HapticFeedback.mediumImpact();
                 final next = !_isFan;
                 setState(() => _isFan = next);
-                final uid = Supabase.instance.client.auth.currentUser?.id;
+                final uid = VpsSupabaseCompat.client.auth.currentUser?.id;
                 if (uid == null) { setState(() => _isFan = !next); return; }
                 try {
                   final entityId = widget.profile.handle.replaceAll('@', '');

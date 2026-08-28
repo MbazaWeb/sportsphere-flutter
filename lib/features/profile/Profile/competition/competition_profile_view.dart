@@ -1,3 +1,4 @@
+import '../../../../core/data/vps_supabase_compat.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -53,7 +54,7 @@ class _CompetitionProfileViewState extends State<CompetitionProfileView>
       _loading = true;
       _error = null;
     });
-    final sb = Supabase.instance.client;
+    final sb = VpsSupabaseCompat.client;
     try {
       Map<String, dynamic>? row;
       // Preferred: lookup by id.

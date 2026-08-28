@@ -1,3 +1,4 @@
+import '../../../core/data/vps_supabase_compat.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -10,7 +11,7 @@ String normalizePlayerHandle(String raw) {
 Future<PlayerProfileModel> lookupPlayerProfile(String handle) async {
   final key = normalizePlayerHandle(handle);
   final slugDash = key.replaceAll('_', '-');
-  final sb = Supabase.instance.client;
+  final sb = VpsSupabaseCompat.client;
 
   Map<String, dynamic>? user;
   Map<String, dynamic>? player;

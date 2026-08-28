@@ -1,3 +1,4 @@
+import '../../../core/data/vps_supabase_compat.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
@@ -560,7 +561,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
           predHomeScore: predHs,
           predAwayScore: predAs,
           myPrediction: (predHs != null && predAs != null &&
-              Supabase.instance.client.auth.currentUser != null)
+              VpsSupabaseCompat.client.auth.currentUser != null)
               ? (predHs! > predAs! ? 'home' : predHs! < predAs! ? 'away' : 'draw') : null,
           predMatchId: predMatchId,
           // ── Match card fields (previously fetched but not passed — fixed) ──
@@ -1287,9 +1288,9 @@ class _PollContentState extends State<_PollContent> {
     if (_voted == i) {
       setState(() => _busy = true);
       try {
-        final uid = Supabase.instance.client.auth.currentUser?.id;
+        final uid = VpsSupabaseCompat.client.auth.currentUser?.id;
         if (uid != null) {
-          await Supabase.instance.client
+          await VpsSupabaseCompat.client
               .from('PollVote')
               .delete()
               .eq('pollId', pollId)
@@ -1664,7 +1665,7 @@ class _MatchContentState extends State<_MatchContent> {
 
   Future<void> _predict(String outcome) async {
     if (_submitting) return;
-    final uid = Supabase.instance.client.auth.currentUser?.id;
+    final uid = VpsSupabaseCompat.client.auth.currentUser?.id;
     if (uid == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -2377,7 +2378,7 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
     // the `trg_post_share_count` DB trigger bumps `Post.shareCount` on
     // INSERT, so we mirror that locally with `_shares + 1`.
     try {
-      final sb = Supabase.instance.client;
+      final sb = VpsSupabaseCompat.client;
       final uid = sb.auth.currentUser?.id;
       if (uid == null) {
         if (mounted) {
@@ -2887,7 +2888,7 @@ class _ActionRowState extends State<_ActionRow> {
 
   Future<String?> _resolveTargetId() async {
     final item = widget.item;
-    final sb = Supabase.instance.client;
+    final sb = VpsSupabaseCompat.client;
     final handle = item.handle.replaceAll('@', '').trim();
 
     // Team / welcome posts: follow the TEAM account, never the admin author
@@ -2944,7 +2945,7 @@ class _ActionRowState extends State<_ActionRow> {
   }
 
   Future<void> _toggleFollow(bool next) async {
-    final uid = Supabase.instance.client.auth.currentUser?.id;
+    final uid = VpsSupabaseCompat.client.auth.currentUser?.id;
     if (uid == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2990,7 +2991,7 @@ class _ActionRowState extends State<_ActionRow> {
   }
 
   Future<void> _toggleFan(bool next) async {
-    final uid = Supabase.instance.client.auth.currentUser?.id;
+    final uid = VpsSupabaseCompat.client.auth.currentUser?.id;
     if (uid == null) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Sign in to become a fan')));
@@ -3006,14 +3007,14 @@ class _ActionRowState extends State<_ActionRow> {
       if (entityType != null && entityId.isNotEmpty) {
         // Use entity_follows — works regardless of whether accountUserId exists
         if (next) {
-          await Supabase.instance.client.from('entity_follows').upsert({
+          await VpsSupabaseCompat.client.from('entity_follows').upsert({
             'follower_id': uid,
             'entity_type': entityType,
             'entity_id': entityId,
             'is_fan': true,
           });
         } else {
-          await Supabase.instance.client.from('entity_follows').delete()
+          await VpsSupabaseCompat.client.from('entity_follows').delete()
               .eq('follower_id', uid)
               .eq('entity_type', entityType)
               .eq('entity_id', entityId);
@@ -3053,7 +3054,7 @@ class _ActionRowState extends State<_ActionRow> {
   }
 
   Future<void> _loadInitialState() async {
-    final uid = Supabase.instance.client.auth.currentUser?.id;
+    final uid = VpsSupabaseCompat.client.auth.currentUser?.id;
     if (uid == null) return;
     try {
       final target = await _resolveTargetId();

@@ -1,3 +1,4 @@
+import '../../../../core/data/vps_supabase_compat.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -23,7 +24,7 @@ class CommunityProfileView extends StatefulWidget {
 }
 
 class _CommunityProfileViewState extends State<CommunityProfileView> {
-  static SupabaseClient get _sb => Supabase.instance.client;
+  static SupabaseClient get _sb => VpsSupabaseCompat.client;
 
   Map<String, dynamic>? _data;
   bool _loading = true;

@@ -4,10 +4,9 @@ import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-/// FCM device token registration.
-/// Registers tokens via VPS API (POST /v1/fcm/register) with Supabase fallback.
+/// FCM device token registration via VPS API — no Supabase dependency.
 class FcmService {
   FcmService._();
   static final instance = FcmService._();
@@ -58,48 +57,35 @@ class FcmService {
   }
 
   Future<void> registerToken(String token, {String platform = 'android'}) async {
-    final session = Supabase.instance.client.auth.currentSession;
-    if (session == null || token.isEmpty) return;
+    if (token.isEmpty) return;
+    final prefs    = await SharedPreferences.getInstance();
+    final authToken = prefs.getString('auth_access_token');
+    if (authToken == null) return;
 
-    // Try VPS API first
     try {
       await _postToVps(
-        path:    '/v1/fcm/register',
-        token:   session.accessToken,
-        body:    {'token': token, 'platform': platform},
+        path:      '/v1/fcm/register',
+        authToken: authToken,
+        body:      {'token': token, 'platform': platform},
       );
-      return;
     } catch (e) {
-      debugPrint('FCM VPS register failed, using Supabase fallback: $e');
-    }
-
-    // Fallback: direct Supabase upsert
-    try {
-      await Supabase.instance.client.from('device_tokens').upsert({
-        'user_id':    session.user.id,
-        'token':      token,
-        'platform':   platform,
-        'updated_at': DateTime.now().toIso8601String(),
-      });
-    } catch (e) {
-      debugPrint('FCM fallback also failed: $e');
+      debugPrint('FCM register failed: $e');
     }
   }
 
-  /// Lightweight HTTP POST to VPS — no Dio dependency here
   static Future<void> _postToVps({
     required String path,
-    required String token,
+    required String authToken,
     required Map<String, dynamic> body,
   }) async {
     const base = String.fromEnvironment('API_BASE_URL',
-        defaultValue: 'https://api.playify.app');
-    final uri = Uri.parse('$base$path');
+        defaultValue: 'https://playifysport.fun');
+    final uri    = Uri.parse('$base$path');
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 8);
     try {
       final req = await client.postUrl(uri);
       req.headers.set('Content-Type', 'application/json');
-      req.headers.set('Authorization', 'Bearer $token');
+      req.headers.set('Authorization', 'Bearer $authToken');
       req.write(jsonEncode(body));
       final res = await req.close().timeout(const Duration(seconds: 8));
       await res.drain<void>();

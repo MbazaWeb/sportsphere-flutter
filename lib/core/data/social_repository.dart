@@ -1,8 +1,9 @@
 import 'dart:typed_data';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
 
 import 'vps_repository.dart';
 import '../taxonomy/sport_catalog.dart';
@@ -15,8 +16,12 @@ class SocialRepository {
   const SocialRepository();
 
   static final _vps = VpsRepository();
-  SupabaseClient get _sb => Supabase.instance.client;
-  String? get _uid => _sb.auth.currentUser?.id;
+
+  Future<String?> _getUid() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_user_id');
+    return token;
+  }
 
   // ── Storage (still via Supabase Storage → will move to VPS /v1/media) ──────
   Future<String> uploadBytes({
@@ -25,11 +30,14 @@ class SocialRepository {
     required Uint8List bytes,
     required String contentType,
   }) async {
-    await _sb.storage.from(bucket).uploadBinary(
-          path, bytes,
-          fileOptions: FileOptions(contentType: contentType, upsert: true),
-        );
-    return _sb.storage.from(bucket).getPublicUrl(path);
+    // Upload via VPS /v1/media/image → MinIO storage
+    final urls = await _vps.uploadImageBytes(
+      bytes: bytes,
+      filename: path.split('/').last,
+      folder: bucket,
+      mimeType: contentType,
+    );
+    return urls['full'] ?? urls['feed'] ?? urls['thumb'] ?? '';
   }
 
   Future<String> uploadPickedFile({
@@ -37,13 +45,8 @@ class SocialRepository {
     required String folder,
     required XFile file,
   }) async {
-    final uid = _uid;
-    if (uid == null) throw StateError('Please sign in to upload');
-    final bytes = await file.readAsBytes();
-    final ext   = file.name.split('.').last.toLowerCase();
-    final name  = '${DateTime.now().millisecondsSinceEpoch}.$ext';
-    final path  = '$folder/$uid/$name';
-    return uploadBytes(bucket: bucket, path: path, bytes: bytes, contentType: _mimeFor(ext));
+    final urls = await _vps.uploadPickedImage(file: file, folder: folder);
+    return urls['full'] ?? urls['feed'] ?? urls['thumb'] ?? '';
   }
 
   // ── Feed ──────────────────────────────────────────────────────────────────
