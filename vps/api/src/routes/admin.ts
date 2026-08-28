@@ -491,15 +491,24 @@ adminRouter.post('/entities/identity', async (c) => {
       [userId, handle, role, displayName, email, logoUrl??null]
     )
 
-    // Link entity to this account
-    if (entityType === 'team') {
-      await execute(`UPDATE public."Team" SET "accountUserId"=$1,"identity_status"='healthy',"isClaimable"=true,"updatedAt"=NOW() WHERE id=$2`, [userId, entityId])
-    } else if (entityType === 'player') {
-      await execute(`UPDATE public."Player" SET "accountUserId"=$1,"identity_status"='healthy',"isClaimable"=true,"updatedAt"=NOW() WHERE id=$2`, [userId, entityId])
-    } else if (entityType === 'league') {
-      await execute(`UPDATE public."League" SET "accountUserId"=$1,"identity_status"='healthy',"updatedAt"=NOW() WHERE id=$2`, [userId, entityId])
-    } else if (entityType === 'coach') {
-      await execute(`UPDATE public."Coach" SET "accountUserId"=$1,"updatedAt"=NOW() WHERE id=$2`, [userId, entityId])
+    // Link entity to this account — use per-table column sets
+    try {
+      if (entityType === 'team') {
+        await execute(`UPDATE public."Team" SET "accountUserId"=$1,"identity_status"='healthy',"isClaimable"=true,"updatedAt"=NOW() WHERE id=$2`, [userId, entityId])
+      } else if (entityType === 'player') {
+        await execute(`UPDATE public."Player" SET "accountUserId"=$1,"identity_status"='healthy',"isClaimable"=true,"updatedAt"=NOW() WHERE id=$2`, [userId, entityId])
+      } else if (entityType === 'league') {
+        // League may not have accountUserId — add it first
+        await execute(`ALTER TABLE public."League" ADD COLUMN IF NOT EXISTS "accountUserId" text`, [])
+        await execute(`ALTER TABLE public."League" ADD COLUMN IF NOT EXISTS "identity_status" text DEFAULT 'pending'`, [])
+        await execute(`UPDATE public."League" SET "accountUserId"=$1,"identity_status"='healthy',"updatedAt"=NOW() WHERE id=$2`, [userId, entityId])
+      } else if (entityType === 'coach') {
+        // Coach may not have accountUserId — add it
+        await execute(`ALTER TABLE public."Coach" ADD COLUMN IF NOT EXISTS "accountUserId" text`, [])
+        await execute(`UPDATE public."Coach" SET "accountUserId"=$1,"updatedAt"=NOW() WHERE id=$2`, [userId, entityId])
+      }
+    } catch (linkErr) {
+      console.warn('[identity] entity link failed (non-fatal):', linkErr)
     }
 
     return c.json({ ok: true, uid: userId, handle, email })
@@ -629,10 +638,20 @@ adminRouter.post('/reconcile', async (c) => {
            VALUES($1::uuid,$2,$3,$4,$5,$6,'unclaimed',NOW(),NOW()) ON CONFLICT DO NOTHING`,
           [userId, handle, role, r[nameCol], email, r[logo]??null]
         )
-        await execute(
-          `UPDATE public."${table}" SET "accountUserId"=$1,"identity_status"='healthy',"updatedAt"=NOW() WHERE id=$2`,
-          [userId, r.id]
-        )
+        try {
+          if (table === 'League') {
+            await execute(`ALTER TABLE public."League" ADD COLUMN IF NOT EXISTS "accountUserId" text`, [])
+            await execute(`ALTER TABLE public."League" ADD COLUMN IF NOT EXISTS "identity_status" text DEFAULT 'pending'`, [])
+          } else if (table === 'Coach') {
+            await execute(`ALTER TABLE public."Coach" ADD COLUMN IF NOT EXISTS "accountUserId" text`, [])
+          }
+          await execute(
+            `UPDATE public."${table}" SET "accountUserId"=$1,"identity_status"='healthy',"updatedAt"=NOW() WHERE id=$2`,
+            [userId, r.id]
+          )
+        } catch (updateErr) {
+          console.warn('[reconcile] link failed:', updateErr)
+        }
         report.push({ type, id: r.id, name: r[nameCol], uid: userId, status: 'created' })
       } catch (e: any) {
         report.push({ type, id: r.id, name: r[nameCol], status: 'failed', error: e.message })
