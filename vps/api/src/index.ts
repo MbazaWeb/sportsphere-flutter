@@ -25,7 +25,6 @@ import { newsRouter }     from './routes/news.js'
 import { authRouter }     from './routes/auth.js'
 import { shopRouter }     from './routes/shop.js'
 import { realtimeRouter } from './routes/realtime.js'
-import { broadcastToChannel, wsHandler, getStats } from './lib/pusher_ws.js'
 
 const app = new Hono()
 
@@ -142,6 +141,79 @@ app.onError((err, c) => {
 
 const port = Number(Bun.env.PORT ?? 3000)
 console.log(`Playify API running on :${port}`)
+
+// ── Inline WebSocket server (Pusher protocol) ────────────────────────────────
+// Inlined to avoid module export/import issues with Bun 1.4
+const _chSockets = new Map<string, Set<string>>()
+const _sockMap   = new Map<string, any>()
+
+function broadcastToChannel(channel: string, event: string, data: unknown, excludeId?: string) {
+  const ids = _chSockets.get(channel)
+  if (!ids?.size) return
+  const msg = JSON.stringify({ event, channel, data: JSON.stringify(data) })
+  for (const id of ids) {
+    if (id === excludeId) continue
+    try { _sockMap.get(id)?.send(msg) } catch (_) {}
+  }
+}
+
+function getStats() {
+  const channels: Record<string,number> = {}
+  for (const [ch, ids] of _chSockets) if (ids.size) channels[ch] = ids.size
+  return { connections: _sockMap.size, channels }
+}
+
+const wsHandler = {
+  open(ws: any) {
+    const sid = `${Math.floor(Math.random()*999999)}.${Math.floor(Math.random()*999999)}`
+    if (!ws.data) ws.data = {}
+    ws.data.socketId = sid
+    ws.data.channels = new Set<string>()
+    _sockMap.set(sid, ws)
+    ws.send(JSON.stringify({
+      event: 'pusher:connection_established',
+      data:  JSON.stringify({ socket_id: sid, activity_timeout: 120 }),
+    }))
+    console.log(`[WS] open sid=${sid} total=${_sockMap.size}`)
+  },
+  message(ws: any, raw: string | Buffer) {
+    let msg: any
+    try { msg = JSON.parse(raw.toString()) } catch { return }
+    if (msg.event === 'pusher:ping') {
+      ws.send(JSON.stringify({ event: 'pusher:pong', data: '{}' })); return
+    }
+    if (msg.event === 'pusher:subscribe') {
+      let d: any = {}
+      try { d = typeof msg.data==='string' ? JSON.parse(msg.data) : msg.data } catch {}
+      const ch = d.channel as string; if (!ch) return
+      ws.data.channels.add(ch)
+      if (!_chSockets.has(ch)) _chSockets.set(ch, new Set())
+      _chSockets.get(ch)!.add(ws.data.socketId)
+      ws.send(JSON.stringify({ event: 'pusher_internal:subscription_succeeded', channel: ch, data: '{}' }))
+      console.log(`[WS] sub ch=${ch} sid=${ws.data.socketId}`)
+      return
+    }
+    if (msg.event === 'pusher:unsubscribe') {
+      let d: any = {}
+      try { d = typeof msg.data==='string' ? JSON.parse(msg.data) : msg.data } catch {}
+      const ch = d.channel as string; if (!ch) return
+      ws.data.channels?.delete(ch); _chSockets.get(ch)?.delete(ws.data?.socketId); return
+    }
+    if (msg.event?.startsWith('client-') && msg.channel) {
+      broadcastToChannel(msg.channel, msg.event, msg.data ?? {}, ws.data?.socketId)
+    }
+  },
+  close(ws: any) {
+    const sid = ws.data?.socketId as string; if (!sid) return
+    for (const ch of (ws.data?.channels ?? [])) _chSockets.get(ch)?.delete(sid)
+    _sockMap.delete(sid)
+    console.log(`[WS] close sid=${sid} total=${_sockMap.size}`)
+  },
+}
+
+// Register broadcast functions globally so routes can use them
+;(globalThis as any).__wsBroadcast = broadcastToChannel
+;(globalThis as any).__wsStats     = getStats
 
 // Bun server: handles HTTP (Hono) + WebSocket (Pusher protocol)
 const honoFetch = app.fetch.bind(app)

@@ -54,12 +54,12 @@ realtimeRouter.post('/auth', async (c) => {
   return c.json({ auth, ...(channelData ? { channel_data: channelData } : {}) })
 })
 
-// ── Broadcast helper — in-process WebSocket broadcast ────────────────────────
-import { broadcastToChannel } from '../lib/pusher_ws.js'
-
+// ── Broadcast helper — uses global registry set by index.ts ──────────────────
+// index.ts sets globalThis.__wsBroadcast after creating the inline WS handler
 export function broadcast(channel: string, event: string, data: unknown): Promise<void> {
   try {
-    broadcastToChannel(channel, event, data)
+    const fn = (globalThis as any).__wsBroadcast
+    if (fn) fn(channel, event, data)
   } catch (e) {
     console.warn('[WS] broadcast failed:', e)
   }
@@ -67,7 +67,7 @@ export function broadcast(channel: string, event: string, data: unknown): Promis
 }
 
 // ── GET /v1/realtime/status ────────────────────────────────────────────────────
-realtimeRouter.get('/status', async (c) => {
-  const { getStats } = await import('../lib/pusher_ws.js')
-  return c.json({ ok: true, ws: getStats() })
+realtimeRouter.get('/status', (c) => {
+  const fn = (globalThis as any).__wsStats
+  return c.json({ ok: true, ws: fn ? fn() : { connections: 0, channels: {} } })
 })
