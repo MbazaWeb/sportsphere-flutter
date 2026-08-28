@@ -452,35 +452,30 @@ class _SportlightsTabState extends State<SportlightsTab> {
         if (postType == 'poll' || type == SpotlightType.poll) {
           type = SpotlightType.poll;
           try {
-            final poll = await Supabase.instance.client
-                .from('Poll')
-                .select()
-                .eq('postId', r['id'])
-                .maybeSingle();
+            final postId = r['id']?.toString() ?? '';
+            final pollRes = await VpsRepository().get<Map<String,dynamic>>(
+                '/v1/social/polls/$postId');
+            final poll = pollRes.data?['poll'] as Map?;
             if (poll != null) {
               pollId = poll['id']?.toString();
               final opts = poll['options'];
               if (opts is List) {
-                pollOptions = opts.map((e) => e.toString()).toList();
+                pollOptions = opts.map((e) {
+                  if (e is Map) return e['label']?.toString() ?? '';
+                  return e.toString();
+                }).toList();
               }
-              pollVotes = poll['totalVotes'] as int?;
-              final me = Supabase.instance.client.auth.currentUser?.id;
-              if (me != null && pollId != null) {
-                final v = await Supabase.instance.client
-                    .from('PollVote')
-                    .select()
-                    .eq('pollId', pollId)
-                    .eq('userId', me)
-                    .maybeSingle();
-                myVote = v?['optionIdx'] as int?;
-              }
-              try {
-                if (pollId != null) {
-                  pollCountsMap =
-                      await SocialRepository().pollOptionCounts(pollId);
-                }
-              } catch (e) {
-                debugPrint('poll counts: $e');
+              pollVotes = (poll['totalVotes'] as int?) ?? 0;
+              if (pollId != null) {
+                try {
+                  final vRes = await VpsRepository().get<Map<String,dynamic>>(
+                      '/v1/social/polls/$pollId/my-vote');
+                  myVote = vRes.data?['voted'] as int?;
+                  final optsList = poll['options'] as List? ?? [];
+                  for (int i = 0; i < optsList.length; i++) {
+                    pollCountsMap[i] = (optsList[i] as Map?)?['votes'] as int? ?? 0;
+                  }
+                } catch (_) {}
               }
             }
           } catch (e) {
@@ -491,34 +486,15 @@ class _SportlightsTabState extends State<SportlightsTab> {
         if (postType == 'prediction' || type == SpotlightType.prediction) {
           type = SpotlightType.prediction;
           try {
-            final pred = await Supabase.instance.client
-                .from('Prediction')
-                .select()
-                .eq('postId', r['id'])
-                .maybeSingle();
+            final postId = r['id']?.toString() ?? '';
+            final predRes = await VpsRepository().get<Map<String,dynamic>>(
+                '/v1/social/predictions/by-post/$postId');
+            final pred = predRes.data?['prediction'] as Map?;
             if (pred != null) {
               predHome = pred['homeTeam'] as String?;
               predAway = pred['awayTeam'] as String?;
-              predHs = pred['predictedHome'] as int?;
-              predAs = pred['predictedAway'] as int?;
-            }
-            // Load current user's prediction for this post
-            final me2 = Supabase.instance.client.auth.currentUser?.id;
-            if (me2 != null) {
-              try {
-                final myPred = await Supabase.instance.client
-                    .from('Prediction')
-                    .select('predictedHome, predictedAway')
-                    .eq('postId', r['id'])
-                    .eq('userId', me2)
-                    .maybeSingle();
-                if (myPred != null) {
-                  final ph = myPred['predictedHome'];
-                  final pa = myPred['predictedAway'];
-                  predHs ??= ph as int?;
-                  predAs ??= pa as int?;
-                }
-              } catch (_) {}
+              predHs   = pred['predictedHome'] as int?;
+              predAs   = pred['predictedAway'] as int?;
             }
           } catch (e) {
             debugPrint('prediction load: $e');
@@ -533,11 +509,9 @@ class _SportlightsTabState extends State<SportlightsTab> {
         final matchIdRef = r['matchId']?.toString() ?? r['match_id']?.toString();
         if (postType == 'match' && matchIdRef != null) {
           try {
-            final m = await Supabase.instance.client
-                .from('Match')
-                .select()
-                .eq('id', matchIdRef)
-                .maybeSingle();
+            final matchDetailRes = await VpsRepository().get<Map<String,dynamic>>(
+                '/v1/matches/$matchIdRef');
+          final m = matchDetailRes.data?['match'] as Map?;
             if (m != null) {
               mId = m['id']?.toString();
               mHome = m['homeTeamName']?.toString() ?? m['home_team_name']?.toString() ?? m['homeTeam']?.toString();
@@ -1322,11 +1296,7 @@ class _PollContentState extends State<_PollContent> {
               .eq('userId', uid);
           // Decrement totalVotes on Poll
           try {
-            await Supabase.instance.client.rpc('increment_poll_votes', params: {
-              'p_poll_id': pollId,
-              'p_user_id': uid,
-              'p_option_index': -1, // signal removal
-            });
+            await VpsRepository().delete<void>('/v1/social/polls/$pollId/vote');
           } catch (_) {}
         }
         final fresh = await _social.pollOptionCounts(pollId);

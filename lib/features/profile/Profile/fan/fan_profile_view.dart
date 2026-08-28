@@ -1,3 +1,4 @@
+import '../../../core/data/vps_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1130,33 +1131,14 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
       final handle = widget.profile.handle.replaceAll('@', '').trim();
       final ids = <String>{};
 
-      // Always include the current auth uid — Post.userId stores auth UUIDs
-      // For own profile this is definitive; for others we still add it as fallback
+      // Get user ID from handle then fetch their posts
       final authId = Supabase.instance.client.auth.currentUser?.id;
-      if (widget.profile.isOwnProfile && authId != null) {
-        ids.add(authId);
-      }
+      if (widget.profile.isOwnProfile && authId != null) ids.add(authId);
 
-      // Resolve from profiles table by handle (returns uuid = Post.userId)
       try {
-        final rows = await Supabase.instance.client
-            .from('profiles').select('id')
-            .or('handle.eq.$handle,handle.ilike.$handle');
-        for (final r in rows as List) {
-          final id = (r as Map)['id']?.toString();
-          if (id != null) ids.add(id);
-        }
-      } catch (_) {}
-
-      // Resolve from User table by handle (text ids)
-      try {
-        final rows = await Supabase.instance.client
-            .from('User').select('id')
-            .or('handle.eq.$handle,handle.ilike.$handle');
-        for (final r in rows as List) {
-          final id = (r as Map)['id']?.toString();
-          if (id != null) ids.add(id);
-        }
+        final profile = await VpsRepository().getProfile(handle);
+        final id = profile['id']?.toString();
+        if (id != null && id.isNotEmpty) ids.add(id);
       } catch (_) {}
 
       if (ids.isEmpty) {
@@ -1164,32 +1146,21 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
         return;
       }
 
-      final idList = ids.toList();
-      List rows;
-      try {
-        rows = await Supabase.instance.client
-            .from('Post').select()
-            .inFilter('userId', idList)
-            .order('createdAt', ascending: false)
-            .limit(40) as List;
-      } catch (_) {
-        rows = [];
-        for (final id in idList) {
-          try {
-            final part = await Supabase.instance.client
-                .from('Post').select().eq('userId', id)
-                .order('createdAt', ascending: false).limit(40);
-            rows.addAll(List<Map<String,dynamic>>.from(part as List));
-          } catch (_) {}
-        }
-        final seen = <String>{};
-        final deduped = <Map<String,dynamic>>[];
-        for (final r in rows) {
-          final pid = (r as Map)['id']?.toString() ?? '';
-          if (seen.add(pid)) deduped.add(Map<String,dynamic>.from(r));
-        }
-        rows = deduped;
+      List<Map<String,dynamic>> rows = [];
+      for (final id in ids) {
+        try {
+          final posts = await VpsRepository().getUserPosts(id, limit: 40);
+          rows.addAll(posts);
+        } catch (_) {}
       }
+      // Deduplicate
+      final seen = <String>{};
+      rows = rows.where((r) => seen.add(r['id']?.toString() ?? '')).toList();
+      rows.sort((a, b) {
+        final da = DateTime.tryParse(a['createdAt']?.toString() ?? '') ?? DateTime(2000);
+        final db = DateTime.tryParse(b['createdAt']?.toString() ?? '') ?? DateTime(2000);
+        return db.compareTo(da);
+      });
 
       // Build SpotlightItems — reuse the same model as the home feed
       final items = <SpotlightItem>[];
@@ -1210,23 +1181,25 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
 
         if (postType == 'poll') {
           try {
-            final poll = await Supabase.instance.client
-                .from('Poll').select().eq('postId', r['id']).maybeSingle();
+            try {
+            final res = await VpsRepository().get<Map<String,dynamic>>(
+                '/v1/social/polls/${r['id']}');
+            final poll = res.data?['poll'] as Map?;
             if (poll != null) {
               pollId = poll['id']?.toString();
               final opts = poll['options'];
-              if (opts is List) pollOptions = opts.map((e) => e.toString()).toList();
+              if (opts is List) pollOptions = opts.map((e) {
+                if (e is Map) return e['label']?.toString() ?? '';
+                return e.toString();
+              }).toList();
               pollVotes = poll['totalVotes'] as int?;
-              final me = Supabase.instance.client.auth.currentUser?.id;
-              if (me != null && pollId != null) {
-                final v = await Supabase.instance.client.from('PollVote')
-                    .select().eq('pollId', pollId).eq('userId', me).maybeSingle();
-                myVote = v?['optionIdx'] as int?;
-                final allVotes = await Supabase.instance.client
-                    .from('PollVote').select('optionIdx').eq('pollId', pollId);
-                for (final vr in allVotes as List) {
-                  final idx = (vr as Map)['optionIdx'] as int?;
-                  if (idx != null) pollCounts[idx] = (pollCounts[idx] ?? 0) + 1;
+              if (pollId != null) {
+                final vRes = await VpsRepository().get<Map<String,dynamic>>(
+                    '/v1/social/polls/$pollId/my-vote');
+                myVote = vRes.data?['voted'] as int?;
+                final opts2 = poll['options'] as List? ?? [];
+                for (int i = 0; i < opts2.length; i++) {
+                  pollCounts[i] = (opts2[i] as Map?)?['votes'] as int? ?? 0;
                 }
               }
             }

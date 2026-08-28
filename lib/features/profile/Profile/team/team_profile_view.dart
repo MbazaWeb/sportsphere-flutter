@@ -1,3 +1,4 @@
+import '../../../core/data/vps_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -233,15 +234,9 @@ class _TeamProfileViewState extends State<TeamProfileView>
     }
     try {
       if (next) {
-        await Supabase.instance.client.from('entity_follows').upsert({
-          'follower_id': uid,
-          'entity_type': 'team',
-          'entity_id': p.id,
-          'is_fan': true,
-        });
+        await VpsRepository().becomeFan('team', p.id ?? '');
       } else {
-        await Supabase.instance.client.from('entity_follows').delete()
-            .eq('follower_id', uid).eq('entity_type', 'team').eq('entity_id', p.id ?? '');
+        await VpsRepository().unfan('team', p.id ?? '');
       }
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(next ? 'You are now a ${p.name} fan!' : 'Removed fan status'),
@@ -331,18 +326,14 @@ class _TeamProfileViewState extends State<TeamProfileView>
     if (teamId == null || teamId.isEmpty) {
       // Resolve by handle/slug.
       try {
-        final sb = Supabase.instance.client;
         final key = p.handle.replaceAll('@', '').trim();
-        final row = await sb
-            .from('Team')
-            .select()
-            .or('id.eq.$key,id.eq.tm-$key,slug.eq.${key.replaceAll('_', '-')}')
-            .maybeSingle();
-        if (row != null) {
-          teamId = row['id']?.toString();
-          // Merge in any extra fields from the DB row.
-          initial = Map<String, dynamic>.from(row);
-        }
+        try {
+          final profile = await VpsRepository().getProfile(key);
+          if (profile.isNotEmpty) {
+            teamId = profile['id']?.toString();
+            initial = Map<String, dynamic>.from(profile);
+          }
+        } catch (_) {}
       } catch (e) {
         debugPrint('team admin edit lookup: $e');
       }

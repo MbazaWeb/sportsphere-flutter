@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../../core/data/vps_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 
@@ -1414,9 +1415,10 @@ class _ProfilePollWidgetState extends State<_ProfilePollWidget> {
                 final pollId = widget.post.pollId;
                 if (pollId == null) { setState(() => _voted = i); return; }
                 try {
-                  await Supabase.instance.client.rpc('increment_poll_votes', params: {
-                    'p_poll_id': pollId, 'p_user_id': Supabase.instance.client.auth.currentUser?.id, 'p_option_index': i,
-                  });
+                  await VpsRepository().post<void>(
+                    '/v1/social/polls/$pollId/vote',
+                    data: {'optionIndex': i},
+                  );
                   setState(() { _voted = i; _counts[i] = (_counts[i] ?? 0) + 1; });
                 } catch (_) { setState(() => _voted = i); }
               },

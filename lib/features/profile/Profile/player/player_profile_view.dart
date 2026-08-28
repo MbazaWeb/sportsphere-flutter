@@ -1,3 +1,4 @@
+import '../../../core/data/vps_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:share_plus/share_plus.dart';
@@ -254,15 +255,9 @@ class _PlayerProfileViewState extends State<PlayerProfileView>
                 try {
                   final entityId = widget.profile.handle.replaceAll('@', '');
                   if (next) {
-                    await Supabase.instance.client.from('entity_follows').upsert({
-                      'follower_id': uid,
-                      'entity_type': 'player',
-                      'entity_id': entityId,
-                      'is_fan': true,
-                    });
+                    await VpsRepository().becomeFan('player', entityId);
                   } else {
-                    await Supabase.instance.client.from('entity_follows').delete()
-                        .eq('follower_id', uid).eq('entity_type', 'player').eq('entity_id', entityId);
+                    await VpsRepository().unfan('player', entityId);
                   }
                   if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: Text(next
@@ -854,28 +849,32 @@ class _SportlightsTabState extends State<_SportlightsTab> {
 
   Future<List<ProfilePost>> _loadPosts() async {
     final p = widget.profile;
-    final sb = Supabase.instance.client;
     final rows = <Map<String, dynamic>>[];
     final seen = <String>{};
 
-    Future<void> addQuery(dynamic q) async {
+    if (p.accountUserId != null && p.accountUserId!.isNotEmpty) {
       try {
-        final data = await q.order('createdAt', ascending: false).limit(40);
-        for (final r in data as List) {
-          final m = Map<String, dynamic>.from(r as Map);
+        final posts = await VpsRepository().getUserPosts(p.accountUserId!, limit: 40);
+        for (final m in posts) {
           final id = m['id']?.toString() ?? '';
           if (id.isEmpty || seen.contains(id)) continue;
-          seen.add(id);
-          rows.add(m);
+          seen.add(id); rows.add(m);
         }
       } catch (_) {}
     }
-
-    if (p.accountUserId != null && p.accountUserId!.isNotEmpty) {
-      await addQuery(sb.from('Post').select().eq('userId', p.accountUserId!));
-    }
     if (p.entityId != null && p.entityId!.isNotEmpty) {
-      await addQuery(sb.from('Post').select().eq('playerTag', p.entityId!));
+      try {
+        final res = await VpsRepository().get<Map<String, dynamic>>(
+          '/v1/social/posts/by-tag',
+          query: {'playerTag': p.entityId!, 'limit': '40'},
+        );
+        final posts = (res.data?['posts'] as List? ?? []).cast<Map<String,dynamic>>();
+        for (final m in posts) {
+          final id = m['id']?.toString() ?? '';
+          if (id.isEmpty || seen.contains(id)) continue;
+          seen.add(id); rows.add(m);
+        }
+      } catch (_) {}
     }
 
     rows.sort((a, b) {

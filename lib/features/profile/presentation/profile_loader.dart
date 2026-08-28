@@ -2,6 +2,7 @@ import '../../../core/admin/app_admin.dart';
 import '../../../core/branding.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/data/vps_repository.dart';
 
 import '../Profile/fan/fan_profile_view.dart';
 import '../Profile/player/player_profile_view.dart';
@@ -17,67 +18,28 @@ class ProfileLoader {
 
   static SupabaseClient get _sb => Supabase.instance.client;
 
-  /// Live social counts for any profile id (all roles).
+  /// Live social counts for any profile id (all roles) — via VPS API.
   static Future<({int posts, int followers, int following})> _liveCounts(
       String profileId) async {
-    if (profileId.isEmpty) {
+    if (profileId.isEmpty) return (posts: 0, followers: 0, following: 0);
+    try {
+      final profile = await VpsRepository().getProfile(profileId);
+      return (
+        posts:     (profile['postCount']      as int?) ?? (profile['post_count']      as int?) ?? 0,
+        followers: (profile['followerCount']  as int?) ?? (profile['follower_count']  as int?) ?? 0,
+        following: (profile['followingCount'] as int?) ?? (profile['following_count'] as int?) ?? 0,
+      );
+    } catch (_) {
       return (posts: 0, followers: 0, following: 0);
     }
-
-    Future<int> rpcOr(String name, Future<int> Function() fb) async {
-      try {
-        final n = await _sb.rpc(name, params: {'p_id': profileId});
-        if (n is int) return n;
-        if (n is num) return n.toInt();
-      } catch (_) {}
-      return fb();
-    }
-
-    final posts = await rpcOr('count_posts_for_user', () async {
-      try {
-        final rows =
-            await _sb.from('Post').select('id').eq('userId', profileId);
-        return (rows as List).length;
-      } catch (_) {
-        return 0;
-      }
-    });
-
-    final followers = await rpcOr('count_followers', () async {
-      try {
-        final rows = await _sb
-            .from('Follow')
-            .select('followerId')
-            .eq('followingId', profileId);
-        return (rows as List).length;
-      } catch (_) {
-        return 0;
-      }
-    });
-
-    final following = await rpcOr('count_following', () async {
-      try {
-        final rows = await _sb
-            .from('Follow')
-            .select('followingId')
-            .eq('followerId', profileId);
-        return (rows as List).length;
-      } catch (_) {
-        return 0;
-      }
-    });
-
-    return (posts: posts, followers: followers, following: following);
   }
 
   static Future<FanProfileModel> loadFanProfile(String handle) async {
     final key = handle.replaceAll('@', '').trim().toLowerCase();
     Map<String, dynamic>? row;
     try {
-      row = await _sb.from('profiles').select().eq('handle', key).maybeSingle();
-    } catch (_) {}
-    try {
-      row ??= await _sb.from('User').select().eq('handle', key).maybeSingle();
+      row = await VpsRepository().getProfile(key);
+      if (row.isEmpty) row = null;
     } catch (_) {}
 
     final role = (row?['role'] as String? ?? '').toLowerCase();
@@ -167,7 +129,7 @@ class ProfileLoader {
     try {
       if (profileId.isNotEmpty) {
         final fans =
-            await _sb.from('fans').select('target_id').eq('fan_id', profileId);
+            await VpsRepository().get<Map<String, dynamic>>('/v1/social/fans/\$profileId/teams');
         final tids = [
           for (final r in fans as List) (r as Map)['target_id']?.toString()
         ].whereType<String>().toList();

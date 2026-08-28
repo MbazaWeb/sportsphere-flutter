@@ -604,3 +604,27 @@ socialRouter.get('/my-favorites', async (c) => {
   )
   return c.json({ ok: true, favorites: rows })
 })
+
+// GET /v1/social/predictions/by-post/:postId
+socialRouter.get('/predictions/by-post/:postId', async (c) => {
+  const row = await queryOne(
+    `SELECT * FROM public."Prediction" WHERE "postId"=$1`,
+    [c.req.param('postId')]
+  )
+  return c.json({ ok: true, prediction: row ?? null })
+})
+
+// GET /v1/social/posts/by-tag?playerTag=&limit=40
+socialRouter.get('/posts/by-tag', async (c) => {
+  const playerTag = c.req.query('playerTag') ?? ''
+  const limit     = Math.min(Number(c.req.query('limit') ?? 40), 100)
+  const rows = await query(
+    `SELECT p.*, u.handle, u."avatarUrl", u.name
+     FROM public."Post" p
+     JOIN public."User" u ON u.id = p."userId"
+     WHERE p."playerTag" = $1
+     ORDER BY p."createdAt" DESC LIMIT $2`,
+    [playerTag, limit]
+  )
+  return c.json({ ok: true, posts: rows })
+})

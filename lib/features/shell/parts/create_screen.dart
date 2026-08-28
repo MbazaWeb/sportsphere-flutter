@@ -1,5 +1,7 @@
 part of '../app_shell.dart';
 // ignore: unused_import
+import '../../../core/data/vps_repository.dart';
+// ignore: unused_import
 
 // ══════════════════════════════════════════════════════════════════════════════
 // CREATE SCREEN  — full compose experience
@@ -162,34 +164,30 @@ class _CreateComposerState extends State<_CreateComposer>
 
   Future<void> _loadTeams() async {
     try {
-      final rows = await Supabase.instance.client
-          .from('Team').select('id,name').order('name').limit(200);
+      final res = await VpsRepository().get<Map<String, dynamic>>(
+        '/v1/admin/teams', query: {'limit': 200});
       if (mounted) {
-        setState(() => _teams = List<Map<String, dynamic>>.from(rows as List));
+        setState(() => _teams = (res.data?['teams'] as List? ?? []).cast<Map<String,dynamic>>());
       }
     } catch (_) {}
   }
 
   Future<void> _loadMatches() async {
     try {
-      final rows = await Supabase.instance.client
-          .from('Match')
-          .select('id,homeTeam,awayTeam,kickoffAt,league,status')
-          .inFilter('status', ['upcoming', 'live', 'scheduled'])
-          .order('kickoffAt')
-          .limit(50);
+      final rows = await VpsRepository().getUpcomingMatches();
       if (mounted) {
-        setState(() => _matches = List<Map<String, dynamic>>.from(rows as List));
+        setState(() => _matches = rows.where((m) =>
+          ['upcoming','live','scheduled'].contains(m['status'])).toList());
       }
     } catch (_) {}
   }
 
   Future<void> _loadPlayers() async {
     try {
-      final rows = await Supabase.instance.client
-          .from('Player').select('id,name,position,teamId').order('name').limit(300);
+      final res = await VpsRepository().get<Map<String, dynamic>>(
+        '/v1/admin/players/search', query: {'q': '', 'limit': 300});
       if (mounted) {
-        setState(() => _players = List<Map<String, dynamic>>.from(rows as List));
+        setState(() => _players = (res.data?['players'] as List? ?? []).cast<Map<String,dynamic>>());
       }
     } catch (_) {}
   }
@@ -437,12 +435,8 @@ class _CreateComposerState extends State<_CreateComposer>
       await Future.delayed(const Duration(milliseconds: 400));
 
       // Refresh post count after successful creation
-      final uid = Supabase.instance.client.auth.currentUser?.id;
-      if (uid != null) {
-        try {
-          await Supabase.instance.client.rpc('refresh_user_counts', params: {'p_id': uid});
-        } catch (_) {}
-      }
+      // Post count updated by DB trigger — no explicit refresh needed
+      // VPS PostgreSQL handles this via trg_post_comment_count trigger
 
       setState(() {
         _submitted = true;
@@ -1208,16 +1202,10 @@ class _PollPanelState extends State<_PollPanel> {
     if (_loadingTeams) return;
     setState(() => _loadingTeams = true);
     try {
-      final rows = await Supabase.instance.client
-          .from('Team')
-          .select('name')
-          .order('name')
-          .limit(4);
-      final names = <String>[];
-      for (final r in (rows as List)) {
-        final n = (r as Map)['name']?.toString().trim();
-        if (n != null && n.isNotEmpty) names.add(n);
-      }
+      final res = await VpsRepository().get<Map<String,dynamic>>(
+          '/v1/admin/teams', query: {'limit': '4'});
+      final teams = (res.data?['teams'] as List? ?? []).cast<Map<String,dynamic>>();
+      final names = teams.map((t) => t['name']?.toString().trim() ?? '').where((n) => n.isNotEmpty).toList();
       if (names.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
