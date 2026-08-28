@@ -405,4 +405,319 @@ class VpsRepository {
     return ((res.data?['results']) as List? ?? []).cast<Map<String, dynamic>>();
   }
 
+  // ── Match lookups (the 4 missing routes) ──────────────────────────────────
+
+  /// GET /v1/matches/leagues — distinct league names
+  Future<List<String>> getLeagues() async {
+    final res = await _client.get<Map<String, dynamic>>('/v1/matches/leagues');
+    return ((res.data?['leagues']) as List? ?? []).cast<String>();
+  }
+
+  /// GET /v1/matches/all — fallback fetch all matches
+  Future<List<Map<String, dynamic>>> getAllMatches({int limit = 200}) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/matches/all', query: {'limit': limit},
+    );
+    return ((res.data?['matches']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  /// GET /v1/admin/teams — team list for dropdowns
+  Future<List<Map<String, dynamic>>> getAdminTeams({int limit = 200}) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/admin/teams', query: {'limit': limit},
+    );
+    return ((res.data?['teams']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  /// POST /v1/shop/orders — create order
+  Future<Map<String, dynamic>> createOrder({
+    required String itemId,
+    required String itemName,
+    required String kind,
+    required int unitPriceTzs,
+    int quantity = 1,
+    String? sellerHandle,
+    String? sellerName,
+    String paymentMethod = 'mpesa',
+  }) async {
+    final res = await _client.post<Map<String, dynamic>>(
+      '/v1/shop/orders',
+      data: {
+        'itemId': itemId,
+        'itemName': itemName,
+        'kind': kind,
+        'unitPriceTzs': unitPriceTzs,
+        'quantity': quantity,
+        'sellerHandle': sellerHandle,
+        'sellerName': sellerName,
+        'paymentMethod': paymentMethod,
+      },
+    );
+    return (res.data?['order'] as Map?)?.cast<String, dynamic>() ?? {};
+  }
+
+  // ── Profile lookups (single entity by id or slug) ──────────────────────────
+
+  /// GET /v1/social/profiles/:idOrSlug — batch-safe single profile lookup
+  Future<Map<String, dynamic>?> getProfile(String idOrSlug) async {
+    try {
+      final res = await _client.get<Map<String, dynamic>>(
+        '/v1/social/profiles/$idOrSlug',
+      );
+      return res.data?['profile'] as Map<String, dynamic>?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// POST /v1/social/profiles-batch — fetch multiple profiles by IDs
+  Future<List<Map<String, dynamic>>> getProfilesBatch(List<String> ids) async {
+    if (ids.isEmpty) return [];
+    final res = await _client.post<Map<String, dynamic>>(
+      '/v1/social/profiles-batch',
+      data: {'ids': ids},
+    );
+    return ((res.data?['profiles']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  // ── Social: posts, likes, comments, follows, fans ──────────────────────────
+
+  /// GET /v1/social/posts/user/:userId — user's posts
+  Future<List<Map<String, dynamic>>> getUserPosts(String userId, {int limit = 50}) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/social/posts/user/$userId', query: {'limit': limit},
+    );
+    return ((res.data?['posts']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  /// POST /v1/social/posts — create a post
+  Future<Map<String, dynamic>> createPost(Map<String, dynamic> body) async {
+    final res = await _client.post<Map<String, dynamic>>(
+      '/v1/social/posts', data: body,
+    );
+    return (res.data?['post'] as Map?)?.cast<String, dynamic>() ?? {};
+  }
+
+  /// DELETE /v1/social/posts/:id — delete a post
+  Future<void> deletePost(String postId) async {
+    await _client.delete('/v1/social/posts/$postId');
+  }
+
+  /// POST /v1/social/likes/:postId — toggle like
+  Future<bool> toggleLike(String postId) async {
+    final res = await _client.post<Map<String, dynamic>>(
+      '/v1/social/likes/$postId', data: {},
+    );
+    return res.data?['liked'] == true;
+  }
+
+  /// GET /v1/social/likes/:postId/check — check if current user liked
+  Future<bool> hasLiked(String postId) async {
+    try {
+      final res = await _client.get<Map<String, dynamic>>(
+        '/v1/social/likes/$postId/check',
+      );
+      return res.data?['liked'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// GET /v1/social/comments/:postId — list comments
+  Future<List<Map<String, dynamic>>> getComments(String postId) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/social/comments/$postId',
+    );
+    return ((res.data?['comments']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  /// POST /v1/social/comments/:postId — add comment
+  Future<Map<String, dynamic>> addComment(String postId, String content) async {
+    final res = await _client.post<Map<String, dynamic>>(
+      '/v1/social/comments/$postId', data: {'content': content},
+    );
+    return (res.data?['comment'] as Map?)?.cast<String, dynamic>() ?? {};
+  }
+
+  /// POST /v1/social/follows/:targetId — toggle follow
+  Future<bool> toggleFollow(String targetId) async {
+    final res = await _client.post<Map<String, dynamic>>(
+      '/v1/social/follows/$targetId', data: {},
+    );
+    return res.data?['following'] == true;
+  }
+
+  /// GET /v1/social/follows/:targetId/check — check if following
+  Future<bool> isFollowing(String targetId) async {
+    try {
+      final res = await _client.get<Map<String, dynamic>>(
+        '/v1/social/follows/$targetId/check',
+      );
+      return res.data?['following'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// GET /v1/social/follows/followers/:userId — list followers
+  Future<List<Map<String, dynamic>>> getFollowers(String userId) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/social/follows/followers/$userId',
+    );
+    return ((res.data?['followers']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  /// GET /v1/social/follows/following/:userId — list following
+  Future<List<Map<String, dynamic>>> getFollowing(String userId) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/social/follows/following/$userId',
+    );
+    return ((res.data?['following']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  /// POST /v1/social/fans/:targetId — toggle fan
+  Future<bool> toggleFan(String targetId) async {
+    final res = await _client.post<Map<String, dynamic>>(
+      '/v1/social/fans/$targetId', data: {},
+    );
+    return res.data?['isFan'] == true;
+  }
+
+  /// GET /v1/social/fans/:targetId/check — check if fan
+  Future<bool> isFan(String targetId) async {
+    try {
+      final res = await _client.get<Map<String, dynamic>>(
+        '/v1/social/fans/$targetId/check',
+      );
+      return res.data?['isFan'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// GET /v1/social/fans/by-teams — fans of my teams
+  Future<List<Map<String, dynamic>>> getFansByTeams() async {
+    final res = await _client.get<Map<String, dynamic>>('/v1/social/fans/by-teams');
+    return ((res.data?['fans']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  /// GET /v1/social/fans/by-sports — fans of my sports
+  Future<List<Map<String, dynamic>>> getFansBySports() async {
+    final res = await _client.get<Map<String, dynamic>>('/v1/social/fans/by-sports');
+    return ((res.data?['fans']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  /// GET /v1/social/fans/by-country — fans in my country
+  Future<List<Map<String, dynamic>>> getFansByCountry() async {
+    final res = await _client.get<Map<String, dynamic>>('/v1/social/fans/by-country');
+    return ((res.data?['fans']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  /// GET /v1/social/my-favorites — current user's favorites
+  Future<List<Map<String, dynamic>>> getMyFavorites() async {
+    final res = await _client.get<Map<String, dynamic>>('/v1/social/my-favorites');
+    return ((res.data?['favorites']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  /// GET /v1/social/my-sports — current user's sports
+  Future<List<Map<String, dynamic>>> getMySports() async {
+    final res = await _client.get<Map<String, dynamic>>('/v1/social/my-sports');
+    return ((res.data?['sports']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  // ── Messages ──────────────────────────────────────────────────────────────
+
+  /// GET /v1/social/messages/conversations — list conversations
+  Future<List<Map<String, dynamic>>> getConversations() async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/social/messages/conversations',
+    );
+    return ((res.data?['conversations']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  /// GET /v1/social/messages/thread/:peerId — get thread with peer
+  Future<List<Map<String, dynamic>>> getMessageThread(String peerId) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/social/messages/thread/$peerId',
+    );
+    return ((res.data?['messages']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  /// POST /v1/social/messages/:receiverId — send message
+  Future<void> sendMessage(String receiverId, String content) async {
+    await _client.post('/v1/social/messages/$receiverId', data: {'content': content});
+  }
+
+  // ── Communities ────────────────────────────────────────────────────────────
+
+  /// POST /v1/social/communities/:id/join — join community
+  Future<void> joinCommunity(String communityId) async {
+    await _client.post('/v1/social/communities/$communityId/join', data: {});
+  }
+
+  /// POST /v1/social/communities/:id/leave — leave community
+  Future<void> leaveCommunity(String communityId) async {
+    await _client.post('/v1/social/communities/$communityId/leave', data: {});
+  }
+
+  /// GET /v1/social/communities/:id/members — list members
+  Future<List<Map<String, dynamic>>> getCommunityMembers(String communityId) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/social/communities/$communityId/members',
+    );
+    return ((res.data?['members']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  // ── Polls & Predictions ────────────────────────────────────────────────────
+
+  /// POST /v1/social/polls/:id/vote — vote on a poll
+  Future<void> votePoll(String pollId, int optionIndex) async {
+    await _client.post('/v1/social/polls/$pollId/vote', data: {'optionIndex': optionIndex});
+  }
+
+  /// POST /v1/social/predictions — create prediction
+  Future<Map<String, dynamic>> createPrediction(Map<String, dynamic> body) async {
+    final res = await _client.post<Map<String, dynamic>>(
+      '/v1/social/predictions', data: body,
+    );
+    return (res.data?['prediction'] as Map?)?.cast<String, dynamic>() ?? {};
+  }
+
+  // ── Shop ───────────────────────────────────────────────────────────────────
+
+  /// GET /v1/shop/orders/mine — buyer's order history
+  Future<List<Map<String, dynamic>>> getMyOrders({int limit = 50}) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/shop/orders/mine', query: {'limit': limit},
+    );
+    return ((res.data?['orders']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  /// GET /v1/shop/orders/seller — seller's received orders
+  Future<List<Map<String, dynamic>>> getSellerOrders({int limit = 50}) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/shop/orders/seller', query: {'limit': limit},
+    );
+    return ((res.data?['orders']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  /// PATCH /v1/shop/orders/:id/confirm — mark order paid
+  Future<void> confirmOrderPaid(String orderId, {String? providerRef}) async {
+    await _client.patch(
+      '/v1/shop/orders/$orderId/confirm',
+      data: {'providerRef': providerRef},
+    );
+  }
+
+  /// GET /v1/shop/tickets/:sellerHandle/stats — seller ticket stats
+  Future<Map<String, int>> getSellerTicketStats(String sellerHandle) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/shop/tickets/$sellerHandle/stats',
+    );
+    return {
+      'sold': (res.data?['sold'] as int?) ?? 0,
+      'amountTzs': (res.data?['amountTzs'] as int?) ?? 0,
+    };
+  }
+
 }
