@@ -21,6 +21,7 @@ import { aiRouter }        from './routes/ai.js'
 import { nearbyRouter }    from './routes/nearby.js'
 import { notifRouter }     from './routes/notifications.js'
 import { socialRouter }    from './routes/social.js'
+import { authRouter }     from './routes/auth.js'
 
 const app = new Hono()
 
@@ -46,8 +47,16 @@ app.route('/v1/matches', matchRouter)
 // M-Pesa callback — Safaricom sends no JWT, verified by BusinessShortCode
 app.post('/v1/mpesa/callback', mpesaCallbackHandler)
 
+// ── Public auth routes (no JWT required) ─────────────────────────────────────
+app.route('/v1/auth/register', authRouter)
+app.route('/v1/auth/login',    authRouter)
+app.route('/v1/auth/refresh',  authRouter)
+
 // ── Auth middleware — all /v1/* ────────────────────────────────────────────────
 app.use('/v1/*', authMiddleware)
+
+// ── Protected auth routes ──────────────────────────────────────────────────────
+app.route('/v1/auth', authRouter)
 
 // ── Authenticated routes ──────────────────────────────────────────────────────
 app.route('/v1/feed',          feedRouter)
