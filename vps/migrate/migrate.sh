@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Playify — Full Data Migration: Supabase PostgreSQL → VPS PostgreSQL
-# Method: pg_dump direct (fastest, no RLS issues, no API limits)
+# Playify — Full Data Migration: Supabase → VPS PostgreSQL
+# Uses pg_dump direct connection (fastest, no RLS issues)
 # =============================================================================
 set -euo pipefail
 
@@ -11,230 +11,174 @@ warn() { echo -e "${YELLOW}⚠️  $1${NC}"; }
 fail() { echo -e "${RED}❌ $1${NC}"; exit 1; }
 hdr()  { echo -e "\n${YELLOW}══ $1 ══${NC}"; }
 
-# ── Connection strings ────────────────────────────────────────────────────────
-# Supabase direct PostgreSQL (from your dashboard)
 SB_DB="postgresql://postgres:0H0Ad64USEIykfwm@db.fffqjbrethogesgghjsn.supabase.co:5432/postgres"
-
-# VPS PostgreSQL (from .env)
 ENV_FILE="/var/playify/app/vps/api/.env"
 VPS_DB=$(grep "^DATABASE_URL=" "$ENV_FILE" | cut -d= -f2- | tr -d '"' | tr -d "'")
+SCHEMA_FIX="/var/playify/app/vps/migrate/fix_schema.sql"
 
-if [ -z "$VPS_DB" ]; then fail "DATABASE_URL not set in $ENV_FILE"; fi
-
-echo "Source: Supabase PostgreSQL"
-echo "Target: $VPS_DB"
+[ -z "$VPS_DB" ] && fail "DATABASE_URL not set in $ENV_FILE"
 
 BACKUP_DIR="/var/playify/migration/$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$BACKUP_DIR"
 echo "Backup dir: $BACKUP_DIR"
 
-# ── Test both connections ─────────────────────────────────────────────────────
+# ── Test connections ──────────────────────────────────────────────────────────
 hdr "TESTING CONNECTIONS"
+echo -n "Supabase... "
+PGPASSWORD=0H0Ad64USEIykfwm psql "$SB_DB" -c "SELECT 1" -q 2>/dev/null \
+  && ok "ok" || fail "Cannot connect to Supabase"
+echo -n "VPS... "
+psql "$VPS_DB" -c "SELECT 1" -q 2>/dev/null && ok "ok" || fail "Cannot connect to VPS"
 
-echo -n "Supabase PostgreSQL... "
-PGPASSWORD=0H0Ad64USEIykfwm psql "$SB_DB" -c "SELECT COUNT(*) FROM public.profiles" -t 2>/dev/null \
-  && ok "connected" || fail "Cannot connect to Supabase PostgreSQL"
+# ── Step 1: Fix VPS schema ────────────────────────────────────────────────────
+hdr "PATCHING VPS SCHEMA (add missing columns)"
+psql "$VPS_DB" -f "$SCHEMA_FIX" -q 2>&1 | grep -v "^$\|NOTICE\|already exists" || true
+ok "Schema patched"
 
-echo -n "VPS PostgreSQL... "
-psql "$VPS_DB" -c "SELECT 1" -q 2>/dev/null && ok "connected" || fail "Cannot connect to VPS PostgreSQL"
-
-# =============================================================================
-# SECTION 1 — DUMP EACH TABLE FROM SUPABASE
-# =============================================================================
-hdr "DUMPING TABLES FROM SUPABASE"
-
-# Tables to migrate (in FK dependency order)
-TABLES=(
-  "public.profiles"
-  'public."User"'
-  'public."Role"'
-  'public."Sport"'
-  'public."League"'
-  'public."Team"'
-  'public."Player"'
-  'public."Coach"'
-  'public."Match"'
-  'public."Community"'
-  'public."NewsItem"'
-  'public."Post"'
-  'public."Poll"'
-  'public."Prediction"'
-  'public."Follow"'
-  'public."PostLike"'
-  'public."PostShare"'
-  'public."Comment"'
-  'public."CommentLike"'
-  'public."PollVote"'
-  'public."CommunityMember"'
-  'public."UserFavorite"'
-  'public."UserSport"'
-  'public."Message"'
-  'public."Notification"'
-  'public."ShopOrder"'
-  'public."ClaimRequest"'
-  'public."VerificationRequest"'
-  "public.device_tokens"
-  "public.entity_follows"
-  "public.fans"
-  "public.taxonomy_term"
-  'public."PlayerMatchStat"'
-  'public."RoleRequest"'
-)
+# ── Step 2: Dump from Supabase using COPY TO (no superuser needed) ───────────
+hdr "EXPORTING FROM SUPABASE"
 
 dump_table() {
-  local tbl="$1"
-  local safe_name
-  safe_name=$(echo "$tbl" | tr -d '"' | tr '.' '_' | tr -d ' ')
-  local file="$BACKUP_DIR/${safe_name}.sql"
+  local schema_tbl="$1"   # e.g.  public."User"
+  local safe="$2"          # e.g.  User
+  local cols="$3"          # column list or *
 
-  echo -n "  Dumping $tbl... "
-  PGPASSWORD=0H0Ad64USEIykfwm pg_dump "$SB_DB" \
-    --data-only \
-    --no-privileges \
-    --no-owner \
-    --table="$tbl" \
-    --format=plain \
-    2>/dev/null > "$file" || { warn "Failed to dump $tbl"; return; }
+  local file="$BACKUP_DIR/${safe}.csv"
+  echo -n "  $schema_tbl... "
+
+  PGPASSWORD=0H0Ad64USEIykfwm psql "$SB_DB" -t -c \
+    "COPY (SELECT $cols FROM $schema_tbl) TO STDOUT CSV HEADER" \
+    > "$file" 2>/dev/null || { warn "dump failed"; return; }
 
   local lines
   lines=$(wc -l < "$file")
   echo "$lines lines"
 }
 
-for tbl in "${TABLES[@]}"; do
-  dump_table "$tbl"
-done
+# Each entry: "schema.table" "safe_name" "column_list"
+dump_table 'public.profiles'           'profiles'           '*'
+dump_table 'public."User"'             'User'               '"id","name","email","handle","role","avatarUrl","coverUrl","bio","location","gender","nationality","countryOfOrigin","currentCountry","dateOfBirth","followerCount","followingCount","fanCount","postCount","roleData","sportsFollowing","interests","roleProfile","preferences","privacySettings","notifPrefs","isPro","isBanned","bannedAt","bannedReason","emailVerified","registeredAt","updatedAt","lastSeenAt","coverGradient","isVerified","verificationStatus"'
+dump_table 'public."Role"'             'Role'               '*'
+dump_table 'public."Sport"'            'Sport'              '"id","name","slug","icon","category","description","tags","isActive","displayOrder","createdAt","updatedAt"'
+dump_table 'public."League"'           'League'             '"id","name","slug","country","logoUrl","type","season","verified","isActive","description","metadata","createdAt","updatedAt"'
+dump_table 'public."Team"'             'Team'               '"id","leagueId","sportId","accountUserId","isClaimable","identityStatus","claimStatus","name","slug","shortName","city","country","logoUrl","primaryColor","venue","foundedYear","source","verified","isActive","description","metadata","createdAt","updatedAt"'
+dump_table 'public."Player"'           'Player'             '"id","teamId","leagueId","sportId","accountUserId","isClaimable","identityStatus","claimStatus","name","slug","firstName","lastName","position","nationality","photoUrl","dateOfBirth","heightCm","weightKg","shirtNumber","verified","isActive","metadata","createdAt","updatedAt"'
+dump_table 'public."Coach"'            'Coach'              '"id","teamId","leagueId","sportId","name","slug","firstName","lastName","nationality","photoUrl","dateOfBirth","role","verified","isActive","metadata","createdAt","updatedAt"'
+dump_table 'public."Match"'            'Match'              '"id","league","homeTeam","awayTeam","homeScore","awayScore","status","minute","venue","kickoffAt","events","lineups","stats","homeBadge","awayBadge","season","externalId","continent","country","createdAt","updatedAt"'
+dump_table 'public."Community"'        'Community'          '"id","name","description","topic","teamId","memberCount","createdById","createdAt"'
+dump_table 'public."NewsItem"'         'NewsItem'           '"id","title","slug","body","summary","imageUrl","category","tags","status","source","source_url","is_breaking","likeCount","commentCount","shareCount","viewCount","publishedAt","createdAt","updatedAt"'
+dump_table 'public."Post"'             'Post'               '"id","userId","content","postType","mediaUrls","hashtags","teamTag","playerTag","communityId","sportTag","matchId","isBreaking","likeCount","commentCount","shareCount","viewCount","createdAt","updatedAt"'
+dump_table 'public."Poll"'             'Poll'               '"id","postId","matchId","question","options","totalVotes","endsAt","createdAt"'
+dump_table 'public."Prediction"'       'Prediction'         '"id","userId","matchId","postId","homeTeam","awayTeam","predictedHome","predictedAway","outcome","confidence","result","isCorrect","closedAt","pointsEarned","createdAt"'
+dump_table 'public."Follow"'           'Follow'             '"followerId","followingId","createdAt"'
+dump_table 'public."PostLike"'         'PostLike'           '"postId","userId","createdAt"'
+dump_table 'public."PostShare"'        'PostShare'          '"postId","userId","createdAt"'
+dump_table 'public."Comment"'          'Comment'            '"id","postId","userId","content","parentId","mentionedUserIds","mediaUrls","mediaType","likeCount","createdAt"'
+dump_table 'public."CommentLike"'      'CommentLike'        '"commentId","userId","createdAt"'
+dump_table 'public."PollVote"'         'PollVote'           '"id","pollId","userId","optionIndex","createdAt"'
+dump_table 'public."CommunityMember"'  'CommunityMember'    '"communityId","userId","role","joinedAt"'
+dump_table 'public."UserFavorite"'     'UserFavorite'       '"id","userId","targetType","targetId","targetName","targetHandle","createdAt"'
+dump_table 'public."UserSport"'        'UserSport'          '"id","userId","sportId","isPrimary","weight","createdAt"'
+dump_table 'public."Message"'          'Message'            '"id","senderId","receiverId","content","isRead","createdAt"'
+dump_table 'public."Notification"'     'Notification'       '"id","userId","type","title","body","isRead","actorId","referenceId","targetId","targetType","createdAt"'
+dump_table 'public."ShopOrder"'        'ShopOrder'          '"id","userId","sellerHandle","sellerName","itemId","itemName","kind","quantity","unitPriceTzs","amountTzs","status","paymentMethod","paymentRef","createdAt","updatedAt"'
+dump_table 'public."ClaimRequest"'     'ClaimRequest'       '"id","userId","profileType","profileId","profileName","leagueId","teamId","playerId","coachId","claimEmail","claimPhone","evidenceNotes","evidenceUrls","status","reviewerId","reviewNotes","submittedAt","reviewedAt"'
+dump_table 'public."VerificationRequest"' 'VerificationRequest' '"id","userId","role","roleData","roleId","roleTypeId","status","adminNotes","reviewedBy","submittedAt","reviewedAt"'
+dump_table 'public.device_tokens'      'device_tokens'      '"user_id","token","platform","updated_at"'
+dump_table 'public.entity_follows'     'entity_follows'     '"id","follower_id","entity_type","entity_id","account_uid","is_fan","created_at"'
+dump_table 'public.fans'               'fans'               '"fan_id","target_id","created_at"'
+dump_table 'public.taxonomy_term'      'taxonomy_term'      '"domain","slug","label","parent_slug","sort_order"'
 
-ok "Dump complete"
-du -sh "$BACKUP_DIR"
+ok "Export complete"
 
-# =============================================================================
-# SECTION 2 — PREPARE VPS TABLES FOR IMPORT
-# =============================================================================
-hdr "PREPARING VPS POSTGRESQL"
+# ── Step 3: Import into VPS ────────────────────────────────────────────────────
+hdr "IMPORTING INTO VPS POSTGRESQL"
 
-# Disable FK checks temporarily for import
-psql "$VPS_DB" << 'SQL'
--- Temporarily disable triggers (FK checks) for bulk import
-SET session_replication_role = replica;
-SQL
+import_table() {
+  local schema_tbl="$1"
+  local safe="$2"
+  local pk="$3"
 
-# =============================================================================
-# SECTION 3 — RESTORE INTO VPS POSTGRESQL
-# =============================================================================
-hdr "RESTORING INTO VPS POSTGRESQL"
+  local file="$BACKUP_DIR/${safe}.csv"
+  [ ! -f "$file" ] && { echo "  ⏭  $safe (no file)"; return; }
+  local lines
+  lines=$(wc -l < "$file")
+  [ "$lines" -le 1 ] && { echo "  ⏭  $safe (empty)"; return; }
 
-restore_table() {
-  local tbl="$1"
-  local safe_name
-  safe_name=$(echo "$tbl" | tr -d '"' | tr '.' '_' | tr -d ' ')
-  local file="$BACKUP_DIR/${safe_name}.sql"
-
-  if [ ! -f "$file" ] || [ ! -s "$file" ]; then
-    echo "  ⏭  $tbl (no data)"
-    return
-  fi
-
-  echo -n "  Restoring $tbl... "
-
-  # Fix: replace Supabase sequence nextval with nothing (we use our own sequences)
-  # Also handle any auth.users references
-  sed -i \
-    "s|auth\.uid()|'00000000-0000-0000-0000-000000000000'::uuid|g" \
-    "$file" 2>/dev/null || true
-
+  echo -n "  $schema_tbl... "
   local result
-  result=$(psql "$VPS_DB" \
-    --set ON_ERROR_STOP=off \
-    -f "$file" 2>&1 | tail -5)
+  result=$(psql "$VPS_DB" -c \
+    "\COPY $schema_tbl FROM '$file' CSV HEADER ON_ERROR_STOP 0" 2>&1 | tail -2)
 
-  if echo "$result" | grep -q "^INSERT\|COPY"; then
-    echo "✅"
+  if echo "$result" | grep -qE "^COPY [0-9]+"; then
+    local n
+    n=$(echo "$result" | grep -oE "COPY [0-9]+" | awk '{print $2}')
+    echo "${n} rows ✅"
   elif echo "$result" | grep -qi "error"; then
-    echo "⚠️  $(echo "$result" | grep -i error | head -1)"
+    echo "⚠️  $(echo "$result" | grep -i error | head -1 | cut -c1-120)"
   else
-    echo "✅ (no conflicts)"
+    echo "✅"
   fi
 }
 
-# Restore in FK order
-for tbl in "${TABLES[@]}"; do
-  restore_table "$tbl"
-done
+import_table 'public.profiles'                'profiles'            'id'
+import_table 'public."User"'                  'User'                'id'
+import_table 'public."Role"'                  'Role'                'id'
+import_table 'public."Sport"'                 'Sport'               'id'
+import_table 'public."League"'                'League'              'id'
+import_table 'public."Team"'                  'Team'                'id'
+import_table 'public."Player"'                'Player'              'id'
+import_table 'public."Coach"'                 'Coach'               'id'
+import_table 'public."Match"'                 'Match'               'id'
+import_table 'public."Community"'             'Community'           'id'
+import_table 'public."NewsItem"'              'NewsItem'            'id'
+import_table 'public."Post"'                  'Post'                'id'
+import_table 'public."Poll"'                  'Poll'                'id'
+import_table 'public."Prediction"'            'Prediction'          'id'
+import_table 'public."Follow"'                'Follow'              '"followerId","followingId"'
+import_table 'public."PostLike"'              'PostLike'            '"postId","userId"'
+import_table 'public."PostShare"'             'PostShare'           '"postId","userId"'
+import_table 'public."Comment"'               'Comment'             'id'
+import_table 'public."CommentLike"'           'CommentLike'         '"commentId","userId"'
+import_table 'public."PollVote"'              'PollVote'            '"pollId","userId"'
+import_table 'public."CommunityMember"'       'CommunityMember'     '"communityId","userId"'
+import_table 'public."UserFavorite"'          'UserFavorite'        'id'
+import_table 'public."UserSport"'             'UserSport'           'id'
+import_table 'public."Message"'               'Message'             'id'
+import_table 'public."Notification"'          'Notification'        'id'
+import_table 'public."ShopOrder"'             'ShopOrder'           'id'
+import_table 'public."ClaimRequest"'          'ClaimRequest'        'id'
+import_table 'public."VerificationRequest"'   'VerificationRequest' 'id'
+import_table 'public.device_tokens'           'device_tokens'       '"user_id","token"'
+import_table 'public.entity_follows'          'entity_follows'      '"follower_id","entity_type","entity_id"'
+import_table 'public.fans'                    'fans'                '"fan_id","target_id"'
+import_table 'public.taxonomy_term'           'taxonomy_term'       '"domain","slug"'
 
-# Re-enable FK checks
-psql "$VPS_DB" << 'SQL'
-SET session_replication_role = DEFAULT;
-SQL
-
-# =============================================================================
-# SECTION 4 — FIX COLUMN MISMATCHES (for any that failed above)
-# =============================================================================
-hdr "FIXING COLUMN MISMATCHES VIA COPY"
-
-# For tables where pg_dump failed due to column differences,
-# use direct COPY via psql pipe (only the columns that exist on both sides)
-
-copy_table() {
-  local src_tbl="$1"
-  local dst_tbl="${2:-$1}"
-  local cols="$3"
-  local safe_name
-  safe_name=$(echo "$src_tbl" | tr -d '"' | tr '.' '_')
-
-  echo -n "  COPY $src_tbl → $dst_tbl ($cols)... "
-  PGPASSWORD=0H0Ad64USEIykfwm psql "$SB_DB" -t -c \
-    "COPY (SELECT $cols FROM $src_tbl) TO STDOUT CSV HEADER" 2>/dev/null | \
-    psql "$VPS_DB" -c \
-    "COPY $dst_tbl ($cols) FROM STDIN CSV HEADER ON CONFLICT DO NOTHING" 2>&1 | tail -1
-}
-
-# Sport — only common columns
-copy_table 'public."Sport"' 'public."Sport"' \
-  '"id","name","slug","icon","category","description","tags","isActive","displayOrder","createdAt","updatedAt"'
-
-# League — skip taxonomy-only columns
-copy_table 'public."League"' 'public."League"' \
-  '"id","name","slug","country","logoUrl","type","season","verified","isActive","description","createdAt","updatedAt"'
-
-# Team — skip taxonomy-only columns
-copy_table 'public."Team"' 'public."Team"' \
-  '"id","name","slug","shortName","city","country","logoUrl","primaryColor","venue","foundedYear","verified","isActive","description","createdAt","updatedAt"'
-
-# Player
-copy_table 'public."Player"' 'public."Player"' \
-  '"id","name","slug","firstName","lastName","position","nationality","photoUrl","verified","isActive","metadata","createdAt","updatedAt"'
-
-ok "Column-specific copy done"
-
-# =============================================================================
-# SECTION 5 — VERIFY
-# =============================================================================
+# ── Step 4: Verify ────────────────────────────────────────────────────────────
 hdr "VERIFICATION"
 
 psql "$VPS_DB" << 'SQL'
 SELECT table_name, rows FROM (
-  SELECT 'User'          as table_name, COUNT(*) as rows FROM public."User"
-  UNION ALL SELECT 'profiles',    COUNT(*) FROM public.profiles
-  UNION ALL SELECT 'Post',        COUNT(*) FROM public."Post"
-  UNION ALL SELECT 'Follow',      COUNT(*) FROM public."Follow"
-  UNION ALL SELECT 'Comment',     COUNT(*) FROM public."Comment"
-  UNION ALL SELECT 'Team',        COUNT(*) FROM public."Team"
-  UNION ALL SELECT 'Player',      COUNT(*) FROM public."Player"
-  UNION ALL SELECT 'League',      COUNT(*) FROM public."League"
-  UNION ALL SELECT 'Match',       COUNT(*) FROM public."Match"
-  UNION ALL SELECT 'Community',   COUNT(*) FROM public."Community"
-  UNION ALL SELECT 'Message',     COUNT(*) FROM public."Message"
-  UNION ALL SELECT 'Notification',COUNT(*) FROM public."Notification"
-  UNION ALL SELECT 'Sport',       COUNT(*) FROM public."Sport"
-  UNION ALL SELECT 'NewsItem',    COUNT(*) FROM public."NewsItem"
-  UNION ALL SELECT 'device_tokens',COUNT(*) FROM public.device_tokens
-  UNION ALL SELECT 'entity_follows',COUNT(*) FROM public.entity_follows
+  SELECT 'User'             as table_name, COUNT(*) as rows FROM public."User"
+  UNION ALL SELECT 'profiles',             COUNT(*) FROM public.profiles
+  UNION ALL SELECT 'Post',                 COUNT(*) FROM public."Post"
+  UNION ALL SELECT 'Follow',               COUNT(*) FROM public."Follow"
+  UNION ALL SELECT 'Comment',              COUNT(*) FROM public."Comment"
+  UNION ALL SELECT 'Team',                 COUNT(*) FROM public."Team"
+  UNION ALL SELECT 'Player',               COUNT(*) FROM public."Player"
+  UNION ALL SELECT 'League',               COUNT(*) FROM public."League"
+  UNION ALL SELECT 'Match',                COUNT(*) FROM public."Match"
+  UNION ALL SELECT 'Community',            COUNT(*) FROM public."Community"
+  UNION ALL SELECT 'Message',              COUNT(*) FROM public."Message"
+  UNION ALL SELECT 'Notification',         COUNT(*) FROM public."Notification"
+  UNION ALL SELECT 'Sport',                COUNT(*) FROM public."Sport"
+  UNION ALL SELECT 'NewsItem',             COUNT(*) FROM public."NewsItem"
+  UNION ALL SELECT 'device_tokens',        COUNT(*) FROM public.device_tokens
+  UNION ALL SELECT 'entity_follows',       COUNT(*) FROM public.entity_follows
+  UNION ALL SELECT 'PostLike',             COUNT(*) FROM public."PostLike"
+  UNION ALL SELECT 'CommunityMember',      COUNT(*) FROM public."CommunityMember"
+  UNION ALL SELECT 'ClaimRequest',         COUNT(*) FROM public."ClaimRequest"
 ) t ORDER BY rows DESC;
 SQL
 
-echo ""
-ok "Migration complete!"
-echo "Backup at: $BACKUP_DIR"
-echo ""
-echo "Next: test login at https://playifysport.fun/v1/auth/login"
+ok "Migration complete! Backup at $BACKUP_DIR"
