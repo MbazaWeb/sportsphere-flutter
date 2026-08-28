@@ -133,7 +133,8 @@ socialRouter.delete('/posts/:id/like', async (c) => {
 })
 
 socialRouter.get('/posts/:id/liked', async (c) => {
-  const userId = c.get('userId') as string
+  const userId = c.get('userId') as string | undefined
+  if (!userId) return c.json({ ok: true, liked: false })
   const row = await queryOne(`SELECT 1 FROM public."PostLike" WHERE "postId"=$1 AND "userId"=$2`, [c.req.param('id'), userId])
   return c.json({ ok: true, liked: !!row })
 })
@@ -156,7 +157,8 @@ socialRouter.post('/posts/:id/share', async (c) => {
 })
 
 socialRouter.get('/posts/:id/shared', async (c) => {
-  const userId = c.get('userId') as string
+  const userId = c.get('userId') as string | undefined
+  if (!userId) return c.json({ ok: true, shared: false })
   const row = await queryOne(`SELECT 1 FROM public."PostShare" WHERE "postId"=$1 AND "userId"=$2`, [c.req.param('id'), userId])
   return c.json({ ok: true, shared: !!row })
 })
@@ -269,7 +271,8 @@ socialRouter.delete('/follow/:targetId', async (c) => {
 })
 
 socialRouter.get('/follow/:targetId/status', async (c) => {
-  const userId   = c.get('userId') as string
+  const userId = c.get('userId') as string | undefined
+  if (!userId) return c.json({ ok: true, following: false })
   const row = await queryOne(`SELECT 1 FROM public."Follow" WHERE "followerId"=$1 AND "followingId"=$2`, [userId, c.req.param('targetId')])
   return c.json({ ok: true, following: !!row })
 })
@@ -346,7 +349,8 @@ socialRouter.delete('/fan/:entityType/:entityId', async (c) => {
 })
 
 socialRouter.get('/fan/:entityType/:entityId/status', async (c) => {
-  const userId     = c.get('userId') as string
+  const userId = c.get('userId') as string | undefined
+  if (!userId) return c.json({ ok: true, isFan: false })
   const row = await queryOne(
     `SELECT 1 FROM public.entity_follows WHERE follower_id=$1::uuid AND entity_type=$2 AND entity_id=$3`,
     [userId, c.req.param('entityType'), c.req.param('entityId')]
@@ -510,7 +514,8 @@ socialRouter.get('/polls/:postId', async (c) => {
 })
 
 socialRouter.get('/polls/:id/my-vote', async (c) => {
-  const userId = c.get('userId') as string
+  const userId = c.get('userId') as string | undefined
+  if (!userId) return c.json({ ok: true, voted: null })
   const row    = await queryOne<{optionIndex:number}>(
     `SELECT "optionIndex" FROM public."PollVote" WHERE "pollId"=$1 AND "userId"=$2`,
     [c.req.param('id'), userId]

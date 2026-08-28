@@ -104,6 +104,11 @@ app.use('/v1/*', async (c, next) => {
     '/v1/feed',
     '/v1/social/communities',
     '/v1/social/search',
+    '/v1/social/sports',
+    '/v1/social/polls',
+    '/v1/social/predictions',
+    '/v1/social/posts',
+    '/v1/nearby',
   ]
   // Also allow community membership checks without auth — return {isMember:false}
   if (path.startsWith('/v1/social/communities/') && path.endsWith('/membership')) {
