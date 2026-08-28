@@ -77,7 +77,7 @@ class _BecomeProSheetState extends ConsumerState<BecomeProSheet> {
       setState(() => _message = 'Please log in first.');
       return;
     }
-    final uid = VpsSupabaseCompat.client.auth.currentSession?.user.id;
+    final uid = VpsSupabaseCompat.client.auth.currentUser?.id;
     if (uid == null) return;
 
     setState(() { _saving = true; _message = null; });

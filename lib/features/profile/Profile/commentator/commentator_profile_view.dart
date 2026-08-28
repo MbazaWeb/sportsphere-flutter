@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../shared/person_profile_view.dart';
-import '../../../../../core/theme/colors.dart';
+import '../../../../core/theme/colors.dart';
 
 class CommentatorProfileView extends StatelessWidget {
   const CommentatorProfileView({super.key});

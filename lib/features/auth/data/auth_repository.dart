@@ -31,7 +31,7 @@ class _AuthUserStub {
 class AuthRepository {
   const AuthRepository();
 
-  static final _vps = VpsRepository();
+  static final _vps = const VpsRepository();
 
   static const _kToken        = 'auth_access_token';
   static const _kRefresh      = 'auth_refresh_token';

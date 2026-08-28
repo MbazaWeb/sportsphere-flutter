@@ -1,7 +1,7 @@
-import '../../../core/data/vps_supabase_compat.dart';
 part of '../app_shell.dart';
-// ignore: unused_import
-import '../../../core/data/vps_repository.dart';
+
+// VpsRepository + VpsSupabaseCompat are re-exported via the parent
+// app_shell.dart import chain (core/data/* imported there).
 
 class _FullScreenSearch extends StatefulWidget {
   const _FullScreenSearch();
@@ -46,7 +46,7 @@ class _FullScreenSearchState extends State<_FullScreenSearch>
     setState(() => _loading = true);
     final merged = <Map<String, dynamic>>[];
     try {
-      final res = await VpsRepository().searchAll(q);
+      final res = await const VpsRepository().searchAll(q);
       merged.addAll(res);
     } catch (e) {
       debugPrint('[SEARCH] $e');
@@ -314,7 +314,7 @@ class _NearbyFansTab extends StatefulWidget {
 
 class _NearbyFansTabState extends State<_NearbyFansTab>
     with SingleTickerProviderStateMixin {
-  final SupabaseClient _sb = VpsSupabaseCompat.client;
+  final _sb = VpsSupabaseCompat.client;
   List<Map<String, dynamic>> _fans = [];
   bool _loading = true;
   bool _scanning = false;
@@ -420,7 +420,7 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
       // Save location to profile for future queries
       if (VpsSupabaseCompat.client.auth.currentUser != null) {
         try {
-          await VpsRepository().updateLocation(_myLat!, _myLng!);
+          await const VpsRepository().updateLocation(_myLat!, _myLng!);
         } catch (_) {}
       }
     } catch (e) {
@@ -445,7 +445,7 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
     try {
       // Load my profile (country + GPS)
       try {
-        final me = await VpsRepository().getProfile(uid);
+        final me = await const VpsRepository().getProfile(uid);
         _myCountry = (me['currentCountry'] as String?) ??
             (me['country'] as String?) ??
             (me['location'] as String?);
@@ -454,7 +454,7 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
       // Load my favorite teams
       final favTeams = <Map<String, dynamic>>[];
       try {
-        final res = await VpsRepository().get<Map<String, dynamic>>(
+        final res = await const VpsRepository().get<Map<String, dynamic>>(
           '/v1/social/my-favorites', query: {'type': 'TEAM'});
         favTeams.addAll((res.data?['favorites'] as List? ?? []).cast<Map<String, dynamic>>());
       } catch (_) {}
@@ -488,7 +488,7 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
       // ── GPS-based nearby fans ─────────────────────────────────
       if (_myLat != null && _myLng != null &&
           (_filter == _NearbyFilter.all || _filter == _NearbyFilter.country)) {
-        final rows = await VpsRepository().getNearbyFans(
+        final rows = await const VpsRepository().getNearbyFans(
           lat: _myLat!, lng: _myLng!,
           radiusM: 100000, limit: 50,
         );
@@ -513,7 +513,7 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
 
       // ── Filter: Same Team ─────────────────────────────────────
       if (_filter == _NearbyFilter.team && _myTeamIds.isNotEmpty) {
-        final teamFansRes = await VpsRepository().get<Map<String, dynamic>>(
+        final teamFansRes = await const VpsRepository().get<Map<String, dynamic>>(
             '/v1/social/fans-by-teams',
             query: {'ids': _myTeamIds.join(','), 'exclude': _myUid!});
         final teamFans = (teamFansRes.data?['fans'] as List? ?? []).cast<Map<String,dynamic>>();
@@ -533,7 +533,7 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
 
       // ── Filter: Same Sport ────────────────────────────────────
       if (_filter == _NearbyFilter.sport && _mySportIds.isNotEmpty) {
-        final sportFansRes = await VpsRepository().get<Map<String, dynamic>>(
+        final sportFansRes = await const VpsRepository().get<Map<String, dynamic>>(
             '/v1/social/fans-by-sports',
             query: {'ids': _mySportIds.join(','), 'exclude': _myUid!});
         final sportFans = (sportFansRes.data?['fans'] as List? ?? []).cast<Map<String,dynamic>>();
@@ -553,7 +553,7 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
 
       // ── Filter: Fan Engagements ───────────────────────────────
       if (_filter == _NearbyFilter.engagements && _myTeamIds.isNotEmpty) {
-        final engagementsRes = await VpsRepository().get<Map<String, dynamic>>(
+        final engagementsRes = await const VpsRepository().get<Map<String, dynamic>>(
             '/v1/social/fans-by-teams',
             query: {'ids': _myTeamIds.join(','), 'exclude': _myUid!});
         final engagements = (engagementsRes.data?['fans'] as List? ?? []).cast<Map<String,dynamic>>();
@@ -573,7 +573,7 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
 
       // ── Fallback: Same Country (text-based) ───────────────────
       if (_myCountry != null && _myCountry!.isNotEmpty) {
-        final countryFansRes = await VpsRepository().get<Map<String, dynamic>>(
+        final countryFansRes = await const VpsRepository().get<Map<String, dynamic>>(
             '/v1/social/fans-by-country',
             query: {'country': _myCountry!, 'exclude': _myUid!, 'limit': '50'});
         final countryFans = (countryFansRes.data?['fans'] as List? ?? []).cast<Map<String,dynamic>>();
@@ -633,7 +633,7 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
     for (var i = 0; i < uidList.length; i += 100) {
       final chunk = uidList.sublist(
           i, (i + 100 > uidList.length) ? uidList.length : i + 100);
-      final batchRes = await VpsRepository().post<Map<String, dynamic>>(
+      final batchRes = await const VpsRepository().post<Map<String, dynamic>>(
           '/v1/social/profiles/batch', data: {'ids': chunk});
       final profileMap = (batchRes.data?['profiles'] as Map? ?? {});
       for (final entry in profileMap.entries) {
@@ -1239,7 +1239,7 @@ class _FanActionButtons extends StatefulWidget {
 }
 
 class _FanActionButtonsState extends State<_FanActionButtons> {
-  final SupabaseClient _sb = VpsSupabaseCompat.client;
+  final _sb = VpsSupabaseCompat.client;
   bool _following = false;
   bool _busy = false;
 
@@ -1252,7 +1252,7 @@ class _FanActionButtonsState extends State<_FanActionButtons> {
   Future<void> _checkFollowStatus() async {
     if (VpsSupabaseCompat.client.auth.currentUser == null) return;
     try {
-      final following = await VpsRepository().isFollowing(widget.uid);
+      final following = await const VpsRepository().isFollowing(widget.uid);
       if (mounted) setState(() => _following = following);
     } catch (_) {}
   }
@@ -1265,9 +1265,9 @@ class _FanActionButtonsState extends State<_FanActionButtons> {
     setState(() => _following = !wasFollowing);
     try {
       if (wasFollowing) {
-        await VpsRepository().unfollowUser(widget.uid);
+        await const VpsRepository().unfollowUser(widget.uid);
       } else {
-        await VpsRepository().followUser(widget.uid);
+        await const VpsRepository().followUser(widget.uid);
       }
     } catch (e) {
       if (mounted) {

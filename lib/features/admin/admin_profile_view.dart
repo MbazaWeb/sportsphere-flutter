@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/data/vps_supabase_compat.dart';
 import '../../core/theme/colors.dart';
 import '../auth/presentation/auth_controller.dart';
 import '../profile/presentation/edit_profile_sheet.dart';
@@ -28,7 +28,7 @@ class _AdminProfileViewState extends ConsumerState<AdminProfileView>
   int _users = 0, _posts = 0, _matches = 0, _teams = 0, _news = 0;
   bool _statsLoading = true;
 
-  static SupabaseClient get _sb => Supabase.instance.client;
+  static get _sb => VpsSupabaseCompat.client;
 
   @override
   void initState() {

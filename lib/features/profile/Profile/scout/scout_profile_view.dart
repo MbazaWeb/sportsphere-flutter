@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../shared/person_profile_view.dart';
-import '../../../../../core/theme/colors.dart';
+import '../../../../core/theme/colors.dart';
 
 class ScoutProfileView extends StatelessWidget {
   const ScoutProfileView({super.key});

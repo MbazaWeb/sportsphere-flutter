@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../shared/org_profile_view.dart';
-import '../../../../../core/theme/colors.dart';
+import '../../../../core/theme/colors.dart';
 
 class CommercialPartnerProfileView extends StatelessWidget {
   const CommercialPartnerProfileView({super.key});

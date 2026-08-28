@@ -2,7 +2,6 @@ import '../../../core/data/vps_supabase_compat.dart';
 import '../../../core/admin/app_admin.dart';
 import '../../../core/branding.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/data/vps_repository.dart';
 
 import '../Profile/fan/fan_profile_view.dart';
@@ -17,14 +16,14 @@ import '../templates/role_profile_model.dart';
 class ProfileLoader {
   const ProfileLoader._();
 
-  static SupabaseClient get _sb => VpsSupabaseCompat.client;
+  static get _sb => VpsSupabaseCompat.client;
 
   /// Live social counts for any profile id (all roles) — via VPS API.
   static Future<({int posts, int followers, int following})> _liveCounts(
       String profileId) async {
     if (profileId.isEmpty) return (posts: 0, followers: 0, following: 0);
     try {
-      final profile = await VpsRepository().getProfile(profileId);
+      final profile = await const VpsRepository().getProfile(profileId);
       return (
         posts:     (profile['postCount']      as int?) ?? (profile['post_count']      as int?) ?? 0,
         followers: (profile['followerCount']  as int?) ?? (profile['follower_count']  as int?) ?? 0,
@@ -39,7 +38,7 @@ class ProfileLoader {
     final key = handle.replaceAll('@', '').trim().toLowerCase();
     Map<String, dynamic>? row;
     try {
-      row = await VpsRepository().getProfile(key);
+      row = await const VpsRepository().getProfile(key);
       if (row.isEmpty) row = null;
     } catch (_) {}
 
@@ -130,7 +129,7 @@ class ProfileLoader {
     try {
       if (profileId.isNotEmpty) {
         final fans =
-            await VpsRepository().get<Map<String, dynamic>>('/v1/social/fans/\$profileId/teams');
+            await const VpsRepository().get<Map<String, dynamic>>('/v1/social/fans/\$profileId/teams');
         final tids = [
           for (final r in fans as List) (r as Map)['target_id']?.toString()
         ].whereType<String>().toList();

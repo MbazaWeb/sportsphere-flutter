@@ -1,11 +1,10 @@
 import '../../../../core/data/vps_supabase_compat.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../../../core/theme/colors.dart';
+import '../../../../core/theme/colors.dart';
 import '../../../shared/org_profile_view.dart';
-import '../../../shared/profile_widgets.dart';
+import '../../shared/profile_widgets.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // COMMUNITY PROFILE VIEW
@@ -24,7 +23,7 @@ class CommunityProfileView extends StatefulWidget {
 }
 
 class _CommunityProfileViewState extends State<CommunityProfileView> {
-  static SupabaseClient get _sb => VpsSupabaseCompat.client;
+  static get _sb => VpsSupabaseCompat.client;
 
   Map<String, dynamic>? _data;
   bool _loading = true;

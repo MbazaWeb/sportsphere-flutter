@@ -78,7 +78,7 @@ MatchModel matchFromRow(Map<String, dynamic> row) {
 
 Future<List<MatchModel>> fetchLiveMatches({int limit = kMaxMatchesPerFetch}) async {
   try {
-    final rows = await VpsRepository().getLiveMatches();
+    final rows = await const VpsRepository().getLiveMatches();
     return rows.map(matchFromRow).toList();
   } catch (_) {
     return [];
