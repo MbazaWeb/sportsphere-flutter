@@ -45,6 +45,11 @@ app.use('*', cors({
 app.route('/health',   healthRouter)
 app.route('/v1/matches', matchRouter)
 
+
+
+// News: public read, no JWT needed (guests can browse)
+app.route('/v1/news', newsRouter)
+
 // M-Pesa callback — Safaricom sends no JWT, verified by BusinessShortCode
 app.post('/v1/mpesa/callback', mpesaCallbackHandler)
 
@@ -69,7 +74,7 @@ app.route('/v1/nearby',        nearbyRouter)
 app.route('/v1/notifications', notifRouter)
 app.route('/v1/ai',            aiRouter)
 app.route('/v1/social',        socialRouter)
-app.route('/v1/news',          newsRouter)
+// news mounted above in public section
 
 // ── Admin routes (JWT + admin role) ───────────────────────────────────────────
 app.use('/v1/admin/*', adminMiddleware)
