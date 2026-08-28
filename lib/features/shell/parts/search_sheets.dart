@@ -1,7 +1,7 @@
-import '../../../core/data/vps_supabase_compat.dart';
 part of '../app_shell.dart';
-// ignore: unused_import
-import '../../../core/data/vps_repository.dart';
+
+// VpsRepository + VpsSupabaseCompat are re-exported via the parent
+// app_shell.dart import chain (core/data/* imported there).
 
 class _SearchSheet extends StatefulWidget {
   const _SearchSheet();
@@ -329,7 +329,7 @@ class _SearchData {
     if (q.trim().length < 2) return [];
     final query = q.trim().replaceAll('@', '');
     try {
-      final raw = await VpsRepository().searchAll(query, limit: 30);
+      final raw = await const VpsRepository().searchAll(query, limit: 30);
       return raw.map((r) {
         final kind = r['_kind'] as String? ?? r['role'] as String? ?? 'user';
         final name = (r['first_name'] as String? ?? '') +
@@ -449,10 +449,11 @@ class _MessageSheetState extends State<_MessageSheet> {
   }
 
   void _unsubscribe() {
-    final ch = _channel;
+    // Realtime is being migrated to a Soketi/VPS-managed channel. The
+    // MessagingRepository.subscribeThread stub returns a no-op placeholder
+    // (see messaging_repository.dart) so there is nothing to dispose here
+    // — we just drop the reference and let GC clean it up.
     _channel = null;
-    // channel cleanup (Soketi migration pending)
-    _ = ch;
   }
 
   Future<void> _loadInbox() async {

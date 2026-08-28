@@ -1,6 +1,5 @@
 import '../../../core/data/vps_supabase_compat.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../shop/models/shop_models.dart';
 import '../shared/profile_widgets.dart';
@@ -199,7 +198,7 @@ int _readInt(Map<String, dynamic>? row, List<String> keys) {
 
 /// Look up an org/commerce entity row by role + slug/handle/id.
 Future<Map<String, dynamic>?> _fetchEntity(
-  SupabaseClient sb,
+  dynamic sb,
   String roleKey,
   String key,
   String slugDash,
@@ -320,7 +319,7 @@ Future<Map<String, dynamic>?> _fetchEntity(
 /// Load the role-specific Profile row (e.g. AgentProfile, AnalystProfile…).
 /// Returns null if the table doesn't exist or no row matches.
 Future<Map<String, dynamic>?> _fetchRoleProfileRow(
-  SupabaseClient sb,
+  dynamic sb,
   String roleKey,
   String? userId,
 ) async {
@@ -391,7 +390,7 @@ String? _profileTableFor(String roleKey) {
   }
 }
 
-Future<List<ProfilePost>> _loadPosts(SupabaseClient sb, String? uid) async {
+Future<List<ProfilePost>> _loadPosts(dynamic sb, String? uid) async {
   if (uid == null || uid.isEmpty) return [];
   try {
     final rows = await sb
@@ -428,7 +427,7 @@ Future<List<ProfilePost>> _loadPosts(SupabaseClient sb, String? uid) async {
 }
 
 Future<List<AboutField>> _aboutFields(
-  SupabaseClient sb, {
+  dynamic sb, {
   required String roleKey,
   required Map<String, dynamic>? user,
   required Map<String, dynamic>? entity,
@@ -609,7 +608,7 @@ String _joinListOrString(dynamic v) {
 }
 
 Future<List<RoleMember>> _members(
-  SupabaseClient sb, {
+  dynamic sb, {
   required String roleKey,
   required Map<String, dynamic>? entity,
 }) async {
@@ -791,7 +790,7 @@ Future<List<RoleMember>> _members(
 }
 
 Future<List<AboutField>> _statsRows(
-  SupabaseClient sb, {
+  dynamic sb, {
   required String roleKey,
   required Map<String, dynamic>? entity,
   required Map<String, dynamic>? user,
@@ -935,7 +934,7 @@ bool _sameName(String a, String b) {
 /// Loads shop catalog from a ShopItem table if it exists; gracefully
 /// degrades to an empty catalog (which renders a friendly empty state).
 Future<ShopCatalog> _loadShopCatalog(
-  SupabaseClient sb, {
+  dynamic sb, {
   required String sellerName,
   required String sellerHandle,
   required Color accent,

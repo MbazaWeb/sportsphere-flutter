@@ -1,108 +1,57 @@
+// lib/features/admin/admin_repository.dart
+//
+// Admin operations for the Playify admin console.
+//
+// SECURITY: This file used to construct a `SupabaseClient` with the
+// service-role JWT hardcoded inline. That key grants full read/write
+// access to every table and bypasses RLS — shipping it in the mobile
+// client bundle was a critical vulnerability.
+//
+// All admin mutations now go through the VPS API (see
+// `lib/core/data/vps_repository.dart`). The VPS enforces admin role
+// checks server-side (see `vps/api/src/middleware/admin.ts`) and never
+// trusts the client to assert privileges. Where a VPS route doesn't
+// exist yet, the method calls the would-be endpoint and the VPS returns
+// 404 — surfacing a friendly error in the UI. Each such method has a
+// `TODO(VPS)` comment so the backend team knows what to add.
+//
+// No `SupabaseClient` type annotations, no `import 'package:supabase_flutter/...'`,
+// no service-role credentials. JWT is attached automatically by ApiClient.
+
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../core/data/vps_repository.dart';
 
 class AdminRepository {
-  static SupabaseClient get _sb => Supabase.instance.client;
+  const AdminRepository();
 
-  // Service role client for operations blocked by RLS
-  static SupabaseClient get _admin {
-    try {
-      return SupabaseClient(
-        'https://fffqjbrethogesgghjsn.supabase.co',
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZmZnFqYnJldGhvZ2VzZ2doanNuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NzE2OTA1NSwiZXhwIjoyMTAyNzQ1MDU1fQ.TFIjn9A6i72aitmPbrsU-DhZjJ9JC51VOrbLTUbCrCE',
-      );
-    } catch (_) { return Supabase.instance.client; }
-  }
+  static final _vps = const VpsRepository();
 
   // ── Entity Identity ────────────────────────────────────────────────────────
 
-  /// Creates a Supabase Auth user + profiles row for an entity (Team/Player/League).
+  /// Creates an auth user + profiles row for an entity (Team/Player/League).
   /// Returns the new auth UID, or null if creation fails.
-  /// Never stores plaintext passwords in any public table.
+  ///
+  /// Delegates to `POST /v1/admin/entities/identity` on the VPS. The VPS uses
+  /// its server-side service role key to create the auth user — never exposed
+  /// to the client.
   Future<String?> _createEntityIdentity({
-    required String entityType,  // 'team' | 'player' | 'league'
+    required String entityType, // 'team' | 'player' | 'league'
     required String entityId,
     required String displayName,
     required String handle,
     String? logoUrl,
   }) async {
-    // Derive a deterministic but unguessable email for this entity
-    final email = '$handle.$entityType@entity.playify.app';
-    // Generate a secure random password — entity can only log in after claiming
-    final password = 'Entity!${DateTime.now().millisecondsSinceEpoch}@Playify';
-
     try {
-      // 1. Create auth user
-      final res = await _admin.auth.admin.createUser(AdminUserAttributes(
-        email: email,
-        password: password,
-        userMetadata: {
-          'entity_type': entityType,
-          'entity_id': entityId,
-          'display_name': displayName,
-          'handle': handle,
-          'is_entity_account': true,
-        },
-        emailConfirm: true,
-      ));
-      final uid = res.user?.id.toString();
-      if (uid == null || uid.isEmpty) return null;
-
-      // 2. Create profiles row
-      await _admin.from('profiles').upsert({
-        'id': uid,
-        'handle': handle,
-        'role': entityType,
-        'first_name': displayName,
-        'last_name': '',
-        'email': email,
-        if (logoUrl != null) 'avatar_url': logoUrl,
-        'bio': 'Official $displayName account on Playify.',
+      return await _vps.createEntityIdentity({
+        'entityType':   entityType,
+        'entityId':     entityId,
+        'displayName':  displayName,
+        'handle':       handle,
+        if (logoUrl != null) 'logoUrl': logoUrl,
       });
-
-      // 3. Create User row for feed compatibility
-      try {
-        await _admin.from('User').upsert({
-          'id': uid,
-          'handle': handle,
-          'name': displayName,
-          'email': email,
-          'role': entityType,
-          'isVerified': true,
-          if (logoUrl != null) 'avatarUrl': logoUrl,
-        });
-      } catch (_) {}
-
-      return uid;
     } catch (e) {
       debugPrint('_createEntityIdentity($entityType, $entityId): $e');
-      return null;
-    }
-  }
-
-  /// Resolves entity → profiles row via accountUserId.
-  /// This is the canonical resolver — never search profiles by entity name.
-  Future<Map<String, dynamic>?> resolveEntityProfile({
-    required String entityType,
-    required String entityId,
-  }) async {
-    try {
-      // 1. Get accountUserId from the entity
-      final table = entityType == 'team' ? 'Team'
-          : entityType == 'player' ? 'Player' : 'League';
-      final entity = await _sb.from(table).select('accountUserId, name, logoUrl')
-          .eq('id', entityId).maybeSingle();
-      if (entity == null) return null;
-
-      final accountUid = entity['accountUserId'] as String?;
-      if (accountUid == null || accountUid.isEmpty) return null;
-
-      // 2. Get profile via accountUserId
-      final profile = await _sb.from('profiles')
-          .select().eq('id', accountUid).maybeSingle();
-      return profile as Map<String, dynamic>?;
-    } catch (e) {
-      debugPrint('resolveEntityProfile($entityType, $entityId): $e');
       return null;
     }
   }
@@ -110,14 +59,27 @@ class AdminRepository {
   /// Reconciles all entities that are missing their identity.
   /// Safe: never overwrites existing identities.
   /// Returns a report of actions taken.
+  ///
+  /// NOTE: This is a coarse client-side scan. The VPS exposes per-entity
+  /// CRUD endpoints but no dedicated reconciliation route yet. Each missing
+  /// entity triggers a separate identity-creation call (rate-limited by the
+  /// VPS). A future `POST /v1/admin/reconcile` route could do this in one
+  /// server-side transaction — TODO(VPS).
   Future<List<Map<String, dynamic>>> reconcileEntityIdentities() async {
     final report = <Map<String, dynamic>>[];
     for (final entityType in ['team', 'player', 'league']) {
-      final table = entityType == 'team' ? 'Team'
-          : entityType == 'player' ? 'Player' : 'League';
       try {
-        final rows = await _admin.from(table).select('id, name, logoUrl, accountUserId, isClaimable');
-        for (final row in rows as List) {
+        // Load all rows of this entity type from the VPS.
+        List<Map<String, dynamic>> rows;
+        if (entityType == 'team') {
+          rows = await _vps.getAdminTeams(limit: 500);
+        } else if (entityType == 'player') {
+          // Player list endpoint is a search — empty q returns all.
+          rows = await _vps.searchPlayers('', limit: 500);
+        } else {
+          rows = await _vps.getAdminLeagues(limit: 500);
+        }
+        for (final row in rows) {
           final id = row['id']?.toString() ?? '';
           final name = row['name']?.toString() ?? '';
           final accountUid = row['accountUserId'] as String?;
@@ -125,43 +87,86 @@ class AdminRepository {
           if (id.isEmpty || name.isEmpty) continue;
 
           if (accountUid != null && accountUid.isNotEmpty) {
-            // Already has identity — mark healthy
-            report.add({'entity_type': entityType, 'entity_id': id,
-                'entity_name': name, 'status': 'ALREADY_HAS_IDENTITY', 'action': 'NONE'});
+            report.add({
+              'entity_type': entityType,
+              'entity_id': id,
+              'entity_name': name,
+              'status': 'ALREADY_HAS_IDENTITY',
+              'action': 'NONE',
+            });
             continue;
           }
 
           // Missing identity — create one
-          final slug = name.toLowerCase().replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), '');
-          final handle = '${slug}_${entityType[0]}${id.replaceAll(RegExp(r'[^0-9]'), '').substring(0, 6)}';
+          final slug = name
+              .toLowerCase()
+              .replaceAll(' ', '_')
+              .replaceAll(RegExp(r'[^a-z0-9_]'), '');
+          final handle =
+              '${slug}_${entityType[0]}${id.replaceAll(RegExp(r'[^0-9]'), '').padLeft(6, '0').substring(0, 6.clamp(0, 6))}';
           final uid = await _createEntityIdentity(
-            entityType: entityType, entityId: id, displayName: name,
-            handle: handle, logoUrl: row['logoUrl'] as String?,
+            entityType: entityType,
+            entityId: id,
+            displayName: name,
+            handle: handle,
+            logoUrl: row['logoUrl'] as String?,
           );
 
           if (uid != null) {
-            // Attach identity to entity
-            await _admin.from(table).update({
-              'accountUserId': uid,
-              'isClaimable': true,
-              'identity_status': 'healthy',
-            }).eq('id', id);
+            // Attach identity to entity via PATCH
+            try {
+              if (entityType == 'team') {
+                await _vps.updateAdminTeam(id, {
+                  'accountUserId': uid,
+                  'isClaimable': true,
+                  'identity_status': 'healthy',
+                });
+              } else if (entityType == 'player') {
+                await _vps.updateAdminPlayer(id, {
+                  'accountUserId': uid,
+                  'isClaimable': true,
+                  'identity_status': 'healthy',
+                });
+              } else {
+                await _vps.updateAdminLeague(id, {
+                  'accountUserId': uid,
+                  'isClaimable': true,
+                  'identity_status': 'healthy',
+                });
+              }
+            } catch (e) {
+              debugPrint('reconcile attach $entityType $id: $e');
+            }
 
             // Create fan community for teams
             if (entityType == 'team') {
-              await _createEntityCommunity(entityId: id, entityName: name, slug: handle);
+              await _createEntityCommunity(
+                entityId: id,
+                entityName: name,
+                slug: handle,
+              );
             }
 
-            report.add({'entity_type': entityType, 'entity_id': id,
-                'entity_name': name, 'account_uid': uid,
-                'status': 'RECONCILED', 'action': 'CREATED_IDENTITY'});
+            report.add({
+              'entity_type': entityType,
+              'entity_id': id,
+              'entity_name': name,
+              'account_uid': uid,
+              'status': 'RECONCILED',
+              'action': 'CREATED_IDENTITY',
+            });
           } else {
-            report.add({'entity_type': entityType, 'entity_id': id,
-                'entity_name': name, 'status': 'FAILED', 'action': 'IDENTITY_CREATION_FAILED'});
+            report.add({
+              'entity_type': entityType,
+              'entity_id': id,
+              'entity_name': name,
+              'status': 'FAILED',
+              'action': 'IDENTITY_CREATION_FAILED',
+            });
           }
         }
       } catch (e) {
-        debugPrint('reconcile $table: $e');
+        debugPrint('reconcile $entityType: $e');
       }
     }
     return report;
@@ -173,9 +178,9 @@ class AdminRepository {
     required String slug,
   }) async {
     try {
-      await _admin.from('entity_communities').upsert({
-        'entity_type': 'team',
-        'entity_id': entityId,
+      await _vps.createEntityCommunity({
+        'entityType': 'team',
+        'entityId': entityId,
         'name': '$entityName Fan Community',
         'slug': '${slug}_fans',
         'description': 'Official fan community for $entityName on Playify.',
@@ -185,150 +190,102 @@ class AdminRepository {
     }
   }
 
-  /// Follow or unfollow an entity (Team/Player/League).
-  /// Uses entity_follows table — works even before Fan/Follow tables support UUIDs.
-  Future<void> followEntity({
-    required String entityType,
-    required String entityId,
-    required bool follow,
-    bool isFan = false,
+  // ── Users ──────────────────────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> listUsers({
+    String q = '',
+    int limit = 50,
   }) async {
-    final uid = _sb.auth.currentUser?.id;
-    if (uid == null) throw StateError('Please sign in to follow');
-
-    // Resolve accountUserId for this entity
-    final table = entityType == 'team' ? 'Team' : entityType == 'player' ? 'Player' : 'League';
-    String? accountUid;
     try {
-      final entity = await _sb.from(table).select('accountUserId').eq('id', entityId).maybeSingle();
-      accountUid = entity?['accountUserId'] as String?;
-    } catch (_) {}
-
-    if (follow) {
-      await _admin.from('entity_follows').upsert({
-        'follower_id': uid,
-        'entity_type': entityType,
-        'entity_id': entityId,
-        'account_uid': accountUid,
-        'is_fan': isFan,
-      });
-    } else {
-      await _admin.from('entity_follows').delete()
-          .eq('follower_id', uid)
-          .eq('entity_type', entityType)
-          .eq('entity_id', entityId);
+      return await _vps.getAdminUsers(search: q.isEmpty ? null : q, limit: limit);
+    } catch (e) {
+      debugPrint('listUsers: $e');
+      return [];
     }
   }
 
-  Future<bool> isFollowingEntity({
-    required String entityType,
-    required String entityId,
-    bool checkFan = false,
-  }) async {
-    final uid = _sb.auth.currentUser?.id;
-    if (uid == null) return false;
-    try {
-      var q = _sb.from('entity_follows').select('id')
-          .eq('follower_id', uid).eq('entity_type', entityType).eq('entity_id', entityId);
-      if (checkFan) q = q.eq('is_fan', true);
-      final rows = await q;
-      return (rows as List).isNotEmpty;
-    } catch (_) { return false; }
-  }
-
-  // ── Users ──────────────────────────────────────────────────────────────────
-
-  Future<List<Map<String, dynamic>>> listUsers({String q = '', int limit = 50}) async {
-    try {
-      final query = _sb.from('profiles')
-          .select('id, handle, first_name, last_name, role, is_verified, email, created_at, avatar_url');
-      final rows = q.isEmpty
-          ? await query.order('created_at', ascending: false).limit(limit)
-          : await query.or('handle.ilike.%$q%,first_name.ilike.%$q%,last_name.ilike.%$q%,email.ilike.%$q%').limit(limit);
-      return List<Map<String, dynamic>>.from(rows as List);
-    } catch (e) { debugPrint('listUsers: $e'); return []; }
-  }
-
   Future<void> updateUserRole(String uid, String role) async {
-    await _sb.from('profiles').update({'role': role}).eq('id', uid);
-    try { await _sb.from('User').update({'role': role}).eq('id', uid); } catch (_) {}
+    // VPS handles the cascade update to profiles + User tables.
+    await _vps.setUserRole(uid, role);
   }
 
   Future<void> verifyUser(String uid, bool verified) async {
-    await _sb.from('profiles').update({'is_verified': verified}).eq('id', uid);
-    try { await _sb.from('User').update({'isVerified': verified}).eq('id', uid); } catch (_) {}
+    // TODO(VPS): the `/v1/admin/users/:id/verify` route is not yet on the VPS.
+    // The VpsRepository.verifyUser method issues the PATCH and the VPS will
+    // return 404 until the route is added. Until then, this will throw —
+    // callers should surface a friendly error.
+    await _vps.verifyUser(uid, verified);
   }
 
   Future<void> deleteUser(String uid) async {
     // C8 — Do NOT use the client-side `_sb.auth.admin.deleteUser(...)`.
-    // `auth.admin` requires the Supabase service role key, which must never
-    // ship in the mobile client. Calling it from the client either fails
-    // (anon key lacks admin scope) or, worse, leaks the service role key.
+    // The VPS DELETE /v1/admin/users/:id route handles Supabase Auth user
+    // deletion server-side using the service role key (never shipped to the
+    // client). It also cascade-cleans profiles + User rows.
     //
-    // Instead, invoke the `admin-delete-user` Edge Function. That function
-    // runs server-side with the service role key and deletes the auth.user
-    // row + any related profile / legacy User rows. The Edge Function is
-    // created by the EDGE task agent.
-    try {
-      final res = await _sb.functions.invoke(
-        'admin-delete-user',
-        body: {'uid': uid},
-      );
-      if (res.status != 200) {
-        throw Exception('Failed to delete user: ${res.data}');
-      }
-    } catch (e) {
-      // Surface the error so the admin UI can warn the operator. A
-      // silently-swallowed failure here would leave an orphaned auth user
-      // that the admin thinks was deleted.
-      debugPrint('deleteUser edge function failed for $uid: $e');
-      rethrow;
-    }
+    // The caller in admin_dashboard.dart wraps this in try/catch + SnackBar
+    // so a server-side failure surfaces as a friendly error rather than
+    // crashing the admin UI.
+    await _vps.deleteUser(uid);
   }
 
-  Future<void> createUser({required String email, required String password, required String role, required String handle, required String firstName, required String lastName}) async {
-    final res = await _admin.auth.admin.createUser(AdminUserAttributes(
-      email: email, password: password,
-      userMetadata: {'first_name': firstName, 'last_name': lastName, 'handle': handle, 'role': role},
-      emailConfirm: true,
-    ));
-    final uid = res.user?.id.toString() ?? '';
-    if (uid.isEmpty) return;
-    try {
-      await _sb.from('profiles').upsert({
-        'id': uid, 'handle': handle, 'role': role,
-        'first_name': firstName, 'last_name': lastName, 'email': email,
-      });
-    } catch (e) { debugPrint('createUser profile: $e'); }
+  Future<void> createUser({
+    required String email,
+    required String password,
+    required String role,
+    required String handle,
+    required String firstName,
+    required String lastName,
+  }) async {
+    // TODO(VPS): the `POST /v1/admin/users` route is not yet on the VPS.
+    // VpsRepository.createAdminUser issues the request and returns null on
+    // failure (it doesn't throw — best-effort).
+    final uid = await _vps.createAdminUser({
+      'email': email,
+      'password': password,
+      'role': role,
+      'handle': handle,
+      'firstName': firstName,
+      'lastName': lastName,
+    });
+    if (uid == null) {
+      throw Exception('Failed to create user — the VPS route may not exist yet.');
+    }
   }
 
   // ── Competitions (Leagues) ─────────────────────────────────────────────────
 
   Future<List<Map<String, dynamic>>> listCompetitions() async {
     try {
-      final rows = await _sb.from('League').select().order('name').limit(100);
-      return List<Map<String, dynamic>>.from(rows as List);
+      return await _vps.getAdminLeagues(limit: 100);
     } catch (e) {
       debugPrint('listCompetitions: $e');
-      try {
-        final rows = await _sb.from('Competition').select().order('name').limit(100);
-        return List<Map<String, dynamic>>.from(rows as List);
-      } catch (e2) {
-        debugPrint('listCompetitions Competition: $e2');
-        return [];
-      }
+      return [];
     }
   }
 
-  Future<String> createCompetition({required String name, required String country, String? season, String type = 'league'}) async {
-    final slug = name.toLowerCase().replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), '');
+  Future<String> createCompetition({
+    required String name,
+    required String country,
+    String? season,
+    String type = 'league',
+  }) async {
+    final slug = name
+        .toLowerCase()
+        .replaceAll(' ', '_')
+        .replaceAll(RegExp(r'[^a-z0-9_]'), '');
     final id = 'league-${DateTime.now().millisecondsSinceEpoch}';
     try {
-      await _admin.from('League').insert({
-        'id': id, 'name': name, 'slug': '${slug}_$id',
-        'country': country, 'type': type,
+      await _vps.createAdminLeague({
+        'id': id,
+        'name': name,
+        'slug': '${slug}_$id',
+        'country': country,
+        'type': type,
         if (season != null) 'season': season,
-        'source': 'admin', 'verified': true, 'isActive': true,
+        'source': 'admin',
+        'verified': true,
+        'isActive': true,
         'createdAt': DateTime.now().toIso8601String(),
         'updatedAt': DateTime.now().toIso8601String(),
       });
@@ -336,31 +293,17 @@ class AdminRepository {
       debugPrint('createCompetition: $e');
       rethrow;
     }
-    // Mirror into Competition table when present (taxonomy layer).
-    try {
-      await _sb.from('Competition').upsert({
-        'id': id,
-        'name': name,
-        'slug': '${slug}_$id',
-        'country': country,
-        'season': season,
-        'competition_type': type,
-        'sport_slug': 'football',
-      });
-    } catch (e) {
-      debugPrint('createCompetition Competition mirror: $e');
-    }
     return id;
   }
 
   Future<void> deleteCompetition(String id) async {
-    await _sb.from('League').delete().eq('id', id);
-    try { await _sb.from('Competition').delete().eq('id', id); } catch (_) {}
+    // The VPS should cascade-clean both League + Competition mirror tables.
+    await _vps.deleteAdminLeague(id);
   }
 
-  /// #5.1 — Partial update for an existing Competition row. Mirrors the dual
-  /// write used by [createCompetition]: League (camelCase) + Competition
-  /// (snake_case). Only non-null fields are written.
+  /// Partial update for an existing Competition row. Only non-null fields are
+  /// written. The VPS handles dual-write to League + Competition mirror
+  /// tables (TODO: confirm VPS dual-write behavior).
   Future<void> updateCompetition({
     required String id,
     String? name,
@@ -368,32 +311,22 @@ class AdminRepository {
     String? season,
     String? sportSlug,
   }) async {
-    final leaguePatch = <String, dynamic>{'updatedAt': DateTime.now().toIso8601String()};
-    if (name != null) leaguePatch['name'] = name;
-    if (logoUrl != null) leaguePatch['logoUrl'] = logoUrl;
-    if (season != null) leaguePatch['season'] = season;
-
-    final compPatch = <String, dynamic>{'updated_at': DateTime.now().toIso8601String()};
-    if (name != null) compPatch['name'] = name;
-    if (logoUrl != null) compPatch['logo_url'] = logoUrl;
-    if (season != null) compPatch['season'] = season;
-    if (sportSlug != null) compPatch['sport_slug'] = sportSlug;
-
-    if (leaguePatch.length > 1) {
-      try {
-        await _sb.from('League').update(leaguePatch).eq('id', id);
-      } catch (e) {
-        debugPrint('updateCompetition League($id): $e');
-        rethrow;
-      }
+    final patch = <String, dynamic>{
+      'updatedAt': DateTime.now().toIso8601String(),
+    };
+    if (name != null) patch['name'] = name;
+    if (logoUrl != null) patch['logoUrl'] = logoUrl;
+    if (season != null) patch['season'] = season;
+    if (sportSlug != null) patch['sport_slug'] = sportSlug;
+    if (patch.length <= 1) {
+      debugPrint('updateCompetition: no fields to update for $id');
+      return;
     }
-    if (compPatch.length > 1) {
-      try {
-        await _sb.from('Competition').update(compPatch).eq('id', id);
-      } catch (e) {
-        // Competition table is optional; log and continue.
-        debugPrint('updateCompetition Competition($id): $e');
-      }
+    try {
+      await _vps.updateAdminLeague(id, patch);
+    } catch (e) {
+      debugPrint('updateCompetition($id): $e');
+      rethrow;
     }
   }
 
@@ -401,12 +334,15 @@ class AdminRepository {
 
   Future<List<Map<String, dynamic>>> listTeams({String? leagueId}) async {
     try {
-      final q = _sb.from('Team').select('id, name, slug, city, country, venue, leagueId, verified, logoUrl, primaryColor');
-      final rows = leagueId != null
-          ? await q.eq('leagueId', leagueId).order('name').limit(100)
-          : await q.order('name').limit(100);
-      return List<Map<String, dynamic>>.from(rows as List);
-    } catch (e) { return []; }
+      final rows = await _vps.getAdminTeams(limit: 200);
+      if (leagueId == null) return rows;
+      return rows
+          .where((t) => t['leagueId']?.toString() == leagueId)
+          .toList();
+    } catch (e) {
+      debugPrint('listTeams: $e');
+      return [];
+    }
   }
 
   Future<String> createTeam({
@@ -419,18 +355,25 @@ class AdminRepository {
     String? primaryColor,
     String? logoUrl,
   }) async {
-    final slug = name.toLowerCase().replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), '');
+    final slug = name
+        .toLowerCase()
+        .replaceAll(' ', '_')
+        .replaceAll(RegExp(r'[^a-z0-9_]'), '');
     final id = 'team-${DateTime.now().millisecondsSinceEpoch}';
-    final handle = '${slug}_t${id.replaceAll(RegExp(r'[^0-9]'), '').substring(0, 6)}';
+    final handle =
+        '${slug}_t${id.replaceAll(RegExp(r'[^0-9]'), '').padLeft(6, '0').substring(0, 6.clamp(0, 6))}';
 
-    // Step 1: Create entity identity FIRST
+    // Step 1: Create entity identity FIRST (auth user + profile + User row).
     final accountUid = await _createEntityIdentity(
-      entityType: 'team', entityId: id, displayName: name,
-      handle: handle, logoUrl: logoUrl,
+      entityType: 'team',
+      entityId: id,
+      displayName: name,
+      handle: handle,
+      logoUrl: logoUrl,
     );
 
-    // Step 2: Insert team with accountUserId
-    final base = <String, dynamic>{
+    // Step 2: Insert team with accountUserId via VPS.
+    final body = <String, dynamic>{
       'id': id,
       'name': name,
       'slug': '${slug}_$id',
@@ -440,6 +383,8 @@ class AdminRepository {
       if (venue != null) 'venue': venue,
       if (foundedYear != null) 'foundedYear': foundedYear,
       if (logoUrl != null && logoUrl.isNotEmpty) 'logoUrl': logoUrl,
+      if (primaryColor != null && primaryColor.isNotEmpty)
+        'primaryColor': primaryColor,
       'source': 'admin',
       'verified': true,
       'isActive': true,
@@ -451,15 +396,13 @@ class AdminRepository {
     };
 
     try {
-      await _admin.from('Team').insert({
-        ...base,
-        if (primaryColor != null && primaryColor.isNotEmpty) 'primaryColor': primaryColor,
-      });
+      await _vps.createAdminTeam(body);
     } catch (e) {
-      await _admin.from('Team').insert(base);
+      debugPrint('createTeam: $e');
+      rethrow;
     }
 
-    // Step 3: Create fan community
+    // Step 3: Create fan community (best-effort).
     if (accountUid != null) {
       await _createEntityCommunity(entityId: id, entityName: name, slug: handle);
     }
@@ -468,10 +411,13 @@ class AdminRepository {
   }
 
   Future<void> addTeamToCompetition(String teamId, String leagueId) async {
-    await _admin.from('Team').update({'leagueId': leagueId, 'updatedAt': DateTime.now().toIso8601String()}).eq('id', teamId);
+    await _vps.updateAdminTeam(teamId, {
+      'leagueId': leagueId,
+      'updatedAt': DateTime.now().toIso8601String(),
+    });
   }
 
-  /// #5.1 — Partial update for an existing Team row. Only non-null fields are
+  /// Partial update for an existing Team row. Only non-null fields are
   /// written. Mirrors the column naming used by [createTeam] (camelCase).
   Future<void> updateTeam({
     required String id,
@@ -483,7 +429,9 @@ class AdminRepository {
     String? venue,
     String? leagueId,
   }) async {
-    final patch = <String, dynamic>{'updatedAt': DateTime.now().toIso8601String()};
+    final patch = <String, dynamic>{
+      'updatedAt': DateTime.now().toIso8601String(),
+    };
     if (name != null) patch['name'] = name;
     if (shortName != null) patch['shortName'] = shortName;
     if (logoUrl != null) patch['logoUrl'] = logoUrl;
@@ -498,36 +446,26 @@ class AdminRepository {
       return;
     }
     try {
-      await _admin.from('Team').update(patch).eq('id', id);
+      await _vps.updateAdminTeam(id, patch);
     } catch (e) {
-      // Try without primaryColor (column may be missing if migration not applied)
-      if (primaryColor != null && primaryColor.isNotEmpty) {
-        patch.remove('primaryColor');
-        try {
-          await _admin.from('Team').update(patch).eq('id', id);
-          return;
-        } catch (_) {}
-      }
       debugPrint('updateTeam($id): $e');
       rethrow;
     }
   }
 
   Future<void> deleteTeam(String id) async {
-    await _sb.from('Team').delete().eq('id', id);
+    await _vps.deleteAdminTeam(id);
   }
 
   // ── Players ────────────────────────────────────────────────────────────────
 
   Future<List<Map<String, dynamic>>> listPlayers({String? teamId}) async {
     try {
-      final q = _sb.from('Player').select('id, name, position, nationality, teamId, shirtNumber');
-      final rows = teamId != null
-          ? await q.eq('teamId', teamId).order('name').limit(100)
-          : await q.order('name').limit(100);
-      return List<Map<String, dynamic>>.from(rows as List);
+      final rows = await _vps.searchPlayers('', limit: 200);
+      if (teamId == null) return rows;
+      return rows.where((p) => p['teamId']?.toString() == teamId).toList();
     } catch (e) {
-      debugPrint('listPlayers error: $e');
+      debugPrint('listPlayers: $e');
       return [];
     }
   }
@@ -548,17 +486,26 @@ class AdminRepository {
     final parts = name.trim().split(' ');
     final firstName = parts.first;
     final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
-    final handle = '${firstName.toLowerCase()}${lastName.isNotEmpty ? '_${lastName.toLowerCase()}' : ''}_p${id.replaceAll(RegExp(r'[^0-9]'), '').substring(0, 6)}';
+    final handle =
+        '${firstName.toLowerCase()}${lastName.isNotEmpty ? '_${lastName.toLowerCase()}' : ''}_p${id.replaceAll(RegExp(r'[^0-9]'), '').padLeft(6, '0').substring(0, 6.clamp(0, 6))}';
 
-    // Create identity
+    // Create identity (best-effort — the VPS may not yet expose this route).
     final accountUid = await _createEntityIdentity(
-      entityType: 'player', entityId: id, displayName: name,
-      handle: handle.replaceAll(RegExp(r'[^a-z0-9_]'), ''), logoUrl: photoUrl,
+      entityType: 'player',
+      entityId: id,
+      displayName: name,
+      handle: handle.replaceAll(RegExp(r'[^a-z0-9_]'), ''),
+      logoUrl: photoUrl,
     );
 
-    await _admin.from('Player').insert({
-      'id': id, 'name': name, 'firstName': firstName, 'lastName': lastName,
-      'slug': slug, 'position': position, 'sport_slug': 'football',
+    final body = <String, dynamic>{
+      'id': id,
+      'name': name,
+      'firstName': firstName,
+      'lastName': lastName,
+      'slug': slug,
+      'position': position,
+      'sport_slug': 'football',
       'isClaimable': true,
       'identity_status': accountUid != null ? 'healthy' : 'pending',
       if (accountUid != null) 'accountUserId': accountUid,
@@ -566,22 +513,29 @@ class AdminRepository {
       if (nationality != null) 'nationality': nationality,
       if (shirtNumber != null) 'shirtNumber': shirtNumber,
       if (photoUrl != null) 'photoUrl': photoUrl,
-      if (dateOfBirth != null) 'dateOfBirth': dateOfBirth.toIso8601String(),
+      if (dateOfBirth != null)
+        'dateOfBirth': dateOfBirth.toIso8601String(),
       if (heightCm != null) 'heightCm': heightCm,
       if (weightKg != null) 'weightKg': weightKg,
-      'isActive': true, 'verified': false,
+      'isActive': true,
+      'verified': false,
       'createdAt': DateTime.now().toUtc().toIso8601String(),
       'updatedAt': DateTime.now().toUtc().toIso8601String(),
-    });
+    };
+
+    try {
+      await _vps.createAdminPlayer(body);
+    } catch (e) {
+      debugPrint('createPlayer: $e');
+      rethrow;
+    }
   }
 
   Future<void> deletePlayer(String id) async {
-    await _sb.from('Player').delete().eq('id', id);
+    await _vps.deleteAdminPlayer(id);
   }
 
-  /// #5.1 — Partial update for an existing Player row. Only non-null fields
-  /// are written. Mirrors the column naming used by [createPlayer]
-  /// (camelCase: position, nationality, teamId, shirtNumber, photoUrl, dateOfBirth).
+  /// Partial update for an existing Player row.
   Future<void> updatePlayer({
     required String id,
     String? name,
@@ -592,7 +546,9 @@ class AdminRepository {
     String? teamId,
     int? shirtNumber,
   }) async {
-    final patch = <String, dynamic>{'updatedAt': DateTime.now().toIso8601String()};
+    final patch = <String, dynamic>{
+      'updatedAt': DateTime.now().toIso8601String(),
+    };
     if (name != null) patch['name'] = name;
     if (position != null) patch['position'] = position;
     if (nationality != null) patch['nationality'] = nationality;
@@ -607,7 +563,7 @@ class AdminRepository {
       return;
     }
     try {
-      await _sb.from('Player').update(patch).eq('id', id);
+      await _vps.updateAdminPlayer(id, patch);
     } catch (e) {
       debugPrint('updatePlayer($id): $e');
       rethrow;
@@ -618,33 +574,47 @@ class AdminRepository {
 
   Future<List<Map<String, dynamic>>> listCoaches({String? teamId}) async {
     try {
-      final q = _sb.from('Coach').select('id, name, role, nationality, teamId');
-      final rows = teamId != null
-          ? await q.eq('teamId', teamId).limit(20)
-          : await q.order('name').limit(100);
-      return List<Map<String, dynamic>>.from(rows as List);
-    } catch (e) { return []; }
+      final rows = await _vps.getAdminCoaches(limit: 200);
+      if (teamId == null) return rows;
+      return rows.where((c) => c['teamId']?.toString() == teamId).toList();
+    } catch (e) {
+      debugPrint('listCoaches: $e');
+      return [];
+    }
   }
 
-  Future<void> createCoach({required String name, String role = 'head_coach', String? teamId, String? nationality}) async {
-    final slug = '${name.toLowerCase().replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}';
+  Future<void> createCoach({
+    required String name,
+    String role = 'head_coach',
+    String? teamId,
+    String? nationality,
+  }) async {
+    final slug =
+        '${name.toLowerCase().replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}';
     final id = 'coach-${DateTime.now().millisecondsSinceEpoch}';
-    await _admin.from('Coach').insert({
-      'id': id, 'name': name, 'slug': slug, 'role': role,
+    final body = <String, dynamic>{
+      'id': id,
+      'name': name,
+      'slug': slug,
+      'role': role,
       if (teamId != null) 'teamId': teamId,
       if (nationality != null) 'nationality': nationality,
       'createdAt': DateTime.now().toIso8601String(),
       'updatedAt': DateTime.now().toIso8601String(),
-    });
+    };
+    try {
+      await _vps.createAdminCoach(body);
+    } catch (e) {
+      debugPrint('createCoach: $e');
+      rethrow;
+    }
   }
 
   Future<void> deleteCoach(String id) async {
-    await _sb.from('Coach').delete().eq('id', id);
+    await _vps.deleteAdminCoach(id);
   }
 
-  /// #5.1 — Partial update for an existing Coach row. Only non-null fields
-  /// are written. Mirrors the column naming used by [createCoach]
-  /// (camelCase: role, nationality, teamId, photoUrl).
+  /// Partial update for an existing Coach row.
   Future<void> updateCoach({
     required String id,
     String? name,
@@ -653,7 +623,9 @@ class AdminRepository {
     String? teamId,
     String? photoUrl,
   }) async {
-    final patch = <String, dynamic>{'updatedAt': DateTime.now().toIso8601String()};
+    final patch = <String, dynamic>{
+      'updatedAt': DateTime.now().toIso8601String(),
+    };
     if (name != null) patch['name'] = name;
     if (nationality != null) patch['nationality'] = nationality;
     if (role != null) patch['role'] = role;
@@ -664,7 +636,7 @@ class AdminRepository {
       return;
     }
     try {
-      await _sb.from('Coach').update(patch).eq('id', id);
+      await _vps.updateAdminCoach(id, patch);
     } catch (e) {
       debugPrint('updateCoach($id): $e');
       rethrow;
@@ -675,92 +647,167 @@ class AdminRepository {
 
   Future<List<Map<String, dynamic>>> listMatches({int limit = 50}) async {
     try {
-      final rows = await _sb.from('Match').select().order('kickoffAt', ascending: false).limit(limit);
-      return List<Map<String, dynamic>>.from(rows as List);
-    } catch (e) { return []; }
+      return await _vps.getAdminMatches(limit: limit);
+    } catch (e) {
+      debugPrint('listMatches: $e');
+      return [];
+    }
   }
 
-  Future<String> createMatch({required String homeTeam, required String awayTeam, required String league, required DateTime kickoffAt, String? venue, String? homeBadge, String? awayBadge, String? season}) async {
-    final id = 'match-${DateTime.now().millisecondsSinceEpoch}';
-    await _admin.from('Match').insert({
-      'id': id, 'homeTeam': homeTeam, 'awayTeam': awayTeam, 'league': league,
+  Future<String> createMatch({
+    required String homeTeam,
+    required String awayTeam,
+    required String league,
+    required DateTime kickoffAt,
+    String? venue,
+    String? homeBadge,
+    String? awayBadge,
+    String? season,
+  }) async {
+    final body = <String, dynamic>{
+      'homeTeam': homeTeam,
+      'awayTeam': awayTeam,
+      'league': league,
       'kickoffAt': kickoffAt.toUtc().toIso8601String(),
-      'status': 'upcoming', 'homeScore': 0, 'awayScore': 0,
+      'status': 'upcoming',
       if (venue != null) 'venue': venue,
       if (homeBadge != null) 'homeBadge': homeBadge,
       if (awayBadge != null) 'awayBadge': awayBadge,
       if (season != null) 'season': season,
-      'createdAt': DateTime.now().toIso8601String(),
-    });
-    return id;
+    };
+    final match = await _vps.createAdminMatch(body);
+    return match['id']?.toString() ??
+        'match-${DateTime.now().millisecondsSinceEpoch}';
   }
 
-  Future<void> updateMatch({required String id, int? homeScore, int? awayScore, String? status, int? minute}) async {
-    final patch = <String, dynamic>{'updatedAt': DateTime.now().toIso8601String()};
+  Future<void> updateMatch({
+    required String id,
+    int? homeScore,
+    int? awayScore,
+    String? status,
+    int? minute,
+  }) async {
+    final patch = <String, dynamic>{};
     if (homeScore != null) patch['homeScore'] = homeScore;
     if (awayScore != null) patch['awayScore'] = awayScore;
     if (status != null) patch['status'] = status;
     if (minute != null) patch['minute'] = minute;
-    await _sb.from('Match').update(patch).eq('id', id);
+    if (patch.isEmpty) return;
+    await _vps.updateAdminMatch(id, patch);
   }
 
   Future<void> deleteMatch(String id) async {
-    await _sb.from('Match').delete().eq('id', id);
+    await _vps.deleteAdminMatch(id);
   }
 
   // ── Player match stats ─────────────────────────────────────────────────────
 
-  Future<void> upsertPlayerStat({required String playerId, String? matchId, int goals = 0, int assists = 0, int minutes = 90, int yellowCards = 0, int redCards = 0}) async {
-    final id = 'pms-$playerId-${matchId ?? 'overall'}-${DateTime.now().millisecondsSinceEpoch}';
-    await _admin.from('PlayerMatchStat').upsert({
-      'id': id, 'playerId': playerId, 'matchId': matchId,
-      'goals': goals, 'assists': assists, 'minutesPlayed': minutes,
-      'yellowCards': yellowCards, 'redCards': redCards,
+  Future<void> upsertPlayerStat({
+    required String playerId,
+    String? matchId,
+    int goals = 0,
+    int assists = 0,
+    int minutes = 90,
+    int yellowCards = 0,
+    int redCards = 0,
+  }) async {
+    final body = <String, dynamic>{
+      'playerId': playerId,
+      if (matchId != null) 'matchId': matchId,
+      'goals': goals,
+      'assists': assists,
+      'minutesPlayed': minutes,
+      'yellowCards': yellowCards,
+      'redCards': redCards,
       'createdAt': DateTime.now().toIso8601String(),
-    });
+    };
+    try {
+      await _vps.upsertPlayerStat(playerId, body);
+    } catch (e) {
+      debugPrint('upsertPlayerStat($playerId): $e');
+      rethrow;
+    }
   }
 
   // ── News ───────────────────────────────────────────────────────────────────
 
   Future<List<Map<String, dynamic>>> listNews({int limit = 50}) async {
     try {
-      final rows = await _sb.from('NewsItem').select().order('publishedAt', ascending: false).limit(limit);
-      return List<Map<String, dynamic>>.from(rows as List);
-    } catch (e) { return []; }
+      return await _vps.getAdminNews(limit: limit);
+    } catch (e) {
+      debugPrint('listNews: $e');
+      return [];
+    }
   }
 
-  Future<String> createNews({required String title, required String summary, required String body, required String category, String source = 'Playify', bool isBreaking = false, String? imageUrl, String? pdfUrl}) async {
+  Future<String> createNews({
+    required String title,
+    required String summary,
+    required String body,
+    required String category,
+    String source = 'Playify',
+    bool isBreaking = false,
+    String? imageUrl,
+    String? pdfUrl,
+  }) async {
     final id = 'news-${DateTime.now().millisecondsSinceEpoch}';
-    await _sb.from('NewsItem').insert({
-      'id': id, 'title': title, 'summary': summary, 'body': body,
-      'category': category, 'source': source, 'status': 'published',
+    final payload = <String, dynamic>{
+      'id': id,
+      'title': title,
+      'summary': summary,
+      'body': body,
+      'category': category,
+      'source': source,
+      'status': 'published',
       'is_breaking': isBreaking,
       if (imageUrl != null) 'imageUrl': imageUrl,
       if (pdfUrl != null) 'pdfUrl': pdfUrl,
       'publishedAt': DateTime.now().toIso8601String(),
-      'likeCount': 0, 'commentCount': 0, 'shareCount': 0,
-    });
+      'likeCount': 0,
+      'commentCount': 0,
+      'shareCount': 0,
+    };
+    try {
+      // Try the admin news endpoint first; fall back to the public news
+      // endpoint if the admin route doesn't exist yet (TODO VPS).
+      try {
+        await _vps.createAdminNews(payload);
+      } catch (_) {
+        await _vps.createNewsPost(payload);
+      }
+    } catch (e) {
+      debugPrint('createNews: $e');
+      rethrow;
+    }
     return id;
   }
 
   Future<void> deleteNews(String id) async {
-    await _sb.from('NewsItem').delete().eq('id', id);
+    await _vps.deleteAdminNews(id);
   }
 
   // ── Posts ──────────────────────────────────────────────────────────────────
 
   Future<List<Map<String, dynamic>>> listPosts({int limit = 50}) async {
     try {
-      final rows = await _sb.from('Post').select().order('createdAt', ascending: false).limit(limit);
-      return List<Map<String, dynamic>>.from(rows as List);
-    } catch (e) { return []; }
+      return await _vps.getAdminPosts(limit: limit);
+    } catch (e) {
+      debugPrint('listPosts: $e');
+      return [];
+    }
   }
 
   Future<void> deletePostAdmin(String id) async {
-    try { await _sb.from('PostLike').delete().eq('postId', id); } catch (_) {}
-    try { await _sb.from('Comment').delete().eq('postId', id); } catch (_) {}
-    try { await _sb.from('post_likes').delete().eq('post_id', id); } catch (_) {}
-    await _sb.from('Post').delete().eq('id', id);
+    // The VPS cascade-deletes PostLike / Comment / post_likes server-side.
+    // If the admin route isn't deployed yet, fall back to the public
+    // /v1/social/posts/:id DELETE route (which still deletes the Post row
+    // but may leave orphaned likes/comments — TODO VPS: deploy admin route).
+    try {
+      await _vps.deleteAdminPost(id);
+    } catch (e) {
+      debugPrint('deletePostAdmin fallback to /v1/social/posts: $e');
+      await _vps.deletePost(id);
+    }
   }
 
   // ── Bulk Upload ──────────────────────────────────────────────────────────
@@ -776,28 +823,45 @@ class AdminRepository {
       final name = (r['name'] as String?)?.trim() ?? '';
       final country = (r['country'] as String?)?.trim() ?? '';
       if (name.isEmpty || country.isEmpty) continue;
-      final slug = name.toLowerCase().replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), '');
+      final slug = name
+          .toLowerCase()
+          .replaceAll(' ', '_')
+          .replaceAll(RegExp(r'[^a-z0-9_]'), '');
       final id = 'team-${DateTime.now().millisecondsSinceEpoch}-${batch.length}';
       batch.add({
-        'id': id, 'name': name, 'slug': '${slug}_$id',
+        'id': id,
+        'name': name,
+        'slug': '${slug}_$id',
         'country': country,
         if (r['city'] != null) 'city': (r['city'] as String).trim(),
         if (r['leagueId'] != null) 'leagueId': (r['leagueId'] as String).trim(),
         if (r['venue'] != null) 'venue': (r['venue'] as String).trim(),
-        if (r['foundedYear'] != null) 'foundedYear': int.tryParse(r['foundedYear'].toString()) ?? 0,
-        'source': 'admin', 'verified': true, 'isActive': true,
-        'createdAt': now, 'updatedAt': now,
+        if (r['foundedYear'] != null)
+          'foundedYear': int.tryParse(r['foundedYear'].toString()) ?? 0,
+        'source': 'admin',
+        'verified': true,
+        'isActive': true,
+        'createdAt': now,
+        'updatedAt': now,
       });
     }
     if (batch.isEmpty) return 0;
-    // Insert in chunks of 50 (PostgREST default limit)
-    int inserted = 0;
-    for (var i = 0; i < batch.length; i += 50) {
-      final chunk = batch.sublist(i, i + 50 > batch.length ? batch.length : i + 50);
-      await _admin.from('Team').insert(chunk);
-      inserted += chunk.length;
+    try {
+      return await _vps.bulkCreateTeams(batch);
+    } catch (e) {
+      debugPrint('bulkCreateTeams: $e — falling back to per-row insert');
+      // Fallback: insert one at a time.
+      int inserted = 0;
+      for (final row in batch) {
+        try {
+          await _vps.createAdminTeam(row);
+          inserted++;
+        } catch (e2) {
+          debugPrint('bulkCreateTeams per-row $inserted: $e2');
+        }
+      }
+      return inserted;
     }
-    return inserted;
   }
 
   /// Bulk-create players from a list of row maps.
@@ -811,29 +875,49 @@ class AdminRepository {
       final name = (r['name'] as String?)?.trim() ?? '';
       final position = (r['position'] as String?)?.trim() ?? '';
       if (name.isEmpty || position.isEmpty) continue;
-      final slug = '${name.toLowerCase().replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}';
-      final id = 'player-${DateTime.now().millisecondsSinceEpoch}-${batch.length}';
+      final slug =
+          '${name.toLowerCase().replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}';
+      final id =
+          'player-${DateTime.now().millisecondsSinceEpoch}-${batch.length}';
       final parts = name.trim().split(' ');
       final firstName = parts.first;
       final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
       batch.add({
-        'id': id, 'name': name, 'firstName': firstName, 'lastName': lastName,
-        'slug': slug, 'position': position, 'sport_slug': 'football',
+        'id': id,
+        'name': name,
+        'firstName': firstName,
+        'lastName': lastName,
+        'slug': slug,
+        'position': position,
+        'sport_slug': 'football',
         if (r['teamId'] != null && (r['teamId'] as String).trim().isNotEmpty)
           'teamId': (r['teamId'] as String).trim(),
-        if (r['nationality'] != null) 'nationality': (r['nationality'] as String).trim(),
-        if (r['shirtNumber'] != null) 'shirtNumber': int.tryParse(r['shirtNumber'].toString()) ?? 0,
-        'isActive': true, 'verified': false, 'createdAt': now, 'updatedAt': now,
+        if (r['nationality'] != null)
+          'nationality': (r['nationality'] as String).trim(),
+        if (r['shirtNumber'] != null)
+          'shirtNumber': int.tryParse(r['shirtNumber'].toString()) ?? 0,
+        'isActive': true,
+        'verified': false,
+        'createdAt': now,
+        'updatedAt': now,
       });
     }
     if (batch.isEmpty) return 0;
-    int inserted = 0;
-    for (var i = 0; i < batch.length; i += 50) {
-      final chunk = batch.sublist(i, i + 50 > batch.length ? batch.length : i + 50);
-      await _admin.from('Player').insert(chunk);
-      inserted += chunk.length;
+    try {
+      return await _vps.bulkCreatePlayers(batch);
+    } catch (e) {
+      debugPrint('bulkCreatePlayers: $e — falling back to per-row insert');
+      int inserted = 0;
+      for (final row in batch) {
+        try {
+          await _vps.createAdminPlayer(row);
+          inserted++;
+        } catch (e2) {
+          debugPrint('bulkCreatePlayers per-row $inserted: $e2');
+        }
+      }
+      return inserted;
     }
-    return inserted;
   }
 
   /// Bulk-create fixtures from a list of row maps.
@@ -857,20 +941,21 @@ class AdminRepository {
       final away = (r['awayTeam'] as String?)?.trim() ?? '';
       final league = (r['league'] as String?)?.trim() ?? '';
       if (home.isEmpty || away.isEmpty || league.isEmpty) continue;
-      // Parse kickoff
       DateTime? kickoff;
       final rawDate = (r['kickoffAt'] as String?)?.trim() ?? '';
       if (rawDate.isNotEmpty) {
         kickoff = DateTime.tryParse(rawDate);
-        // Try 'yyyy-MM-dd HH:mm' format if ISO parsing fails
         kickoff ??= DateTime.tryParse(rawDate.replaceAll(' ', 'T'));
       }
       kickoff ??= DateTime.now().add(Duration(days: batch.length + 1));
-      final id = 'match-${DateTime.now().millisecondsSinceEpoch}-${batch.length}';
       batch.add({
-        'id': id, 'homeTeam': home, 'awayTeam': away, 'league': league,
+        'homeTeam': home,
+        'awayTeam': away,
+        'league': league,
         'kickoffAt': kickoff.toUtc().toIso8601String(),
-        'status': 'upcoming', 'homeScore': 0, 'awayScore': 0,
+        'status': 'upcoming',
+        'homeScore': 0,
+        'awayScore': 0,
         if (r['venue'] != null) 'venue': (r['venue'] as String).trim(),
         'homeBadge': teamBadges[home.toLowerCase()] ?? '',
         'awayBadge': teamBadges[away.toLowerCase()] ?? '',
@@ -879,54 +964,63 @@ class AdminRepository {
       });
     }
     if (batch.isEmpty) return 0;
-    int inserted = 0;
-    for (var i = 0; i < batch.length; i += 50) {
-      final chunk = batch.sublist(i, i + 50 > batch.length ? batch.length : i + 50);
-      await _admin.from('Match').insert(chunk);
-      inserted += chunk.length;
-    }
-    return inserted;
-  }
-
-  // ── Stats counts ───────────────────────────────────────────────────────────
-
-  Future<int> _safeCount(String table, {String? role}) async {
     try {
-      var q = _sb.from(table).select('id');
-      if (role != null) {
-        final rows = await q.ilike('role', role);
-        return (rows as List).length;
-      }
-      final rows = await q;
-      return (rows as List).length;
+      return await _vps.bulkCreateFixtures(batch);
     } catch (e) {
-      debugPrint('count $table: $e');
-      return 0;
+      debugPrint('bulkCreateFixtures: $e — falling back to per-row insert');
+      int inserted = 0;
+      for (final row in batch) {
+        try {
+          await _vps.createAdminMatch(row);
+          inserted++;
+        } catch (e2) {
+          debugPrint('bulkCreateFixtures per-row $inserted: $e2');
+        }
+      }
+      return inserted;
     }
   }
+
+  // ── Stats ───────────────────────────────────────────────────────────────────
 
   Future<Map<String, int>> platformStats() async {
-    // Count each table independently so one missing table does not zero the rest.
-    final usersProfiles = await _safeCount('profiles');
-    final usersLegacy = await _safeCount('User');
-    final posts = await _safeCount('Post');
-    final matches = await _safeCount('Match');
-    final teams = await _safeCount('Team');
-    final news = await _safeCount('NewsItem');
-    final players = await _safeCount('Player');
-    final coaches = await _safeCount('Coach');
-    final competitions = await _safeCount('League');
-    // Prefer profiles count when present (matches Users tab).
-    final users = usersProfiles > 0 ? usersProfiles : usersLegacy;
-    return {
-      'users': users,
-      'posts': posts,
-      'matches': matches,
-      'teams': teams,
-      'news': news,
-      'players': players,
-      'coaches': coaches,
-      'competitions': competitions,
-    };
+    try {
+      // getAdminStats returns {users, posts, players, news, matches} as ints.
+      final stats = await _vps.getAdminStats();
+      return {
+        'users':    (stats['users']    as num?)?.toInt() ?? 0,
+        'posts':    (stats['posts']    as num?)?.toInt() ?? 0,
+        'matches':  (stats['matches']  as num?)?.toInt() ?? 0,
+        'players':  (stats['players']  as num?)?.toInt() ?? 0,
+        'news':     (stats['news']     as num?)?.toInt() ?? 0,
+        // The VPS /stats route doesn't return teams/coaches/competitions
+        // counts yet — TODO(VPS): extend the stats route. For now we
+        // best-effort count them via the list endpoints.
+        'teams':         await _safeListCount(_vps.getAdminTeams(limit: 500)),
+        'coaches':       await _safeListCount(_vps.getAdminCoaches(limit: 500)),
+        'competitions':  await _safeListCount(_vps.getAdminLeagues(limit: 500)),
+      };
+    } catch (e) {
+      debugPrint('platformStats: $e');
+      return {
+        'users': 0,
+        'posts': 0,
+        'matches': 0,
+        'teams': 0,
+        'news': 0,
+        'players': 0,
+        'coaches': 0,
+        'competitions': 0,
+      };
+    }
+  }
+
+  Future<int> _safeListCount(Future<List<Map<String, dynamic>>> future) async {
+    try {
+      final list = await future;
+      return list.length;
+    } catch (_) {
+      return 0;
+    }
   }
 }

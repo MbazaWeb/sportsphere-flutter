@@ -1,9 +1,8 @@
 import '../../../../core/data/vps_supabase_compat.dart';
-import '../../../core/data/vps_repository.dart';
+import '../../../../core/data/vps_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
@@ -255,11 +254,7 @@ class _PlayerProfileViewState extends State<PlayerProfileView>
                 if (uid == null) { setState(() => _isFan = !next); return; }
                 try {
                   final entityId = widget.profile.handle.replaceAll('@', '');
-                  if (next) {
-                    await VpsRepository().becomeFan('player', entityId);
-                  } else {
-                    await VpsRepository().unfan('player', entityId);
-                  }
+                  await const VpsRepository().toggleFan(entityId);
                   if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: Text(next
                         ? 'You are now a ${widget.profile.name} fan!'
@@ -855,7 +850,7 @@ class _SportlightsTabState extends State<_SportlightsTab> {
 
     if (p.accountUserId != null && p.accountUserId!.isNotEmpty) {
       try {
-        final posts = await VpsRepository().getUserPosts(p.accountUserId!, limit: 40);
+        final posts = await const VpsRepository().getUserPosts(p.accountUserId!, limit: 40);
         for (final m in posts) {
           final id = m['id']?.toString() ?? '';
           if (id.isEmpty || seen.contains(id)) continue;
@@ -865,7 +860,7 @@ class _SportlightsTabState extends State<_SportlightsTab> {
     }
     if (p.entityId != null && p.entityId!.isNotEmpty) {
       try {
-        final res = await VpsRepository().get<Map<String, dynamic>>(
+        final res = await const VpsRepository().get<Map<String, dynamic>>(
           '/v1/social/posts/by-tag',
           query: {'playerTag': p.entityId!, 'limit': '40'},
         );

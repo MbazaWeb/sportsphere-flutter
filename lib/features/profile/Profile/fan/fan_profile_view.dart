@@ -1,11 +1,10 @@
 import '../../../../core/data/vps_supabase_compat.dart';
-import '../../../core/data/vps_repository.dart';
+import '../../../../core/data/vps_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/branding.dart';
 import '../../../../core/data/social_graph.dart';
@@ -1137,8 +1136,8 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
       if (widget.profile.isOwnProfile && authId != null) ids.add(authId);
 
       try {
-        final profile = await VpsRepository().getProfile(handle);
-        final id = profile['id']?.toString();
+        final profile = await const VpsRepository().getProfile(handle);
+        final id = profile?['id']?.toString();
         if (id != null && id.isNotEmpty) ids.add(id);
       } catch (_) {}
 
@@ -1150,7 +1149,7 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
       List<Map<String,dynamic>> rows = [];
       for (final id in ids) {
         try {
-          final posts = await VpsRepository().getUserPosts(id, limit: 40);
+          final posts = await const VpsRepository().getUserPosts(id, limit: 40);
           rows.addAll(posts);
         } catch (_) {}
       }
@@ -1182,8 +1181,7 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
 
         if (postType == 'poll') {
           try {
-            try {
-            final res = await VpsRepository().get<Map<String,dynamic>>(
+            final res = await const VpsRepository().get<Map<String,dynamic>>(
                 '/v1/social/polls/${r['id']}');
             final poll = res.data?['poll'] as Map?;
             if (poll != null) {
@@ -1195,7 +1193,7 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
               }).toList();
               pollVotes = poll['totalVotes'] as int?;
               if (pollId != null) {
-                final vRes = await VpsRepository().get<Map<String,dynamic>>(
+                final vRes = await const VpsRepository().get<Map<String,dynamic>>(
                     '/v1/social/polls/$pollId/my-vote');
                 myVote = vRes.data?['voted'] as int?;
                 final opts2 = poll['options'] as List? ?? [];

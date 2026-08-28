@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../core/data/vps_repository.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../core/theme/colors.dart';
@@ -1415,7 +1414,7 @@ class _ProfilePollWidgetState extends State<_ProfilePollWidget> {
                 final pollId = widget.post.pollId;
                 if (pollId == null) { setState(() => _voted = i); return; }
                 try {
-                  await VpsRepository().post<void>(
+                  await const VpsRepository().post<void>(
                     '/v1/social/polls/$pollId/vote',
                     data: {'optionIndex': i},
                   );

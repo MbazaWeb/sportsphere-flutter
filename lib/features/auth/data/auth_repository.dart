@@ -7,6 +7,27 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/data/vps_repository.dart';
 import '../domain/auth_state.dart';
 
+/// Lightweight session stub exposing the fields the UI reads
+/// synchronously (`accessToken` + `user.id`). Backed by an in-memory
+/// cache populated by [AuthRepository._saveSession] /
+/// [AuthRepository.hydrateProfile]. Returns `null` when no session
+/// has been observed yet (e.g. fresh install, before login completes).
+class _AuthSessionStub {
+  final String? accessToken;
+  final String? userId;
+  const _AuthSessionStub({this.accessToken, this.userId});
+
+  /// Mirrors `supabase.auth.currentSession.user.id` — used by callers
+  /// that need the authenticated user's id without awaiting prefs.
+  _AuthUserStub? get user =>
+      userId == null ? null : _AuthUserStub(id: userId);
+}
+
+class _AuthUserStub {
+  final String? id;
+  const _AuthUserStub({this.id});
+}
+
 class AuthRepository {
   const AuthRepository();
 
@@ -15,21 +36,60 @@ class AuthRepository {
   static const _kToken        = 'auth_access_token';
   static const _kRefresh      = 'auth_refresh_token';
   static const _kUserJson     = 'auth_user_json';
+  // Also persisted to SharedPreferences so other repositories (e.g.
+  // SocialRepository._getUid) can resolve the current uid without
+  // decoding the JWT.
+  static const _kUserId       = 'auth_user_id';
+
+  // ── In-memory cache ───────────────────────────────────────────────────────
+  // Populated by [_saveSession] / [hydrateProfile] / [getToken] so the UI
+  // layer can read the access token + user id synchronously.
+  static String? _cachedToken;
+  static String? _cachedUserId;
+
+  /// Synchronous session stub — used by `auth_controller.dart` to populate
+  /// `AuthState.token` and `AuthState.user.id` without awaiting prefs.
+  /// Returns `null` until a session has been observed (via [login],
+  /// [register], [refreshToken], or [hydrateProfile]).
+  _AuthSessionStub? get currentSession {
+    if (_cachedToken == null && _cachedUserId == null) return null;
+    return _AuthSessionStub(accessToken: _cachedToken, userId: _cachedUserId);
+  }
 
   // ── Session ────────────────────────────────────────────────────────────────
   Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_kToken);
+    if (_cachedToken != null) return _cachedToken;
+    await _loadCachedSession();
+    return _cachedToken;
   }
 
   Future<bool> get hasSession async => (await getToken()) != null;
+
+  /// Populate the in-memory cache from SharedPreferences (lazy, idempotent).
+  Future<void> _loadCachedSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _cachedToken ??= prefs.getString(_kToken);
+      _cachedUserId ??= prefs.getString(_kUserId);
+    } catch (e) {
+      debugPrint('[AUTH] _loadCachedSession: $e');
+    }
+  }
 
   Future<void> _saveSession(Map<String, dynamic> data) async {
     final prefs = await SharedPreferences.getInstance();
     final token   = data['token']        as String?;
     final refresh = data['refreshToken'] as String?;
-    if (token   != null) await prefs.setString(_kToken,   token);
+    final userId  = _extractUserId(data);
+    if (token   != null) {
+      await prefs.setString(_kToken, token);
+      _cachedToken = token;
+    }
     if (refresh != null) await prefs.setString(_kRefresh, refresh);
+    if (userId  != null) {
+      await prefs.setString(_kUserId, userId);
+      _cachedUserId = userId;
+    }
   }
 
   Future<void> _clearSession() async {
@@ -37,6 +97,18 @@ class AuthRepository {
     await prefs.remove(_kToken);
     await prefs.remove(_kRefresh);
     await prefs.remove(_kUserJson);
+    await prefs.remove(_kUserId);
+    _cachedToken = null;
+    _cachedUserId = null;
+  }
+
+  /// Extract the user id from a VPS auth response.
+  /// `login`/`register`/`refreshToken` wrap the user inside `data['user']`,
+  /// while `getMe` returns the user map directly — handle both shapes.
+  String? _extractUserId(Map<String, dynamic> data) {
+    final u = (data['user'] as Map<String, dynamic>?) ?? data;
+    final id = u['id'] ?? u['userId'] ?? u['user_id'];
+    return id?.toString();
   }
 
   // ── Login ──────────────────────────────────────────────────────────────────
@@ -96,6 +168,18 @@ class AuthRepository {
     if (token == null) return null;
     try {
       final data = await _vps.getMe();
+      // getMe returns the user map directly — cache the user id so
+      // `currentSession?.user.id` resolves without another trip.
+      final userId = _extractUserId(data);
+      if (userId != null) {
+        _cachedUserId = userId;
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_kUserId, userId);
+        } catch (e) {
+          debugPrint('[AUTH] hydrateProfile: persist userId failed: $e');
+        }
+      }
       return _profileFrom(data);
     } catch (e) {
       debugPrint('[AUTH] hydrateProfile failed: $e');

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/admin/app_admin.dart';
 import '../../../core/data/social_repository.dart';
+import '../../../core/data/vps_repository.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/country_picker_field.dart';
 import '../../../core/widgets/team_color_picker.dart';
@@ -18,7 +18,20 @@ import 'bulk_upload_screen.dart';
 import '../../../core/utils/friendly_error.dart';
 import '../profile/presentation/edit_profile_sheet.dart' show showEntityEditSheet, EntityType;
 
-final _repo = AdminRepository();
+/// Fetches the current admin's user id via the VPS /v1/auth/me endpoint.
+/// Replaces every `Supabase.instance.client.auth.currentUser?.id` call
+/// site — the admin's JWT is attached by ApiClient and the VPS resolves
+/// the uid server-side.
+Future<String?> _currentAdminUid() async {
+  try {
+    final me = await const VpsRepository().getMe();
+    return me['id']?.toString();
+  } catch (_) {
+    return null;
+  }
+}
+
+final _repo = const AdminRepository();
 
 class AdminDashboard extends ConsumerStatefulWidget {
   const AdminDashboard({super.key});
@@ -1428,25 +1441,18 @@ Future<void> _showCreateMatch(BuildContext ctx) async {
               // posts (match/poll/prediction). See:
               //   supabase/migrations/20260824010000_fix_all_remaining_db_issues.sql
               if (postToFeed) {
-                final uid = Supabase.instance.client.auth.currentUser?.id;
+                final uid = await _currentAdminUid();
                 if (uid != null) {
                   try {
-                    await Supabase.instance.client.from('Post').insert({
-                      'id': 'post-match-$matchId',
-                      'userId': uid,
-                      'postType': 'match',
-                      'content': '$home vs $away — ${leagueCtrl.text.trim()}',
-                      'matchId': matchId, // new column from migration 20260824010000
-                      'mediaUrls': const [],
-                      'hashtags': const [],
-                      'sportTag': 'football',
-                      'isBreaking': false,
-                      'likeCount': 0,
-                      'commentCount': 0,
-                      'shareCount': 0,
-                      'createdAt': DateTime.now().toIso8601String(),
-                      'updatedAt': DateTime.now().toIso8601String(),
-                    });
+                    // VPS POST /v1/social/posts creates the Post row
+                    // server-side with the caller's uid (from JWT). The
+                    // matchId column links the Post to the new Match row.
+                    await SocialRepository().createPost(
+                      content: '$home vs $away — ${leagueCtrl.text.trim()}',
+                      postType: 'match',
+                      matchId: matchId,
+                      sportTag: 'football',
+                    );
                   } catch (e) {
                     debugPrint('createMatch postToFeed: $e');
                   }
@@ -1924,37 +1930,19 @@ Future<void> _showCreatePost(BuildContext ctx) async {
                             return;
                           }
                           try {
-                            final uid = Supabase.instance.client.auth.currentUser?.id;
+                            final uid = await _currentAdminUid();
                             if (uid == null) throw StateError('Sign in required');
-                            final ts = DateTime.now().millisecondsSinceEpoch;
-                            final postId = 'post-poll-$ts';
                             // #8.3 — Post + Poll row. `matchId` is the new
                             // linking column added by migration 20260824010000.
-                            await Supabase.instance.client.from('Post').insert({
-                              'id': postId,
-                              'userId': uid,
-                              'postType': 'poll',
-                              'content': q,
-                              'mediaUrls': const [],
-                              'hashtags': const [],
-                              'sportTag': 'football',
-                              if (pollMatchId != null) 'matchId': pollMatchId,
-                              'likeCount': 0,
-                              'commentCount': 0,
-                              'shareCount': 0,
-                              'createdAt': DateTime.now().toIso8601String(),
-                              'updatedAt': DateTime.now().toIso8601String(),
-                            });
-                            final pollId = 'poll-$ts';
-                            await Supabase.instance.client.from('Poll').insert({
-                              'id': pollId,
-                              'postId': postId,
-                              'question': q,
-                              'options': opts,
-                              'totalVotes': 0,
-                              if (pollMatchId != null) 'matchId': pollMatchId,
-                              'createdAt': DateTime.now().toIso8601String(),
-                            });
+                            // The VPS POST /v1/social/polls route creates the
+                            // Post + Poll rows atomically.
+                            await SocialRepository().createPollWithPost(
+                              question:    q,
+                              options:     opts,
+                              postContent: q,
+                              sportTag:    'football',
+                              matchId:     pollMatchId,
+                            );
                             if (c.mounted) Navigator.pop(c);
                           } catch (e) {
                             if (c.mounted) {
@@ -1973,7 +1961,7 @@ Future<void> _showCreatePost(BuildContext ctx) async {
                             return;
                           }
                           try {
-                            final uid = Supabase.instance.client.auth.currentUser?.id;
+                            final uid = await _currentAdminUid();
                             if (uid == null) throw StateError('Sign in required');
                             // Resolve team names from selected match (if any)
                             String homeTeam = '';
@@ -1992,36 +1980,28 @@ Future<void> _showCreatePost(BuildContext ctx) async {
                             final content = note.isNotEmpty
                                 ? note
                                 : 'Prediction: $homeTeam $ph-$pa $awayTeam ($predWinner)';
-                            final ts = DateTime.now().millisecondsSinceEpoch;
-                            final postId = 'post-pred-$ts';
                             // #8.3 — Post + Prediction row.
-                            await Supabase.instance.client.from('Post').insert({
-                              'id': postId,
-                              'userId': uid,
-                              'postType': 'prediction',
-                              'content': content,
-                              'mediaUrls': const [],
-                              'hashtags': const [],
-                              'sportTag': 'football',
-                              if (predMatchId != null) 'matchId': predMatchId,
-                              'likeCount': 0,
-                              'commentCount': 0,
-                              'shareCount': 0,
-                              'createdAt': DateTime.now().toIso8601String(),
-                              'updatedAt': DateTime.now().toIso8601String(),
-                            });
-                            await Supabase.instance.client.from('Prediction').insert({
-                              'id': 'pred-$ts',
-                              'userId': uid,
-                              'matchId': predMatchId,
-                              'postId': postId,
-                              'homeTeam': homeTeam,
-                              'awayTeam': awayTeam,
-                              'predictedHome': ph,
-                              'predictedAway': pa,
-                              'confidence': predWinner,
-                              'createdAt': DateTime.now().toIso8601String(),
-                            });
+                            // VPS POST /v1/social/posts creates the Post row;
+                            // VPS POST /v1/social/predictions creates the
+                            // Prediction row linked via postId + matchId.
+                            final postId = await SocialRepository().createPost(
+                              content:  content,
+                              postType: 'prediction',
+                              sportTag: 'football',
+                              matchId:  predMatchId,
+                            );
+                            await SocialRepository().createPrediction(
+                              homeTeam:      homeTeam,
+                              awayTeam:      awayTeam,
+                              predictedHome: ph,
+                              predictedAway: pa,
+                              outcome:       predWinner,
+                              confidence:    predWinner,
+                              matchId:       predMatchId,
+                            );
+                            // postId is kept for future use if the VPS
+                            // predictions route accepts a postId link.
+                            debugPrint('prediction post id: $postId');
                             if (c.mounted) Navigator.pop(c);
                           } catch (e) {
                             if (c.mounted) {
@@ -2116,25 +2096,17 @@ Future<void> _showPostMatchToFeed(BuildContext ctx, Map<String, dynamic> m) asyn
                       : () async {
                           setL(() => confirmed = true);
                           try {
-                            final uid = Supabase.instance.client.auth.currentUser?.id;
+                            final uid = await _currentAdminUid();
                             if (uid == null) throw StateError('Sign in required');
                             final matchId = m['id']?.toString() ?? '';
-                            await Supabase.instance.client.from('Post').insert({
-                              'id': 'post-match-$matchId',
-                              'userId': uid,
-                              'postType': 'match',
-                              'content': bodyCtrl.text.trim(),
-                              'matchId': matchId,
-                              'mediaUrls': const [],
-                              'hashtags': const [],
-                              'sportTag': 'football',
-                              'isBreaking': false,
-                              'likeCount': 0,
-                              'commentCount': 0,
-                              'shareCount': 0,
-                              'createdAt': DateTime.now().toIso8601String(),
-                              'updatedAt': DateTime.now().toIso8601String(),
-                            });
+                            // VPS POST /v1/social/posts — server-side inserts
+                            // the Post row using the caller's uid (from JWT).
+                            await SocialRepository().createPost(
+                              content:  bodyCtrl.text.trim(),
+                              postType: 'match',
+                              matchId:  matchId,
+                              sportTag: 'football',
+                            );
                             if (c.mounted) {
                               ScaffoldMessenger.of(c).showSnackBar(const SnackBar(
                                   content: Text('Posted to feed')));
@@ -2252,36 +2224,19 @@ Future<void> _showCreatePollForMatch(
                           }
                           setL(() => posting = true);
                           try {
-                            final uid =
-                                Supabase.instance.client.auth.currentUser?.id;
+                            final uid = await _currentAdminUid();
                             if (uid == null) throw StateError('Sign in required');
                             final matchId = m['id']?.toString();
-                            final ts = DateTime.now().millisecondsSinceEpoch;
-                            final postId = 'post-poll-match-$ts';
-                            await Supabase.instance.client.from('Post').insert({
-                              'id': postId,
-                              'userId': uid,
-                              'postType': 'poll',
-                              'content': q,
-                              'mediaUrls': const [],
-                              'hashtags': const [],
-                              'sportTag': 'football',
-                              if (matchId != null) 'matchId': matchId,
-                              'likeCount': 0,
-                              'commentCount': 0,
-                              'shareCount': 0,
-                              'createdAt': DateTime.now().toIso8601String(),
-                              'updatedAt': DateTime.now().toIso8601String(),
-                            });
-                            await Supabase.instance.client.from('Poll').insert({
-                              'id': 'poll-match-$ts',
-                              'postId': postId,
-                              'question': q,
-                              'options': opts,
-                              'totalVotes': 0,
-                              if (matchId != null) 'matchId': matchId,
-                              'createdAt': DateTime.now().toIso8601String(),
-                            });
+                            // VPS POST /v1/social/polls creates the Post +
+                            // Poll rows atomically (server-side) and links
+                            // them to the match via the matchId column.
+                            await SocialRepository().createPollWithPost(
+                              question:    q,
+                              options:     opts,
+                              postContent: q,
+                              sportTag:    'football',
+                              matchId:     matchId,
+                            );
                             if (c.mounted) Navigator.pop(c);
                           } catch (e) {
                             if (c.mounted) {
@@ -2385,8 +2340,7 @@ Future<void> _showCreatePredictionForMatch(
                       : () async {
                           setL(() => posting = true);
                           try {
-                            final uid =
-                                Supabase.instance.client.auth.currentUser?.id;
+                            final uid = await _currentAdminUid();
                             if (uid == null) throw StateError('Sign in required');
                             final matchId = m['id']?.toString();
                             final homeTeam = (m['homeTeam'] ?? '').toString();
@@ -2395,37 +2349,25 @@ Future<void> _showCreatePredictionForMatch(
                             final pa = int.tryParse(awayCtrl.text.trim()) ?? 0;
                             final content =
                                 'Prediction: $homeTeam $ph-$pa $awayTeam ($winner)';
-                            final ts = DateTime.now().millisecondsSinceEpoch;
-                            final postId = 'post-pred-match-$ts';
-                            await Supabase.instance.client.from('Post').insert({
-                              'id': postId,
-                              'userId': uid,
-                              'postType': 'prediction',
-                              'content': content,
-                              'mediaUrls': const [],
-                              'hashtags': const [],
-                              'sportTag': 'football',
-                              if (matchId != null) 'matchId': matchId,
-                              'likeCount': 0,
-                              'commentCount': 0,
-                              'shareCount': 0,
-                              'createdAt': DateTime.now().toIso8601String(),
-                              'updatedAt': DateTime.now().toIso8601String(),
-                            });
-                            await Supabase.instance.client
-                                .from('Prediction')
-                                .insert({
-                              'id': 'pred-match-$ts',
-                              'userId': uid,
-                              'matchId': matchId,
-                              'postId': postId,
-                              'homeTeam': homeTeam,
-                              'awayTeam': awayTeam,
-                              'predictedHome': ph,
-                              'predictedAway': pa,
-                              'confidence': winner,
-                              'createdAt': DateTime.now().toIso8601String(),
-                            });
+                            // VPS POST /v1/social/posts creates the Post row
+                            // (postType=prediction) linked to the match via
+                            // matchId; VPS POST /v1/social/predictions creates
+                            // the Prediction row.
+                            await SocialRepository().createPost(
+                              content:  content,
+                              postType: 'prediction',
+                              sportTag: 'football',
+                              matchId:  matchId,
+                            );
+                            await SocialRepository().createPrediction(
+                              homeTeam:      homeTeam,
+                              awayTeam:      awayTeam,
+                              predictedHome: ph,
+                              predictedAway: pa,
+                              outcome:       winner,
+                              confidence:    winner,
+                              matchId:       matchId,
+                            );
                             if (c.mounted) Navigator.pop(c);
                           } catch (e) {
                             if (c.mounted) {
@@ -2596,29 +2538,45 @@ class _ProQueueTabState extends State<_ProQueueTab> {
   Future<void> _load() async {
     if (!mounted) return;
     setState(() => _loading = true);
-    final sb = Supabase.instance.client;
+    final vps = const VpsRepository();
     final results = <Map<String, dynamic>>[];
 
-    // RoleRequest table (PRO requests from Become Pro sheet)
+    // RoleRequest table (PRO requests from Become Pro sheet).
+    // TODO(VPS): the GET /v1/admin/role-requests route is not yet on the VPS.
+    // Until it lands, this call will 404 — caught silently and the queue
+    // will only show ClaimRequest rows.
     try {
-      final rows = await sb.from('RoleRequest')
-          .select('id, userId, requestedRole, status, notes, createdAt')
-          .eq('status', 'pending')
-          .order('createdAt', ascending: false)
-          .limit(50);
-      results.addAll((rows as List).cast<Map<String, dynamic>>()
-          .map((r) => {...r, '_source': 'RoleRequest'}));
+      final rows = await vps.getRoleRequests(status: 'pending', limit: 50);
+      results.addAll(rows.map((r) => {
+        ...r,
+        // Normalize field names so the UI can read them uniformly.
+        if (!r.containsKey('userId') && r.containsKey('user_id'))
+          'userId': r['user_id'],
+        if (!r.containsKey('requestedRole') && r.containsKey('requested_role'))
+          'requestedRole': r['requested_role'],
+        if (!r.containsKey('createdAt') && r.containsKey('created_at'))
+          'createdAt': r['created_at'],
+        '_source': 'RoleRequest',
+      }));
     } catch (_) {}
 
-    // Claim table (entity claims)
+    // ClaimRequest table (entity claims) — GET /v1/admin/claims already on VPS.
     try {
-      final rows = await sb.from('ClaimRequest')
-          .select('id, claimantId, profileType, profileName, status, evidenceNotes, createdAt')
-          .eq('status', 'pending')
-          .order('createdAt', ascending: false)
-          .limit(50);
-      results.addAll((rows as List).cast<Map<String, dynamic>>()
-          .map((r) => {...r, '_source': 'ClaimRequest'}));
+      final rows = await vps.getClaims(status: 'pending');
+      results.addAll(rows.map((r) => {
+        ...r,
+        if (!r.containsKey('claimantId') && r.containsKey('claimant_id'))
+          'claimantId': r['claimant_id'],
+        if (!r.containsKey('profileType') && r.containsKey('profile_type'))
+          'profileType': r['profile_type'],
+        if (!r.containsKey('profileName') && r.containsKey('profile_name'))
+          'profileName': r['profile_name'],
+        if (!r.containsKey('evidenceNotes') && r.containsKey('evidence_notes'))
+          'evidenceNotes': r['evidence_notes'],
+        if (!r.containsKey('createdAt') && r.containsKey('submittedAt'))
+          'createdAt': r['submittedAt'],
+        '_source': 'ClaimRequest',
+      }));
     } catch (_) {}
 
     results.sort((a, b) {
@@ -2631,28 +2589,30 @@ class _ProQueueTabState extends State<_ProQueueTab> {
   }
 
   Future<void> _decide(Map<String, dynamic> req, String status) async {
-    final sb = Supabase.instance.client;
+    final vps = const VpsRepository();
     final src = req['_source'] as String;
     final id  = req['id']?.toString() ?? '';
     try {
       if (src == 'RoleRequest') {
-        await sb.from('RoleRequest').update({
-          'status': status,
-          'reviewedAt': DateTime.now().toIso8601String(),
-        }).eq('id', id);
-        if (status == 'approved') {
-          final uid  = req['userId']?.toString() ?? '';
-          final role = req['requestedRole']?.toString() ?? '';
-          if (uid.isNotEmpty && role.isNotEmpty) {
-            await sb.from('profiles').update({'role': role}).eq('id', uid);
-            try { await sb.from('User').update({'role': role}).eq('id', uid); } catch (_) {}
-          }
-        }
+        // VPS PATCH /v1/admin/role-requests/:id — the VPS should cascade
+        // the role update to profiles + User tables (TODO VPS route).
+        // We pass userId + role so the server has everything it needs.
+        final uid  = req['userId']?.toString() ?? '';
+        final role = req['requestedRole']?.toString() ?? '';
+        await vps.decideRoleRequest(
+          id,
+          status: status,
+          userId: uid.isEmpty ? null : uid,
+          role:   role.isEmpty ? null : role,
+        );
       } else {
-        await sb.from('ClaimRequest').update({
-          'status': status,
-          'reviewedAt': DateTime.now().toIso8601String(),
-        }).eq('id', id);
+        // ClaimRequest — VPS POST /v1/claims/approve or /v1/claims/reject
+        // already exists and handles the cascade.
+        if (status == 'approved') {
+          await vps.approveClaim(id);
+        } else {
+          await vps.rejectClaim(id);
+        }
       }
       await _load();
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(

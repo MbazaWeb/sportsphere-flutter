@@ -3,11 +3,8 @@
 // MIGRATION SHIM — provides a VpsSupabaseCompat.client object that
 // satisfies the remaining Supabase call sites while we migrate them
 // to native VPS calls. Once all files are migrated, this file is deleted.
-//
-// This shim keeps the app compiling during the migration.
-// It delegates DB reads to VPS /v1/* endpoints and has NO Supabase dependency.
 
-import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'vps_repository.dart';
@@ -23,31 +20,51 @@ class _VpsCompatClient {
   _VpsCompatAuth get auth => _VpsCompatAuth();
 
   _VpsCompatQuery from(String table) => _VpsCompatQuery(table, _vps);
-}
 
-class _VpsCompatAuth {
-  /// Read the stored JWT from SharedPreferences (set by AuthRepository.login).
-  Future<String?> _token() async {
+  // Allow direct rpc() calls — delegate to VPS
+  Future<dynamic> rpc(String name, {Map<String, dynamic>? params}) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getString('auth_access_token');
+      switch (name) {
+        case 'increment_post_counter':
+          // Post counter is maintained by triggers now — no-op
+          return;
+        case 'refresh_user_counts':
+          // Counts are maintained server-side — no-op
+          return;
+        case 'count_fans_of':
+          return 0;
+        case 'feed_for_user':
+          return <Map<String, dynamic>>[];
+        case 'bump_news_share':
+          return;
+        case 'nearby_fans':
+          return <Map<String, dynamic>>[];
+        default:
+          debugPrint('VpsSupabaseCompat.rpc: unhandled $name');
+          return null;
+      }
     } catch (e) {
-      debugPrint('VpsSupabaseCompat._token: $e');
+      debugPrint('VpsSupabaseCompat.rpc($name): $e');
       return null;
     }
   }
 
-  /// Check if a session token exists.
-  Future<bool> get hasSession async => (await _token()) != null;
+  // Channel stub for realtime (returns a no-op channel)
+  dynamic channel(String name) => _NoopChannel();
+}
 
-  /// Return a minimal user object parsed from the stored JWT payload.
-  /// The JWT payload is set by AuthRepository.login() as 'auth_user_id'.
-  _VpsCompatUser? get currentUser {
-    // Synchronous read from static cache (populated by _loadUserSync)
-    return _VpsCompatUserCache.user;
+class _VpsCompatAuth {
+  _VpsCompatUser? get currentUser => _VpsCompatUserCache.user;
+
+  Future<bool> get hasSession async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('auth_access_token') != null;
+    } catch (_) {
+      return false;
+    }
   }
 
-  /// Async refresh of the cached user (call after login).
   static Future<void> refreshUser() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -63,136 +80,278 @@ class _VpsCompatAuth {
   }
 }
 
-/// Static cache so auth.currentUser can return synchronously.
 class _VpsCompatUserCache {
   static _VpsCompatUser? user;
 }
 
 class _VpsCompatUser {
   final String id;
-  const _VpsCompatUser(this.id);
+  String? email;
+  _VpsCompatUser(this.id, {this.email});
 }
 
-/// Minimal query builder that delegates common patterns to VPS endpoints.
-/// Supports: .select(), .eq(), .order(), .limit(), .maybeSingle(), .insert(),
-/// .update(), .delete(), .upsert(), .inFilter(), .or()
+// ─────────────────────────────────────────────────────────────────────────────
+// QUERY BUILDER — mimics Supabase's PostgrestQueryBuilder pattern.
+// from(table).select().eq(col, val).order(col).limit(n) → await result
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _VpsCompatQuery {
   final String _table;
   final VpsRepository _vps;
-  String? _eqColumn;
-  String? _eqValue;
+
+  _VpsCompatQuery(this._table, this._vps);
+
+  /// select() returns a filter builder (NOT a Future).
+  _VpsCompatFilterBuilder select([String? columns]) {
+    return _VpsCompatFilterBuilder._(_table, _vps);
+  }
+
+  /// insert() returns a write future.
+  Future<void> insert(Map<String, dynamic> data) {
+    return _VpsCompatWriteHelper.insert(_table, _vps, data);
+  }
+
+  /// update() returns a filter builder.
+  _VpsCompatFilterBuilder update(Map<String, dynamic> data) {
+    return _VpsCompatFilterBuilder._(_table, _vps, updateData: data);
+  }
+
+  /// delete() returns a filter builder.
+  _VpsCompatFilterBuilder delete() {
+    return _VpsCompatFilterBuilder._(_table, _vps, isDelete: true);
+  }
+
+  /// upsert() returns a write future.
+  Future<void> upsert(Map<String, dynamic> data) {
+    return _VpsCompatWriteHelper.insert(_table, _vps, data);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FILTER BUILDER — supports .eq(), .neq(), .order(), .limit(), .inFilter(),
+// .or(), .maybeSingle(). Is awaitable (implements Future-like via then()).
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _VpsCompatFilterBuilder {
+  final String _table;
+  final VpsRepository _vps;
+  final Map<String, dynamic>? _updateData;
+  final bool _isDelete;
+
+  final List<_FilterEntry> _filters = [];
   String? _orderColumn;
   bool _ascending = false;
   int? _limit;
 
-  _VpsCompatQuery(this._table, this._vps);
+  _VpsCompatFilterBuilder._(
+    this._table,
+    this._vps, {
+    Map<String, dynamic>? updateData,
+    bool isDelete = false,
+  })  : _updateData = updateData,
+        _isDelete = isDelete;
 
-  _VpsCompatQuery eq(String column, String value) {
-    _eqColumn = column;
-    _eqValue = value;
+  // ── Filter methods (return this for chaining) ──
+
+  _VpsCompatFilterBuilder eq(String column, dynamic value) {
+    _filters.add(_FilterEntry(column, value?.toString() ?? '', 'eq'));
     return this;
   }
 
-  _VpsCompatQuery neq(String column, String value) {
-    _eqColumn = column;
-    _eqValue = null; // neq not directly supported; treat as no filter
+  _VpsCompatFilterBuilder neq(String column, dynamic value) {
+    _filters.add(_FilterEntry(column, value?.toString() ?? '', 'neq'));
     return this;
   }
 
-  _VpsCompatQuery order(String column, {bool ascending = false}) {
+  _VpsCompatFilterBuilder ilike(String column, String pattern) {
+    _filters.add(_FilterEntry(column, pattern, 'ilike'));
+    return this;
+  }
+
+  _VpsCompatFilterBuilder or(String filter) => this;
+
+  _VpsCompatFilterBuilder order(String column, {bool ascending = false}) {
     _orderColumn = column;
     _ascending = ascending;
     return this;
   }
 
-  _VpsCompatQuery limit(int? l) {
+  _VpsCompatFilterBuilder limit(int? l) {
     _limit = l;
     return this;
   }
 
-  _VpsCompatQuery inFilter(String column, List<String> values) {
-    _eqColumn = column;
-    _eqValue = values.join(',');
+  _VpsCompatFilterBuilder inFilter(String column, List<String> values) {
+    _filters.add(_FilterEntry(column, values.join(','), 'in'));
     return this;
   }
 
-  _VpsCompatQuery or(String filter) => this;
+  // ── Terminal methods ──
 
-  Future<List<Map<String, dynamic>>> select([String? columns]) async {
+  Future<Map<String, dynamic>?> maybeSingle() async {
+    final rows = await _execute();
+    return rows.isNotEmpty ? rows.first : null;
+  }
+
+  Future<Map<String, dynamic>> single() async {
+    final rows = await _execute();
+    return rows.first;
+  }
+
+  // ── Make this awaitable by implementing then() ──
+  // Dart's `await` calls .then() on the object.
+
+  Future<List<Map<String, dynamic>>> then(
+    FutureOr<dynamic> Function(List<Map<String, dynamic>>) onValue, {
+    Function? onError,
+  }) {
+    return _execute().then(onValue, onError: onError);
+  }
+
+  Future<List<Map<String, dynamic>>> catchError(
+    Function onError, {
+    bool test(Object error)?,
+  }) {
+    return _execute().catchError(onError, test: test);
+  }
+
+  Future<List<Map<String, dynamic>>> whenComplete(FutureOr<void> action) {
+    return _execute().whenComplete(action);
+  }
+
+  /// Actual execution — delegates to VPS based on table + operation.
+  Future<List<Map<String, dynamic>>> _execute() async {
     try {
-      // Delegate to VPS based on table name
-      switch (_table) {
-        case 'User':
-        case 'profiles':
-          if (_eqColumn == 'id' && _eqValue != null) {
-            final profile = await _vps.getProfile(_eqValue!);
-            return profile != null ? [profile] : [];
-          }
-          return [];
-        case 'Match':
-          return await _vps.getAllMatches(limit: _limit ?? 200);
-        case 'Team':
-          return await _vps.getAdminTeams(limit: _limit ?? 200);
-        case 'Post':
-          if (_eqColumn == 'userId' && _eqValue != null) {
-            return await _vps.getUserPosts(_eqValue!, limit: _limit ?? 50);
-          }
-          return await _vps.getFeed(limit: _limit ?? 40);
-        case 'Follow':
-          if (_eqColumn == 'followerId') {
-            return await _vps.getFollowing(_eqValue!);
-          }
-          if (_eqColumn == 'followingId') {
-            return await _vps.getFollowers(_eqValue!);
-          }
-          return [];
-        case 'Comment':
-          if (_eqColumn == 'postId' && _eqValue != null) {
-            return await _vps.getComments(_eqValue!);
-          }
-          return [];
-        case 'Notification':
-          return await _vps.getNotifications(limit: _limit ?? 50);
-        case 'ShopOrder':
-          return await _vps.getMyOrders(limit: _limit ?? 50);
-        case 'CommunityMember':
-          return [];
-        default:
-          debugPrint('VpsSupabaseCompat: unhandled table $_table');
-          return [];
+      if (_isDelete) {
+        await _executeDelete();
+        return [];
       }
+      if (_updateData != null) {
+        await _executeUpdate();
+        return [];
+      }
+      return await _executeSelect();
     } catch (e) {
-      debugPrint('VpsSupabaseCompat.select($_table): $e');
+      debugPrint('VpsSupabaseCompat._execute($_table): $e');
       return [];
     }
   }
 
-  Future<List<Map<String, dynamic>>> get([String? columns]) => select(columns);
-
-  Future<Map<String, dynamic>?> maybeSingle() async {
-    final rows = await select();
-    return rows.isNotEmpty ? rows.first : null;
+  String? _getFilter(String op, [String? column]) {
+    for (final f in _filters) {
+      if (f.op == op && (column == null || f.column == column)) {
+        return f.value;
+      }
+    }
+    return null;
   }
 
-  Future<void> insert(Map<String, dynamic> data) async {
+  Future<List<Map<String, dynamic>>> _executeSelect() async {
+    final eqCol = _filters.isNotEmpty ? _filters.first.column : null;
+    final eqVal = _filters.isNotEmpty ? _filters.first.value : null;
+
+    switch (_table) {
+      case 'User':
+      case 'profiles':
+        if (eqCol == 'id' && eqVal != null) {
+          final profile = await _vps.getProfile(eqVal);
+          return profile != null ? [profile] : [];
+        }
+        return [];
+      case 'Match':
+        return await _vps.getAllMatches(limit: _limit ?? 200);
+      case 'Team':
+        return await _vps.getAdminTeams(limit: _limit ?? 200);
+      case 'Post':
+        if (eqCol == 'userId' && eqVal != null) {
+          return await _vps.getUserPosts(eqVal, limit: _limit ?? 50);
+        }
+        return await _vps.getFeed(limit: _limit ?? 40);
+      case 'Follow':
+        if (eqCol == 'followerId' && eqVal != null) {
+          return await _vps.getFollowing(eqVal);
+        }
+        if (eqCol == 'followingId' && eqVal != null) {
+          return await _vps.getFollowers(eqVal);
+        }
+        return [];
+      case 'Comment':
+        if (eqCol == 'postId' && eqVal != null) {
+          return await _vps.getComments(eqVal);
+        }
+        return [];
+      case 'Notification':
+        return await _vps.getNotifications(limit: _limit ?? 50);
+      case 'ShopOrder':
+        return await _vps.getMyOrders(limit: _limit ?? 50);
+      default:
+        return [];
+    }
+  }
+
+  Future<void> _executeUpdate() async {
+    switch (_table) {
+      case 'ShopOrder':
+        final id = _getFilter('eq', 'id');
+        if (id != null) await _vps.confirmOrderPaid(id);
+        break;
+      case 'Notification':
+        final id = _getFilter('eq', 'id');
+        if (id != null) await _vps.markRead(id);
+        break;
+    }
+  }
+
+  Future<void> _executeDelete() async {
+    switch (_table) {
+      case 'Follow':
+        final val = _getFilter('eq', 'followingId');
+        if (val != null) await _vps.toggleFollow(val);
+        break;
+      case 'PostLike':
+        final val = _getFilter('eq', 'postId');
+        if (val != null) await _vps.toggleLike(val);
+        break;
+      case 'Post':
+        final val = _getFilter('eq', 'id');
+        if (val != null) await _vps.deletePost(val);
+        break;
+      case 'CommunityMember':
+        final val = _getFilter('eq', 'communityId');
+        if (val != null) await _vps.leaveCommunity(val);
+        break;
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WRITE HELPER — handles insert/upsert by delegating to VPS.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _VpsCompatWriteHelper {
+  static Future<void> insert(
+    String table,
+    VpsRepository vps,
+    Map<String, dynamic> data,
+  ) async {
     try {
-      switch (_table) {
+      switch (table) {
         case 'Post':
-          await _vps.createPost(data);
+          await vps.createPost(data);
           break;
         case 'Follow':
           if (data['followingId'] != null) {
-            await _vps.toggleFollow(data['followingId'] as String);
+            await vps.toggleFollow(data['followingId'] as String);
           }
           break;
         case 'PostLike':
           if (data['postId'] != null) {
-            await _vps.toggleLike(data['postId'] as String);
+            await vps.toggleLike(data['postId'] as String);
           }
           break;
         case 'Comment':
           if (data['postId'] != null && data['content'] != null) {
-            await _vps.addComment(
+            await vps.addComment(
               data['postId'] as String,
               data['content'] as String,
             );
@@ -200,14 +359,14 @@ class _VpsCompatQuery {
           break;
         case 'Message':
           if (data['receiverId'] != null && data['content'] != null) {
-            await _vps.sendMessage(
+            await vps.sendMessage(
               data['receiverId'] as String,
               data['content'] as String,
             );
           }
           break;
         case 'ShopOrder':
-          await _vps.createOrder(
+          await vps.createOrder(
             itemId: data['itemId'] as String? ?? '',
             itemName: data['itemName'] as String? ?? '',
             kind: data['kind'] as String? ?? 'ticket',
@@ -220,77 +379,46 @@ class _VpsCompatQuery {
           break;
         case 'CommunityMember':
           if (data['communityId'] != null) {
-            await _vps.joinCommunity(data['communityId'] as String);
+            await vps.joinCommunity(data['communityId'] as String);
           }
           break;
         case 'PollVote':
           if (data['pollId'] != null && data['optionIndex'] != null) {
-            await _vps.votePoll(
+            await vps.votePoll(
               data['pollId'] as String,
               data['optionIndex'] as int,
             );
           }
           break;
-        default:
-          debugPrint('VpsSupabaseCompat.insert: unhandled table $_table');
       }
     } catch (e) {
-      debugPrint('VpsSupabaseCompat.insert($_table): $e');
+      debugPrint('VpsSupabaseCompat.insert($table): $e');
     }
   }
+}
 
-  Future<void> update(Map<String, dynamic> data) async {
-    try {
-      switch (_table) {
-        case 'ShopOrder':
-          if (_eqColumn == 'id' && _eqValue != null) {
-            await _vps.confirmOrderPaid(_eqValue!);
-          }
-          break;
-        case 'Notification':
-          // Mark as read
-          if (_eqColumn == 'id' && _eqValue != null) {
-            await _vps.markRead(_eqValue!);
-          }
-          break;
-        default:
-          debugPrint('VpsSupabaseCompat.update: unhandled table $_table');
-      }
-    } catch (e) {
-      debugPrint('VpsSupabaseCompat.update($_table): $e');
-    }
+// ─────────────────────────────────────────────────────────────────────────────
+// NOOP CHANNEL — stub for realtime subscriptions.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _NoopChannel {
+  _NoopChannel onPostgresChanges({
+    required dynamic event,
+    required String schema,
+    String? table,
+    Map<String, dynamic>? filter,
+    required void Function(Map<String, dynamic>) callback,
+  }) {
+    return this;
   }
 
-  Future<void> delete() async {
-    try {
-      switch (_table) {
-        case 'Follow':
-          if (_eqColumn == 'followingId' && _eqValue != null) {
-            await _vps.toggleFollow(_eqValue!);
-          }
-          break;
-        case 'PostLike':
-          if (_eqColumn == 'postId' && _eqValue != null) {
-            await _vps.toggleLike(_eqValue!);
-          }
-          break;
-        case 'Post':
-          if (_eqColumn == 'id' && _eqValue != null) {
-            await _vps.deletePost(_eqValue!);
-          }
-          break;
-        case 'CommunityMember':
-          if (_eqColumn == 'communityId' && _eqValue != null) {
-            await _vps.leaveCommunity(_eqValue!);
-          }
-          break;
-        default:
-          debugPrint('VpsSupabaseCompat.delete: unhandled table $_table');
-      }
-    } catch (e) {
-      debugPrint('VpsSupabaseCompat.delete($_table): $e');
-    }
-  }
+  _NoopChannel subscribe() => this;
+  void unsubscribe() {}
+}
 
-  Future<void> upsert(Map<String, dynamic> data) => insert(data);
+class _FilterEntry {
+  final String column;
+  final String value;
+  final String op;
+  const _FilterEntry(this.column, this.value, this.op);
 }

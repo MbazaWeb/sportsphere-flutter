@@ -1,7 +1,6 @@
 import '../../../core/data/vps_supabase_compat.dart';
 import 'package:flutter/material.dart';
 import '../../../core/widgets/team_color_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/data/nbc_club_badges.dart';
 import '../Profile/team/team_profile_view.dart';
@@ -100,7 +99,7 @@ Future<TeamProfileModel> lookupTeamProfile(String handle) async {
 }
 
 Future<List<SquadMember>> _loadSquad(
-  SupabaseClient sb, {
+  dynamic sb, {
   String? teamId,
   required String teamName,
 }) async {
@@ -156,7 +155,7 @@ Future<List<SquadMember>> _loadSquad(
 }
 
 Future<List<TeamSeasonStats>> _loadSeasonStats(
-  SupabaseClient sb, {
+  dynamic sb, {
   required String teamName,
 }) async {
   try {

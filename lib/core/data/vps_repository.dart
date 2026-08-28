@@ -720,4 +720,449 @@ class VpsRepository {
     };
   }
 
+  // ── Aliases for backward compatibility with old method names ───────────────
+
+  /// Alias for toggleLike — old callers used likePost/unlikePost
+  Future<void> likePost(String postId) => toggleLike(postId);
+  Future<void> unlikePost(String postId) => toggleLike(postId);
+  Future<bool> isPostLiked(String postId) => hasLiked(postId);
+
+  /// Alias for toggleFollow — old callers used followUser/unfollowUser
+  Future<bool> followUser(String targetId) => toggleFollow(targetId);
+  Future<bool> unfollowUser(String targetId) => toggleFollow(targetId);
+
+  /// Update profile — delegates to auth profile update
+  Future<void> updateProfile({
+    required String userId,
+    String? firstName,
+    String? lastName,
+    String? handle,
+    String? country,
+    String? bio,
+    DateTime? dateOfBirth,
+    String? avatarUrl,
+    String? coverUrl,
+    String? themeColor,
+  }) async {
+    final patch = <String, dynamic>{};
+    if (firstName != null) patch['first_name'] = firstName;
+    if (lastName != null) patch['last_name'] = lastName;
+    if (handle != null) patch['handle'] = handle;
+    if (country != null) patch['country'] = country;
+    if (bio != null) patch['bio'] = bio;
+    if (dateOfBirth != null) patch['date_of_birth'] = dateOfBirth.toIso8601String();
+    if (avatarUrl != null) patch['avatar_url'] = avatarUrl;
+    if (coverUrl != null) patch['cover_url'] = coverUrl;
+    if (themeColor != null) patch['theme_color'] = themeColor;
+    if (patch.isEmpty) return;
+    await _client.patch('/v1/auth/profile', data: patch);
+  }
+
+  /// Update news post (for news tab)
+  Future<Map<String, dynamic>> updatePost(String postId, Map<String, dynamic> body) async {
+    final res = await _client.patch<Map<String, dynamic>>(
+      '/v1/news/$postId', data: body,
+    );
+    return (res.data?['news'] as Map?)?.cast<String, dynamic>() ?? {};
+  }
+
+  /// Get communities list
+  Future<List<Map<String, dynamic>>> getCommunities({int limit = 50}) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/social/communities', query: {'limit': limit},
+    );
+    return ((res.data?['communities']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  /// Check if current user is a member of a community
+  Future<bool> isCommunityMember(String communityId) async {
+    try {
+      final res = await _client.get<Map<String, dynamic>>(
+        '/v1/social/communities/$communityId/membership',
+      );
+      return res.data?['isMember'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Create a news post (for admin/news)
+  Future<Map<String, dynamic>> createNewsPost(Map<String, dynamic> body) async {
+    final res = await _client.post<Map<String, dynamic>>(
+      '/v1/news', data: body,
+    );
+    return (res.data?['news'] as Map?)?.cast<String, dynamic>() ?? {};
+  }
+
+  /// Search players
+  Future<List<Map<String, dynamic>>> searchPlayers(String q, {int limit = 20}) async {
+    // NOTE: /v1/admin/players/search is the canonical route on the VPS
+    // (see vps/api/src/routes/admin.ts). The `/v1/admin/players-search`
+    // variant below is kept as a fallback for older deployments.
+    try {
+      final res = await _client.get<Map<String, dynamic>>(
+        '/v1/admin/players/search', query: {'q': q, 'limit': limit},
+      );
+      return ((res.data?['players']) as List? ?? []).cast<Map<String, dynamic>>();
+    } catch (_) {
+      final res = await _client.get<Map<String, dynamic>>(
+        '/v1/admin/players-search', query: {'q': q, 'limit': limit},
+      );
+      return ((res.data?['players']) as List? ?? []).cast<Map<String, dynamic>>();
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // ADMIN ENTITY CRUD
+  //
+  // These methods cover the entity CRUD operations that the admin console
+  // performs: create / update / delete for League / Competition / Team /
+  // Player / Coach / Match / NewsItem / Post / PlayerMatchStat, plus the
+  // Become PRO queue (RoleRequest) and bulk inserts.
+  //
+  // The VPS admin routes (vps/api/src/routes/admin.ts) currently expose:
+  //   GET    /v1/admin/stats
+  //   GET    /v1/admin/claims
+  //   GET    /v1/admin/users
+  //   PATCH  /v1/admin/users/:id/role
+  //   DELETE /v1/admin/users/:id
+  //   GET    /v1/admin/matches
+  //   POST   /v1/admin/matches
+  //   PATCH  /v1/admin/matches/:id
+  //   GET    /v1/admin/teams
+  //   GET    /v1/admin/players/search
+  //
+  // The methods below that target routes not yet on the VPS are marked with
+  // a TODO comment so the backend team can add them. They still issue the
+  // request — the VPS will return 404 and the caller can fall back to the
+  // compat shim or surface a friendly error. None of these methods hardcode
+  // service-role credentials.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ── Users ────────────────────────────────────────────────────────────────
+
+  /// GET /v1/admin/users — list users (optionally filtered by role / search).
+  Future<List<Map<String, dynamic>>> getAdminUsers({
+    String? role,
+    String? search,
+    int limit = 50,
+  }) async {
+    final q = <String, dynamic>{'limit': limit};
+    if (role != null && role.isNotEmpty)   q['role']   = role;
+    if (search != null && search.isNotEmpty) q['search'] = search;
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/admin/users', query: q,
+    );
+    return ((res.data?['users']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  /// PATCH /v1/admin/users/:id/verify — set isVerified flag.
+  // TODO(VPS): add `PATCH /v1/admin/users/:id/verify` route on the VPS.
+  Future<void> verifyUser(String userId, bool verified) async {
+    await _client.patch<void>(
+      '/v1/admin/users/$userId/verify',
+      data: {'isVerified': verified},
+    );
+  }
+
+  // ── Leagues / Competitions ───────────────────────────────────────────────
+
+  /// GET /v1/admin/leagues — list leagues.
+  // TODO(VPS): add `GET /v1/admin/leagues` route on the VPS.
+  Future<List<Map<String, dynamic>>> getAdminLeagues({int limit = 100}) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/admin/leagues', query: {'limit': limit},
+    );
+    return ((res.data?['leagues']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  /// POST /v1/admin/leagues — create league.
+  // TODO(VPS): add `POST /v1/admin/leagues` route on the VPS.
+  Future<Map<String, dynamic>> createAdminLeague(Map<String, dynamic> body) async {
+    final res = await _client.post<Map<String, dynamic>>(
+      '/v1/admin/leagues', data: body,
+    );
+    return (res.data?['league'] as Map?)?.cast<String, dynamic>() ?? {};
+  }
+
+  /// PATCH /v1/admin/leagues/:id — update league.
+  // TODO(VPS): add `PATCH /v1/admin/leagues/:id` route on the VPS.
+  Future<void> updateAdminLeague(String id, Map<String, dynamic> body) async {
+    await _client.patch<void>('/v1/admin/leagues/$id', data: body);
+  }
+
+  /// DELETE /v1/admin/leagues/:id — delete league.
+  // TODO(VPS): add `DELETE /v1/admin/leagues/:id` route on the VPS.
+  Future<void> deleteAdminLeague(String id) async {
+    await _client.delete<void>('/v1/admin/leagues/$id');
+  }
+
+  // ── Teams ────────────────────────────────────────────────────────────────
+
+  /// POST /v1/admin/teams — create team.
+  // TODO(VPS): add `POST /v1/admin/teams` route on the VPS.
+  Future<Map<String, dynamic>> createAdminTeam(Map<String, dynamic> body) async {
+    final res = await _client.post<Map<String, dynamic>>(
+      '/v1/admin/teams', data: body,
+    );
+    return (res.data?['team'] as Map?)?.cast<String, dynamic>() ?? {};
+  }
+
+  /// PATCH /v1/admin/teams/:id — update team.
+  // TODO(VPS): add `PATCH /v1/admin/teams/:id` route on the VPS.
+  Future<void> updateAdminTeam(String id, Map<String, dynamic> body) async {
+    await _client.patch<void>('/v1/admin/teams/$id', data: body);
+  }
+
+  /// DELETE /v1/admin/teams/:id — delete team.
+  // TODO(VPS): add `DELETE /v1/admin/teams/:id` route on the VPS.
+  Future<void> deleteAdminTeam(String id) async {
+    await _client.delete<void>('/v1/admin/teams/$id');
+  }
+
+  // ── Players ──────────────────────────────────────────────────────────────
+
+  /// POST /v1/admin/players — create player.
+  // TODO(VPS): add `POST /v1/admin/players` route on the VPS.
+  Future<Map<String, dynamic>> createAdminPlayer(Map<String, dynamic> body) async {
+    final res = await _client.post<Map<String, dynamic>>(
+      '/v1/admin/players', data: body,
+    );
+    return (res.data?['player'] as Map?)?.cast<String, dynamic>() ?? {};
+  }
+
+  /// PATCH /v1/admin/players/:id — update player.
+  // TODO(VPS): add `PATCH /v1/admin/players/:id` route on the VPS.
+  Future<void> updateAdminPlayer(String id, Map<String, dynamic> body) async {
+    await _client.patch<void>('/v1/admin/players/$id', data: body);
+  }
+
+  /// DELETE /v1/admin/players/:id — delete player.
+  // TODO(VPS): add `DELETE /v1/admin/players/:id` route on the VPS.
+  Future<void> deleteAdminPlayer(String id) async {
+    await _client.delete<void>('/v1/admin/players/$id');
+  }
+
+  /// POST /v1/admin/players/:id/stats — upsert a PlayerMatchStat row.
+  // TODO(VPS): add `POST /v1/admin/players/:id/stats` route on the VPS.
+  Future<void> upsertPlayerStat(String playerId, Map<String, dynamic> body) async {
+    await _client.post<void>(
+      '/v1/admin/players/$playerId/stats', data: body,
+    );
+  }
+
+  // ── Coaches ──────────────────────────────────────────────────────────────
+
+  /// GET /v1/admin/coaches — list coaches.
+  // TODO(VPS): add `GET /v1/admin/coaches` route on the VPS.
+  Future<List<Map<String, dynamic>>> getAdminCoaches({int limit = 100}) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/admin/coaches', query: {'limit': limit},
+    );
+    return ((res.data?['coaches']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  /// POST /v1/admin/coaches — create coach.
+  // TODO(VPS): add `POST /v1/admin/coaches` route on the VPS.
+  Future<Map<String, dynamic>> createAdminCoach(Map<String, dynamic> body) async {
+    final res = await _client.post<Map<String, dynamic>>(
+      '/v1/admin/coaches', data: body,
+    );
+    return (res.data?['coach'] as Map?)?.cast<String, dynamic>() ?? {};
+  }
+
+  /// PATCH /v1/admin/coaches/:id — update coach.
+  // TODO(VPS): add `PATCH /v1/admin/coaches/:id` route on the VPS.
+  Future<void> updateAdminCoach(String id, Map<String, dynamic> body) async {
+    await _client.patch<void>('/v1/admin/coaches/$id', data: body);
+  }
+
+  /// DELETE /v1/admin/coaches/:id — delete coach.
+  // TODO(VPS): add `DELETE /v1/admin/coaches/:id` route on the VPS.
+  Future<void> deleteAdminCoach(String id) async {
+    await _client.delete<void>('/v1/admin/coaches/$id');
+  }
+
+  // ── Matches ──────────────────────────────────────────────────────────────
+
+  /// GET /v1/admin/matches — list matches (already on VPS).
+  Future<List<Map<String, dynamic>>> getAdminMatches({int limit = 50}) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/admin/matches', query: {'limit': limit},
+    );
+    return ((res.data?['matches']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  /// POST /v1/admin/matches — create match (already on VPS).
+  Future<Map<String, dynamic>> createAdminMatch(Map<String, dynamic> body) async {
+    final res = await _client.post<Map<String, dynamic>>(
+      '/v1/admin/matches', data: body,
+    );
+    return (res.data?['match'] as Map?)?.cast<String, dynamic>() ?? {};
+  }
+
+  /// PATCH /v1/admin/matches/:id — update match score/status (already on VPS).
+  Future<void> updateAdminMatch(String id, Map<String, dynamic> body) async {
+    await _client.patch<void>('/v1/admin/matches/$id', data: body);
+  }
+
+  /// DELETE /v1/admin/matches/:id — delete match.
+  // TODO(VPS): add `DELETE /v1/admin/matches/:id` route on the VPS.
+  Future<void> deleteAdminMatch(String id) async {
+    await _client.delete<void>('/v1/admin/matches/$id');
+  }
+
+  // ── News ─────────────────────────────────────────────────────────────────
+
+  /// GET /v1/admin/news — list news articles.
+  // TODO(VPS): add `GET /v1/admin/news` route on the VPS.
+  Future<List<Map<String, dynamic>>> getAdminNews({int limit = 50}) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/admin/news', query: {'limit': limit},
+    );
+    return ((res.data?['news']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  /// POST /v1/admin/news — create news article (server-side wraps /v1/news).
+  // TODO(VPS): add `POST /v1/admin/news` route on the VPS.
+  Future<Map<String, dynamic>> createAdminNews(Map<String, dynamic> body) async {
+    final res = await _client.post<Map<String, dynamic>>(
+      '/v1/admin/news', data: body,
+    );
+    return (res.data?['news'] as Map?)?.cast<String, dynamic>() ?? {};
+  }
+
+  /// DELETE /v1/admin/news/:id — delete news article.
+  // TODO(VPS): add `DELETE /v1/admin/news/:id` route on the VPS.
+  Future<void> deleteAdminNews(String id) async {
+    await _client.delete<void>('/v1/admin/news/$id');
+  }
+
+  // ── Posts (moderation) ───────────────────────────────────────────────────
+
+  /// GET /v1/admin/posts — list all posts for moderation.
+  // TODO(VPS): add `GET /v1/admin/posts` route on the VPS.
+  Future<List<Map<String, dynamic>>> getAdminPosts({int limit = 50}) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/admin/posts', query: {'limit': limit},
+    );
+    return ((res.data?['posts']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  /// DELETE /v1/admin/posts/:id — cascade-delete a Post + its likes/comments.
+  // TODO(VPS): add `DELETE /v1/admin/posts/:id` route on the VPS that
+  // cascade-deletes PostLike / Comment / post_likes rows server-side.
+  Future<void> deleteAdminPost(String id) async {
+    await _client.delete<void>('/v1/admin/posts/$id');
+  }
+
+  // ── Become PRO queue (RoleRequest) ───────────────────────────────────────
+
+  /// GET /v1/admin/role-requests?status=pending — list pending PRO requests.
+  // TODO(VPS): add `GET /v1/admin/role-requests` route on the VPS.
+  Future<List<Map<String, dynamic>>> getRoleRequests({
+    String status = 'pending',
+    int limit = 50,
+  }) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/admin/role-requests',
+      query: {'status': status, 'limit': limit},
+    );
+    return ((res.data?['requests']) as List? ?? [])
+        .cast<Map<String, dynamic>>();
+  }
+
+  /// PATCH /v1/admin/role-requests/:id — approve / reject a PRO request.
+  /// When approving, the VPS should cascade the role update to profiles +
+  /// User tables (so the client never writes roles directly).
+  // TODO(VPS): add `PATCH /v1/admin/role-requests/:id` route on the VPS.
+  Future<void> decideRoleRequest(
+    String id, {
+    required String status, // 'approved' | 'rejected'
+    String? role,
+    String? userId,
+    String? notes,
+  }) async {
+    await _client.patch<void>(
+      '/v1/admin/role-requests/$id',
+      data: {
+        'status': status,
+        if (role != null)   'role': role,
+        if (userId != null) 'userId': userId,
+        if (notes != null)  'reviewNotes': notes,
+      },
+    );
+  }
+
+  // ── Bulk inserts ─────────────────────────────────────────────────────────
+
+  /// POST /v1/admin/teams/bulk — chunked team insert.
+  // TODO(VPS): add `POST /v1/admin/teams/bulk` route on the VPS.
+  Future<int> bulkCreateTeams(List<Map<String, dynamic>> rows) async {
+    if (rows.isEmpty) return 0;
+    final res = await _client.post<Map<String, dynamic>>(
+      '/v1/admin/teams/bulk', data: {'rows': rows},
+    );
+    return (res.data?['inserted'] as int?) ?? rows.length;
+  }
+
+  /// POST /v1/admin/players/bulk — chunked player insert.
+  // TODO(VPS): add `POST /v1/admin/players/bulk` route on the VPS.
+  Future<int> bulkCreatePlayers(List<Map<String, dynamic>> rows) async {
+    if (rows.isEmpty) return 0;
+    final res = await _client.post<Map<String, dynamic>>(
+      '/v1/admin/players/bulk', data: {'rows': rows},
+    );
+    return (res.data?['inserted'] as int?) ?? rows.length;
+  }
+
+  /// POST /v1/admin/matches/bulk — chunked fixture insert.
+  // TODO(VPS): add `POST /v1/admin/matches/bulk` route on the VPS.
+  Future<int> bulkCreateFixtures(List<Map<String, dynamic>> rows) async {
+    if (rows.isEmpty) return 0;
+    final res = await _client.post<Map<String, dynamic>>(
+      '/v1/admin/matches/bulk', data: {'rows': rows},
+    );
+    return (res.data?['inserted'] as int?) ?? rows.length;
+  }
+
+  // ── Entity identity reconciliation ───────────────────────────────────────
+
+  /// POST /v1/admin/entities/identity — create auth user + profile + User row
+  /// for an entity (Team / Player / League). Returns the new uid.
+  // TODO(VPS): add `POST /v1/admin/entities/identity` route on the VPS.
+  Future<String?> createEntityIdentity(Map<String, dynamic> body) async {
+    try {
+      final res = await _client.post<Map<String, dynamic>>(
+        '/v1/admin/entities/identity', data: body,
+      );
+      return res.data?['uid'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// POST /v1/admin/communities — create an entity fan community.
+  // TODO(VPS): add `POST /v1/admin/communities` route on the VPS.
+  Future<void> createEntityCommunity(Map<String, dynamic> body) async {
+    try {
+      await _client.post<void>('/v1/admin/communities', data: body);
+    } catch (_) {
+      // best-effort
+    }
+  }
+
+  /// POST /v1/admin/users — create a user (auth + profiles + User row).
+  // TODO(VPS): add `POST /v1/admin/users` route on the VPS.
+  Future<String?> createAdminUser(Map<String, dynamic> body) async {
+    try {
+      final res = await _client.post<Map<String, dynamic>>(
+        '/v1/admin/users', data: body,
+      );
+      return res.data?['uid'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
 }

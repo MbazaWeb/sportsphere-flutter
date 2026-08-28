@@ -5,7 +5,6 @@ import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 import '../../../core/admin/app_admin.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/data/social_graph.dart';
 import '../../../core/data/social_repository.dart';
 import '../../../core/data/vps_repository.dart';
@@ -454,7 +453,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
           type = SpotlightType.poll;
           try {
             final postId = r['id']?.toString() ?? '';
-            final pollRes = await VpsRepository().get<Map<String,dynamic>>(
+            final pollRes = await const VpsRepository().get<Map<String,dynamic>>(
                 '/v1/social/polls/$postId');
             final poll = pollRes.data?['poll'] as Map?;
             if (poll != null) {
@@ -469,7 +468,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
               pollVotes = (poll['totalVotes'] as int?) ?? 0;
               if (pollId != null) {
                 try {
-                  final vRes = await VpsRepository().get<Map<String,dynamic>>(
+                  final vRes = await const VpsRepository().get<Map<String,dynamic>>(
                       '/v1/social/polls/$pollId/my-vote');
                   myVote = vRes.data?['voted'] as int?;
                   final optsList = poll['options'] as List? ?? [];
@@ -488,7 +487,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
           type = SpotlightType.prediction;
           try {
             final postId = r['id']?.toString() ?? '';
-            final predRes = await VpsRepository().get<Map<String,dynamic>>(
+            final predRes = await const VpsRepository().get<Map<String,dynamic>>(
                 '/v1/social/predictions/by-post/$postId');
             final pred = predRes.data?['prediction'] as Map?;
             if (pred != null) {
@@ -510,7 +509,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
         final matchIdRef = r['matchId']?.toString() ?? r['match_id']?.toString();
         if (postType == 'match' && matchIdRef != null) {
           try {
-            final matchDetailRes = await VpsRepository().get<Map<String,dynamic>>(
+            final matchDetailRes = await const VpsRepository().get<Map<String,dynamic>>(
                 '/v1/matches/$matchIdRef');
           final m = matchDetailRes.data?['match'] as Map?;
             if (m != null) {
@@ -822,7 +821,8 @@ class _AuthorHeader extends StatelessWidget {
           }
         }
       } else if (action == 'breaking') {
-        await social.updatePost(id, isBreaking: true);
+        // SocialRepository.updatePost takes (postId, patch Map) — 2 args.
+        await social.updatePost(id, {'isBreaking': true});
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Marked as breaking')),
@@ -849,7 +849,8 @@ class _AuthorHeader extends StatelessWidget {
           ),
         );
         if (text != null && text.trim().isNotEmpty) {
-          await social.updatePost(id, content: text);
+          // SocialRepository.updatePost takes (postId, patch Map) — 2 args.
+          await social.updatePost(id, {'content': text});
           onDeleted?.call();
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -1297,7 +1298,7 @@ class _PollContentState extends State<_PollContent> {
               .eq('userId', uid);
           // Decrement totalVotes on Poll
           try {
-            await VpsRepository().delete<void>('/v1/social/polls/$pollId/vote');
+            await const VpsRepository().delete<void>('/v1/social/polls/$pollId/vote');
           } catch (_) {}
         }
         final fresh = await _social.pollOptionCounts(pollId);
@@ -1707,11 +1708,8 @@ class _MatchContentState extends State<_MatchContent> {
         predictedHome: home,
         predictedAway: away,
         matchId: matchId,
-        note: outcome == 'home'
-            ? 'Auto: $homeName win'
-            : outcome == 'draw'
-                ? 'Auto: Draw'
-                : 'Auto: $awayName win',
+        // SocialRepository.createPrediction does not accept a `note` param —
+        // the outcome label is conveyed via `outcome` + `confidence`.
         confidence: 'medium',
         outcome: outcome,
       );
@@ -2334,7 +2332,7 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
   /// `PostLike` here. When `SocialRepository.hasLiked` lands we can delegate.
   Future<bool> _hasLikedPost(String postId) async {
     try {
-      return await VpsRepository().isPostLiked(postId);
+      return await const VpsRepository().isPostLiked(postId);
     } catch (e) {
       debugPrint('_hasLikedPost: $e');
       return false;
@@ -2388,7 +2386,7 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
         }
         return;
       }
-      await VpsRepository().sharePost(id);
+      await const VpsRepository().sharePost(id);
       if (!mounted) return;
       setState(() {
         _shared = true;

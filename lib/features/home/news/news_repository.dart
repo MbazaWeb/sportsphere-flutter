@@ -50,7 +50,7 @@ class NewsArticle {
 }
 
 class NewsRepository {
-  static final _vps = VpsRepository();
+  static final _vps = const VpsRepository();
 
   Future<List<NewsArticle>> fetch({required String category}) async {
     try {

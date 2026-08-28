@@ -1,6 +1,5 @@
 import '../../../core/data/vps_supabase_compat.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../Profile/player/player_profile_view.dart';
 

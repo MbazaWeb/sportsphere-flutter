@@ -1,6 +1,7 @@
 part of '../app_shell.dart';
-// ignore: unused_import
-import '../../../core/data/vps_repository.dart';
+
+// VpsRepository is re-exported via the parent app_shell.dart import chain
+// (core/data/vps_repository.dart is imported there).
 
 class _HomeScreen extends StatefulWidget {
   const _HomeScreen();
@@ -144,7 +145,7 @@ class _TrendingContentState extends State<_TrendingContent> {
 
   Future<void> _load() async {
     try {
-      final rows = await VpsRepository().getTrendingPosts(limit: 30);
+      final rows = await const VpsRepository().getTrendingPosts(limit: 30);
       if (mounted) {
         setState(() {
           _rows = rows;
@@ -182,7 +183,7 @@ class _TrendingContentState extends State<_TrendingContent> {
           return GestureDetector(
             onTap: () async {
               try {
-                final profile = await VpsRepository().getProfile(userId);
+                final profile = await const VpsRepository().getProfile(userId);
                 final handle = profile['handle'] as String?;
                 if (handle != null && handle.isNotEmpty && context.mounted) {
                   context.push('/profile/$handle');
@@ -265,7 +266,7 @@ class _CommunityContentState extends State<_CommunityContent> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final vps = VpsRepository();
+      final vps = const VpsRepository();
       List<Map<String, dynamic>> list = [];
       try {
         list = await vps.getCommunities(limit: 40);

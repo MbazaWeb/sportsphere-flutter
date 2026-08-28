@@ -8,9 +8,9 @@ const kOfficialLegacyHandles = {
   'playify_official',
   'playify_app',
   'playifyofficial', // no-underscore variant (squatter-safe)
-  'playify',
-  'playify_official',
-  'playify',
+  'sportsphere',
+  'sportsphere_official',
+  'sportsphere_app',
 };
 
 const kOfficialAvatarUrl = ''; // prefer local asset

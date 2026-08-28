@@ -15,7 +15,7 @@ import '../taxonomy/sport_catalog.dart';
 class SocialRepository {
   const SocialRepository();
 
-  static final _vps = VpsRepository();
+  static final _vps = const VpsRepository();
 
   Future<String?> _getUid() async {
     final prefs = await SharedPreferences.getInstance();
@@ -77,15 +77,20 @@ class SocialRepository {
     String? teamTag,
     String? sportTag,
     String? communityId,
+    String? matchId,
+    bool isBreaking = false,
   }) async {
-    final result = await _vps.createPost(
-      content:     content,
-      postType:    postType,
-      mediaUrls:   mediaUrls,
-      hashtags:    hashtags,
-      teamTag:     teamTag,
-      sportTag:    sportTag,
-    );
+    final result = await _vps.createPost({
+      'content':     content,
+      'postType':    postType,
+      'mediaUrls':   mediaUrls,
+      'hashtags':    hashtags,
+      if (teamTag     != null) 'teamTag':     teamTag,
+      if (sportTag    != null) 'sportTag':    sportTag,
+      if (communityId != null) 'communityId': communityId,
+      if (matchId     != null) 'matchId':     matchId,
+      if (isBreaking)          'isBreaking':  isBreaking,
+    });
     return result['id']?.toString() ?? '';
   }
 
@@ -143,7 +148,19 @@ class SocialRepository {
 
   // ── Comments ──────────────────────────────────────────────────────────────
   Future<List<Map<String, dynamic>>> listComments(String postId, {int limit = 50}) async {
-    return _vps.getComments(postId, limit: limit);
+    try {
+      // VpsRepository.getComments does not accept a `limit` param — pass
+      // it as a query param directly so the server can clamp the result set.
+      final res = await _vps.get<Map<String, dynamic>>(
+        '/v1/social/comments/$postId',
+        query: {'limit': limit},
+      );
+      return ((res.data?['comments']) as List? ?? [])
+          .cast<Map<String, dynamic>>();
+    } catch (e) {
+      debugPrint('listComments: $e — falling back to default limit');
+      return _vps.getComments(postId);
+    }
   }
 
   Future<void> addComment(
@@ -154,7 +171,18 @@ class SocialRepository {
     List<String> mediaUrls = const [],
     String? mediaType,
   }) async {
-    await _vps.addComment(postId, content, parentId: parentId);
+    // VpsRepository.addComment does not accept `parentId` — post directly
+    // so the server can wire up the nested-comment relationship.
+    await _vps.post<void>(
+      '/v1/social/comments/$postId',
+      data: <String, dynamic>{
+        'content':   content,
+        if (parentId != null) 'parentId': parentId,
+        if (mediaUrls.isNotEmpty) 'mediaUrls': mediaUrls,
+        if (mediaType != null) 'mediaType': mediaType,
+        if (mentionedUserIds.isNotEmpty) 'mentionedUserIds': mentionedUserIds,
+      },
+    );
   }
 
   // ── Polls ─────────────────────────────────────────────────────────────────
@@ -259,12 +287,18 @@ class SocialRepository {
       final res = await _vps.get<Map<String, dynamic>>('/v1/social/sports');
       return ((res.data?['sports']) as List? ?? []).cast<Map<String, dynamic>>();
     } catch (_) {
-      return SportCatalog.all.map((s) => {'id': s.slug, 'name': s.name, 'slug': s.slug, 'icon': s.icon}).toList();
+      // Fallback to the local sport catalog (kAllSports + sportLabel).
+      return kAllSports.map((slug) => <String, dynamic>{
+        'id':   slug,
+        'name': sportLabel(slug),
+        'slug': slug,
+        'icon': null,
+      }).toList();
     }
   }
 
   Future<List<String>> mySportSlugs() async {
-    final uid = _uid;
+    final uid = await _getUid();
     if (uid == null) return [];
     try {
       final res = await _vps.get<Map<String, dynamic>>('/v1/social/my-sports');
@@ -280,11 +314,18 @@ class SocialRepository {
 
   // ── Profile ───────────────────────────────────────────────────────────────
   Future<void> updateMediaUrls({String? avatarUrl, String? coverUrl, String? themeColor}) async {
-    final patch = <String, dynamic>{};
-    if (avatarUrl  != null) patch['avatar_url']  = avatarUrl;
-    if (coverUrl   != null) patch['cover_url']   = coverUrl;
-    if (themeColor != null) patch['theme_color'] = themeColor;
-    if (patch.isNotEmpty) await _vps.updateProfile(patch);
+    final uid = await _getUid();
+    if (uid == null) {
+      debugPrint('[SOCIAL] updateMediaUrls: no uid — skipping');
+      return;
+    }
+    // VpsRepository.updateProfile takes whitelisted named params (no Map).
+    await _vps.updateProfile(
+      userId:     uid,
+      avatarUrl:  avatarUrl,
+      coverUrl:   coverUrl,
+      themeColor: themeColor,
+    );
   }
 
   // ── MIME helper ───────────────────────────────────────────────────────────

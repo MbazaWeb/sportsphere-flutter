@@ -32,14 +32,10 @@ class AuthController extends Notifier<AuthState> {
   AuthState build() {
     final repo = ref.read(authRepositoryProvider);
 
-    // Fresh install / signed out: resolve immediately so the router never
-    // stays in `unknown` (which pins every route to the splash).
-    if (!repo.hasSession) {
-      return const AuthState(status: AuthStatus.guest);
-    }
-
-    // Has a persisted session: start as unknown (splash holds) while the
-    // profile hydrates asynchronously.
+    // We can't synchronously determine whether a persisted session exists
+    // (SharedPreferences is async), so we always start in `unknown` (the
+    // splash screen holds until _hydrate resolves) and resolve via the
+    // post-frame callback below.
     //
     // M1 — Defer _hydrate() to a post-frame callback so any state mutation
     // happens AFTER the current build phase completes. Calling it
@@ -49,6 +45,9 @@ class AuthController extends Notifier<AuthState> {
       // Guard: the provider may have been disposed between the build() call
       // and the post-frame callback firing (e.g. fast nav). Bail out silently.
       if (ref.mounted) {
+        // Kick off async session check; also seeds the in-memory cache so
+        // currentSession is populated by the time _hydrate reads it.
+        repo.getToken();
         _hydrate();
       }
     });
@@ -59,7 +58,7 @@ class AuthController extends Notifier<AuthState> {
   Future<void> _hydrate() async {
     final repo = ref.read(authRepositoryProvider);
 
-    if (!repo.hasSession) {
+    if (!await repo.hasSession) {
       state = const AuthState(status: AuthStatus.guest);
       return;
     }
@@ -70,7 +69,7 @@ class AuthController extends Notifier<AuthState> {
         status: profile != null
             ? AuthStatus.authenticated
             : AuthStatus.guest,
-        // Use access token from Supabase session for any Dio calls
+        // Use access token from the cached session for any Dio calls
         token: repo.currentSession?.accessToken,
         user: profile,
       );

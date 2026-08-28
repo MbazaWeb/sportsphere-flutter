@@ -1,14 +1,13 @@
 import '../../app/config/env.dart';
 
-/// Club, league and national badges stored on Supabase Storage.
+/// Club, league and national badges stored on VPS media storage.
 class NbcClubBadges {
   NbcClubBadges._();
 
   // ─── STORAGE CONFIGURATION ────────────────────────────────
-  // FIXED: Read from environment instead of hardcoding
   static String get _base {
-    final url = AppEnv.supabaseUrl;
-    return '$url/storage/v1/object/public/media';
+    // Use VPS API base URL for media storage (MinIO/CDN)
+    return '${AppEnv.apiBaseUrl}/media';
   }
 
   // ─── TEAMS ──────────────────────────────────────────────────

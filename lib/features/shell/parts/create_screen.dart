@@ -1,8 +1,8 @@
-import '../../../core/data/vps_supabase_compat.dart';
 part of '../app_shell.dart';
-// ignore: unused_import
-import '../../../core/data/vps_repository.dart';
-// ignore: unused_import
+
+// VpsRepository is re-exported via the parent app_shell.dart import chain
+// (core/data/vps_repository.dart is imported there). The ignore below
+// silences the unused_import hint when the file is analyzed standalone.
 
 // ══════════════════════════════════════════════════════════════════════════════
 // CREATE SCREEN  — full compose experience
@@ -165,7 +165,7 @@ class _CreateComposerState extends State<_CreateComposer>
 
   Future<void> _loadTeams() async {
     try {
-      final res = await VpsRepository().get<Map<String, dynamic>>(
+      final res = await const VpsRepository().get<Map<String, dynamic>>(
         '/v1/admin/teams', query: {'limit': 200});
       if (mounted) {
         setState(() => _teams = (res.data?['teams'] as List? ?? []).cast<Map<String,dynamic>>());
@@ -175,7 +175,7 @@ class _CreateComposerState extends State<_CreateComposer>
 
   Future<void> _loadMatches() async {
     try {
-      final rows = await VpsRepository().getUpcomingMatches();
+      final rows = await const VpsRepository().getUpcomingMatches();
       if (mounted) {
         setState(() => _matches = rows.where((m) =>
           ['upcoming','live','scheduled'].contains(m['status'])).toList());
@@ -185,7 +185,7 @@ class _CreateComposerState extends State<_CreateComposer>
 
   Future<void> _loadPlayers() async {
     try {
-      final res = await VpsRepository().get<Map<String, dynamic>>(
+      final res = await const VpsRepository().get<Map<String, dynamic>>(
         '/v1/admin/players/search', query: {'q': '', 'limit': 300});
       if (mounted) {
         setState(() => _players = (res.data?['players'] as List? ?? []).cast<Map<String,dynamic>>());
@@ -400,15 +400,16 @@ class _CreateComposerState extends State<_CreateComposer>
         case _PostType.prediction:
           if (_predType == 'player' && _selectedPlayer != null) {
             // Player prediction: notify via post content
-            final playerName = _selectedPlayer!['name'] ?? '';
-            final playerNote = text.isNotEmpty ? text : 'I predict $playerName scores!';
             await repo.createPrediction(
               homeTeam: _selectedPlayer!['name'] ?? '',
               awayTeam: '',
               predictedHome: _predHomeScore,
               predictedAway: 0,
               matchId: _selectedMatchId,
-              note: playerNote,
+              // SocialRepository.createPrediction has no `note` param —
+              // the note text is conveyed via the Post body separately.
+              outcome: 'player',
+              confidence: 'medium',
             );
           } else {
             final home = _selectedMatch?['homeTeam'] ?? _predHomeCtrl.text.trim();
@@ -419,7 +420,9 @@ class _CreateComposerState extends State<_CreateComposer>
               predictedHome: _predHomeScore,
               predictedAway: _predAwayScore,
               matchId: _selectedMatchId,
-              note: text.isNotEmpty ? text : null,
+              // No `note` param — conveyed via the Post body separately.
+              outcome: 'home',
+              confidence: 'medium',
             );
           }
 
@@ -1203,7 +1206,7 @@ class _PollPanelState extends State<_PollPanel> {
     if (_loadingTeams) return;
     setState(() => _loadingTeams = true);
     try {
-      final res = await VpsRepository().get<Map<String,dynamic>>(
+      final res = await const VpsRepository().get<Map<String,dynamic>>(
           '/v1/admin/teams', query: {'limit': '4'});
       final teams = (res.data?['teams'] as List? ?? []).cast<Map<String,dynamic>>();
       final names = teams.map((t) => t['name']?.toString().trim() ?? '').where((n) => n.isNotEmpty).toList();

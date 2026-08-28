@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/data/social_repository.dart';
 import '../../../../core/data/vps_repository.dart';
@@ -56,7 +55,7 @@ class _MatchCardState extends State<MatchCard> {
     if (postId == null || postId.isEmpty) return;
     if (VpsSupabaseCompat.client.auth.currentUser == null) return;
     try {
-      final liked = await VpsRepository().isPostLiked(postId);
+      final liked = await const VpsRepository().isPostLiked(postId);
       if (mounted && liked) setState(() => _liked = true);
     } catch (_) {
       // best-effort
@@ -262,9 +261,9 @@ class _MatchCardState extends State<MatchCard> {
     setState(() { _liked = !_liked; _likeBusy = true; });
     try {
       if (_liked) {
-        await VpsRepository().likePost(m.postId!);
+        await const VpsRepository().likePost(m.postId!);
       } else {
-        await VpsRepository().unlikePost(m.postId!);
+        await const VpsRepository().unlikePost(m.postId!);
       }
       _toast(_liked ? 'Liked' : 'Like removed');
     } catch (e) {
@@ -311,7 +310,7 @@ class _MatchCardState extends State<MatchCard> {
       if (postId != null && postId.isNotEmpty &&
           VpsSupabaseCompat.client.auth.currentUser != null) {
         try {
-          await VpsRepository().sharePost(postId);
+          await const VpsRepository().sharePost(postId);
         } catch (_) {
           // best-effort
         }

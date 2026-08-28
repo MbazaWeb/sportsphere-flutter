@@ -5,6 +5,19 @@
 import 'package:flutter/foundation.dart';
 import '../../core/data/vps_repository.dart';
 
+/// No-op realtime channel returned by [MessagingRepository.subscribeThread].
+///
+/// Supabase realtime is being removed; the VPS websocket (Soketi) migration
+/// is not yet deployed. Until then, callers should poll
+/// [MessagingRepository.threadWith] periodically (every ~10s) to pick up new
+/// messages. This stub keeps the call-site signature stable so the eventual
+/// Soketi migration only needs to swap the body of `subscribeThread`.
+class NoopRealtimeChannel {
+  NoopRealtimeChannel();
+  void subscribe() {}
+  void unsubscribe() {}
+}
+
 class PeerProfile {
   final String id;
   final String name;
@@ -101,5 +114,28 @@ class MessagingRepository {
       debugPrint('searchUsers: $e');
       return [];
     }
+  }
+
+  /// Subscribe to realtime updates for a thread with [peerId].
+  ///
+  /// **STUB** — Supabase realtime is being removed and the VPS websocket
+  /// (Soketi) migration is not yet deployed. The returned
+  /// [NoopRealtimeChannel] does nothing; [onInsert] will never fire.
+  /// Callers should poll [threadWith] periodically (every ~10s) until the
+  /// Soketi integration lands. The signature is stable so the eventual
+  /// migration only needs to swap the body of this method.
+  ///
+  /// Returns `dynamic` (rather than [NoopRealtimeChannel]) so call sites
+  /// that still type their channel variable as the legacy
+  /// `RealtimeChannel?` (from `package:supabase_flutter`) compile without
+  /// an explicit cast — once the Soketi migration lands, this return type
+  /// can be tightened to whatever channel type the websocket client exposes.
+  dynamic subscribeThread({
+    required String peerId,
+    required void Function(Map<String, dynamic> row) onInsert,
+  }) {
+    debugPrint('[MSG] subscribeThread: realtime disabled (peerId=$peerId) — '
+        'poll threadWith() until Soketi migration lands');
+    return NoopRealtimeChannel();
   }
 }

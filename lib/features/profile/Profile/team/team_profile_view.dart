@@ -1,10 +1,9 @@
 import '../../../../core/data/vps_supabase_compat.dart';
-import '../../../core/data/vps_repository.dart';
+import '../../../../core/data/vps_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/admin/app_admin.dart';
 import '../../../../core/data/social_graph.dart';
@@ -234,11 +233,7 @@ class _TeamProfileViewState extends State<TeamProfileView>
       return;
     }
     try {
-      if (next) {
-        await VpsRepository().becomeFan('team', p.id ?? '');
-      } else {
-        await VpsRepository().unfan('team', p.id ?? '');
-      }
+      await const VpsRepository().toggleFan(p.id ?? '');
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(next ? 'You are now a ${p.name} fan!' : 'Removed fan status'),
         duration: const Duration(seconds: 2),
@@ -329,8 +324,8 @@ class _TeamProfileViewState extends State<TeamProfileView>
       try {
         final key = p.handle.replaceAll('@', '').trim();
         try {
-          final profile = await VpsRepository().getProfile(key);
-          if (profile.isNotEmpty) {
+          final profile = await const VpsRepository().getProfile(key);
+          if (profile != null && profile.isNotEmpty) {
             teamId = profile['id']?.toString();
             initial = Map<String, dynamic>.from(profile);
           }

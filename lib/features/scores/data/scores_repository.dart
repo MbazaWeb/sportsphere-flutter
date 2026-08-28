@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/data/nbc_club_badges.dart';
 import '../../../core/data/vps_repository.dart';
@@ -12,11 +11,12 @@ import '../domain/models/standing_model.dart';
 const int kMaxMatchesPerFetch = 200;
 
 /// Live scores — all data via VPS API (/v1/matches/*).
-/// Admin mutations still use Supabase JWT + VPS /v1/admin/matches.
+/// Admin mutations go through VPS /v1/admin/matches (JWT attached by ApiClient,
+/// admin role enforced server-side by the VPS).
 class ScoresRepository {
   const ScoresRepository();
 
-  static final _vps = VpsRepository();
+  static final _vps = const VpsRepository();
 
   // ── Live / Today / Upcoming / Results ────────────────────────────────────
 
