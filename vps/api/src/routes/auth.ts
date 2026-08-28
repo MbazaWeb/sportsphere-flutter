@@ -1,3 +1,4 @@
+import { sendEmail } from '../lib/email.js'
 // vps/api/src/routes/auth.ts
 // Full auth system on VPS — no Supabase Auth dependency
 // Uses: bcrypt (password hashing) + jose (JWT RS256)
@@ -251,22 +252,117 @@ authRouter.post('/forgot-password', async (c) => {
   )
   if (!user) return c.json({ ok: true }) // silent
 
-  // Generate reset token
+  // Generate reset token (1 hour expiry)
   const token     = randomBytes(32).toString('hex')
   const tokenHash = createHash('sha256').update(token).digest('hex')
 
+  // Delete any existing reset token for this user first
+  await execute(`DELETE FROM public.password_resets WHERE user_id=$1`, [user.id]).catch(()=>{})
+
   await execute(
     `INSERT INTO public.password_resets(id, user_id, token_hash, expires_at, created_at)
-     VALUES(gen_random_uuid()::text,$1,$2,NOW()+INTERVAL '1 hour',NOW())
-     ON CONFLICT DO NOTHING`,
+     VALUES(gen_random_uuid()::text,$1,$2,NOW()+INTERVAL '1 hour',NOW())`,
     [user.id, tokenHash]
   ).catch(()=>{})
 
-  // TODO: Send email with reset link: https://playifysport.fun/reset-password?token=${token}
-  // For now, log it (replace with SMTP/Resend/Mailgun in production)
-  console.log(`[Password Reset] User ${user.id}: token=${token}`)
+  const resetUrl  = `https://playifysport.fun/reset-password?token=${token}`
+  const appName   = 'Playify'
+  const emailSent = await sendEmail({
+    to:      email.trim().toLowerCase(),
+    subject: `Reset your ${appName} password`,
+    html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#071420;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#071420;padding:40px 20px">
+    <tr><td align="center">
+      <table width="480" cellpadding="0" cellspacing="0" style="background:#0d2137;border-radius:16px;overflow:hidden;max-width:480px;width:100%">
+        <!-- Header -->
+        <tr><td style="background:linear-gradient(135deg,#168CFF,#0e6cc4);padding:32px;text-align:center">
+          <div style="font-size:28px;font-weight:900;color:#fff;letter-spacing:-0.5px">${appName}</div>
+          <div style="font-size:13px;color:rgba(255,255,255,0.7);margin-top:4px">The Sports Social Network</div>
+        </td></tr>
+        <!-- Body -->
+        <tr><td style="padding:32px">
+          <h2 style="color:#fff;font-size:20px;font-weight:700;margin:0 0 12px">Reset your password</h2>
+          <p style="color:rgba(255,255,255,0.65);font-size:15px;line-height:1.6;margin:0 0 24px">
+            Hi ${user.name}, we received a request to reset your Playify password. Click the button below to set a new password. This link expires in <strong style="color:#fff">1 hour</strong>.
+          </p>
+          <a href="${resetUrl}" style="display:inline-block;background:#168CFF;color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;margin-bottom:24px">
+            Reset Password →
+          </a>
+          <p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0 0 8px">Or copy this link:</p>
+          <p style="color:#168CFF;font-size:12px;word-break:break-all;margin:0 0 24px">${resetUrl}</p>
+          <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:0 0 20px">
+          <p style="color:rgba(255,255,255,0.3);font-size:12px;margin:0">
+            If you didn't request this, ignore this email — your account is safe.<br>
+            This link expires in 1 hour.
+          </p>
+        </td></tr>
+        <!-- Footer -->
+        <tr><td style="padding:16px 32px;text-align:center;border-top:1px solid rgba(255,255,255,0.06)">
+          <p style="color:rgba(255,255,255,0.25);font-size:11px;margin:0">
+            © ${new Date().getFullYear()} Playify · playifysport.fun
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+  })
+
+  if (!emailSent) {
+    console.error(`[Password Reset] Email failed for ${user.id} — token logged for manual delivery`)
+    console.log(`[Password Reset] MANUAL: ${resetUrl}`)
+  }
 
   return c.json({ ok: true })
+})
+
+// ── POST /v1/auth/reset-password ─────────────────────────────────────────────
+authRouter.post('/reset-password', async (c) => {
+  const { token, password } = await c.req.json<{ token: string; password: string }>()
+  if (!token || !password) return c.json({ error: 'token and password required' }, 400)
+  if (password.length < 8) return c.json({ error: 'Password must be at least 8 characters' }, 400)
+
+  const tokenHash = createHash('sha256').update(token).digest('hex')
+  const reset = await queryOne<{ id: string; user_id: string; expires_at: string; used_at: string | null }>(
+    `SELECT id, user_id, expires_at, used_at FROM public.password_resets WHERE token_hash=$1`,
+    [tokenHash]
+  )
+
+  if (!reset)                return c.json({ error: 'Invalid or expired reset link' }, 400)
+  if (reset.used_at)         return c.json({ error: 'This reset link has already been used' }, 400)
+  if (new Date(reset.expires_at) < new Date()) {
+                              return c.json({ error: 'Reset link has expired — please request a new one' }, 400)
+  }
+
+  const newHash = await Bun.password.hash(password, { algorithm: 'bcrypt', cost: 12 })
+  await execute(`UPDATE public."User" SET "passwordHash"=$1, "updatedAt"=NOW() WHERE id=$2`, [newHash, reset.user_id])
+  await execute(`UPDATE public.password_resets SET used_at=NOW() WHERE id=$1`, [reset.id])
+  await execute(`DELETE FROM public.refresh_tokens WHERE user_id=$1`, [reset.user_id]).catch(()=>{})
+
+  // Issue new tokens so user is immediately logged in
+  const userRow = await queryOne<any>(
+    `SELECT id, name, email, handle, role FROM public."User" WHERE id=$1`, [reset.user_id]
+  )
+  if (!userRow) return c.json({ ok: true, message: 'Password reset — please login' })
+
+  const JWT_SECRET      = Bun.env.JWT_SECRET ?? ''
+  const REFRESH_SECRET  = Bun.env.REFRESH_SECRET ?? ''
+  const { SignJWT }     = await import('jose')
+  const enc             = new TextEncoder()
+
+  const accessToken = await new SignJWT({ sub: userRow.id, role: userRow.role, handle: userRow.handle })
+    .setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('15m')
+    .sign(enc.encode(JWT_SECRET))
+  const refreshToken = await new SignJWT({ sub: userRow.id, type: 'refresh' })
+    .setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('30d')
+    .sign(enc.encode(REFRESH_SECRET))
+
+  return c.json({ ok: true, accessToken, refreshToken, user: userRow })
 })
 
 // ── DB tables needed (run once) ───────────────────────────────────────────────

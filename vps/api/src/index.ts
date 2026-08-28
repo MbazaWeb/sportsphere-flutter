@@ -94,6 +94,7 @@ app.use('/v1/*', async (c, next) => {
     '/v1/auth/refresh',
     '/v1/auth/forgot-password',
     '/v1/auth/resend-confirmation',
+    '/v1/auth/reset-password',
   ]
   if (publicPaths.includes(path)) return next()
   return authMiddleware(c, next)
