@@ -70,13 +70,6 @@ matchRouter.get('/standings', async (c) => {
   return c.json({ ok: true, standings })
 })
 
-// GET /v1/matches/:id
-matchRouter.get('/:id', async (c) => {
-  const rows = await query(`SELECT * FROM public."Match" WHERE id = $1`, [c.req.param('id')])
-  if (!rows.length) return c.json({ error: 'Match not found' }, 404)
-  return c.json({ ok: true, match: rows[0] })
-})
-
 // GET /v1/matches/all?limit=200
 matchRouter.get('/all', async (c) => {
   const limit = Math.min(Number(c.req.query('limit') ?? 200), 500)
@@ -94,4 +87,11 @@ matchRouter.get('/leagues', async (c) => {
      ORDER BY league`
   )
   return c.json({ ok: true, leagues: rows.map(r => r.league) })
+})
+
+// GET /v1/matches/:id
+matchRouter.get('/:id', async (c) => {
+  const rows = await query(`SELECT * FROM public."Match" WHERE id = $1`, [c.req.param('id')])
+  if (!rows.length) return c.json({ error: 'Match not found' }, 404)
+  return c.json({ ok: true, match: rows[0] })
 })
