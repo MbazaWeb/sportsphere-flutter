@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
 
 import '../data/auth_repository.dart';
+import '../../../core/realtime/soketi_service.dart';
 import '../domain/auth_state.dart';
 import '../../../core/utils/friendly_error.dart';
 
@@ -65,14 +66,21 @@ class AuthController extends Notifier<AuthState> {
 
     try {
       final profile = await repo.hydrateProfile();
+      final token = repo.currentSession?.accessToken;
       state = AuthState(
         status: profile != null
             ? AuthStatus.authenticated
             : AuthStatus.guest,
-        // Use access token from the cached session for any Dio calls
-        token: repo.currentSession?.accessToken,
+        token: token,
         user: profile,
       );
+      // Init Soketi WebSocket after session confirmed
+      if (profile != null && token != null) {
+        SoketiService.instance.init(
+          userId: profile.id ?? '',
+          accessToken: token,
+        ).catchError((_) {}); // non-fatal
+      }
     } on AuthException catch (e) {
       // AuthException means Supabase Auth confirmed the session is invalid.
       // ONLY in this case do we clear the local session.
@@ -101,12 +109,20 @@ class AuthController extends Notifier<AuthState> {
             identifier: identifier,
             password: password,
           );
+      final loginToken = ref.read(authRepositoryProvider).currentSession?.accessToken;
       state = AuthState(
         status: AuthStatus.authenticated,
-        token: ref.read(authRepositoryProvider).currentSession?.accessToken,
+        token: loginToken,
         user: user,
         isLoading: false,
       );
+      // Init Soketi on login
+      if (loginToken != null) {
+        SoketiService.instance.init(
+          userId: user.id ?? '',
+          accessToken: loginToken,
+        ).catchError((_) {});
+      }
       return true;
     } catch (e) {
       state = state.copyWith(

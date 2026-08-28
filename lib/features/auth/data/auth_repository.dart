@@ -290,6 +290,7 @@ class AuthRepository {
   UserProfile _profileFrom(Map<String, dynamic> data) {
     final u = (data['user'] as Map<String, dynamic>?) ?? data;
     return UserProfile(
+      id:            u['id']?.toString(),
       firstName:     (u['firstName']  ?? u['first_name']  ?? '') as String,
       lastName:      (u['lastName']   ?? u['last_name']   ?? '') as String,
       email:         (u['email']      ?? '') as String,
