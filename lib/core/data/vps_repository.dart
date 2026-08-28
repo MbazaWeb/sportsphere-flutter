@@ -297,3 +297,165 @@ class VpsRepository {
     }
   }
 }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SOCIAL — POSTS
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> getUserPosts(String userId, {int limit = 20}) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/social/posts/user/$userId', query: {'limit': limit},
+    );
+    return ((res.data?['posts']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> createPost({
+    required String content,
+    String postType = 'post',
+    List<String> mediaUrls = const [],
+    List<String> hashtags  = const [],
+    String? teamTag,
+    String? sportTag,
+  }) async {
+    final res = await _client.post<Map<String, dynamic>>('/v1/social/posts', data: {
+      'content':   content,
+      'postType':  postType,
+      'mediaUrls': mediaUrls,
+      'hashtags':  hashtags,
+      if (teamTag  != null) 'teamTag':  teamTag,
+      if (sportTag != null) 'sportTag': sportTag,
+    });
+    return res.data?['post'] as Map<String, dynamic>? ?? {};
+  }
+
+  Future<void> deletePost(String postId) async {
+    await _client.delete<void>('/v1/social/posts/$postId');
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SOCIAL — LIKES
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Future<int> likePost(String postId) async {
+    final res = await _client.post<Map<String, dynamic>>('/v1/social/posts/$postId/like');
+    return res.data?['likeCount'] as int? ?? 0;
+  }
+
+  Future<int> unlikePost(String postId) async {
+    final res = await _client.delete<Map<String, dynamic>>('/v1/social/posts/$postId/like');
+    return res.data?['likeCount'] as int? ?? 0;
+  }
+
+  Future<bool> isPostLiked(String postId) async {
+    final res = await _client.get<Map<String, dynamic>>('/v1/social/posts/$postId/liked');
+    return res.data?['liked'] as bool? ?? false;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SOCIAL — COMMENTS
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> getComments(String postId, {int limit = 50}) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/social/posts/$postId/comments', query: {'limit': limit},
+    );
+    return ((res.data?['comments']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> addComment(String postId, String content, {String? parentId}) async {
+    final res = await _client.post<Map<String, dynamic>>(
+      '/v1/social/posts/$postId/comments',
+      data: {'content': content, if (parentId != null) 'parentId': parentId},
+    );
+    return res.data?['comment'] as Map<String, dynamic>? ?? {};
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SOCIAL — FOLLOW
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Future<void> followUser(String targetId) async {
+    await _client.post<void>('/v1/social/follow/$targetId');
+  }
+
+  Future<void> unfollowUser(String targetId) async {
+    await _client.delete<void>('/v1/social/follow/$targetId');
+  }
+
+  Future<bool> isFollowing(String targetId) async {
+    final res = await _client.get<Map<String, dynamic>>('/v1/social/follow/$targetId/status');
+    return res.data?['following'] as bool? ?? false;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SOCIAL — FAN (become a fan of team/player/league)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Future<void> becomeFan(String entityType, String entityId) async {
+    await _client.post<void>('/v1/social/fan/$entityType/$entityId');
+  }
+
+  Future<void> unfan(String entityType, String entityId) async {
+    await _client.delete<void>('/v1/social/fan/$entityType/$entityId');
+  }
+
+  Future<bool> isFan(String entityType, String entityId) async {
+    final res = await _client.get<Map<String, dynamic>>('/v1/social/fan/$entityType/$entityId/status');
+    return res.data?['isFan'] as bool? ?? false;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SOCIAL — MESSAGES (DM)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> getMessages(String withUserId, {int limit = 50}) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/social/messages/$withUserId', query: {'limit': limit},
+    );
+    return ((res.data?['messages']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> sendMessage(String receiverId, String content) async {
+    final res = await _client.post<Map<String, dynamic>>(
+      '/v1/social/messages',
+      data: {'receiverId': receiverId, 'content': content},
+    );
+    return res.data?['message'] as Map<String, dynamic>? ?? {};
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SOCIAL — COMMUNITIES
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> getCommunities({int limit = 20}) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/social/communities', query: {'limit': limit},
+    );
+    return ((res.data?['communities']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  Future<void> joinCommunity(String communityId) async {
+    await _client.post<void>('/v1/social/communities/$communityId/join');
+  }
+
+  Future<void> leaveCommunity(String communityId) async {
+    await _client.delete<void>('/v1/social/communities/$communityId/leave');
+  }
+
+  Future<bool> isCommunityMember(String communityId) async {
+    final res = await _client.get<Map<String, dynamic>>('/v1/social/communities/$communityId/member');
+    return res.data?['isMember'] as bool? ?? false;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // PROFILE
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Future<Map<String, dynamic>> getProfile(String handleOrId) async {
+    final res = await _client.get<Map<String, dynamic>>('/v1/social/profile/$handleOrId');
+    return res.data?['user'] as Map<String, dynamic>? ?? {};
+  }
+
+  Future<void> updateProfile(Map<String, dynamic> fields) async {
+    await _client.patch<void>('/v1/social/profile', data: fields);
+  }

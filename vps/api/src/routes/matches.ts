@@ -1,78 +1,78 @@
-// vps/api/src/routes/matches.ts
-// GET /v1/matches/live
-// GET /v1/matches/today
-// GET /v1/matches/upcoming
-// GET /v1/matches/results
-// GET /v1/matches/standings?league=ligi-kuu-bara
-// All public — no JWT required
-
+// vps/api/src/routes/matches.ts — direct PostgreSQL
 import { Hono } from 'hono'
-import { supabaseAdmin } from '../lib/supabase.js'
+import { query } from '../lib/db.js'
 
 export const matchRouter = new Hono()
 
-const LIVE_STATUSES     = ['live','in_play','ht','1h','2h','Live','HT']
-const FINISHED_STATUSES = ['ft','finished','full time','FT','Finished']
+const LIVE  = ['live','in_play','ht','1h','2h','Live','HT']
+const DONE  = ['ft','finished','full time','FT','Finished']
+
+const liveIn  = LIVE.map((_,i) => `$${i+1}`).join(',')
+const doneIn  = DONE.map((_,i) => `$${i+1}`).join(',')
 
 matchRouter.get('/live', async (c) => {
-  const liveOr = LIVE_STATUSES.map(s => `status.eq.${s}`).join(',')
-  const { data, error } = await supabaseAdmin
-    .from('Match').select('*').or(liveOr).order('kickoffAt')
-  if (error) return c.json({ error: error.message }, 500)
-  return c.json({ ok: true, matches: data ?? [] })
+  const rows = await query(
+    `SELECT * FROM public."Match" WHERE status = ANY($1) ORDER BY "kickoffAt"`,
+    [LIVE]
+  )
+  return c.json({ ok: true, matches: rows })
 })
 
 matchRouter.get('/today', async (c) => {
-  const start = new Date(); start.setUTCHours(0,0,0,0)
-  const end   = new Date(); end.setUTCHours(23,59,59,999)
-  const { data, error } = await supabaseAdmin.from('Match').select('*')
-    .gte('kickoffAt', start.toISOString())
-    .lte('kickoffAt', end.toISOString())
-    .order('kickoffAt')
-  if (error) return c.json({ error: error.message }, 500)
-  return c.json({ ok: true, matches: data ?? [] })
+  const rows = await query(
+    `SELECT * FROM public."Match"
+     WHERE "kickoffAt" >= DATE_TRUNC('day', NOW())
+       AND "kickoffAt" <  DATE_TRUNC('day', NOW()) + INTERVAL '1 day'
+     ORDER BY "kickoffAt"`,
+    []
+  )
+  return c.json({ ok: true, matches: rows })
 })
 
 matchRouter.get('/upcoming', async (c) => {
-  const notFinished = FINISHED_STATUSES.map(s => `status.neq.${s}`).join(',')
-  const { data, error } = await supabaseAdmin.from('Match').select('*')
-    .gte('kickoffAt', new Date().toISOString())
-    .order('kickoffAt').limit(100)
-  if (error) return c.json({ error: error.message }, 500)
-  return c.json({ ok: true, matches: data ?? [] })
+  const rows = await query(
+    `SELECT * FROM public."Match"
+     WHERE "kickoffAt" > NOW() AND status NOT IN ('ft','finished','full time','FT','Finished')
+     ORDER BY "kickoffAt" LIMIT 100`,
+    []
+  )
+  return c.json({ ok: true, matches: rows })
 })
 
 matchRouter.get('/results', async (c) => {
-  const finishedOr = FINISHED_STATUSES.map(s => `status.eq.${s}`).join(',')
-  const { data, error } = await supabaseAdmin.from('Match').select('*')
-    .or(finishedOr).order('kickoffAt', { ascending: false }).limit(100)
-  if (error) return c.json({ error: error.message }, 500)
-  return c.json({ ok: true, matches: data ?? [] })
+  const rows = await query(
+    `SELECT * FROM public."Match"
+     WHERE status = ANY($1)
+     ORDER BY "kickoffAt" DESC LIMIT 100`,
+    [DONE]
+  )
+  return c.json({ ok: true, matches: rows })
 })
 
 matchRouter.get('/standings', async (c) => {
   const league = c.req.query('league') ?? ''
-  const { data, error } = await supabaseAdmin.from('Match').select('*')
-    .eq('league', league).order('kickoffAt', { ascending: false })
-  if (error) return c.json({ error: error.message }, 500)
-  // Compute standings from results
-  const table: Record<string, { p:number,w:number,d:number,l:number,gf:number,ga:number }> = {}
-  for (const m of (data ?? []) as any[]) {
-    if (!FINISHED_STATUSES.includes(m.status)) continue
-    for (const [team, opp, gs, gc] of [
-      [m.homeTeam, m.awayTeam, m.homeScore??0, m.awayScore??0],
-      [m.awayTeam, m.homeTeam, m.awayScore??0, m.homeScore??0],
-    ] as [string,string,number,number][]) {
-      table[team] ??= { p:0,w:0,d:0,l:0,gf:0,ga:0 }
-      table[team].p++; table[team].gf += gs; table[team].ga += gc
-      if (gs > gc) table[team].w++
-      else if (gs === gc) table[team].d++
-      else table[team].l++
+  const rows   = await query(
+    `SELECT * FROM public."Match" WHERE league = $1 AND status = ANY($2) ORDER BY "kickoffAt" DESC`,
+    [league, DONE]
+  )
+  const table: Record<string, {p:number,w:number,d:number,l:number,gf:number,ga:number}> = {}
+  for (const m of rows as any[]) {
+    for (const [team,gs,gc] of [[m.homeTeam,m.homeScore??0,m.awayScore??0],[m.awayTeam,m.awayScore??0,m.homeScore??0]] as [string,number,number][]) {
+      table[team] ??= {p:0,w:0,d:0,l:0,gf:0,ga:0}
+      table[team].p++; table[team].gf+=gs; table[team].ga+=gc
+      if (gs>gc) table[team].w++; else if (gs===gc) table[team].d++; else table[team].l++
     }
   }
   const standings = Object.entries(table)
-    .map(([team, s]) => ({ team, ...s, pts: s.w*3 + s.d, gd: s.gf - s.ga }))
-    .sort((a,b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf)
-    .map((r,i) => ({ ...r, pos: i + 1 }))
+    .map(([team,s])=>({team,...s,pts:s.w*3+s.d,gd:s.gf-s.ga}))
+    .sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf)
+    .map((r,i)=>({...r,pos:i+1}))
   return c.json({ ok: true, standings })
+})
+
+// GET /v1/matches/:id
+matchRouter.get('/:id', async (c) => {
+  const rows = await query(`SELECT * FROM public."Match" WHERE id = $1`, [c.req.param('id')])
+  if (!rows.length) return c.json({ error: 'Match not found' }, 404)
+  return c.json({ ok: true, match: rows[0] })
 })
