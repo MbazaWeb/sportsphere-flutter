@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/data/vps_repository.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../auth_controller.dart';
@@ -1560,12 +1561,8 @@ class _FanSetupSheetState extends State<_FanSetupSheet> {
       final file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
       if (file == null) return;
       final bytes = await file.readAsBytes();
-      final uid = Supabase.instance.client.auth.currentUser?.id
-          ?? DateTime.now().millisecondsSinceEpoch.toString();
-      final path = 'avatars/$uid.jpg';
-      await Supabase.instance.client.storage.from('avatars').uploadBinary(
-        path, bytes, fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: true));
-      final url = Supabase.instance.client.storage.from('avatars').getPublicUrl(path);
+      // Upload via VPS → Cloudflare R2
+      final url = await VpsRepository().uploadAvatarBytes(bytes);
       widget.onAvatarChanged(url);
       if (mounted) setState(() {});
     } catch (e) {
