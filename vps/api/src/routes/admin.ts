@@ -15,19 +15,25 @@ function getAdminClient() {
 
 // GET /v1/admin/stats
 adminRouter.get('/stats', async (c) => {
-  const [users, posts, players, news, matches] = await Promise.all([
+  const [users, posts, players, news, matches, teams, coaches, leagues] = await Promise.all([
     queryOne<{count:string}>(`SELECT COUNT(*) as count FROM public."User"`),
     queryOne<{count:string}>(`SELECT COUNT(*) as count FROM public."Post"`),
     queryOne<{count:string}>(`SELECT COUNT(*) as count FROM public."Player"`),
     queryOne<{count:string}>(`SELECT COUNT(*) as count FROM public."NewsItem"`),
     queryOne<{count:string}>(`SELECT COUNT(*) as count FROM public."Match"`),
+    queryOne<{count:string}>(`SELECT COUNT(*) as count FROM public."Team"`),
+    queryOne<{count:string}>(`SELECT COUNT(*) as count FROM public."Coach"`),
+    queryOne<{count:string}>(`SELECT COUNT(*) as count FROM public."League"`),
   ])
   return c.json({ ok: true, stats: {
-    users:   Number(users?.count   ?? 0),
-    posts:   Number(posts?.count   ?? 0),
-    players: Number(players?.count ?? 0),
-    news:    Number(news?.count    ?? 0),
-    matches: Number(matches?.count ?? 0),
+    users:        Number(users?.count   ?? 0),
+    posts:        Number(posts?.count   ?? 0),
+    players:      Number(players?.count ?? 0),
+    news:         Number(news?.count    ?? 0),
+    matches:      Number(matches?.count ?? 0),
+    teams:        Number(teams?.count   ?? 0),
+    coaches:      Number(coaches?.count ?? 0),
+    competitions: Number(leagues?.count ?? 0),
   }})
 })
 
@@ -155,3 +161,487 @@ adminRouter.get('/players/search', async (c) => {
 })
 
 // POST /v1/shop/orders — create order (authenticated, non-admin)
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ADMIN — FULL CRUD FOR ALL ENTITIES
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── USERS ─────────────────────────────────────────────────────────────────────
+
+// POST /v1/admin/users — create user (admin creates on behalf)
+adminRouter.post('/users', async (c) => {
+  const { email, password, firstName, lastName, handle, role, avatarUrl } =
+    await c.req.json<any>()
+  if (!email || !password) return c.json({ error: 'email and password required' }, 400)
+
+  // Use VPS auth register — same flow as self-registration
+  const { register } = await import('./auth.js')
+  const userId = crypto.randomUUID()
+  const { hashPassword } = await import('../lib/db.js').then(() => ({
+    hashPassword: async (pw: string) => Bun.password.hash(pw, { algorithm: 'bcrypt', cost: 12 })
+  }))
+  const hash       = await Bun.password.hash(password, { algorithm: 'bcrypt', cost: 12 })
+  const userRole   = role ?? 'fan'
+  const finalHandle = (handle ?? email.split('@')[0]).toLowerCase().replace(/[^a-z0-9_]/g,'').slice(0,30) || 'user'
+  const name       = [firstName, lastName].filter(Boolean).join(' ') || finalHandle
+
+  await execute(
+    `INSERT INTO public."User"(id,name,email,handle,role,"passwordHash","avatarUrl","emailVerified","registeredAt","updatedAt")
+     VALUES($1,$2,$3,$4,$5,$6,$7,true,NOW(),NOW())
+     ON CONFLICT(email) DO NOTHING`,
+    [userId, name, email.toLowerCase(), finalHandle, userRole, hash, avatarUrl??null]
+  )
+  await execute(
+    `INSERT INTO public.profiles(id,handle,role,first_name,last_name,email,created_at,updated_at)
+     VALUES($1::uuid,$2,$3,$4,$5,$6,NOW(),NOW()) ON CONFLICT(id) DO NOTHING`,
+    [userId, finalHandle, userRole, firstName??'', lastName??'', email.toLowerCase()]
+  )
+  return c.json({ ok: true, id: userId, handle: finalHandle }, 201)
+})
+
+// PATCH /v1/admin/users/:id/verify
+adminRouter.patch('/users/:id/verify', async (c) => {
+  const { verified } = await c.req.json<{ verified: boolean }>()
+  await execute(`UPDATE public."User" SET "isVerified"=$1,"updatedAt"=NOW() WHERE id=$2`, [verified, c.req.param('id')])
+  await execute(`UPDATE public.profiles SET is_verified=$1,updated_at=NOW() WHERE id=$2::uuid`, [verified, c.req.param('id')])
+  return c.json({ ok: true })
+})
+
+// ── TEAMS ─────────────────────────────────────────────────────────────────────
+
+// POST /v1/admin/teams
+adminRouter.post('/teams', async (c) => {
+  const b = await c.req.json<any>()
+  if (!b.name || !b.country) return c.json({ error: 'name and country required' }, 400)
+  const rows = await query(
+    `INSERT INTO public."Team"(id,name,slug,"shortName",city,country,"logoUrl","primaryColor",venue,"foundedYear",
+       source,verified,"isActive","isClaimable","leagueId","sportId","accountUserId","identity_status",
+       description,metadata,"createdAt","updatedAt")
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'admin',true,true,true,$11,$12,$13,$14,$15,'{}'::jsonb,NOW(),NOW())
+     ON CONFLICT(slug) DO UPDATE SET name=EXCLUDED.name, "updatedAt"=NOW()
+     RETURNING *`,
+    [b.id??`team-${Date.now()}`, b.name, b.slug??`${b.name.toLowerCase().replace(/\s+/g,'_')}_${Date.now()}`,
+     b.shortName??null, b.city??null, b.country, b.logoUrl??null, b.primaryColor??'#168CFF',
+     b.venue??null, b.foundedYear??null, b.leagueId??null, b.sportId??null,
+     b.accountUserId??null, b.identity_status??'pending', b.description??null]
+  )
+  return c.json({ ok: true, team: rows[0] }, 201)
+})
+
+// PATCH /v1/admin/teams/:id
+adminRouter.patch('/teams/:id', async (c) => {
+  const id = c.req.param('id'); const b = await c.req.json<any>()
+  const allowed = ['name','slug','shortName','city','country','logoUrl','primaryColor','venue',
+    'foundedYear','leagueId','sportId','accountUserId','identity_status','isClaimable',
+    'verified','isActive','description']
+  const sets: string[] = []; const params: unknown[] = []
+  for (const [k,v] of Object.entries(b)) {
+    if (allowed.includes(k)) { params.push(v); sets.push(`"${k}"=$${params.length}`) }
+  }
+  if (!sets.length) return c.json({ error: 'Nothing to update' }, 400)
+  params.push(id)
+  await execute(`UPDATE public."Team" SET ${sets.join(',')}, "updatedAt"=NOW() WHERE id=$${params.length}`, params)
+  return c.json({ ok: true })
+})
+
+// DELETE /v1/admin/teams/:id
+adminRouter.delete('/teams/:id', async (c) => {
+  await execute(`DELETE FROM public."Team" WHERE id=$1`, [c.req.param('id')])
+  return c.json({ ok: true })
+})
+
+// ── PLAYERS ───────────────────────────────────────────────────────────────────
+
+// GET /v1/admin/players?teamId=&limit=200
+adminRouter.get('/players', async (c) => {
+  const teamId = c.req.query('teamId')
+  const limit  = Math.min(Number(c.req.query('limit')??200),500)
+  const rows   = teamId
+    ? await query(`SELECT * FROM public."Player" WHERE "teamId"=$1 ORDER BY name LIMIT $2`, [teamId, limit])
+    : await query(`SELECT * FROM public."Player" WHERE "isActive"=true ORDER BY name LIMIT $1`, [limit])
+  return c.json({ ok: true, players: rows })
+})
+
+// POST /v1/admin/players
+adminRouter.post('/players', async (c) => {
+  const b = await c.req.json<any>()
+  if (!b.name || !b.position) return c.json({ error: 'name and position required' }, 400)
+  const rows = await query(
+    `INSERT INTO public."Player"(id,name,slug,"firstName","lastName",position,nationality,
+       "photoUrl","dateOfBirth","heightCm","weightKg","shirtNumber","teamId","leagueId","sportId",
+       "accountUserId","isClaimable","identity_status",verified,"isActive",metadata,"createdAt","updatedAt")
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,false,true,'{}'::jsonb,NOW(),NOW())
+     ON CONFLICT(slug) DO UPDATE SET name=EXCLUDED.name,"updatedAt"=NOW()
+     RETURNING *`,
+    [b.id??`player-${Date.now()}`, b.name,
+     b.slug??`${b.name.toLowerCase().replace(/\s+/g,'_')}_${Date.now()}`,
+     b.firstName??b.name.split(' ')[0], b.lastName??b.name.split(' ').slice(1).join(' '),
+     b.position, b.nationality??null, b.photoUrl??null,
+     b.dateOfBirth??null, b.heightCm??null, b.weightKg??null, b.shirtNumber??null,
+     b.teamId??null, b.leagueId??null, b.sportId??null, b.accountUserId??null,
+     b.isClaimable??true, b.identity_status??'pending']
+  )
+  return c.json({ ok: true, player: rows[0] }, 201)
+})
+
+// PATCH /v1/admin/players/:id
+adminRouter.patch('/players/:id', async (c) => {
+  const id = c.req.param('id'); const b = await c.req.json<any>()
+  const allowed = ['name','firstName','lastName','position','nationality','photoUrl',
+    'teamId','leagueId','sportId','accountUserId','identity_status','isClaimable',
+    'shirtNumber','heightCm','weightKg','dateOfBirth','verified','isActive']
+  const sets: string[] = []; const params: unknown[] = []
+  for (const [k,v] of Object.entries(b)) {
+    if (allowed.includes(k)) { params.push(v); sets.push(`"${k}"=$${params.length}`) }
+  }
+  if (!sets.length) return c.json({ error: 'Nothing to update' }, 400)
+  params.push(id)
+  await execute(`UPDATE public."Player" SET ${sets.join(',')}, "updatedAt"=NOW() WHERE id=$${params.length}`, params)
+  return c.json({ ok: true })
+})
+
+// DELETE /v1/admin/players/:id
+adminRouter.delete('/players/:id', async (c) => {
+  await execute(`DELETE FROM public."Player" WHERE id=$1`, [c.req.param('id')])
+  return c.json({ ok: true })
+})
+
+// ── COACHES ───────────────────────────────────────────────────────────────────
+
+// GET /v1/admin/coaches
+adminRouter.get('/coaches', async (c) => {
+  const limit = Math.min(Number(c.req.query('limit')??200),500)
+  const rows  = await query(`SELECT * FROM public."Coach" ORDER BY name LIMIT $1`, [limit])
+  return c.json({ ok: true, coaches: rows })
+})
+
+// POST /v1/admin/coaches
+adminRouter.post('/coaches', async (c) => {
+  const b = await c.req.json<any>()
+  if (!b.name) return c.json({ error: 'name required' }, 400)
+  const rows = await query(
+    `INSERT INTO public."Coach"(id,name,slug,"firstName","lastName",nationality,"photoUrl",
+       role,"teamId","leagueId","sportId",verified,"isActive",metadata,"createdAt","updatedAt")
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,false,true,'{}'::jsonb,NOW(),NOW())
+     ON CONFLICT(slug) DO UPDATE SET name=EXCLUDED.name,"updatedAt"=NOW()
+     RETURNING *`,
+    [b.id??`coach-${Date.now()}`, b.name,
+     b.slug??`${b.name.toLowerCase().replace(/\s+/g,'_')}_${Date.now()}`,
+     b.firstName??b.name.split(' ')[0], b.lastName??b.name.split(' ').slice(1).join(' '),
+     b.nationality??null, b.photoUrl??null, b.role??'head_coach',
+     b.teamId??null, b.leagueId??null, b.sportId??null]
+  )
+  return c.json({ ok: true, coach: rows[0] }, 201)
+})
+
+// PATCH /v1/admin/coaches/:id
+adminRouter.patch('/coaches/:id', async (c) => {
+  const id = c.req.param('id'); const b = await c.req.json<any>()
+  const allowed = ['name','firstName','lastName','nationality','photoUrl','role',
+    'teamId','leagueId','sportId','verified','isActive']
+  const sets: string[] = []; const params: unknown[] = []
+  for (const [k,v] of Object.entries(b)) {
+    if (allowed.includes(k)) { params.push(v); sets.push(`"${k}"=$${params.length}`) }
+  }
+  if (!sets.length) return c.json({ error: 'Nothing to update' }, 400)
+  params.push(id)
+  await execute(`UPDATE public."Coach" SET ${sets.join(',')}, "updatedAt"=NOW() WHERE id=$${params.length}`, params)
+  return c.json({ ok: true })
+})
+
+// DELETE /v1/admin/coaches/:id
+adminRouter.delete('/coaches/:id', async (c) => {
+  await execute(`DELETE FROM public."Coach" WHERE id=$1`, [c.req.param('id')])
+  return c.json({ ok: true })
+})
+
+// ── LEAGUES / COMPETITIONS ────────────────────────────────────────────────────
+
+// GET /v1/admin/leagues
+adminRouter.get('/leagues', async (c) => {
+  const limit = Math.min(Number(c.req.query('limit')??200),500)
+  const rows  = await query(`SELECT * FROM public."League" ORDER BY name LIMIT $1`, [limit])
+  return c.json({ ok: true, leagues: rows })
+})
+
+// POST /v1/admin/leagues
+adminRouter.post('/leagues', async (c) => {
+  const b = await c.req.json<any>()
+  if (!b.name) return c.json({ error: 'name required' }, 400)
+  const rows = await query(
+    `INSERT INTO public."League"(id,name,slug,country,"logoUrl",type,season,
+       verified,"isActive",description,metadata,"createdAt","updatedAt")
+     VALUES($1,$2,$3,$4,$5,$6,$7,true,true,$8,'{}'::jsonb,NOW(),NOW())
+     ON CONFLICT(slug) DO UPDATE SET name=EXCLUDED.name,"updatedAt"=NOW()
+     RETURNING *`,
+    [b.id??`league-${Date.now()}`, b.name,
+     b.slug??`${b.name.toLowerCase().replace(/\s+/g,'_')}_${Date.now()}`,
+     b.country??'Tanzania', b.logoUrl??null, b.type??'league',
+     b.season??null, b.description??null]
+  )
+  return c.json({ ok: true, league: rows[0] }, 201)
+})
+
+// PATCH /v1/admin/leagues/:id
+adminRouter.patch('/leagues/:id', async (c) => {
+  const id = c.req.param('id'); const b = await c.req.json<any>()
+  const allowed = ['name','slug','country','logoUrl','type','season','description',
+    'verified','isActive','accountUserId','identity_status','isClaimable']
+  const sets: string[] = []; const params: unknown[] = []
+  for (const [k,v] of Object.entries(b)) {
+    if (allowed.includes(k)) { params.push(v); sets.push(`"${k}"=$${params.length}`) }
+  }
+  if (!sets.length) return c.json({ error: 'Nothing to update' }, 400)
+  params.push(id)
+  await execute(`UPDATE public."League" SET ${sets.join(',')}, "updatedAt"=NOW() WHERE id=$${params.length}`, params)
+  return c.json({ ok: true })
+})
+
+// DELETE /v1/admin/leagues/:id
+adminRouter.delete('/leagues/:id', async (c) => {
+  await execute(`DELETE FROM public."League" WHERE id=$1`, [c.req.param('id')])
+  return c.json({ ok: true })
+})
+
+// ── NEWS ──────────────────────────────────────────────────────────────────────
+
+// GET /v1/admin/news
+adminRouter.get('/news', async (c) => {
+  const limit = Math.min(Number(c.req.query('limit')??50),200)
+  const rows  = await query(`SELECT * FROM public."NewsItem" ORDER BY "createdAt" DESC LIMIT $1`, [limit])
+  return c.json({ ok: true, news: rows })
+})
+
+// POST /v1/admin/news
+adminRouter.post('/news', async (c) => {
+  const b = await c.req.json<any>()
+  if (!b.title || !b.body) return c.json({ error: 'title and body required' }, 400)
+  const rows = await query(
+    `INSERT INTO public."NewsItem"(id,title,slug,body,summary,category,source,"imageUrl",
+       status,"is_breaking","likeCount","commentCount","shareCount","viewCount","publishedAt","createdAt","updatedAt")
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,'published',$9,0,0,0,0,NOW(),NOW(),NOW()) RETURNING *`,
+    [b.id??`news-${Date.now()}`, b.title,
+     b.slug??`${b.title.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'')}-${Date.now()}`,
+     b.body, b.summary??b.body.slice(0,200), b.category??'updates',
+     b.source??'Playify', b.imageUrl??null, b.is_breaking??false]
+  )
+  return c.json({ ok: true, news: rows[0] }, 201)
+})
+
+// DELETE /v1/admin/news/:id
+adminRouter.delete('/news/:id', async (c) => {
+  await execute(`DELETE FROM public."NewsItem" WHERE id=$1`, [c.req.param('id')])
+  return c.json({ ok: true })
+})
+
+// ── POSTS (admin) ─────────────────────────────────────────────────────────────
+
+// GET /v1/admin/posts
+adminRouter.get('/posts', async (c) => {
+  const limit = Math.min(Number(c.req.query('limit')??50),200)
+  const rows  = await query(
+    `SELECT p.*, u.handle, u.name FROM public."Post" p
+     JOIN public."User" u ON u.id=p."userId"
+     ORDER BY p."createdAt" DESC LIMIT $1`, [limit]
+  )
+  return c.json({ ok: true, posts: rows })
+})
+
+// DELETE /v1/admin/posts/:id
+adminRouter.delete('/posts/:id', async (c) => {
+  const id = c.req.param('id')
+  await execute(`DELETE FROM public."PostLike" WHERE "postId"=$1`, [id])
+  await execute(`DELETE FROM public."PostShare" WHERE "postId"=$1`, [id])
+  await execute(`DELETE FROM public."Comment" WHERE "postId"=$1`, [id])
+  await execute(`DELETE FROM public."Post" WHERE id=$1`, [id])
+  return c.json({ ok: true })
+})
+
+// ── ENTITY IDENTITY ───────────────────────────────────────────────────────────
+// Creates a User + profiles row for an entity (Team/Player/League)
+// so they have a real profile that can be claimed
+
+// POST /v1/admin/entities/identity
+adminRouter.post('/entities/identity', async (c) => {
+  const { entityType, entityId, displayName, handle, logoUrl } =
+    await c.req.json<any>()
+  if (!entityType || !entityId || !displayName || !handle) {
+    return c.json({ error: 'entityType, entityId, displayName, handle required' }, 400)
+  }
+
+  // Generate email: handle@playify.app (internal, not real)
+  const email    = `${handle}@entity.playifysport.fun`
+  const userId   = crypto.randomUUID()
+  const roleMap: Record<string,string> = {
+    team:'team', player:'player', league:'league',
+    coach:'coach', venue:'venue', competition:'league'
+  }
+  const role = roleMap[entityType] ?? entityType
+
+  try {
+    // Create User row (no password — can only be accessed via claim)
+    await execute(
+      `INSERT INTO public."User"(id,name,email,handle,role,"avatarUrl","emailVerified","registeredAt","updatedAt")
+       VALUES($1,$2,$3,$4,$5,$6,false,NOW(),NOW())
+       ON CONFLICT(email) DO NOTHING`,
+      [userId, displayName, email, handle, role, logoUrl??null]
+    )
+
+    // Create profiles row
+    await execute(
+      `INSERT INTO public.profiles(id,handle,role,first_name,email,avatar_url,claim_status,created_at,updated_at)
+       VALUES($1::uuid,$2,$3,$4,$5,$6,'unclaimed',NOW(),NOW())
+       ON CONFLICT(id) DO NOTHING`,
+      [userId, handle, role, displayName, email, logoUrl??null]
+    )
+
+    // Link entity to this account
+    if (entityType === 'team') {
+      await execute(`UPDATE public."Team" SET "accountUserId"=$1,"identity_status"='healthy',"isClaimable"=true,"updatedAt"=NOW() WHERE id=$2`, [userId, entityId])
+    } else if (entityType === 'player') {
+      await execute(`UPDATE public."Player" SET "accountUserId"=$1,"identity_status"='healthy',"isClaimable"=true,"updatedAt"=NOW() WHERE id=$2`, [userId, entityId])
+    } else if (entityType === 'league') {
+      await execute(`UPDATE public."League" SET "accountUserId"=$1,"identity_status"='healthy',"updatedAt"=NOW() WHERE id=$2`, [userId, entityId])
+    } else if (entityType === 'coach') {
+      await execute(`UPDATE public."Coach" SET "accountUserId"=$1,"updatedAt"=NOW() WHERE id=$2`, [userId, entityId])
+    }
+
+    return c.json({ ok: true, uid: userId, handle, email })
+  } catch (e: any) {
+    return c.json({ error: e.message ?? 'Identity creation failed' }, 500)
+  }
+})
+
+// ── ENTITY COMMUNITY ──────────────────────────────────────────────────────────
+
+// POST /v1/admin/entities/community
+adminRouter.post('/entities/community', async (c) => {
+  const { entityType, entityId, name, slug, description } = await c.req.json<any>()
+  if (!name || !slug) return c.json({ error: 'name and slug required' }, 400)
+  const rows = await query(
+    `INSERT INTO public."Community"(id,name,description,topic,"memberCount","createdAt")
+     VALUES(gen_random_uuid()::text,$1,$2,$3,0,NOW())
+     ON CONFLICT DO NOTHING RETURNING *`,
+    [name, description??null, entityType??'team']
+  )
+  return c.json({ ok: true, community: rows[0] ?? null })
+})
+
+// ── PLAYER STATS ──────────────────────────────────────────────────────────────
+
+// POST /v1/admin/players/:id/stats
+adminRouter.post('/players/:id/stats', async (c) => {
+  const playerId = c.req.param('id')
+  const b = await c.req.json<any>()
+  await execute(
+    `INSERT INTO public."PlayerMatchStat"(id,"playerId","matchId",season,goals,assists,minutes,"yellowCards","redCards","createdAt","updatedAt")
+     VALUES(gen_random_uuid()::text,$1,$2,$3,$4,$5,$6,$7,$8,NOW(),NOW())
+     ON CONFLICT DO NOTHING`,
+    [playerId, b.matchId??null, b.season??'2026/2027',
+     b.goals??0, b.assists??0, b.minutesPlayed??90,
+     b.yellowCards??0, b.redCards??0]
+  )
+  return c.json({ ok: true })
+})
+
+// ── BULK OPERATIONS ───────────────────────────────────────────────────────────
+
+// POST /v1/admin/bulk/teams
+adminRouter.post('/bulk/teams', async (c) => {
+  const { rows } = await c.req.json<{ rows: any[] }>()
+  let inserted = 0
+  for (const r of (rows??[])) {
+    try {
+      const slug = `${(r.name??'').toLowerCase().replace(/\s+/g,'_')}_${Date.now()}_${inserted}`
+      await execute(
+        `INSERT INTO public."Team"(id,name,slug,country,city,"leagueId",source,verified,"isActive","isClaimable","createdAt","updatedAt")
+         VALUES($1,$2,$3,$4,$5,$6,'admin',true,true,true,NOW(),NOW()) ON CONFLICT(slug) DO NOTHING`,
+        [r.id??`team-${Date.now()}-${inserted}`, r.name, r.slug??slug,
+         r.country??'Tanzania', r.city??null, r.leagueId??null]
+      ); inserted++
+    } catch (_) {}
+  }
+  return c.json({ ok: true, inserted })
+})
+
+// POST /v1/admin/bulk/players
+adminRouter.post('/bulk/players', async (c) => {
+  const { rows } = await c.req.json<{ rows: any[] }>()
+  let inserted = 0
+  for (const r of (rows??[])) {
+    try {
+      const slug = `${(r.name??'').toLowerCase().replace(/\s+/g,'_')}_${Date.now()}_${inserted}`
+      await execute(
+        `INSERT INTO public."Player"(id,name,slug,position,nationality,"teamId","isActive",verified,"isClaimable","createdAt","updatedAt")
+         VALUES($1,$2,$3,$4,$5,$6,true,false,true,NOW(),NOW()) ON CONFLICT(slug) DO NOTHING`,
+        [r.id??`player-${Date.now()}-${inserted}`, r.name, r.slug??slug,
+         r.position??'Forward', r.nationality??null, r.teamId??null]
+      ); inserted++
+    } catch (_) {}
+  }
+  return c.json({ ok: true, inserted })
+})
+
+// POST /v1/admin/bulk/fixtures
+adminRouter.post('/bulk/fixtures', async (c) => {
+  const { rows } = await c.req.json<{ rows: any[] }>()
+  let inserted = 0
+  for (const r of (rows??[])) {
+    try {
+      await execute(
+        `INSERT INTO public."Match"(id,"homeTeam","awayTeam",league,"kickoffAt",status,"homeBadge","awayBadge",season,"createdAt","updatedAt")
+         VALUES(gen_random_uuid()::text,$1,$2,$3,$4,'upcoming',$5,$6,$7,NOW(),NOW())`,
+        [r.homeTeam, r.awayTeam, r.league??'',
+         r.kickoffAt??new Date().toISOString(),
+         r.homeBadge??null, r.awayBadge??null, r.season??null]
+      ); inserted++
+    } catch (_) {}
+  }
+  return c.json({ ok: true, inserted })
+})
+
+// ── RECONCILE ─────────────────────────────────────────────────────────────────
+
+// POST /v1/admin/reconcile — bulk identity creation for all unclaimed entities
+adminRouter.post('/reconcile', async (c) => {
+  const report: any[] = []
+  const tables = [
+    { table: 'Team',   type: 'team',   slug: 'slug', name: 'name', logo: 'logoUrl'  },
+    { table: 'Player', type: 'player', slug: 'slug', name: 'name', logo: 'photoUrl' },
+    { table: 'League', type: 'league', slug: 'slug', name: 'name', logo: 'logoUrl'  },
+    { table: 'Coach',  type: 'coach',  slug: 'slug', name: 'name', logo: 'photoUrl' },
+  ]
+  for (const { table, type, slug: slugCol, name: nameCol, logo } of tables) {
+    const rows = await query(
+      `SELECT id, "${nameCol}", "${slugCol}", "${logo}", "accountUserId" FROM public."${table}"
+       WHERE "accountUserId" IS NULL AND "isActive"=true LIMIT 100`
+    )
+    for (const r: any of rows) {
+      const handle = (r[slugCol]??r[nameCol]??'').toLowerCase().replace(/[^a-z0-9_]/g,'').slice(0,30)
+      if (!handle || !r.id || !r[nameCol]) continue
+      try {
+        const email  = `${handle}@entity.playifysport.fun`
+        const userId = crypto.randomUUID()
+        const role   = type
+        await execute(
+          `INSERT INTO public."User"(id,name,email,handle,role,"avatarUrl","emailVerified","registeredAt","updatedAt")
+           VALUES($1,$2,$3,$4,$5,$6,false,NOW(),NOW()) ON CONFLICT DO NOTHING`,
+          [userId, r[nameCol], email, handle, role, r[logo]??null]
+        )
+        await execute(
+          `INSERT INTO public.profiles(id,handle,role,first_name,email,avatar_url,claim_status,created_at,updated_at)
+           VALUES($1::uuid,$2,$3,$4,$5,$6,'unclaimed',NOW(),NOW()) ON CONFLICT DO NOTHING`,
+          [userId, handle, role, r[nameCol], email, r[logo]??null]
+        )
+        await execute(
+          `UPDATE public."${table}" SET "accountUserId"=$1,"identity_status"='healthy',"updatedAt"=NOW() WHERE id=$2`,
+          [userId, r.id]
+        )
+        report.push({ type, id: r.id, name: r[nameCol], uid: userId, status: 'created' })
+      } catch (e: any) {
+        report.push({ type, id: r.id, name: r[nameCol], status: 'failed', error: e.message })
+      }
+    }
+  }
+  return c.json({ ok: true, reconciled: report.length, report })
+})

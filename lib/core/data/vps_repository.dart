@@ -955,7 +955,7 @@ class VpsRepository {
   /// DELETE /v1/admin/players/:id — delete player.
   // TODO(VPS): add `DELETE /v1/admin/players/:id` route on the VPS.
   Future<void> deleteAdminPlayer(String id) async {
-    await _client.delete<void>('/v1/admin/players/$id');
+    await _client.delete<void>('/v1/admin/players/\$id');
   }
 
   /// POST /v1/admin/players/:id/stats — upsert a PlayerMatchStat row.
@@ -1116,7 +1116,7 @@ class VpsRepository {
   Future<int> bulkCreateTeams(List<Map<String, dynamic>> rows) async {
     if (rows.isEmpty) return 0;
     final res = await _client.post<Map<String, dynamic>>(
-      '/v1/admin/teams/bulk', data: {'rows': rows},
+      '/v1/admin/bulk/teams', data: {'rows': rows},
     );
     return (res.data?['inserted'] as int?) ?? rows.length;
   }
@@ -1126,7 +1126,7 @@ class VpsRepository {
   Future<int> bulkCreatePlayers(List<Map<String, dynamic>> rows) async {
     if (rows.isEmpty) return 0;
     final res = await _client.post<Map<String, dynamic>>(
-      '/v1/admin/players/bulk', data: {'rows': rows},
+      '/v1/admin/bulk/players', data: {'rows': rows},
     );
     return (res.data?['inserted'] as int?) ?? rows.length;
   }
@@ -1136,7 +1136,7 @@ class VpsRepository {
   Future<int> bulkCreateFixtures(List<Map<String, dynamic>> rows) async {
     if (rows.isEmpty) return 0;
     final res = await _client.post<Map<String, dynamic>>(
-      '/v1/admin/matches/bulk', data: {'rows': rows},
+      '/v1/admin/bulk/fixtures', data: {'rows': rows},
     );
     return (res.data?['inserted'] as int?) ?? rows.length;
   }
@@ -1161,7 +1161,7 @@ class VpsRepository {
   // TODO(VPS): add `POST /v1/admin/communities` route on the VPS.
   Future<void> createEntityCommunity(Map<String, dynamic> body) async {
     try {
-      await _client.post<void>('/v1/admin/communities', data: body);
+      await _client.post<void>('/v1/admin/entities/community', data: body);
     } catch (_) {
       // best-effort
     }
