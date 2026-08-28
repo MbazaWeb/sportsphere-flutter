@@ -43,9 +43,12 @@ class SoketiService {
     try {
       _pusher = PusherChannelsFlutter.getInstance();
       await _pusher!.init(
-        apiKey:  'playify-app-key',
-        cluster: 'mt1',
-        useTLS:  true,
+        apiKey:   'playify-app-key',
+        cluster:  'mt1',
+        wsHost:   'playifysport.fun',
+        wsPort:   3443,
+        wssPort:  3443,
+        useTLS:   true,
         // #FIX-AUTH — authEndpoint/authParams are pusher-js only: the
         // Android/iOS SDKs ignore them (and authParams expects
         // Map<String, Map<String, String>>, which made the Bearer header
