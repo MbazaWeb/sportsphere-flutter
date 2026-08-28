@@ -137,4 +137,19 @@ app.onError((err, c) => {
 const port = Number(Bun.env.PORT ?? 3000)
 console.log(`Playify API running on :${port}`)
 
-export default { port, fetch: app.fetch }
+// Bun server: handles HTTP (Hono) + WebSocket (Pusher protocol)
+const honoFetch = app.fetch.bind(app)
+export default {
+  port: 3000,
+  async fetch(req: Request, server: any) {
+    const path = new URL(req.url).pathname
+    // Intercept WebSocket upgrades for /app/{key} BEFORE Hono
+    if (path.startsWith('/app/')) {
+      const ok = server.upgrade(req, { data: { socketId: '', channels: new Set<string>() } })
+      if (ok) return undefined
+      return new Response('WebSocket upgrade failed', { status: 400 })
+    }
+    return honoFetch(req, server)
+  },
+  websocket: wsHandler,
+}
