@@ -1,1581 +1,999 @@
-import 'dart:ui';
+// lib/features/auth/presentation/pages/register_screen.dart
+// Book-style 3-step registration with progress bar.
+//
+// Step 1 — Account details (name, email, handle, password)
+// Step 2 — Profile setup (avatar, country, DOB)
+// Step 3 — Fan setup (sports chips, favourite teams)
+//           → tapping Done registers + navigates to /home
 
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart';
 
 import '../../../../core/data/vps_repository.dart';
-import '../../../../core/data/vps_supabase_compat.dart';
 import '../../../../core/theme/colors.dart';
 import '../auth_controller.dart';
 
+// ── Colours ────────────────────────────────────────────────────────────────────
+const _kBlue  = PlayifyColors.electricBlue;
+const _kGreen = Color(0xFF4CAF50);
+
 // ── Country list ───────────────────────────────────────────────────────────────
-// Africa-first ordering, then rest of world alphabetically.
-const _countries = [
-  'Tanzania',
-  'Kenya',
-  'Uganda',
-  'Rwanda',
-  'Ethiopia',
-  'Nigeria',
-  'Ghana',
-  'South Africa',
-  'Egypt',
-  'Morocco',
-  'Senegal',
-  'Cameroon',
-  'Ivory Coast',
-  'Angola',
-  'Zimbabwe',
-  'Zambia',
-  'Mozambique',
-  'Algeria',
-  'Libya',
-  'Sudan',
-  '──────────────',
-  'Afghanistan',
-  'Albania',
-  'Argentina',
-  'Australia',
-  'Austria',
-  'Belgium',
-  'Bolivia',
-  'Brazil',
-  'Canada',
-  'Chile',
-  'China',
-  'Colombia',
-  'Croatia',
-  'Czech Republic',
-  'Denmark',
-  'Ecuador',
-  'Finland',
-  'France',
-  'Germany',
-  'Greece',
-  'Hungary',
-  'India',
-  'Indonesia',
-  'Iran',
-  'Iraq',
-  'Ireland',
-  'Israel',
-  'Italy',
-  'Japan',
-  'Jordan',
-  'Mexico',
-  'Netherlands',
-  'New Zealand',
-  'Norway',
-  'Pakistan',
-  'Paraguay',
-  'Peru',
-  'Philippines',
-  'Poland',
-  'Portugal',
-  'Qatar',
-  'Romania',
-  'Russia',
-  'Saudi Arabia',
-  'Serbia',
-  'South Korea',
-  'Spain',
-  'Sweden',
-  'Switzerland',
-  'Thailand',
-  'Turkey',
-  'Ukraine',
-  'United Arab Emirates',
-  'United Kingdom',
-  'United States',
-  'Uruguay',
-  'Venezuela',
-  'Vietnam',
+const _kCountries = [
+  'Tanzania','Kenya','Uganda','Rwanda','Ethiopia','Nigeria','Ghana','South Africa',
+  'Egypt','Morocco','Senegal','Ivory Coast','Cameroon','Algeria','Tunisia',
+  'Zambia','Zimbabwe','Mozambique','Madagascar','Angola','DR Congo',
+  'United Kingdom','United States','Germany','France','Spain','Italy',
+  'Portugal','Netherlands','Belgium','Sweden','Norway','Denmark',
+  'Brazil','Argentina','Colombia','Mexico','Japan','South Korea',
+  'China','India','Australia','Canada','United Arab Emirates','Qatar',
 ];
 
-// ── Screen ─────────────────────────────────────────────────────────────────────
-
+// ── Main screen ────────────────────────────────────────────────────────────────
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
-
   @override
   ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen>
-    with SingleTickerProviderStateMixin {
-  final _formKey = GlobalKey<FormState>();
-  final _firstNameCtrl = TextEditingController();
-  final _lastNameCtrl = TextEditingController();
-  final _emailCtrl = TextEditingController();
-  final _handleCtrl = TextEditingController();
-  final _passwordCtrl = TextEditingController();
-  final _confirmCtrl = TextEditingController();
+    with TickerProviderStateMixin {
 
+  // Step controller
+  final _pageCtrl  = PageController();
+  int _step = 0; // 0=account 1=profile 2=fan
+  static const _totalSteps = 3;
+
+  // Form keys
+  final _step1Key = GlobalKey<FormState>();
+
+  // Step 1 — Account
+  final _firstNameCtrl = TextEditingController();
+  final _lastNameCtrl  = TextEditingController();
+  final _emailCtrl     = TextEditingController();
+  final _handleCtrl    = TextEditingController();
+  final _passCtrl      = TextEditingController();
+  final _confirmCtrl   = TextEditingController();
+  bool _showPass = false, _showConfirm = false;
+
+  // Step 2 — Profile
   String? _country;
   DateTime? _dob;
+  Uint8List? _avatarBytes;
+  String? _avatarDataUri;
 
-  // Focus state per field
-  final _focused = <String, bool>{};
+  // Step 3 — Fan
+  final Set<String> _selectedSports = {};
+  final Set<String> _selectedTeamIds = {};
+  final Set<String> _selectedTeamNames = {};
+  List<Map<String,dynamic>> _sports = [];
+  List<Map<String,dynamic>> _teams  = [];
+  bool _loadingTeams = true;
+  final _teamSearch = TextEditingController();
 
-  late final AnimationController _entryCtrl;
-  late final Animation<double> _fadeIn;
-  late final Animation<Offset> _slideUp;
+  late final AnimationController _progressCtrl;
+  late final Animation<double> _progressAnim;
+  double _progressTarget = 0;
+
+  static final _vps = const VpsRepository();
 
   @override
   void initState() {
     super.initState();
-    _entryCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 750),
-    )..forward();
-    _fadeIn = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
-    _slideUp = Tween<Offset>(
-      begin: const Offset(0, 0.05),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut));
+    _progressCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+    _progressAnim = CurvedAnimation(parent: _progressCtrl, curve: Curves.easeInOut);
+    _loadFanData();
   }
 
   @override
   void dispose() {
-    _entryCtrl.dispose();
-    _firstNameCtrl.dispose();
-    _lastNameCtrl.dispose();
-    _emailCtrl.dispose();
-    _handleCtrl.dispose();
-    _passwordCtrl.dispose();
-    _confirmCtrl.dispose();
+    _progressCtrl.dispose();
+    _pageCtrl.dispose();
+    _firstNameCtrl.dispose(); _lastNameCtrl.dispose();
+    _emailCtrl.dispose(); _handleCtrl.dispose();
+    _passCtrl.dispose(); _confirmCtrl.dispose();
+    _teamSearch.dispose();
     super.dispose();
   }
 
-  bool _isFocused(String key) => _focused[key] == true;
+  Future<void> _loadFanData() async {
+    try {
+      final res = await _vps.get<Map<String,dynamic>>('/v1/social/sports');
+      final rows = (res.data?['sports'] as List? ?? []).cast<Map<String,dynamic>>();
+      if (mounted) setState(() => _sports = rows.isNotEmpty ? rows : _defaultSports());
+    } catch (_) {
+      if (mounted) setState(() => _sports = _defaultSports());
+    }
+    try {
+      final res = await _vps.get<Map<String,dynamic>>('/v1/admin/teams', query: {'limit': '200'});
+      final rows = (res.data?['teams'] as List? ?? []).cast<Map<String,dynamic>>();
+      if (mounted) setState(() { _teams = rows; _loadingTeams = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loadingTeams = false);
+    }
+  }
 
-  void _setFocus(String key, bool v) =>
-      setState(() => _focused[key] = v);
+  List<Map<String,dynamic>> _defaultSports() => [
+    {'id':'sport-football',  'name':'Football',   'icon':'⚽','slug':'football'},
+    {'id':'sport-basketball','name':'Basketball', 'icon':'🏀','slug':'basketball'},
+    {'id':'sport-athletics', 'name':'Athletics',  'icon':'🏃','slug':'athletics'},
+    {'id':'sport-tennis',    'name':'Tennis',     'icon':'🎾','slug':'tennis'},
+    {'id':'sport-volleyball','name':'Volleyball', 'icon':'🏐','slug':'volleyball'},
+    {'id':'sport-cricket',   'name':'Cricket',    'icon':'🏏','slug':'cricket'},
+    {'id':'sport-boxing',    'name':'Boxing',     'icon':'🥊','slug':'boxing'},
+    {'id':'sport-mma',       'name':'MMA',        'icon':'🥋','slug':'mma'},
+  ];
+
+  void _animateProgress(int step) {
+    _progressTarget = (step + 1) / _totalSteps;
+    _progressCtrl.animateTo(_progressTarget);
+  }
+
+  void _nextStep() {
+    if (_step == 0) {
+      if (!(_step1Key.currentState?.validate() ?? false)) return;
+    }
+    if (_step == 1) {
+      if (_country == null) { _snack('Please select your country'); return; }
+      if (_dob == null)     { _snack('Please select your date of birth'); return; }
+    }
+    HapticFeedback.lightImpact();
+    final next = _step + 1;
+    setState(() => _step = next);
+    _animateProgress(next);
+    _pageCtrl.animateToPage(next,
+        duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
+  }
+
+  void _prevStep() {
+    if (_step == 0) { context.pop(); return; }
+    HapticFeedback.selectionClick();
+    final prev = _step - 1;
+    setState(() => _step = prev);
+    _animateProgress(prev);
+    _pageCtrl.animateToPage(prev,
+        duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
+  }
+
+  Future<void> _pickAvatar() async {
+    try {
+      final picker = ImagePicker();
+      final file   = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      final ext   = file.name.split('.').last.toLowerCase();
+      final mime  = ext == 'png' ? 'image/png' : 'image/jpeg';
+      if (mounted) setState(() {
+        _avatarBytes   = bytes;
+        _avatarDataUri = 'data:$mime;base64,${base64Encode(bytes)}';
+      });
+    } catch (e) {
+      _snack('Could not pick photo');
+    }
+  }
+
+  Future<void> _pickCountry() async {
+    final result = await showModalBottomSheet<String>(
+      context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
+      builder: (_) => _CountryPicker(selected: _country, onSelect: (c) => Navigator.pop(context, c)),
+    );
+    if (result != null) setState(() => _country = result);
+  }
 
   Future<void> _pickDob() async {
-    HapticFeedback.selectionClick();
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
       initialDate: _dob ?? DateTime(now.year - 18),
-      firstDate: DateTime(1920),
-      lastDate: DateTime(now.year - 5),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: PlayifyColors.electricBlue,
-              onPrimary: Colors.white,
-              surface: PlayifyColors.surface2,
-              onSurface: PlayifyColors.white,
-            ),
-            dialogTheme: DialogThemeData(
-              backgroundColor: PlayifyColors.surface,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-              ),
-            ),
-          ),
-          child: child!,
-        );
-      },
+      firstDate: DateTime(1920), lastDate: DateTime(now.year - 5),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.dark(primary: _kBlue, surface: Color(0xFF0D1F35)),
+        ), child: child!,
+      ),
     );
     if (picked != null) setState(() => _dob = picked);
   }
 
-  Future<void> _pickCountry() async {
-    HapticFeedback.selectionClick();
-    final result = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _CountryPicker(
-        selected: _country,
-        onSelect: (c) => Navigator.pop(context, c),
-      ),
-    );
-    if (result != null && result != '──────────────') {
-      setState(() => _country = result);
-    }
-  }
-
-  // ── Step 2 state ──────────────────────────────────────────────────────────
-  final Set<String> _favTeamIds = {};
-  final Set<String> _favTeamNames = {};
-  String? _avatarUrl;
-
-  Future<bool?> _showFanSetup() {
-    return showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _FanSetupSheet(
-        favTeamIds: _favTeamIds,
-        favTeamNames: _favTeamNames,
-        avatarUrl: _avatarUrl,
-        onAvatarChanged: (url) => setState(() => _avatarUrl = url),
-        onTeamToggled: (id, name, selected) {
-          setState(() {
-            if (selected) {
-              _favTeamIds.add(id);
-              _favTeamNames.add(name);
-            } else {
-              _favTeamIds.remove(id);
-              _favTeamNames.remove(name);
-            }
-          });
-        },
-      ),
-    );
-  }
-
   Future<void> _submit() async {
-    FocusScope.of(context).unfocus();
-    if (!(_formKey.currentState?.validate() ?? false)) return;
-    if (_country == null) {
-      _showSnack('Please select your country.');
-      return;
+    HapticFeedback.mediumImpact();
+    // Save sports (best-effort)
+    if (_selectedSports.isNotEmpty) {
+      try {
+        await _vps.post<void>('/v1/social/my-sports', data: {
+          'slugs': _selectedSports.toList(),
+          'primary': _selectedSports.first,
+        });
+      } catch (_) {}
     }
-    if (_dob == null) {
-      _showSnack('Please select your date of birth.');
-      return;
-    }
-    HapticFeedback.lightImpact();
-
-    // Show Step 2 — Fan Setup
-    final confirmed = await _showFanSetup();
-    if (confirmed != true) return; // user cancelled
 
     final ok = await ref.read(authControllerProvider.notifier).register(
-          firstName: _firstNameCtrl.text.trim(),
-          lastName: _lastNameCtrl.text.trim(),
-          email: _emailCtrl.text.trim(),
-          handle: _handleCtrl.text.trim().replaceAll('@', ''),
-          country: _country!,
-          dob: _dob!,
-          password: _passwordCtrl.text,
-          favTeamIds: _favTeamIds.toList(),
-          avatarUrl: _avatarUrl,
-        );
+      firstName:  _firstNameCtrl.text.trim(),
+      lastName:   _lastNameCtrl.text.trim(),
+      email:      _emailCtrl.text.trim(),
+      handle:     _handleCtrl.text.trim().replaceAll('@',''),
+      country:    _country ?? 'Tanzania',
+      dob:        _dob ?? DateTime(2000),
+      password:   _passCtrl.text,
+      favTeamIds: _selectedTeamIds.toList(),
+      avatarUrl:  _avatarDataUri,
+    );
 
     if (!mounted) return;
-    if (ok) {
-      context.go('/home');
-      return;
-    }
-    final err = ref.read(authControllerProvider).errorMessage ?? '';
-    if (err.startsWith('CONFIRM:')) {
-      final msg = err.replaceFirst('CONFIRM:', '').trim();
-      await showDialog<void>(
-        context: context,
-        builder: (d) => AlertDialog(
-          backgroundColor: const Color(0xFF0C1A2A),
-          title: const Text('Verify your email',
-              style: TextStyle(color: Colors.white)),
-          content: Text(msg, style: const TextStyle(color: Colors.white70)),
-          actions: [
-            TextButton(
-              onPressed: () async {
-                await ref
-                    .read(authControllerProvider.notifier)
-                    .resendConfirmation(_emailCtrl.text.trim());
-                if (d.mounted) Navigator.pop(d);
-              },
-              child: const Text('Resend link'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(d);
-                context.go('/login');
-              },
-              child: const Text('Go to login'),
-            ),
-          ],
-        ),
-      );
-    }
+    if (ok) { context.go('/home'); return; }
+    final err = ref.read(authControllerProvider).errorMessage ?? 'Registration failed';
+    _snack(err);
+    // Go back to step 1 on error
+    setState(() => _step = 0);
+    _animateProgress(0);
+    _pageCtrl.jumpToPage(0);
   }
 
-  void _showSnack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: PlayifyColors.surface2,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
+  void _snack(String msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+    content: Text(msg),
+    backgroundColor: const Color(0xFF0D1F35),
+    behavior: SnackBarBehavior.floating,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  ));
 
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
+    final loading = auth.isLoading;
 
     return Scaffold(
       backgroundColor: PlayifyColors.background,
-      resizeToAvoidBottomInset: true,
-      body: Stack(
-        children: [
-          // Ambient orbs
-          const Positioned(
-            top: -100,
-            right: -80,
-            child: const _Orb(color: PlayifyColors.electricBlue, size: 340),
+      body: Stack(children: [
+        // Ambient orbs
+        Positioned(top:-80, right:-60,
+          child: _Orb(color: _kBlue, size: 300)),
+        Positioned(bottom: 100, left:-80,
+          child: _Orb(color: _kGreen, size: 250)),
+
+        SafeArea(child: Column(children: [
+          // ── Top bar ─────────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
+            child: Row(children: [
+              IconButton(
+                onPressed: _prevStep,
+                icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                    color: Colors.white, size: 20),
+              ),
+              Expanded(child: Text(
+                _stepTitle(),
+                style: const TextStyle(color: Colors.white,
+                    fontSize: 18, fontWeight: FontWeight.w800),
+              )),
+              // Step badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: _kBlue.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: _kBlue.withValues(alpha: 0.4)),
+                ),
+                child: Text('${_step + 1} of $_totalSteps',
+                    style: const TextStyle(color: _kBlue,
+                        fontSize: 11, fontWeight: FontWeight.w700)),
+              ),
+            ]),
           ),
-          const Positioned(
-            bottom: 80,
-            left: -100,
-            child: const _Orb(color: PlayifyColors.sportGreen, size: 280),
-          ),
 
-          SafeArea(
-            child: FadeTransition(
-              opacity: _fadeIn,
-              child: SlideTransition(
-                position: _slideUp,
-                child: Column(
-                  children: [
-                    // ── Header bar ──────────────────────────────
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 8, 20, 0),
-                      child: Row(
-                        children: [
-                          IconButton(
-                            onPressed: () => context.pop(),
-                            icon: const Icon(
-                              Icons.arrow_back_ios_new_rounded,
-                              color: PlayifyColors.white,
-                              size: 20,
-                            ),
-                          ),
-                          const Expanded(
-                            child: Text(
-                              'Create Account',
-                              style: TextStyle(
-                                color: PlayifyColors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                          // Step indicator
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: PlayifyColors.electricBlue.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: PlayifyColors.electricBlue.withValues(alpha: 0.4)),
-                            ),
-                            child: const Row(children: [
-                              Icon(Icons.looks_one_rounded, color: PlayifyColors.electricBlue, size: 14),
-                              SizedBox(width: 4),
-                              Text('Step 1 of 2', style: TextStyle(color: PlayifyColors.electricBlue,
-                                  fontSize: 11, fontWeight: FontWeight.w700)),
-                            ]),
-                          ),
-                          // Fan badge
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: PlayifyColors.sportGreen
-                                  .withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: PlayifyColors.sportGreen
-                                    .withValues(alpha: 0.4),
-                              ),
-                            ),
-                            child: const Row(
-                              children: [
-                                const Icon(
-                                  Icons.favorite_rounded,
-                                  color: PlayifyColors.sportGreen,
-                                  size: 14,
-                                ),
-                                const SizedBox(width: 5),
-                                const Text(
-                                  'Fan Account',
-                                  style: const TextStyle(
-                                    color: PlayifyColors.sportGreen,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    Expanded(
-                      child: SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-                        child: Column(
-                          children: [
-                            // ── Mini logo ─────────────────────────
-                            _MiniLogo(),
-
-                            const SizedBox(height: 20),
-
-                            // ── Form card ─────────────────────────
-                            _GlassCard(
-                              child: Form(
-                                key: _formKey,
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    // Error
-                                    if (auth.errorMessage != null) ...[
-                                      _ErrorBanner(
-                                        message: auth.errorMessage!,
-                                        onDismiss: () => ref
-                                            .read(
-                                              authControllerProvider.notifier,
-                                            )
-                                            .clearError(),
-                                      ),
-                                      const SizedBox(height: 16),
-                                    ],
-
-                                    // Name row
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: _Field(
-                                            ctrl: _firstNameCtrl,
-                                            label: 'First Name',
-                                            hint: 'John',
-                                            icon: Icons.badge_outlined,
-                                            focused: _isFocused('fn'),
-                                            onFocus: (v) =>
-                                                _setFocus('fn', v),
-                                            validator: (v) =>
-                                                v?.trim().isEmpty == true
-                                                    ? 'Required'
-                                                    : null,
-                                            action: TextInputAction.next,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: _Field(
-                                            ctrl: _lastNameCtrl,
-                                            label: 'Last Name',
-                                            hint: 'Doe',
-                                            icon: Icons.badge_outlined,
-                                            focused: _isFocused('ln'),
-                                            onFocus: (v) =>
-                                                _setFocus('ln', v),
-                                            validator: (v) =>
-                                                v?.trim().isEmpty == true
-                                                    ? 'Required'
-                                                    : null,
-                                            action: TextInputAction.next,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-
-                                    const SizedBox(height: 14),
-
-                                    // Email
-                                    _Field(
-                                      ctrl: _emailCtrl,
-                                      label: 'Email Address',
-                                      hint: 'you@example.com',
-                                      icon: Icons.email_outlined,
-                                      focused: _isFocused('em'),
-                                      onFocus: (v) => _setFocus('em', v),
-                                      keyboard:
-                                          TextInputType.emailAddress,
-                                      validator: (v) {
-                                        if (v?.trim().isEmpty == true) {
-                                          return 'Required';
-                                        }
-                                        if (!RegExp(
-                                          r'^[^@]+@[^@]+\.[^@]+',
-                                        ).hasMatch(v!)) {
-                                          return 'Invalid email';
-                                        }
-                                        return null;
-                                      },
-                                      action: TextInputAction.next,
-                                    ),
-
-                                    const SizedBox(height: 14),
-
-                                    // Handle
-                                    _Field(
-                                      ctrl: _handleCtrl,
-                                      label: 'Handle / Username',
-                                      hint: '@johndoe',
-                                      icon: Icons.alternate_email_rounded,
-                                      focused: _isFocused('hd'),
-                                      onFocus: (v) => _setFocus('hd', v),
-                                      validator: (v) {
-                                        final h =
-                                            v?.trim().replaceAll('@', '') ??
-                                                '';
-                                        if (h.isEmpty) return 'Required';
-                                        if (h.length < 3) {
-                                          return 'Min 3 characters';
-                                        }
-                                        if (!RegExp(r'^[a-zA-Z0-9_]+$')
-                                            .hasMatch(h)) {
-                                          return 'Letters, numbers & _ only (numbers optional)';
-                                        }
-                                        return null;
-                                      },
-                                      action: TextInputAction.next,
-                                    ),
-
-                                    const SizedBox(height: 14),
-
-                                    _Field(
-                                      ctrl: _passwordCtrl,
-                                      label: 'Password',
-                                      hint: 'At least 6 characters',
-                                      icon: Icons.lock_outline_rounded,
-                                      focused: _isFocused('pw'),
-                                      onFocus: (v) => _setFocus('pw', v),
-                                      obscure: true,
-                                      validator: (v) {
-                                        if (v == null || v.length < 6) return 'Min 6 characters';
-                                        return null;
-                                      },
-                                      action: TextInputAction.next,
-                                    ),
-
-                                    const SizedBox(height: 14),
-
-                                    _Field(
-                                      ctrl: _confirmCtrl,
-                                      label: 'Confirm password',
-                                      hint: 'Repeat password',
-                                      icon: Icons.lock_outline_rounded,
-                                      focused: _isFocused('pw2'),
-                                      onFocus: (v) => _setFocus('pw2', v),
-                                      obscure: true,
-                                      validator: (v) {
-                                        if (v != _passwordCtrl.text) return 'Passwords do not match';
-                                        return null;
-                                      },
-                                      action: TextInputAction.done,
-                                    ),
-
-                                    const SizedBox(height: 14),
-
-                                    // Country picker
-                                    _TapField(
-                                      label: 'Country',
-                                      icon: Icons.public_rounded,
-                                      value: _country,
-                                      placeholder: 'Select your country',
-                                      onTap: _pickCountry,
-                                      hasError:
-                                          _country == null ? false : false,
-                                    ),
-
-                                    const SizedBox(height: 14),
-
-                                    // DOB picker
-                                    _TapField(
-                                      label: 'Date of Birth',
-                                      icon: Icons.cake_outlined,
-                                      value: _dob != null
-                                          ? DateFormat('dd MMM yyyy')
-                                              .format(_dob!)
-                                          : null,
-                                      placeholder: 'Select your date of birth',
-                                      onTap: _pickDob,
-                                      hasError: false,
-                                    ),
-
-                                    const SizedBox(height: 10),
-
-                                    // Fan info note
-                                    _FanNote(),
-
-                                    const SizedBox(height: 16),
-
-                                    // Step 2 hint
-                                    Container(
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: PlayifyColors.electricBlue.withValues(alpha: 0.08),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: PlayifyColors.electricBlue.withValues(alpha: 0.2)),
-                                      ),
-                                      child: const Row(children: [
-                                        Icon(Icons.arrow_forward_rounded, color: PlayifyColors.electricBlue, size: 16),
-                                        SizedBox(width: 8),
-                                        Expanded(child: Text(
-                                          'Next: choose your favourite teams and upload a photo',
-                                          style: TextStyle(color: PlayifyColors.electricBlue, fontSize: 12),
-                                        )),
-                                      ]),
-                                    ),
-
-                                    const SizedBox(height: 16),
-
-                                    // Submit
-                                    _PrimaryButton(
-                                      label: 'Continue →  Fan Setup',
-                                      loading: auth.isLoading,
-                                      onTap: _submit,
-                                    ),
-
-                                    const SizedBox(height: 16),
-
-                                    // Terms
-                                    _TermsText(),
-                                  ],
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 20),
-
-                            // Already have account
-                            GestureDetector(
-                              onTap: () => context.pop(),
-                              child: RichText(
-                                text: TextSpan(
-                                  style: TextStyle(
-                                    color: PlayifyColors.muted
-                                        .withValues(alpha: 0.8),
-                                    fontSize: 14,
-                                  ),
-                                  children: [
-                                    const TextSpan(
-                                        text: 'Already have an account?  '),
-                                    const TextSpan(
-                                      text: 'Log In',
-                                      style: const TextStyle(
-                                        color:
-                                            PlayifyColors.electricBlue,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+          // ── Progress bar ─────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: AnimatedBuilder(
+                  animation: _progressAnim,
+                  builder: (_, __) => LinearProgressIndicator(
+                    value: ((_step + 1) / _totalSteps),
+                    minHeight: 5,
+                    backgroundColor: Colors.white.withValues(alpha: 0.08),
+                    valueColor: const AlwaysStoppedAnimation(_kBlue),
+                  ),
                 ),
               ),
+              const SizedBox(height: 6),
+              Row(children: List.generate(_totalSteps, (i) => Expanded(
+                child: Center(child: Text(
+                  ['Account','Profile','Fan Setup'][i],
+                  style: TextStyle(
+                    color: i <= _step ? _kBlue : Colors.white.withValues(alpha: 0.3),
+                    fontSize: 10,
+                    fontWeight: i == _step ? FontWeight.w700 : FontWeight.w400,
+                  ),
+                )),
+              ))),
+            ]),
+          ),
+
+          const SizedBox(height: 8),
+
+          // ── Pages ─────────────────────────────────────────────────────────
+          Expanded(child: PageView(
+            controller: _pageCtrl,
+            physics: const NeverScrollableScrollPhysics(), // nav via buttons only
+            children: [
+              _Step1(
+                formKey:     _step1Key,
+                firstCtrl:   _firstNameCtrl,
+                lastCtrl:    _lastNameCtrl,
+                emailCtrl:   _emailCtrl,
+                handleCtrl:  _handleCtrl,
+                passCtrl:    _passCtrl,
+                confirmCtrl: _confirmCtrl,
+                showPass:    _showPass,
+                showConfirm: _showConfirm,
+                onTogglePass:    () => setState(() => _showPass = !_showPass),
+                onToggleConfirm: () => setState(() => _showConfirm = !_showConfirm),
+                onNext: _nextStep,
+              ),
+              _Step2(
+                avatarBytes: _avatarBytes,
+                country:     _country,
+                dob:         _dob,
+                onPickAvatar:  _pickAvatar,
+                onPickCountry: _pickCountry,
+                onPickDob:     _pickDob,
+                onNext: _nextStep,
+              ),
+              _Step3(
+                sports:         _sports,
+                teams:          _teams,
+                loadingTeams:   _loadingTeams,
+                selectedSports: _selectedSports,
+                selectedTeams:  _selectedTeamIds,
+                selectedTeamNames: _selectedTeamNames,
+                searchCtrl:     _teamSearch,
+                loading:        loading,
+                onToggleSport: (slug) => setState(() {
+                  if (_selectedSports.contains(slug)) _selectedSports.remove(slug);
+                  else _selectedSports.add(slug);
+                }),
+                onToggleTeam: (id, name) => setState(() {
+                  if (_selectedTeamIds.contains(id)) {
+                    _selectedTeamIds.remove(id); _selectedTeamNames.remove(name);
+                  } else {
+                    _selectedTeamIds.add(id); _selectedTeamNames.add(name);
+                  }
+                }),
+                onSubmit: _submit,
+                onSkip: _submit, // skip = submit without selections
+              ),
+            ],
+          )),
+        ])),
+      ]),
+    );
+  }
+
+  String _stepTitle() => ['Create Account','Your Profile','Fan Setup'][_step];
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// STEP 1 — Account details
+// ══════════════════════════════════════════════════════════════════════════════
+class _Step1 extends StatelessWidget {
+  final GlobalKey<FormState> formKey;
+  final TextEditingController firstCtrl, lastCtrl, emailCtrl, handleCtrl,
+      passCtrl, confirmCtrl;
+  final bool showPass, showConfirm;
+  final VoidCallback onTogglePass, onToggleConfirm, onNext;
+  const _Step1({
+    required this.formKey, required this.firstCtrl, required this.lastCtrl,
+    required this.emailCtrl, required this.handleCtrl,
+    required this.passCtrl, required this.confirmCtrl,
+    required this.showPass, required this.showConfirm,
+    required this.onTogglePass, required this.onToggleConfirm,
+    required this.onNext,
+  });
+
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(
+    physics: const BouncingScrollPhysics(),
+    padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+    child: Form(key: formKey, child: Column(children: [
+      // Logo
+      const _MiniLogo(),
+      const SizedBox(height: 20),
+
+      // Card
+      _Card(child: Column(children: [
+        // Name row
+        Row(children: [
+          Expanded(child: _Field(ctrl: firstCtrl, label: 'First Name',
+              hint: 'John', icon: Icons.badge_outlined,
+              validator: (v) => v?.trim().isEmpty == true ? 'Required' : null,
+              action: TextInputAction.next)),
+          const SizedBox(width: 12),
+          Expanded(child: _Field(ctrl: lastCtrl, label: 'Last Name',
+              hint: 'Doe', icon: Icons.badge_outlined,
+              validator: (v) => v?.trim().isEmpty == true ? 'Required' : null,
+              action: TextInputAction.next)),
+        ]),
+        const SizedBox(height: 14),
+        _Field(ctrl: emailCtrl, label: 'Email Address', hint: 'you@example.com',
+            icon: Icons.email_outlined,
+            keyboard: TextInputType.emailAddress,
+            validator: (v) {
+              if (v?.trim().isEmpty == true) return 'Required';
+              if (!v!.contains('@')) return 'Invalid email';
+              return null;
+            }),
+        const SizedBox(height: 14),
+        _Field(ctrl: handleCtrl, label: 'Handle / Username', hint: '@yourname',
+            icon: Icons.alternate_email_rounded,
+            validator: (v) {
+              final h = v?.trim().replaceAll('@','') ?? '';
+              if (h.isEmpty) return 'Required';
+              if (h.length < 3) return 'At least 3 characters';
+              if (!RegExp(r'^[a-z0-9_]+$').hasMatch(h)) return 'Letters, numbers, underscore only';
+              return null;
+            }),
+        const SizedBox(height: 14),
+        _Field(ctrl: passCtrl, label: 'Password', hint: '••••••••',
+            icon: Icons.lock_outline_rounded,
+            obscure: !showPass,
+            suffix: IconButton(
+              icon: Icon(showPass ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  color: Colors.white38, size: 18),
+              onPressed: onTogglePass,
+            ),
+            validator: (v) => (v?.length ?? 0) < 8 ? 'At least 8 characters' : null),
+        const SizedBox(height: 14),
+        _Field(ctrl: confirmCtrl, label: 'Confirm Password', hint: '••••••••',
+            icon: Icons.lock_outline_rounded,
+            obscure: !showConfirm,
+            suffix: IconButton(
+              icon: Icon(showConfirm ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  color: Colors.white38, size: 18),
+              onPressed: onToggleConfirm,
+            ),
+            validator: (v) {
+              if (v != passCtrl.text) return 'Passwords do not match';
+              return null;
+            },
+            action: TextInputAction.done),
+        const SizedBox(height: 20),
+        _Btn(label: 'Next — Profile', icon: Icons.arrow_forward_rounded, onTap: onNext),
+      ])),
+
+      const SizedBox(height: 16),
+      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Text('Already have an account? ', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13)),
+        GestureDetector(
+          onTap: () => context.push('/login'),
+          child: const Text('Sign in', style: TextStyle(color: _kBlue, fontWeight: FontWeight.w700, fontSize: 13)),
+        ),
+      ]),
+    ])),
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// STEP 2 — Profile setup
+// ══════════════════════════════════════════════════════════════════════════════
+class _Step2 extends StatelessWidget {
+  final Uint8List? avatarBytes;
+  final String? country;
+  final DateTime? dob;
+  final VoidCallback onPickAvatar, onPickCountry, onPickDob, onNext;
+  const _Step2({
+    required this.avatarBytes, required this.country, required this.dob,
+    required this.onPickAvatar, required this.onPickCountry, required this.onPickDob,
+    required this.onNext,
+  });
+
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(
+    physics: const BouncingScrollPhysics(),
+    padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+    child: Column(children: [
+      const _SectionHeader('Set Up Your Profile', 'Add a photo and tell us about you'),
+      const SizedBox(height: 24),
+
+      // Avatar picker — centre stage
+      GestureDetector(
+        onTap: onPickAvatar,
+        child: Stack(alignment: Alignment.bottomRight, children: [
+          Container(
+            width: 110, height: 110,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(colors: [
+                _kBlue.withValues(alpha: 0.3), _kGreen.withValues(alpha: 0.2)
+              ]),
+              border: Border.all(color: _kBlue, width: 2.5),
+            ),
+            child: ClipOval(child: avatarBytes != null
+              ? Image.memory(avatarBytes!, fit: BoxFit.cover)
+              : const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(Icons.camera_alt_rounded, color: _kBlue, size: 32),
+                  SizedBox(height: 4),
+                  Text('Add Photo', style: TextStyle(color: _kBlue, fontSize: 11,
+                      fontWeight: FontWeight.w600)),
+                ]))),
+          ),
+          if (!kIsWeb) Container(
+            padding: const EdgeInsets.all(6),
+            decoration: const BoxDecoration(shape: BoxShape.circle, color: _kBlue),
+            child: const Icon(Icons.edit_rounded, color: Colors.white, size: 14),
+          ),
+        ]),
+      ),
+      const SizedBox(height: 8),
+      Text(kIsWeb ? 'Photo upload available on mobile app'
+                  : 'Tap to add profile photo',
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 12)),
+      const SizedBox(height: 28),
+
+      _Card(child: Column(children: [
+        // Country
+        _TapField(
+          label: 'Country',
+          value: country,
+          hint: 'Select your country',
+          icon: Icons.language_rounded,
+          onTap: onPickCountry,
+        ),
+        const SizedBox(height: 14),
+        // DOB
+        _TapField(
+          label: 'Date of Birth',
+          value: dob == null ? null : '${dob!.day}/${dob!.month}/${dob!.year}',
+          hint: 'Select your date of birth',
+          icon: Icons.cake_outlined,
+          onTap: onPickDob,
+        ),
+        const SizedBox(height: 20),
+        _Btn(label: 'Next — Fan Setup', icon: Icons.arrow_forward_rounded, onTap: onNext),
+      ])),
+    ]),
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// STEP 3 — Fan setup
+// ══════════════════════════════════════════════════════════════════════════════
+class _Step3 extends StatelessWidget {
+  final List<Map<String,dynamic>> sports, teams;
+  final bool loadingTeams, loading;
+  final Set<String> selectedSports, selectedTeams, selectedTeamNames;
+  final TextEditingController searchCtrl;
+  final void Function(String slug) onToggleSport;
+  final void Function(String id, String name) onToggleTeam;
+  final VoidCallback onSubmit, onSkip;
+  const _Step3({
+    required this.sports, required this.teams, required this.loadingTeams,
+    required this.loading, required this.selectedSports,
+    required this.selectedTeams, required this.selectedTeamNames,
+    required this.searchCtrl, required this.onToggleSport,
+    required this.onToggleTeam, required this.onSubmit, required this.onSkip,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final query = searchCtrl.text.toLowerCase();
+    final filtered = teams.where((t) {
+      final n = (t['name'] as String? ?? '').toLowerCase();
+      return query.isEmpty || n.contains(query);
+    }).toList();
+
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const _SectionHeader('Your Fan Profile',
+            'Pick the sports and teams you support (optional)'),
+        const SizedBox(height: 20),
+
+        // Sports chips
+        _Card(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Favourite Sports',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)),
+          const SizedBox(height: 4),
+          Text('Tap to select',
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 12)),
+          const SizedBox(height: 14),
+          Wrap(spacing: 8, runSpacing: 8,
+            children: sports.map((s) {
+              final slug = s['slug']?.toString() ?? s['id']?.toString() ?? '';
+              final name = s['name']?.toString() ?? '';
+              final icon = s['icon']?.toString() ?? '🏅';
+              final sel  = selectedSports.contains(slug);
+              return GestureDetector(
+                onTap: () => onToggleSport(slug),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(99),
+                    color: sel ? _kBlue.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.05),
+                    border: Border.all(
+                      color: sel ? _kBlue : Colors.white.withValues(alpha: 0.12),
+                      width: sel ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text(icon, style: const TextStyle(fontSize: 16)),
+                    const SizedBox(width: 6),
+                    Text(name, style: TextStyle(
+                      color: sel ? _kBlue : Colors.white,
+                      fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                      fontSize: 13,
+                    )),
+                    if (sel) ...[
+                      const SizedBox(width: 4),
+                      const Icon(Icons.check_rounded, size: 14, color: _kBlue),
+                    ],
+                  ]),
+                ),
+              );
+            }).toList(),
+          ),
+        ])),
+
+        const SizedBox(height: 16),
+
+        // Teams
+        _Card(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Favourite Teams',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)),
+          const SizedBox(height: 12),
+          // Search
+          TextField(
+            controller: searchCtrl,
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+            decoration: InputDecoration(
+              hintText: 'Search teams...',
+              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+              prefixIcon: const Icon(Icons.search_rounded, color: Colors.white38, size: 18),
+              filled: true,
+              fillColor: Colors.white.withValues(alpha: 0.05),
+              contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: _kBlue)),
             ),
           ),
-        ],
-      ),
+          const SizedBox(height: 10),
+          loadingTeams
+            ? const Center(child: Padding(
+                padding: EdgeInsets.all(20),
+                child: CircularProgressIndicator(color: _kBlue, strokeWidth: 2)))
+            : filtered.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Center(child: Text('No teams found',
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.4)))))
+              : Column(
+                  children: filtered.take(15).map((t) {
+                    final id   = t['id']?.toString() ?? '';
+                    final name = t['name']?.toString() ?? '';
+                    final logo = t['logoUrl']?.toString();
+                    final sel  = selectedTeams.contains(id);
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 2),
+                      leading: CircleAvatar(
+                        radius: 18,
+                        backgroundColor: Colors.white.withValues(alpha: 0.1),
+                        backgroundImage: (logo != null && logo.startsWith('http'))
+                            ? NetworkImage(logo) : null,
+                        child: (logo == null || !logo.startsWith('http'))
+                            ? Text(name.isNotEmpty ? name[0] : '?',
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700))
+                            : null,
+                      ),
+                      title: Text(name, style: TextStyle(
+                        color: sel ? _kBlue : Colors.white,
+                        fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                        fontSize: 14,
+                      )),
+                      trailing: AnimatedContainer(
+                        duration: const Duration(milliseconds: 160),
+                        width: 24, height: 24,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: sel ? _kBlue : Colors.transparent,
+                          border: Border.all(color: sel ? _kBlue : Colors.white24, width: 1.5),
+                        ),
+                        child: sel ? const Icon(Icons.check_rounded, size: 14, color: Colors.white) : null,
+                      ),
+                      onTap: () => onToggleTeam(id, name),
+                    );
+                  }).toList(),
+                ),
+        ])),
+
+        const SizedBox(height: 20),
+
+        // Selected summary
+        if (selectedTeams.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Wrap(spacing: 6, children: selectedTeamNames.map((n) => Chip(
+              label: Text(n, style: const TextStyle(color: Colors.white, fontSize: 11)),
+              backgroundColor: _kGreen.withValues(alpha: 0.15),
+              side: const BorderSide(color: _kGreen, width: 1),
+              deleteIcon: const Icon(Icons.close_rounded, size: 14, color: _kGreen),
+              onDeleted: () {
+                final id = selectedTeams.firstWhere((id) =>
+                  true, orElse: () => '');
+                onToggleTeam(id, n);
+              },
+            )).toList()),
+          ),
+
+        // Action buttons
+        loading
+          ? const Center(child: Padding(
+              padding: EdgeInsets.all(20),
+              child: CircularProgressIndicator(color: _kBlue, strokeWidth: 2)))
+          : Column(children: [
+              _Btn(
+                label: 'Create My Account',
+                icon: Icons.check_circle_outline_rounded,
+                color: _kGreen,
+                onTap: onSubmit,
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: onSkip,
+                child: Text('Skip for now',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.4),
+                        fontSize: 13)),
+              ),
+            ]),
+      ]),
     );
   }
 }
 
-// ── Mini logo (compact version for register) ───────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// SHARED WIDGETS
+// ══════════════════════════════════════════════════════════════════════════════
 
 class _MiniLogo extends StatelessWidget {
+  const _MiniLogo();
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Image.asset(
-          'assets/images/playify_sign.png',
-          height: 110,
-          fit: BoxFit.contain,errorBuilder: (_, __, ___) => const Text(
-            'Playify',
-            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 2),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Join the sports community',
-          style: TextStyle(
-            color: PlayifyColors.muted.withValues(alpha: 0.8),
-            fontSize: 11,
-          ),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => Column(children: [
+    Container(
+      width: 48, height: 48,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(colors: [_kBlue, _kGreen.withValues(alpha: 0.7)]),
+        boxShadow: [BoxShadow(color: _kBlue.withValues(alpha: 0.3), blurRadius: 16)],
+      ),
+      child: const Center(child: Text('P', style: TextStyle(color: Colors.white,
+          fontSize: 22, fontWeight: FontWeight.w900))),
+    ),
+    const SizedBox(height: 8),
+    const Text('Playify', style: TextStyle(color: Colors.white,
+        fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+    const SizedBox(height: 2),
+    Text('Join the sports community',
+        style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 12)),
+  ]);
 }
 
-// ── Form field ─────────────────────────────────────────────────────────────────
+class _SectionHeader extends StatelessWidget {
+  final String title, subtitle;
+  const _SectionHeader(this.title, this.subtitle);
+  @override
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.center,
+    children: [
+      Text(title, textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900)),
+      const SizedBox(height: 6),
+      Text(subtitle, textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 13)),
+    ],
+  );
+}
+
+class _Card extends StatelessWidget {
+  final Widget child;
+  const _Card({required this.child});
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.04),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+    ),
+    child: child,
+  );
+}
 
 class _Field extends StatelessWidget {
+  final TextEditingController ctrl;
+  final String label, hint;
+  final IconData icon;
+  final TextInputType keyboard;
+  final bool obscure;
+  final String? Function(String?)? validator;
+  final TextInputAction action;
+  final Widget? suffix;
   const _Field({
-    required this.ctrl,
-    required this.label,
-    required this.hint,
+    required this.ctrl, required this.label, required this.hint,
     required this.icon,
-    required this.focused,
-    required this.onFocus,
-    this.validator,
-    this.action,
-    this.keyboard,
+    this.keyboard = TextInputType.text,
     this.obscure = false,
+    this.validator,
+    this.action = TextInputAction.next,
+    this.suffix,
   });
 
-  final TextEditingController ctrl;
-  final String label;
-  final String hint;
-  final IconData icon;
-  final bool focused;
-  final ValueChanged<bool> onFocus;
-  final String? Function(String?)? validator;
-  final TextInputAction? action;
-  final TextInputType? keyboard;
-  final bool obscure;
-
   @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: focused
-            ? PlayifyColors.electricBlue.withValues(alpha: 0.06)
-            : Colors.white.withValues(alpha: 0.04),
-        border: Border.all(
-          color: focused
-              ? PlayifyColors.electricBlue.withValues(alpha: 0.55)
-              : Colors.white.withValues(alpha: 0.10),
-          width: focused ? 1.5 : 1,
-        ),
-      ),
-      child: Focus(
-        onFocusChange: onFocus,
-        child: TextFormField(
-          controller: ctrl,
-          validator: validator,
-          textInputAction: action,
-          keyboardType: keyboard,
-          obscureText: obscure,
-          style: const TextStyle(
-            color: PlayifyColors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-          cursorColor: PlayifyColors.electricBlue,
-          decoration: InputDecoration(
-            labelText: label,
-            labelStyle: TextStyle(
-              color: focused
-                  ? PlayifyColors.electricBlue
-                  : PlayifyColors.muted,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-            hintText: hint,
-            hintStyle: TextStyle(
-              color: PlayifyColors.muted.withValues(alpha: 0.5),
-              fontSize: 13,
-            ),
-            prefixIcon: Padding(
-              padding: const EdgeInsets.only(left: 12, right: 8),
-              child: Icon(
-                icon,
-                color: focused
-                    ? PlayifyColors.electricBlue
-                    : PlayifyColors.muted,
-                size: 18,
-              ),
-            ),
-            prefixIconConstraints: const BoxConstraints(),
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 14,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => TextFormField(
+    controller: ctrl,
+    obscureText: obscure,
+    keyboardType: keyboard,
+    textInputAction: action,
+    style: const TextStyle(color: Colors.white, fontSize: 14),
+    validator: validator,
+    decoration: InputDecoration(
+      labelText: label,
+      hintText: hint,
+      labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
+      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.25), fontSize: 13),
+      prefixIcon: Icon(icon, color: Colors.white38, size: 18),
+      suffixIcon: suffix,
+      filled: true,
+      fillColor: Colors.white.withValues(alpha: 0.05),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _kBlue, width: 1.5)),
+      errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Colors.redAccent)),
+      focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 1.5)),
+    ),
+  );
 }
-
-// ── Tap-to-pick field (country / dob) ──────────────────────────────────────────
 
 class _TapField extends StatelessWidget {
-  final String label;
-  final IconData icon;
+  final String label, hint;
   final String? value;
-  final String placeholder;
+  final IconData icon;
   final VoidCallback onTap;
-  final bool hasError;
-
-  const _TapField({
-    required this.label,
-    required this.icon,
-    required this.value,
-    required this.placeholder,
-    required this.onTap,
-    required this.hasError,
-  });
+  const _TapField({required this.label, required this.hint, this.value,
+      required this.icon, required this.onTap});
 
   @override
-  Widget build(BuildContext context) {
-    final filled = value != null;
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          color: filled
-              ? PlayifyColors.electricBlue.withValues(alpha: 0.06)
-              : Colors.white.withValues(alpha: 0.04),
-          border: Border.all(
-            color: filled
-                ? PlayifyColors.electricBlue.withValues(alpha: 0.45)
-                : Colors.white.withValues(alpha: 0.10),
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              color: filled
-                  ? PlayifyColors.electricBlue
-                  : PlayifyColors.muted,
-              size: 18,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: TextStyle(
-                      color: filled
-                          ? PlayifyColors.electricBlue
-                          : PlayifyColors.muted,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    value ?? placeholder,
-                    style: TextStyle(
-                      color: filled
-                          ? PlayifyColors.white
-                          : PlayifyColors.muted.withValues(alpha: 0.55),
-                      fontSize: 14,
-                      fontWeight:
-                          filled ? FontWeight.w600 : FontWeight.w400,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: PlayifyColors.muted,
-              size: 20,
-            ),
-          ],
-        ),
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
-    );
-  }
+      child: Row(children: [
+        Icon(icon, color: Colors.white38, size: 18),
+        const SizedBox(width: 12),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11)),
+          const SizedBox(height: 2),
+          Text(value ?? hint, style: TextStyle(
+            color: value != null ? Colors.white : Colors.white.withValues(alpha: 0.25),
+            fontSize: 14,
+          )),
+        ])),
+        Icon(Icons.chevron_right_rounded, color: Colors.white.withValues(alpha: 0.3), size: 20),
+      ]),
+    ),
+  );
 }
 
-// ── Country picker bottom sheet ────────────────────────────────────────────────
+class _Btn extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  const _Btn({required this.label, required this.icon, this.color = _kBlue, required this.onTap});
 
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: double.infinity,
+    child: FilledButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 18),
+      label: Text(label, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+      style: FilledButton.styleFrom(
+        backgroundColor: color,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+    ),
+  );
+}
+
+class _Orb extends StatelessWidget {
+  final Color color; final double size;
+  const _Orb({required this.color, required this.size});
+  @override
+  Widget build(BuildContext context) => Container(width: size, height: size,
+    decoration: BoxDecoration(shape: BoxShape.circle,
+      color: color.withValues(alpha: 0.06)));
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// COUNTRY PICKER
+// ══════════════════════════════════════════════════════════════════════════════
 class _CountryPicker extends StatefulWidget {
-  const _CountryPicker({this.selected, required this.onSelect});
   final String? selected;
   final ValueChanged<String> onSelect;
-
+  const _CountryPicker({this.selected, required this.onSelect});
   @override
   State<_CountryPicker> createState() => _CountryPickerState();
 }
 
 class _CountryPickerState extends State<_CountryPicker> {
-  final _searchCtrl = TextEditingController();
-  List<String> _filtered = _countries;
-
-  @override
-  void initState() {
-    super.initState();
-    _searchCtrl.addListener(() {
-      final q = _searchCtrl.text.toLowerCase();
-      setState(() {
-        _filtered = q.isEmpty
-            ? _countries
-            : _countries
-                .where((c) => c.toLowerCase().contains(q))
-                .toList();
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.78,
-      decoration: const BoxDecoration(
-        color: PlayifyColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: Column(
-        children: [
-          const SizedBox(height: 12),
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-            child: Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Select Country',
-                    style: TextStyle(
-                      color: PlayifyColors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(
-                    Icons.close_rounded,
-                    color: PlayifyColors.muted,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.10),
-                ),
-              ),
-              child: TextField(
-                controller: _searchCtrl,
-                autofocus: true,
-                style: const TextStyle(
-                  color: PlayifyColors.white,
-                  fontSize: 14,
-                ),
-                cursorColor: PlayifyColors.electricBlue,
-                decoration: InputDecoration(
-                  border: InputBorder.none,
-                  prefixIcon: const Icon(
-                    Icons.search_rounded,
-                    color: PlayifyColors.muted,
-                    size: 20,
-                  ),
-                  hintText: 'Search country…',
-                  hintStyle: TextStyle(
-                    color: PlayifyColors.muted.withValues(alpha: 0.6),
-                    fontSize: 14,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              physics: const BouncingScrollPhysics(),
-              itemCount: _filtered.length,
-              itemBuilder: (_, i) {
-                final c = _filtered[i];
-                if (c == '──────────────') {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 6,
-                    ),
-                    child: Container(
-                      height: 1,
-                      color: Colors.white.withValues(alpha: 0.08),
-                    ),
-                  );
-                }
-                final selected = widget.selected == c;
-                return ListTile(
-                  onTap: () => widget.onSelect(c),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-                  title: Text(
-                    c,
-                    style: TextStyle(
-                      color: selected
-                          ? PlayifyColors.electricBlue
-                          : PlayifyColors.white,
-                      fontWeight: selected
-                          ? FontWeight.w700
-                          : FontWeight.w500,
-                      fontSize: 15,
-                    ),
-                  ),
-                  trailing: selected
-                      ? const Icon(
-                          Icons.check_rounded,
-                          color: PlayifyColors.electricBlue,
-                          size: 20,
-                        )
-                      : null,
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Fan note ───────────────────────────────────────────────────────────────────
-
-class _FanNote extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: PlayifyColors.sportGreen.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: PlayifyColors.sportGreen.withValues(alpha: 0.25),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.info_outline_rounded,
-            color: PlayifyColors.sportGreen,
-            size: 18,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'You will start as a Fan - follow teams, vote in polls, predict matches and join communities. Upgrade to a Pro role anytime.',
-              style: TextStyle(
-                color: PlayifyColors.white.withValues(alpha: 0.82),
-                fontSize: 12.5,
-                height: 1.5,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Shared widgets (duplicated from login for isolation) ───────────────────────
-
-class _GlassCard extends StatelessWidget {
-  const _GlassCard({required this.child});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(28),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.045),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.10),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.28),
-                blurRadius: 40,
-                offset: const Offset(0, 16),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-          child: child,
-        ),
-      ),
-    );
-  }
-}
-
-class _PrimaryButton extends StatelessWidget {
-  final String label;
-  final bool loading;
-  final VoidCallback onTap;
-
-  const _PrimaryButton({
-    required this.label,
-    required this.loading,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: loading ? null : onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        height: 56,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          gradient: LinearGradient(
-            colors: loading
-                ? [
-                    PlayifyColors.electricBlue.withValues(alpha: 0.6),
-                    const Color(0xFF0055BB).withValues(alpha: 0.6),
-                  ]
-                : [
-                    PlayifyColors.electricBlue,
-                    const Color(0xFF0066DD),
-                  ],
-          ),
-          boxShadow: loading
-              ? []
-              : [
-                  BoxShadow(
-                    color: PlayifyColors.electricBlue
-                        .withValues(alpha: 0.40),
-                    blurRadius: 22,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-        ),
-        child: Center(
-          child: loading
-              ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2.5,
-                  ),
-                )
-              : Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner({required this.message, required this.onDismiss});
-  final String message;
-  final VoidCallback onDismiss;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
-      decoration: BoxDecoration(
-        color: PlayifyColors.danger.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: PlayifyColors.danger.withValues(alpha: 0.35),
-        ),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.error_outline_rounded,
-              color: PlayifyColors.danger, size: 18),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                color: PlayifyColors.white,
-                fontSize: 13,
-              ),
-            ),
-          ),
-          GestureDetector(
-            onTap: onDismiss,
-            child: const Icon(
-              Icons.close_rounded,
-              color: PlayifyColors.muted,
-              size: 18,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TermsText extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return RichText(
-      textAlign: TextAlign.center,
-      text: TextSpan(
-        style: TextStyle(
-          color: PlayifyColors.muted.withValues(alpha: 0.75),
-          fontSize: 12,
-          height: 1.6,
-        ),
-        children: [
-          const TextSpan(text: 'By continuing, you agree to our\n'),
-          const TextSpan(
-            text: 'Terms of Service',
-            style: const TextStyle(
-              color: PlayifyColors.electricBlue,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const TextSpan(text: '  and  '),
-          const TextSpan(
-            text: 'Privacy Policy',
-            style: const TextStyle(
-              color: PlayifyColors.electricBlue,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Orb extends StatelessWidget {
-  const _Orb({required this.color, required this.size});
-  final Color color;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [
-              color.withValues(alpha: 0.10),
-              color.withValues(alpha: 0.025),
-              Colors.transparent,
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Fan Setup Sheet (Step 2 of registration) ─────────────────────────────────
-
-class _FanSetupSheet extends StatefulWidget {
-  final Set<String> favTeamIds;
-  final Set<String> favTeamNames;
-  final String? avatarUrl;
-  final ValueChanged<String?> onAvatarChanged;
-  final void Function(String id, String name, bool selected) onTeamToggled;
-
-  const _FanSetupSheet({
-    required this.favTeamIds,
-    required this.favTeamNames,
-    required this.avatarUrl,
-    required this.onAvatarChanged,
-    required this.onTeamToggled,
-  });
-
-  @override
-  State<_FanSetupSheet> createState() => _FanSetupSheetState();
-}
-
-class _FanSetupSheetState extends State<_FanSetupSheet> {
-  List<Map<String, dynamic>> _teams = [];
-  bool _loading = true;
   final _search = TextEditingController();
-  String _query = '';
-  late Set<String> _selected;
-
-  @override
-  void initState() {
-    super.initState();
-    _selected = Set.from(widget.favTeamIds);
-    _loadTeams();
-  }
-
-  Future<void> _loadTeams() async {
-    try {
-      final rows = await VpsSupabaseCompat.client
-          .from('Team').select('id, name, logoUrl')
-          .order('name').limit(200);
-      if (mounted) setState(() {
-        _teams = List<Map<String, dynamic>>.from(rows as List);
-        _loading = false;
-      });
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  @override
-  void dispose() { _search.dispose(); super.dispose(); }
+  String _q = '';
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _teams.where((t) =>
-        _query.isEmpty ||
-        (t['name'] as String? ?? '').toLowerCase().contains(_query.toLowerCase())).toList();
-
-    return DraggableScrollableSheet(
-      initialChildSize: 0.92,
-      minChildSize: 0.5,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (_, sc) => Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFF071420),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(children: [
-          // Handle
-          Container(width: 40, height: 4, margin: const EdgeInsets.only(top: 12, bottom: 20),
-              decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
-
-          // Header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(children: [
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Fan Setup', style: TextStyle(color: Colors.white,
-                    fontSize: 22, fontWeight: FontWeight.w900)),
-                Text('Step 2 of 2', style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 13)),
-              ]),
-              const Spacer(),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: FilledButton.styleFrom(
-                  backgroundColor: PlayifyColors.electricBlue,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                ),
-                child: const Text('Done', style: TextStyle(fontWeight: FontWeight.w800)),
-              ),
-            ]),
-          ),
-
-          const SizedBox(height: 20),
-
-          // Avatar section
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(children: [
-              // Avatar preview
-              GestureDetector(
-                onTap: _pickAvatar,
-                child: Stack(children: [
-                  CircleAvatar(
-                    radius: 36,
-                    backgroundColor: PlayifyColors.electricBlue.withValues(alpha: 0.15),
-                    backgroundImage: widget.avatarUrl != null && widget.avatarUrl!.startsWith('http')
-                        ? NetworkImage(widget.avatarUrl!) : null,
-                    child: widget.avatarUrl == null
-                        ? const Icon(Icons.person_rounded, color: PlayifyColors.electricBlue, size: 32)
-                        : null,
-                  ),
-                  Positioned(right: 0, bottom: 0, child: Container(
-                    width: 24, height: 24,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle, color: PlayifyColors.electricBlue),
-                    child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 14),
-                  )),
-                ]),
-              ),
-              const SizedBox(width: 16),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Profile Photo', style: TextStyle(color: Colors.white,
-                    fontWeight: FontWeight.w700, fontSize: 15)),
-                const SizedBox(height: 4),
-                Text('Optional — tap to upload', style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.45), fontSize: 12)),
-              ])),
-            ]),
-          ),
-
-          const SizedBox(height: 20),
-          const Divider(color: Colors.white12, height: 1),
-          const SizedBox(height: 16),
-
-          // Team selection header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(children: [
-              const Text('Favourite Teams', style: TextStyle(color: Colors.white,
-                  fontSize: 16, fontWeight: FontWeight.w800)),
-              const Spacer(),
-              Text('${_selected.length}/3',
-                  style: TextStyle(color: _selected.length >= 3
-                      ? PlayifyColors.sportGreen : Colors.white.withValues(alpha: 0.4),
-                      fontWeight: FontWeight.w700)),
-            ]),
-          ),
-          const SizedBox(height: 4),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Text('Pick up to 3 teams you support',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 12)),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Search
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextField(
-              controller: _search,
-              style: const TextStyle(color: Colors.white),
-              onChanged: (v) => setState(() => _query = v),
-              decoration: InputDecoration(
-                hintText: 'Search teams…',
-                hintStyle: const TextStyle(color: Colors.white38),
-                prefixIcon: const Icon(Icons.search_rounded, color: Colors.white38, size: 20),
-                filled: true, fillColor: Colors.white.withValues(alpha: 0.06),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none), isDense: true,
-              ),
+    final filtered = _kCountries.where((c) => c.toLowerCase().contains(_q)).toList()..sort();
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF0D1F35),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: SafeArea(child: Column(children: [
+        const SizedBox(height: 8),
+        Container(width: 40, height: 4,
+            decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+        const SizedBox(height: 16),
+        const Text('Select Country', style: TextStyle(color: Colors.white,
+            fontSize: 17, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 12),
+        Padding(padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: TextField(
+            controller: _search,
+            onChanged: (v) => setState(() => _q = v.toLowerCase()),
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+            decoration: InputDecoration(
+              hintText: 'Search country...',
+              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+              prefixIcon: const Icon(Icons.search_rounded, color: Colors.white38, size: 18),
+              filled: true, fillColor: Colors.white.withValues(alpha: 0.07),
+              contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none),
             ),
           ),
-
-          const SizedBox(height: 8),
-
-          // Teams list
-          Expanded(child: _loading
-              ? const Center(child: CircularProgressIndicator(
-                  color: PlayifyColors.electricBlue, strokeWidth: 2))
-              : ListView.builder(
-                  controller: sc,
-                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 80),
-                  itemCount: filtered.length,
-                  itemBuilder: (_, i) {
-                    final t = filtered[i];
-                    final id = t['id']?.toString() ?? '';
-                    final name = t['name']?.toString() ?? '';
-                    final logo = t['logoUrl'] as String?;
-                    final isSelected = _selected.contains(id);
-                    final canSelect = isSelected || _selected.length < 3;
-
-                    return GestureDetector(
-                      onTap: canSelect ? () {
-                        setState(() {
-                          if (isSelected) _selected.remove(id);
-                          else _selected.add(id);
-                        });
-                        widget.onTeamToggled(id, name, !isSelected);
-                      } : null,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(14),
-                          color: isSelected
-                              ? PlayifyColors.electricBlue.withValues(alpha: 0.12)
-                              : Colors.white.withValues(alpha: 0.04),
-                          border: Border.all(color: isSelected
-                              ? PlayifyColors.electricBlue.withValues(alpha: 0.5)
-                              : Colors.white.withValues(alpha: 0.07)),
-                        ),
-                        child: Row(children: [
-                          // Team logo
-                          CircleAvatar(
-                            radius: 18,
-                            backgroundColor: PlayifyColors.electricBlue.withValues(alpha: 0.12),
-                            backgroundImage: (logo != null && logo.startsWith('http'))
-                                ? NetworkImage(logo) : null,
-                            child: (logo == null || !logo.startsWith('http'))
-                                ? const Icon(Icons.shield_rounded,
-                                    color: PlayifyColors.electricBlue, size: 18) : null,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(child: Text(name,
-                              style: TextStyle(
-                                color: isSelected ? PlayifyColors.electricBlue : Colors.white,
-                                fontWeight: FontWeight.w600, fontSize: 14))),
-                          if (isSelected)
-                            const Icon(Icons.check_circle_rounded,
-                                color: PlayifyColors.electricBlue, size: 22)
-                          else if (!canSelect)
-                            Icon(Icons.lock_rounded,
-                                color: Colors.white.withValues(alpha: 0.2), size: 18),
-                        ]),
-                      ),
-                    );
-                  },
-                )),
-        ]),
-      ),
+        ),
+        const SizedBox(height: 8),
+        Expanded(child: ListView.builder(
+          itemCount: filtered.length,
+          itemBuilder: (_, i) => ListTile(
+            title: Text(filtered[i], style: const TextStyle(color: Colors.white, fontSize: 14)),
+            trailing: widget.selected == filtered[i]
+                ? const Icon(Icons.check_rounded, color: _kBlue) : null,
+            onTap: () { widget.onSelect(filtered[i]); Navigator.pop(context); },
+          ),
+        )),
+      ])),
     );
-  }
-
-  Future<void> _pickAvatar() async {
-    // On web use html input; on mobile use image_picker
-    try {
-      final picker = ImagePicker();
-      final file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-      if (file == null) return;
-      final bytes = await file.readAsBytes();
-      final uid = VpsSupabaseCompat.client.auth.currentUser?.id
-          ?? DateTime.now().millisecondsSinceEpoch.toString();
-      // Upload via VPS media endpoint (returns CDN URL directly)
-      final urls = await const VpsRepository().uploadImageBytes(
-        bytes: bytes,
-        filename: 'avatar_$uid.jpg',
-        folder: 'avatars',
-        mimeType: 'image/jpeg',
-      );
-      final url = urls['full'] ?? urls.values.first;
-      widget.onAvatarChanged(url);
-      if (mounted) setState(() {});
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not upload photo: $e')));
-    }
   }
 }
