@@ -81,18 +81,21 @@ app.get('/v1/social/search', async (c) => {
   return c.json({ ok: true, results })
 })
 
-// ── Public auth routes — MUST be before app.use('/v1/*', authMiddleware) ────────
-// Hono applies middleware before route handlers — these MUST be
-// registered as direct handlers (not via router) to bypass auth.
-app.post('/v1/auth/register', (c) => authRouter.fetch(c.req.raw, c.env))
-app.post('/v1/auth/login',    (c) => authRouter.fetch(c.req.raw, c.env))
-app.post('/v1/auth/refresh',  (c) => authRouter.fetch(c.req.raw, c.env))
-app.post('/v1/auth/forgot-password', (c) => authRouter.fetch(c.req.raw, c.env))
+// ── Auth middleware — all /v1/* EXCEPT public auth endpoints ─────────────────
+app.use('/v1/*', async (c, next) => {
+  const path = new URL(c.req.url).pathname
+  const publicPaths = [
+    '/v1/auth/register',
+    '/v1/auth/login',
+    '/v1/auth/refresh',
+    '/v1/auth/forgot-password',
+    '/v1/auth/resend-confirmation',
+  ]
+  if (publicPaths.includes(path)) return next()
+  return authMiddleware(c, next)
+})
 
-// ── Auth middleware — all /v1/* ────────────────────────────────────────────────
-app.use('/v1/*', authMiddleware)
-
-// ── Protected auth routes ──────────────────────────────────────────────────────
+// ── All auth routes (public ones skip middleware above) ────────────────────────
 app.route('/v1/auth', authRouter)
 
 // ── Authenticated routes ──────────────────────────────────────────────────────

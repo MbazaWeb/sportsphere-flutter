@@ -5,7 +5,7 @@
 
 import { Hono } from 'hono'
 import { query, queryOne, execute, transaction } from '../lib/db.js'
-import { SignJWT, jwtVerify, importPKCS8, importSPKI, generateKeyPair } from 'jose'
+// jose imported dynamically inside signToken/verifyJwt to avoid top-level await issues
 import { createHash, randomBytes } from 'crypto'
 
 export const authRouter = new Hono()
