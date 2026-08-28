@@ -85,14 +85,14 @@ socialRouter.post('/posts', async (c) => {
      b.teamTag??null, b.playerTag??null, b.sportTag??null,
      b.communityId??null, b.matchId??null, b.isBreaking??false]
   )
-  await execute(`UPDATE public.profiles SET post_count=COALESCE(post_count,0)+1 WHERE id=$1::uuid`, [userId])
+  await execute(`UPDATE public.profiles SET post_count=COALESCE(post_count,0)+1 WHERE id::text=$1`, [userId])
   return c.json({ ok: true, post: rows[0] }, 201)
 })
 
 socialRouter.delete('/posts/:id', async (c) => {
   const userId = c.get('userId') as string
   const n = await execute(`DELETE FROM public."Post" WHERE id=$1 AND "userId"=$2`, [c.req.param('id'), userId])
-  if (n > 0) await execute(`UPDATE public.profiles SET post_count=GREATEST(COALESCE(post_count,0)-1,0) WHERE id=$1::uuid`, [userId])
+  if (n > 0) await execute(`UPDATE public.profiles SET post_count=GREATEST(COALESCE(post_count,0)-1,0) WHERE id::text=$1`, [userId])
   return c.json({ ok: true })
 })
 
@@ -240,9 +240,9 @@ socialRouter.post('/follow/:targetId', async (c) => {
       VALUES($1,$2,NOW()) ON CONFLICT DO NOTHING RETURNING 1
     )
     UPDATE public.profiles SET following_count=COALESCE(following_count,0)+1
-    WHERE id=$1::uuid AND EXISTS(SELECT 1 FROM ins)
+    WHERE id::text=$1 AND EXISTS(SELECT 1 FROM ins)
   `, [userId, targetId])
-  await execute(`UPDATE public.profiles SET follower_count=COALESCE(follower_count,0)+1 WHERE id=$1::uuid AND EXISTS(SELECT 1 FROM public."Follow" WHERE "followerId"=$2 AND "followingId"=$1)`, [targetId, userId])
+  await execute(`UPDATE public.profiles SET follower_count=COALESCE(follower_count,0)+1 WHERE id::text=$1`, [targetId])
   await execute(
     `INSERT INTO public."Notification"(id,"userId",type,title,body,"isRead","actorId","createdAt")
      VALUES(gen_random_uuid()::text,$1,'follow','New follower','Someone started following you',false,$2,NOW())`,
@@ -259,9 +259,9 @@ socialRouter.delete('/follow/:targetId', async (c) => {
       DELETE FROM public."Follow" WHERE "followerId"=$1 AND "followingId"=$2 RETURNING 1
     )
     UPDATE public.profiles SET following_count=GREATEST(COALESCE(following_count,0)-1,0)
-    WHERE id=$1::uuid AND EXISTS(SELECT 1 FROM del)
+    WHERE id::text=$1 AND EXISTS(SELECT 1 FROM del)
   `, [userId, targetId])
-  await execute(`UPDATE public.profiles SET follower_count=GREATEST(COALESCE(follower_count,0)-1,0) WHERE id=$1::uuid`, [targetId])
+  await execute(`UPDATE public.profiles SET follower_count=GREATEST(COALESCE(follower_count,0)-1,0) WHERE id::text=$1`, [targetId])
   return c.json({ ok: true })
 })
 
