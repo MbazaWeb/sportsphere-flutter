@@ -182,8 +182,15 @@ authRouter.post('/refresh', async (c) => {
 authRouter.get('/me', async (c) => {
   const userId = c.get('userId') as string
   const user   = await queryOne(
-    `SELECT u.*, p.bio, p.avatar_url, p.cover_url, p.dob, p.theme_color,
-            p.is_verified, p.follower_count, p.following_count, p.latitude, p.longitude
+    `SELECT u.id, u.name, u.email, u.handle, u.role, u."avatarUrl", u."coverUrl",
+            u."isVerified", u."registeredAt", u."lastSeenAt",
+            p.bio, p.avatar_url, p.cover_url, p.dob, p.theme_color,
+            p.is_verified, p.is_pro, p.country,
+            COALESCE(p.post_count, 0)      AS "postCount",
+            COALESCE(p.follower_count, 0)  AS "followerCount",
+            COALESCE(p.following_count, 0) AS "followingCount",
+            COALESCE(p.fan_count, 0)       AS "fanCount",
+            p.latitude, p.longitude
      FROM public."User" u
      LEFT JOIN public.profiles p ON p.id::text = u.id
      WHERE u.id = $1`,
