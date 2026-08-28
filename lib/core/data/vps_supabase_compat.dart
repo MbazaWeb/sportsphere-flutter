@@ -198,14 +198,20 @@ class _VpsCompatFilterBuilder {
     return rows.first;
   }
 
+  /// Getter for first element — used by callers that do `.select().first`
+  Future<Map<String, dynamic>> get first async {
+    final rows = await _execute();
+    return rows.first;
+  }
+
   // ── Make this awaitable by implementing then() ──
   // Dart's `await` calls .then() on the object.
 
-  Future<List<Map<String, dynamic>>> then(
-    FutureOr<dynamic> Function(List<Map<String, dynamic>>) onValue, {
+  Future<R> then<R>(
+    FutureOr<R> Function(List<Map<String, dynamic>>) onValue, {
     Function? onError,
   }) {
-    return _execute().then(onValue, onError: onError);
+    return _execute().then<R>(onValue, onError: onError);
   }
 
   Future<List<Map<String, dynamic>>> catchError(
@@ -215,7 +221,7 @@ class _VpsCompatFilterBuilder {
     return _execute().catchError(onError, test: test);
   }
 
-  Future<List<Map<String, dynamic>>> whenComplete(FutureOr<void> action) {
+  Future<List<Map<String, dynamic>>> whenComplete(FutureOr<void> Function() action) {
     return _execute().whenComplete(action);
   }
 

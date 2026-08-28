@@ -42,8 +42,6 @@ class SoketiService {
       await _pusher!.init(
         apiKey:  'playify-app-key',
         cluster: 'mt1',
-        wsHost:  'playifysport.fun',
-        wssPort: 443,
         useTLS:  true,
         authEndpoint: 'https://playifysport.fun/v1/realtime/auth',
         authParams: {'Authorization': 'Bearer $accessToken'},

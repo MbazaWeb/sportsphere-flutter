@@ -163,7 +163,7 @@ class AuthRepository {
           final ext   = avatarUrl.contains('image/png') ? 'png' : 'jpg';
           final cdnUrl = await _vps.uploadAvatarBytes(bytes, ext: ext);
           // Patch profile with real CDN URL
-          await _vps.updateProfile({'avatar_url': cdnUrl});
+          await _vps.updateProfile(avatarUrl: cdnUrl);
           // Return updated profile with avatar
           final profile = _profileFrom(data);
           return profile.copyWith(avatarUrl: cdnUrl);
@@ -178,7 +178,7 @@ class AuthRepository {
     if (favTeamIds.isNotEmpty) {
       for (final teamId in favTeamIds) {
         try {
-          await _vps.becomeFan('team', teamId);
+          await _vps.toggleFan(teamId);
         } catch (e) {
           debugPrint('[AUTH] becomeFan(\$teamId): \$e');
         }

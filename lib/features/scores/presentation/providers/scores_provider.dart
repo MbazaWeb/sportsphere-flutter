@@ -1,4 +1,4 @@
-import '../../../core/realtime/soketi_service.dart';
+import '../../../../core/realtime/soketi_service.dart';
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';

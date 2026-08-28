@@ -184,7 +184,7 @@ class _TrendingContentState extends State<_TrendingContent> {
             onTap: () async {
               try {
                 final profile = await const VpsRepository().getProfile(userId);
-                final handle = profile['handle'] as String?;
+                final handle = profile?['handle'] as String?;
                 if (handle != null && handle.isNotEmpty && context.mounted) {
                   context.push('/profile/$handle');
                 }

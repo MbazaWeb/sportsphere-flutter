@@ -24,6 +24,9 @@ class ProfileLoader {
     if (profileId.isEmpty) return (posts: 0, followers: 0, following: 0);
     try {
       final profile = await const VpsRepository().getProfile(profileId);
+      if (profile == null) {
+        return (posts: 0, followers: 0, following: 0);
+      }
       return (
         posts:     (profile['postCount']      as int?) ?? (profile['post_count']      as int?) ?? 0,
         followers: (profile['followerCount']  as int?) ?? (profile['follower_count']  as int?) ?? 0,

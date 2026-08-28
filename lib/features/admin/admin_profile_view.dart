@@ -43,12 +43,15 @@ class _AdminProfileViewState extends ConsumerState<AdminProfileView>
   Future<void> _loadStats() async {
     if (mounted) setState(() => _statsLoading = true);
     try {
-      final c = await Future.wait([
-        _sb.from('User').select('id').then((r) => (r as List).length),
-        _sb.from('Post').select('id').then((r) => (r as List).length),
-        _sb.from('Match').select('id').then((r) => (r as List).length),
-        _sb.from('Team').select('id').then((r) => (r as List).length),
-        _sb.from('NewsItem').select('id').then((r) => (r as List).length),
+      // #FIX-NULLABLE — explicit <int> type args on Future.wait + each .then
+      // call so the analyzer can infer E = int (otherwise it falls back to
+      // dynamic and rejects the List<dynamic> as Iterable<Future<dynamic>>).
+      final c = await Future.wait<int>([
+        _sb.from('User').select('id').then<int>((r) => (r as List).length),
+        _sb.from('Post').select('id').then<int>((r) => (r as List).length),
+        _sb.from('Match').select('id').then<int>((r) => (r as List).length),
+        _sb.from('Team').select('id').then<int>((r) => (r as List).length),
+        _sb.from('NewsItem').select('id').then<int>((r) => (r as List).length),
       ]);
       if (mounted) {
         setState(() {

@@ -393,7 +393,11 @@ class _TeamHeader extends StatelessWidget {
   final bool busyFollow;
   final bool busyFan;
   final VoidCallback onFollow;
-  final VoidCallback onBecomeFan;
+  // #FIX-NULLABLE — onBecomeFan is async (Future<void> Function()) and may be
+  // null (hidden for admin/official sessions), so the parameter type must be
+  // `Future<void> Function()?` to accept the `AppAdmin.isSessionAdmin ? null
+  // : _toggleFan` expression at the call site.
+  final Future<void> Function()? onBecomeFan;
   final VoidCallback onBack;
   final VoidCallback onShare;
   final VoidCallback onMore;
@@ -654,7 +658,8 @@ class _FollowRow extends StatelessWidget {
   final bool busyFan;
   final Color accent;
   final VoidCallback onFollow;
-  final VoidCallback onBecomeFan;
+  // #FIX-NULLABLE — see _TeamHeader: async + nullable to allow admin gating.
+  final Future<void> Function()? onBecomeFan;
 
   const _FollowRow({
     required this.following,

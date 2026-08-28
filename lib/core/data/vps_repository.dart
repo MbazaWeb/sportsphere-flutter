@@ -748,7 +748,7 @@ class VpsRepository {
 
   /// Update profile — delegates to auth profile update
   Future<void> updateProfile({
-    required String userId,
+    String? userId,
     String? firstName,
     String? lastName,
     String? handle,

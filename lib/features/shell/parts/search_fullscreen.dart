@@ -446,9 +446,9 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
       // Load my profile (country + GPS)
       try {
         final me = await const VpsRepository().getProfile(uid);
-        _myCountry = (me['currentCountry'] as String?) ??
-            (me['country'] as String?) ??
-            (me['location'] as String?);
+        _myCountry = (me?['currentCountry'] as String?) ??
+            (me?['country'] as String?) ??
+            (me?['location'] as String?);
       } catch (_) {}
 
       // Load my favorite teams
