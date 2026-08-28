@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 # Playify — Full Data Migration: Supabase → VPS PostgreSQL
-# Runs ON the VPS server where Supabase API is reachable
-# Usage: bash vps/migrate/migrate.sh
+# Fixed: service role key, column mismatches, FK order, empty exports
 # =============================================================================
 set -euo pipefail
 
@@ -14,290 +13,314 @@ hdr()  { echo -e "\n${YELLOW}══ $1 ══${NC}"; }
 
 # ── Config ────────────────────────────────────────────────────────────────────
 ENV_FILE="/var/playify/app/vps/api/.env"
-source "$ENV_FILE" 2>/dev/null || true
+
+# Parse .env manually — source can miss export
+while IFS='=' read -r key val; do
+  [[ "$key" =~ ^#.*$ || -z "$key" ]] && continue
+  val="${val%%#*}"        # strip inline comments
+  val="${val%"${val##*[![:space:]]}"}"  # strip trailing whitespace
+  export "$key=$val"
+done < "$ENV_FILE"
 
 SUPABASE_URL="${SUPABASE_URL:-https://fffqjbrethogesgghjsn.supabase.co}"
-SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY:-}"
-SUPABASE_SERVICE_ROLE_KEY="${SUPABASE_SERVICE_ROLE_KEY:-}"
+SB_KEY="${SUPABASE_SERVICE_ROLE_KEY:-${SUPABASE_ANON_KEY:-}}"
 DB_URL="${DATABASE_URL:-}"
 
-if [ -z "$DB_URL" ]; then fail "DATABASE_URL not set in $ENV_FILE"; fi
-if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] && [ -z "$SUPABASE_ANON_KEY" ]; then
-  fail "SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY required"
-fi
+echo "Using Supabase URL: $SUPABASE_URL"
+echo "Service role key: ${SB_KEY:0:20}..."
+echo "DB URL: ${DB_URL:0:30}..."
 
-# Use service role key if available (bypasses RLS for full data access)
-SB_KEY="${SUPABASE_SERVICE_ROLE_KEY:-$SUPABASE_ANON_KEY}"
+if [ -z "$DB_URL" ]; then fail "DATABASE_URL not set"; fi
+if [ -z "$SB_KEY" ]; then fail "SUPABASE_SERVICE_ROLE_KEY not set"; fi
 
 EXPORT_DIR="/var/playify/migration/$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$EXPORT_DIR"
-echo "Export directory: $EXPORT_DIR"
+echo "Export dir: $EXPORT_DIR"
 
-# ── Fetch function ─────────────────────────────────────────────────────────────
-fetch_table() {
-  local table="$1"
-  local file="$EXPORT_DIR/${table}.json"
-  local url="${SUPABASE_URL}/rest/v1/${table}?select=*&limit=10000"
+# ── Test connection ────────────────────────────────────────────────────────────
+hdr "TESTING CONNECTIONS"
+echo -n "Supabase... "
+TEST=$(curl -sf "${SUPABASE_URL}/rest/v1/profiles?select=id&limit=1" \
+  -H "apikey: $SB_KEY" \
+  -H "Authorization: Bearer $SB_KEY" \
+  -H "Accept: application/json" 2>/dev/null)
+if echo "$TEST" | grep -q "error\|Error\|FAILED"; then
+  fail "Supabase unreachable: $TEST"
+fi
+echo "ok ($(echo "$TEST" | python3 -c 'import sys,json; print(len(json.load(sys.stdin)))' 2>/dev/null || echo "?") profile rows visible)"
 
-  echo -n "  Fetching $table... "
-  local response
-  response=$(curl -sf "$url" \
-    -H "apikey: $SB_KEY" \
-    -H "Authorization: Bearer $SB_KEY" \
-    -H "Accept: application/json" \
-    -H "Prefer: count=exact" 2>/dev/null || echo "[]")
+echo -n "PostgreSQL... "
+psql "$DB_URL" -c "SELECT 1" -q 2>/dev/null && echo "ok" || fail "PostgreSQL unreachable"
 
-  if echo "$response" | grep -q '"error"'; then
-    echo "⚠️  error: $(echo "$response" | grep -o '"message":"[^"]*"' | head -1)"
-    echo "[]" > "$file"
-    return
-  fi
+# ── Fetch with pagination ──────────────────────────────────────────────────────
+fetch() {
+  local table="$1" file="$EXPORT_DIR/${table}.json"
+  local all="[]" offset=0 limit=1000 total=0
 
-  echo "$response" > "$file"
-  local count
-  count=$(echo "$response" | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d) if isinstance(d,list) else 0)" 2>/dev/null || echo "?")
-  echo "$count rows"
-}
-
-# ── Paginated fetch for large tables ─────────────────────────────────────────
-fetch_table_paginated() {
-  local table="$1"
-  local file="$EXPORT_DIR/${table}.json"
-  local offset=0
-  local limit=1000
-  local all="[]"
-
-  echo -n "  Fetching $table (paginated)... "
+  echo -n "  $table... "
   while true; do
-    local url="${SUPABASE_URL}/rest/v1/${table}?select=*&limit=${limit}&offset=${offset}"
+    local url="${SUPABASE_URL}/rest/v1/${table}?select=*&limit=${limit}&offset=${offset}&order=id"
     local chunk
     chunk=$(curl -sf "$url" \
       -H "apikey: $SB_KEY" \
       -H "Authorization: Bearer $SB_KEY" \
       -H "Accept: application/json" 2>/dev/null || echo "[]")
 
-    local chunk_len
-    chunk_len=$(echo "$chunk" | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d) if isinstance(d,list) else 0)" 2>/dev/null || echo 0)
-
-    if [ "$chunk_len" -eq 0 ]; then break; fi
-
-    all=$(echo "$all $chunk" | python3 -c "
-import sys,json
-parts = sys.stdin.read().split()
-# Merge two JSON arrays
-combined = []
-for p in ['$all', '$chunk']:
-    try:
-        d = json.loads(p)
-        if isinstance(d, list): combined.extend(d)
-    except: pass
-print(json.dumps(combined))
-" 2>/dev/null || echo "$all")
-
-    offset=$((offset + limit))
-    echo -n "."
-    if [ "$chunk_len" -lt "$limit" ]; then break; fi
+    # Check for error
+    if echo "$chunk" | python3 -c "import sys,json; d=json.load(sys.stdin); exit(0 if isinstance(d,list) else 1)" 2>/dev/null; then
+      local n
+      n=$(echo "$chunk" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo 0)
+      if [ "$n" -eq 0 ]; then break; fi
+      total=$((total + n))
+      # Merge chunks
+      all=$(python3 -c "
+import json,sys
+a = json.loads('''$all''')
+b = json.loads(sys.stdin.read())
+a.extend(b)
+print(json.dumps(a))
+" <<< "$chunk" 2>/dev/null || echo "$all")
+      offset=$((offset + limit))
+      echo -n "."
+      [ "$n" -lt "$limit" ] && break
+    else
+      echo "  (error or empty — skipping)"
+      break
+    fi
   done
 
   echo "$all" > "$file"
-  local total
-  total=$(echo "$all" | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d))" 2>/dev/null || echo "?")
-  echo " $total rows total"
+  echo " $total rows"
 }
 
 # =============================================================================
-# SECTION 1 — EXPORT FROM SUPABASE
+# SECTION 1 — EXPORT
 # =============================================================================
-hdr "EXPORTING FROM SUPABASE"
+hdr "EXPORTING FROM SUPABASE (service role)"
 
-# Test connection first
-echo -n "Testing Supabase connection... "
-TEST=$(curl -sf "${SUPABASE_URL}/rest/v1/profiles?select=id&limit=1" \
-  -H "apikey: $SB_KEY" \
-  -H "Authorization: Bearer $SB_KEY" 2>/dev/null || echo "FAILED")
-if echo "$TEST" | grep -q "FAILED\|error\|Error"; then
-  fail "Cannot reach Supabase. Check SUPABASE_URL and keys in $ENV_FILE"
-fi
-ok "Supabase reachable"
+fetch "User"
+fetch "profiles"
+fetch "Post"
+fetch "Follow"
+fetch "PostLike"
+fetch "PostShare"
+fetch "Comment"
+fetch "CommentLike"
+fetch "Message"
+fetch "Notification"
+fetch "Community"
+fetch "CommunityMember"
+fetch "League"
+fetch "Team"
+fetch "Player"
+fetch "Coach"
+fetch "Match"
+fetch "Sport"
+fetch "NewsItem"
+fetch "Poll"
+fetch "PollVote"
+fetch "Prediction"
+fetch "ShopOrder"
+fetch "ClaimRequest"
+fetch "UserFavorite"
+fetch "UserSport"
+fetch "entity_follows"
+fetch "device_tokens"
+fetch "fans"
+fetch "Role"
 
-# Export all tables
-fetch_table_paginated "User"
-fetch_table_paginated "profiles"
-fetch_table_paginated "Post"
-fetch_table_paginated "Follow"
-fetch_table_paginated "PostLike"
-fetch_table_paginated "Comment"
-fetch_table_paginated "CommentLike"
-fetch_table_paginated "Message"
-fetch_table_paginated "Notification"
-fetch_table_paginated "Community"
-fetch_table_paginated "CommunityMember"
-fetch_table_paginated "League"
-fetch_table_paginated "Team"
-fetch_table_paginated "Player"
-fetch_table_paginated "Coach"
-fetch_table_paginated "Match"
-fetch_table_paginated "Sport"
-fetch_table_paginated "NewsItem"
-fetch_table_paginated "Poll"
-fetch_table_paginated "PollVote"
-fetch_table_paginated "Prediction"
-fetch_table_paginated "ShopOrder"
-fetch_table_paginated "ClaimRequest"
-fetch_table_paginated "UserFavorite"
-fetch_table_paginated "UserSport"
-fetch_table_paginated "entity_follows"
-fetch_table_paginated "device_tokens"
-fetch_table_paginated "fans"
-fetch_table "Role"
-fetch_table "Sport"
-
-ok "Export complete → $EXPORT_DIR"
-ls -lh "$EXPORT_DIR" | awk '{print "  "$5, $9}'
+ok "Export complete"
+echo "File sizes:"
+ls -lh "$EXPORT_DIR" | awk 'NR>1{printf "  %6s  %s\n", $5, $9}'
 
 # =============================================================================
-# SECTION 2 — IMPORT INTO VPS POSTGRESQL
+# SECTION 2 — IMPORT
 # =============================================================================
 hdr "IMPORTING INTO VPS POSTGRESQL"
 
-# Python import script
-python3 << PYEOF
-import json, os, sys, subprocess, re
+python3 - "$EXPORT_DIR" "$DB_URL" << 'PYEOF'
+import json, sys, subprocess, re
 from pathlib import Path
 
-export_dir = "$EXPORT_DIR"
-db_url     = "$DB_URL"
+export_dir = sys.argv[1]
+db_url     = sys.argv[2]
 
-# Use psycopg2 if available, else pg directly via psql
-try:
-    import psycopg2
-    import psycopg2.extras
-    USE_PSYCOPG2 = True
-    print("Using psycopg2 driver")
-except ImportError:
-    USE_PSYCOPG2 = False
-    print("psycopg2 not available — using psql binary")
+def psql(sql: str) -> bool:
+    r = subprocess.run(["psql", db_url, "-c", sql, "-q"],
+                       capture_output=True, text=True)
+    if r.returncode != 0 and ("ERROR" in r.stderr or "ERROR" in r.stdout):
+        msg = (r.stderr + r.stdout)[:300].replace('\n',' ')
+        print(f"    SQL ERR: {msg}")
+        return False
+    return True
 
-def run_psql(sql: str):
-    result = subprocess.run(
-        ["psql", db_url, "-c", sql],
-        capture_output=True, text=True
-    )
-    if result.returncode != 0 and "ERROR" in result.stderr:
-        print(f"  SQL error: {result.stderr[:200]}")
-    return result.returncode == 0
-
-def load(filename: str) -> list:
-    path = Path(export_dir) / filename
-    if not path.exists():
-        return []
+def load(name: str) -> list:
+    p = Path(export_dir) / name
+    if not p.exists(): return []
     try:
-        data = json.loads(path.read_text())
-        return data if isinstance(data, list) else []
-    except:
-        return []
+        d = json.loads(p.read_text())
+        return d if isinstance(d, list) else []
+    except: return []
 
-def escape_val(v):
-    if v is None:
-        return "NULL"
-    if isinstance(v, bool):
-        return "TRUE" if v else "FALSE"
-    if isinstance(v, (int, float)):
-        return str(v)
+def esc(v):
+    if v is None: return "NULL"
+    if isinstance(v, bool): return "TRUE" if v else "FALSE"
+    if isinstance(v, (int, float)): return str(v)
     if isinstance(v, (dict, list)):
-        s = json.dumps(v).replace("'", "''")
-        return f"'{s}'::jsonb"
-    s = str(v).replace("'", "''")
-    return f"'{s}'"
+        return "'" + json.dumps(v, ensure_ascii=False).replace("'","''") + "'::jsonb"
+    return "'" + str(v).replace("'","''") + "'"
 
-def upsert(table: str, rows: list, pk: str | list, schema: str = "public"):
+def upsert(table: str, rows: list, pk, skip_cols: list=None, schema="public"):
     if not rows:
-        print(f"  {table}: 0 rows (skipped)")
+        print(f"  {table}: 0 rows (empty export)")
         return
-    
-    pk_cols = [pk] if isinstance(pk, str) else pk
-    total = 0
-    errors = 0
-    
+    skip_cols = skip_cols or []
+    pk_cols   = [pk] if isinstance(pk, str) else list(pk)
+    ok_count = err_count = 0
+
     for row in rows:
-        if not row:
-            continue
+        if not row: continue
+        # Filter out columns that don't exist in VPS schema
+        cols = [c for c in row.keys() if c not in skip_cols]
+        if not cols: continue
+        vals = [esc(row[c]) for c in cols]
+        pk_str  = ", ".join(f'"{c}"' for c in pk_cols)
+        upd     = [c for c in cols if c not in pk_cols]
+        conflict = (f"ON CONFLICT ({pk_str}) DO UPDATE SET " +
+                    ", ".join(f'"{c}"=EXCLUDED."{c}"' for c in upd)) if upd else \
+                   f"ON CONFLICT ({pk_str}) DO NOTHING"
+        sql = (f'INSERT INTO {schema}."{table}" (' +
+               ", ".join(f'"{c}"' for c in cols) +
+               ") VALUES (" + ", ".join(vals) + f") {conflict};")
+        if psql(sql): ok_count += 1
+        else:         err_count += 1
+
+    sym = "✅" if err_count == 0 else "⚠️ "
+    print(f"  {sym} {table}: {ok_count} ok, {err_count} errors")
+
+# ── Reference data ────────────────────────────────────────────────────────────
+print("\nReference data...")
+upsert("Role",  load("Role.json"),  "id")
+
+# Sport — skip columns not in VPS schema
+sport_skip = ["sport_slug","parent_sport_slug","parentSportSlug","sportSlug"]
+upsert("Sport", load("Sport.json"), "id", skip_cols=sport_skip)
+
+# ── Users ─────────────────────────────────────────────────────────────────────
+print("\nUsers...")
+# User — skip columns that may not exist
+user_skip = ["passwordHash"]  # will be null for migrated users
+upsert("User",     load("User.json"),     "id",  skip_cols=user_skip)
+
+# profiles — skip id casting issue (it's uuid in profiles)
+profiles_data = load("profiles.json")
+if profiles_data:
+    ok_count = err_count = 0
+    for row in profiles_data:
+        if not row: continue
         cols = list(row.keys())
-        vals = [escape_val(row[c]) for c in cols]
-        
-        # Build conflict clause
-        pk_str = ", ".join(f'"{c}"' for c in pk_cols)
-        
-        # Build update set (exclude pk columns)
-        update_cols = [c for c in cols if c not in pk_cols]
-        if update_cols:
-            update_str = ", ".join(f'"{c}"=EXCLUDED."{c}"' for c in update_cols)
-            conflict = f"ON CONFLICT ({pk_str}) DO UPDATE SET {update_str}"
-        else:
-            conflict = f"ON CONFLICT ({pk_str}) DO NOTHING"
-        
-        col_str = ", ".join(f'"{c}"' for c in cols)
-        val_str = ", ".join(vals)
-        sql = f'INSERT INTO {schema}."{table}" ({col_str}) VALUES ({val_str}) {conflict};'
-        
-        if run_psql(sql):
-            total += 1
-        else:
-            errors += 1
-    
-    status = "✅" if errors == 0 else "⚠️ "
-    print(f"  {status} {table}: {total} imported, {errors} errors")
+        vals_list = []
+        col_list  = []
+        for c in cols:
+            v = row[c]
+            if c == 'id':
+                col_list.append('"id"')
+                vals_list.append(f"'{v}'::uuid")
+            else:
+                col_list.append(f'"{c}"')
+                vals_list.append(esc(v))
+        sql = (f'INSERT INTO public.profiles ({", ".join(col_list)}) VALUES ({", ".join(vals_list)}) '
+               f'ON CONFLICT (id) DO UPDATE SET ' +
+               ", ".join(f'"{c}"=EXCLUDED."{c}"' for c in cols if c != 'id') + ';')
+        if psql(sql): ok_count += 1
+        else:         err_count += 1
+    sym = "✅" if err_count == 0 else "⚠️ "
+    print(f"  {sym} profiles: {ok_count} ok, {err_count} errors")
+else:
+    print("  profiles: 0 rows")
 
-# ── Import order matters (FK dependencies) ────────────────────────────────────
+# ── Sports data ───────────────────────────────────────────────────────────────
+print("\nSports data...")
+# League — skip taxonomy columns not in VPS schema
+league_skip = ["competitive_level","organization_type","gender","age_category",
+               "geographic_scope","sport_slug","sport_variant","competitiveLevel",
+               "organizationType","ageCategory","geographicScope","sportSlug","sportVariant",
+               "competitionType","competitionFormat","competitionLevel"]
+upsert("League", load("League.json"), "id", skip_cols=league_skip)
 
-print("\nImporting reference data...")
-upsert("Role",   load("Role.json"),   "id")
-upsert("Sport",  load("Sport.json"),  "id")
+# Team — skip taxonomy columns
+team_skip = ["competitive_level","organization_type","gender","age_category",
+             "geographic_scope","sport_slug","sport_variant","competitiveLevel",
+             "organizationType","ageCategory","geographicScope","sportSlug","sportVariant"]
+upsert("Team",   load("Team.json"),   "id", skip_cols=team_skip)
+upsert("Player", load("Player.json"), "id", skip_cols=["player_type","career_level","sport_slug","playerType","careerLevel","sportSlug"])
+upsert("Coach",  load("Coach.json"),  "id")
+upsert("Match",  load("Match.json"),  "id")
 
-print("\nImporting users and profiles...")
-# User table first (no FK dependencies)
-upsert("User",     load("User.json"),     "id")
-upsert("profiles", load("profiles.json"), "id", schema="public")
-
-print("\nImporting sports data...")
-upsert("League",  load("League.json"),  "id")
-upsert("Team",    load("Team.json"),    "id")
-upsert("Player",  load("Player.json"),  "id")
-upsert("Coach",   load("Coach.json"),   "id")
-upsert("Match",   load("Match.json"),   "id")
-
-print("\nImporting content...")
+# ── Content ───────────────────────────────────────────────────────────────────
+print("\nContent...")
 upsert("NewsItem",  load("NewsItem.json"),  "id")
 upsert("Community", load("Community.json"), "id")
 upsert("Post",      load("Post.json"),      "id")
-upsert("Poll",      load("Poll.json"),      "id")
-upsert("Prediction",load("Prediction.json"),"id")
 
-print("\nImporting social graph...")
+# Poll — only insert if post exists
+polls = load("Poll.json")
+valid_polls = []
+if polls:
+    # Get existing post IDs
+    r = subprocess.run(["psql", db_url, "-t", "-c", 'SELECT id FROM public."Post"'],
+                       capture_output=True, text=True)
+    post_ids = set(r.stdout.split())
+    valid_polls = [p for p in polls if p.get("postId","") in post_ids or p.get("post_id","") in post_ids]
+    print(f"  Poll: {len(valid_polls)}/{len(polls)} have matching posts")
+upsert("Poll",       valid_polls,              "id")
+upsert("Prediction", load("Prediction.json"),  "id")
+
+# ── Social graph ──────────────────────────────────────────────────────────────
+print("\nSocial graph...")
 upsert("Follow",          load("Follow.json"),          ["followerId","followingId"])
 upsert("PostLike",        load("PostLike.json"),        ["postId","userId"])
 upsert("PostShare",       load("PostShare.json"),       ["postId","userId"])
-upsert("Comment",         load("Comment.json"),         "id")
+
+# Comment — only if post exists
+comments = load("Comment.json")
+if comments:
+    r = subprocess.run(["psql", db_url, "-t", "-c", 'SELECT id FROM public."Post"'],
+                       capture_output=True, text=True)
+    post_ids = set(r.stdout.split())
+    comments = [c for c in comments if c.get("postId","") in post_ids]
+upsert("Comment",         comments,                     "id")
 upsert("CommentLike",     load("CommentLike.json"),     ["commentId","userId"])
-upsert("PollVote",        load("PollVote.json"),        ["pollId","userId"])
+
+# PollVote — fix column name (Supabase uses optionIdx, VPS uses optionIndex)
+poll_votes = load("PollVote.json")
+fixed_votes = []
+for v in poll_votes:
+    if "optionIdx" in v and "optionIndex" not in v:
+        v["optionIndex"] = v.pop("optionIdx")
+    fixed_votes.append(v)
+upsert("PollVote",        fixed_votes,                  ["pollId","userId"])
 upsert("CommunityMember", load("CommunityMember.json"), ["communityId","userId"])
 upsert("UserFavorite",    load("UserFavorite.json"),    "id")
 upsert("UserSport",       load("UserSport.json"),       "id")
 
-print("\nImporting messaging and notifications...")
+# ── Messages & notifications ──────────────────────────────────────────────────
+print("\nMessaging & notifications...")
 upsert("Message",      load("Message.json"),      "id")
 upsert("Notification", load("Notification.json"), "id")
 
-print("\nImporting commerce...")
+# ── Commerce ──────────────────────────────────────────────────────────────────
+print("\nCommerce...")
 upsert("ShopOrder",    load("ShopOrder.json"),    "id")
 upsert("ClaimRequest", load("ClaimRequest.json"), "id")
 
-print("\nImporting device tokens and entity follows...")
-upsert("device_tokens",  load("device_tokens.json"),  ["user_id","token"], schema="public")
-upsert("entity_follows", load("entity_follows.json"), ["follower_id","entity_type","entity_id"], schema="public")
-upsert("fans",           load("fans.json"),            ["fan_id","target_id"], schema="public")
+# ── Device tokens & entity follows ───────────────────────────────────────────
+print("\nTokens & entity follows...")
+upsert("device_tokens",  load("device_tokens.json"),  ["user_id","token"],                          schema="public")
+upsert("entity_follows", load("entity_follows.json"), ["follower_id","entity_type","entity_id"],    schema="public")
+upsert("fans",           load("fans.json"),            ["fan_id","target_id"],                       schema="public")
 
-print("\nDone importing!")
+print("\n✅ Import complete!")
 PYEOF
 
 # =============================================================================
@@ -305,22 +328,23 @@ PYEOF
 # =============================================================================
 hdr "VERIFICATION"
 
-psql "$DB_URL" << 'SQL'
-SELECT
-  'User'         as table_name, COUNT(*) as rows FROM public."User"
-UNION ALL SELECT 'profiles',    COUNT(*) FROM public.profiles
-UNION ALL SELECT 'Post',        COUNT(*) FROM public."Post"
-UNION ALL SELECT 'Follow',      COUNT(*) FROM public."Follow"
-UNION ALL SELECT 'Team',        COUNT(*) FROM public."Team"
-UNION ALL SELECT 'Player',      COUNT(*) FROM public."Player"
-UNION ALL SELECT 'Match',       COUNT(*) FROM public."Match"
-UNION ALL SELECT 'Community',   COUNT(*) FROM public."Community"
-UNION ALL SELECT 'Message',     COUNT(*) FROM public."Message"
-UNION ALL SELECT 'Notification',COUNT(*) FROM public."Notification"
-ORDER BY rows DESC;
-SQL
+psql "$DB_URL" -c "
+SELECT table_name, rows FROM (
+  SELECT 'User'          as table_name, COUNT(*) as rows FROM public.\"User\"
+  UNION ALL SELECT 'profiles',    COUNT(*) FROM public.profiles
+  UNION ALL SELECT 'Post',        COUNT(*) FROM public.\"Post\"
+  UNION ALL SELECT 'Follow',      COUNT(*) FROM public.\"Follow\"
+  UNION ALL SELECT 'Comment',     COUNT(*) FROM public.\"Comment\"
+  UNION ALL SELECT 'Team',        COUNT(*) FROM public.\"Team\"
+  UNION ALL SELECT 'Player',      COUNT(*) FROM public.\"Player\"
+  UNION ALL SELECT 'League',      COUNT(*) FROM public.\"League\"
+  UNION ALL SELECT 'Match',       COUNT(*) FROM public.\"Match\"
+  UNION ALL SELECT 'Community',   COUNT(*) FROM public.\"Community\"
+  UNION ALL SELECT 'Message',     COUNT(*) FROM public.\"Message\"
+  UNION ALL SELECT 'Notification',COUNT(*) FROM public.\"Notification\"
+  UNION ALL SELECT 'Sport',       COUNT(*) FROM public.\"Sport\"
+  UNION ALL SELECT 'NewsItem',    COUNT(*) FROM public.\"NewsItem\"
+  UNION ALL SELECT 'device_tokens',COUNT(*) FROM public.device_tokens
+) t ORDER BY rows DESC;"
 
-ok "Migration complete!"
-echo ""
-echo "Export files saved at: $EXPORT_DIR"
-echo "Keep these as backup before removing Supabase dependency."
+ok "Migration complete! Exports at $EXPORT_DIR"
