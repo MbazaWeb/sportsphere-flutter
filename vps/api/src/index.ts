@@ -58,6 +58,28 @@ app.route('/v1/auth/register', authRouter)
 app.route('/v1/auth/login',    authRouter)
 app.route('/v1/auth/refresh',  authRouter)
 
+// Search: public — guests can search without JWT
+app.get('/v1/social/search', async (c) => {
+  const { query: dbQuery } = await import('./lib/db.js')
+  const q     = (c.req.query('q') ?? '').trim()
+  const limit = Math.min(Number(c.req.query('limit') ?? 15), 50)
+  if (!q) return c.json({ ok: true, results: [] })
+  const pat = `%${q}%`
+  const [users, leagues, teams, players] = await Promise.all([
+    dbQuery(`SELECT id, handle, first_name, last_name, role, avatar_url, 'user' as _kind, '' as _subtitle FROM public.profiles WHERE handle ILIKE $1 OR first_name ILIKE $1 OR last_name ILIKE $1 LIMIT $2`, [pat, limit]),
+    dbQuery(`SELECT id, name, country, type, season FROM public."League" WHERE name ILIKE $1 OR country ILIKE $1 LIMIT $2`, [pat, Math.floor(limit/3)]),
+    dbQuery(`SELECT id, name, country, city, "logoUrl" FROM public."Team" WHERE name ILIKE $1 AND "isActive"=true LIMIT $2`, [pat, Math.floor(limit/3)]),
+    dbQuery(`SELECT id, name, position, nationality FROM public."Player" WHERE name ILIKE $1 AND "isActive"=true LIMIT $2`, [pat, Math.floor(limit/3)]),
+  ])
+  const results = [
+    ...users.map((r: any) => ({ ...r, _kind: 'user' })),
+    ...leagues.map((r: any) => ({ id: r.id, handle: String(r.name||'').toLowerCase().replace(/ /g,'_'), first_name: r.name, last_name: '', role: 'league', avatar_url: null, _kind: 'league', _subtitle: `${r.country||''} · ${r.type||''}` })),
+    ...teams.map((r: any) => ({ id: r.id, handle: String(r.name||'').toLowerCase().replace(/ /g,'_'), first_name: r.name, last_name: '', role: 'team', avatar_url: r.logoUrl, _kind: 'team', _subtitle: `${r.city||''} · ${r.country||''}` })),
+    ...players.map((r: any) => ({ id: r.id, handle: String(r.name||'').toLowerCase().replace(/ /g,'_'), first_name: r.name, last_name: '', role: 'player', avatar_url: null, _kind: 'player', _subtitle: `${r.position||''} · ${r.nationality||''}` })),
+  ]
+  return c.json({ ok: true, results })
+})
+
 // ── Auth middleware — all /v1/* ────────────────────────────────────────────────
 app.use('/v1/*', authMiddleware)
 
