@@ -299,3 +299,194 @@ socialRouter.get('/communities/:id/member', async (c) => {
   const row    = await queryOne(`SELECT 1 FROM public."CommunityMember" WHERE "communityId"=$1 AND "userId"=$2`, [c.req.param('id'), userId])
   return c.json({ ok: true, isMember: !!row })
 })
+
+// ── POLLS ─────────────────────────────────────────────────────────────────────
+
+// GET /v1/social/polls/:postId
+socialRouter.get('/polls/:postId', async (c) => {
+  const row = await queryOne(
+    `SELECT * FROM public."Poll" WHERE "postId"=$1`,
+    [c.req.param('postId')]
+  )
+  if (!row) return c.json({ ok: true, poll: null })
+  return c.json({ ok: true, poll: row })
+})
+
+// GET /v1/social/polls/:id/my-vote
+socialRouter.get('/polls/:id/my-vote', async (c) => {
+  const userId = c.get('userId') as string
+  const row    = await queryOne<{ optionIndex: number }>(
+    `SELECT "optionIndex" FROM public."PollVote" WHERE "pollId"=$1 AND "userId"=$2`,
+    [c.req.param('id'), userId]
+  )
+  return c.json({ ok: true, voted: row ? row.optionIndex : null })
+})
+
+// POST /v1/social/polls/:id/vote
+socialRouter.post('/polls/:id/vote', async (c) => {
+  const userId      = c.get('userId') as string
+  const pollId      = c.req.param('id')
+  const { optionIndex } = await c.req.json<{ optionIndex: number }>()
+
+  await execute(
+    `INSERT INTO public."PollVote"("pollId","userId","optionIndex","createdAt")
+     VALUES($1,$2,$3,NOW()) ON CONFLICT("pollId","userId") DO NOTHING`,
+    [pollId, userId, optionIndex]
+  )
+  // Update totalVotes
+  await execute(
+    `UPDATE public."Poll" SET "totalVotes"=(SELECT COUNT(*) FROM public."PollVote" WHERE "pollId"=$1) WHERE id=$1`,
+    [pollId]
+  )
+  // Return vote counts per option
+  const rows = await query<{ optionIndex: number; cnt: string }>(
+    `SELECT "optionIndex", COUNT(*) as cnt FROM public."PollVote" WHERE "pollId"=$1 GROUP BY "optionIndex"`,
+    [pollId]
+  )
+  const counts: Record<number, number> = {}
+  rows.forEach(r => { counts[r.optionIndex] = Number(r.cnt) })
+  return c.json({ ok: true, counts })
+})
+
+// DELETE /v1/social/polls/:id/vote
+socialRouter.delete('/polls/:id/vote', async (c) => {
+  const userId = c.get('userId') as string
+  const pollId = c.req.param('id')
+  await execute(
+    `DELETE FROM public."PollVote" WHERE "pollId"=$1 AND "userId"=$2`,
+    [pollId, userId]
+  )
+  await execute(
+    `UPDATE public."Poll" SET "totalVotes"=(SELECT COUNT(*) FROM public."PollVote" WHERE "pollId"=$1) WHERE id=$1`,
+    [pollId]
+  )
+  return c.json({ ok: true })
+})
+
+// ── SHARES ────────────────────────────────────────────────────────────────────
+
+// POST /v1/social/posts/:id/share
+socialRouter.post('/posts/:id/share', async (c) => {
+  const userId = c.get('userId') as string
+  const postId = c.req.param('id')
+  await execute(
+    `INSERT INTO public."PostShare"("postId","userId","createdAt")
+     VALUES($1,$2,NOW()) ON CONFLICT DO NOTHING`,
+    [postId, userId]
+  )
+  await execute(
+    `UPDATE public."Post" SET "shareCount"=GREATEST(COALESCE("shareCount",0)+1,0) WHERE id=$1`,
+    [postId]
+  )
+  const row = await queryOne<{ shareCount: number }>(
+    `SELECT "shareCount" FROM public."Post" WHERE id=$1`, [postId]
+  )
+  return c.json({ ok: true, shareCount: row?.shareCount ?? 0 })
+})
+
+// GET /v1/social/posts/:id/shared  — did I share this?
+socialRouter.get('/posts/:id/shared', async (c) => {
+  const userId = c.get('userId') as string
+  const row    = await queryOne(
+    `SELECT 1 FROM public."PostShare" WHERE "postId"=$1 AND "userId"=$2`,
+    [c.req.param('id'), userId]
+  )
+  return c.json({ ok: true, shared: !!row })
+})
+
+// ── BATCH PROFILES (avoids N+1 in feed) ──────────────────────────────────────
+
+// POST /v1/social/profiles/batch  — body: { ids: string[] }
+socialRouter.post('/profiles/batch', async (c) => {
+  const { ids } = await c.req.json<{ ids: string[] }>()
+  if (!ids?.length) return c.json({ ok: true, profiles: {} })
+  const unique = [...new Set(ids)].slice(0, 200)
+  const placeholders = unique.map((_,i) => `$${i+1}`).join(',')
+  const rows = await query(
+    `SELECT u.id, u.handle, u.name, u."avatarUrl", u.role,
+            p.first_name, p.last_name, p.avatar_url
+     FROM public."User" u
+     LEFT JOIN public.profiles p ON p.id::text = u.id
+     WHERE u.id IN (${placeholders})`,
+    unique
+  )
+  const profiles: Record<string, unknown> = {}
+  rows.forEach(r => { profiles[(r as any).id] = r })
+  return c.json({ ok: true, profiles })
+})
+
+// ── PREDICTIONS ───────────────────────────────────────────────────────────────
+
+socialRouter.post('/predictions', async (c) => {
+  const userId = c.get('userId') as string
+  const b = await c.req.json<any>()
+  if (!b.homeTeam || !b.awayTeam) return c.json({ error: 'homeTeam and awayTeam required' }, 400)
+  const rows = await query(
+    `INSERT INTO public."Prediction"(id,"userId","homeTeam","awayTeam","predictedHome","predictedAway","outcome","confidence","matchId","createdAt")
+     VALUES(gen_random_uuid()::text,$1,$2,$3,$4,$5,$6,$7,$8,NOW()) RETURNING *`,
+    [userId, b.homeTeam, b.awayTeam, b.predictedHome??null, b.predictedAway??null, b.outcome??null, b.confidence??null, b.matchId??null]
+  )
+  return c.json({ ok: true, id: rows[0] ? (rows[0] as any).id : '' }, 201)
+})
+
+// ── SPORTS & USER SPORTS ──────────────────────────────────────────────────────
+
+socialRouter.get('/sports', async (c) => {
+  const rows = await query(`SELECT * FROM public."Sport" WHERE "isActive"=true ORDER BY "displayOrder" ASC`)
+  return c.json({ ok: true, sports: rows })
+})
+
+socialRouter.get('/my-sports', async (c) => {
+  const userId = c.get('userId') as string
+  const rows = await query<{sportId:string}>(
+    `SELECT us."sportId", s.slug FROM public."UserSport" us JOIN public."Sport" s ON s.id=us."sportId" WHERE us."userId"=$1`,
+    [userId]
+  )
+  return c.json({ ok: true, slugs: rows.map((r:any) => r.slug) })
+})
+
+socialRouter.post('/my-sports', async (c) => {
+  const userId = c.get('userId') as string
+  const { slugs, primary } = await c.req.json<{ slugs: string[]; primary?: string }>()
+  await execute(`DELETE FROM public."UserSport" WHERE "userId"=$1`, [userId])
+  for (const slug of (slugs ?? [])) {
+    const sport = await queryOne<{id:string}>(`SELECT id FROM public."Sport" WHERE slug=$1`, [slug])
+    if (!sport) continue
+    await execute(
+      `INSERT INTO public."UserSport"(id,"userId","sportId","isPrimary","weight","createdAt")
+       VALUES(gen_random_uuid()::text,$1,$2,$3,1,NOW()) ON CONFLICT DO NOTHING`,
+      [userId, sport.id, slug === primary]
+    )
+  }
+  return c.json({ ok: true })
+})
+
+// GET fans of user (teams they fan)
+socialRouter.get('/fans/:userId/teams', async (c) => {
+  const rows = await query(
+    `SELECT t.name FROM public.entity_follows ef
+     JOIN public."Team" t ON t.id=ef.entity_id
+     WHERE ef.follower_id=$1::uuid AND ef.entity_type='team' AND ef.is_fan=true`,
+    [c.req.param('userId')]
+  )
+  return c.json({ ok: true, teams: rows.map((r:any) => r.name) })
+})
+
+// GET /v1/social/polls/by-poll/:pollId
+socialRouter.get('/polls/by-poll/:pollId', async (c) => {
+  const row = await queryOne(`SELECT * FROM public."Poll" WHERE id=$1`, [c.req.param('pollId')])
+  return c.json({ ok: true, poll: row ?? null })
+})
+
+// POST /v1/social/polls — create poll linked to existing post
+socialRouter.post('/polls', async (c) => {
+  const userId = c.get('userId') as string
+  const b = await c.req.json<any>()
+  if (!b.postId || !b.question) return c.json({ error: 'postId and question required' }, 400)
+  const rows = await query(
+    `INSERT INTO public."Poll"(id,"postId","matchId",question,options,"totalVotes","createdAt")
+     VALUES(gen_random_uuid()::text,$1,$2,$3,$4::jsonb,0,NOW()) RETURNING *`,
+    [b.postId, b.matchId??null, b.question, JSON.stringify(b.options??[])]
+  )
+  return c.json({ ok: true, poll: rows[0] }, 201)
+})

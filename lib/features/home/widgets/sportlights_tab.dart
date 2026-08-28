@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/data/social_graph.dart';
 import '../../../core/data/social_repository.dart';
+import '../../../core/data/vps_repository.dart';
 import '../../../core/data/commerce_repository.dart';
 import '../../../core/theme/colors.dart';
 import '../../auth/presentation/auth_controller.dart';
@@ -305,7 +306,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
   String? _loadError;
   final ScrollController _scrollController = ScrollController();
   List<SpotlightItem> _live = const [];
-  RealtimeChannel? _channel;
+  // polling timer replaces realtime channel
 
   @override
   void initState() {
@@ -314,15 +315,11 @@ class _SportlightsTabState extends State<SportlightsTab> {
       if (mounted) setState(() => _isAdmin = v);
     });
     _loadPosts();
-    _channel = Supabase.instance.client
-        .channel('public-post')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'Post',
-          callback: (_) => _loadPosts(silent: true),
-        )
-        .subscribe();
+    // Realtime: polling every 30s (Soketi wiring in next PR)
+    
+    Future.delayed(const Duration(seconds: 30), () {
+      if (mounted) _loadPosts(silent: true);
+    });
   }
 
   /// Batch-load profiles for all author IDs in one query (avoids N+1 delay).
@@ -330,36 +327,12 @@ class _SportlightsTabState extends State<SportlightsTab> {
   /// real author avatar instead of the Playify fallback.
   Future<Map<String, Map<String, dynamic>>> _batchProfiles(
       List<String> uids) async {
-    final out = <String, Map<String, dynamic>>{};
-    if (uids.isEmpty) return out;
-    final unique = uids.toSet().toList();
     try {
-      final rows = await Supabase.instance.client
-          .from('profiles')
-          .select('id, handle, first_name, last_name, role, avatar_url')
-          .inFilter('id', unique);
-      for (final r in rows as List) {
-        final m = Map<String, dynamic>.from(r as Map);
-        final id = m['id']?.toString();
-        if (id != null) out[id] = m;
-      }
+      return await SocialRepository().batchProfiles(uids);
     } catch (e) {
-      debugPrint('batch profiles: $e');
-      try {
-        final rows = await Supabase.instance.client
-            .from('User')
-            .select('id, handle, first_name, last_name, role, name, avatarUrl, avatar_url')
-            .inFilter('id', unique);
-        for (final r in rows as List) {
-          final m = Map<String, dynamic>.from(r as Map);
-          final id = m['id']?.toString();
-          if (id != null) out[id] = m;
-        }
-      } catch (e2) {
-        debugPrint('batch User profiles: $e2');
-      }
+      debugPrint('batchProfiles: $e');
+      return {};
     }
-    return out;
   }
 
   Future<void> _loadPosts({bool silent = false}) async {
@@ -663,9 +636,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
 
   @override
   void dispose() {
-    if (_channel != null) {
-      Supabase.instance.client.removeChannel(_channel!);
-    }
+    // polling cleanup
     _scrollController.dispose();
     super.dispose();
   }
@@ -2391,19 +2362,10 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
   /// news lives in `news_tab.dart` with its own `_NewsCard`), so we just hit
   /// `PostLike` here. When `SocialRepository.hasLiked` lands we can delegate.
   Future<bool> _hasLikedPost(String postId) async {
-    final sb = Supabase.instance.client;
-    final uid = sb.auth.currentUser?.id;
-    if (uid == null) return false;
     try {
-      final row = await sb
-          .from('PostLike')
-          .select('userId')
-          .eq('postId', postId)
-          .eq('userId', uid)
-          .maybeSingle();
-      return row != null;
+      return await VpsRepository().isPostLiked(postId);
     } catch (e) {
-      debugPrint('_EngagementRow._hasLikedPost($postId): $e');
+      debugPrint('_hasLikedPost: $e');
       return false;
     }
   }
@@ -2455,11 +2417,7 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
         }
         return;
       }
-      await sb.from('PostShare').upsert({
-        'postId': id,
-        'userId': uid,
-        'createdAt': DateTime.now().toIso8601String(),
-      });
+      await VpsRepository().sharePost(id);
       if (!mounted) return;
       setState(() {
         _shared = true;

@@ -366,4 +366,33 @@ class VpsRepository {
         data: {'email': email.trim().toLowerCase()});
   }
 
+  // ── Additional social methods ─────────────────────────────────────────────
+
+  Future<int> sharePost(String postId) async {
+    final res = await _client.post<Map<String, dynamic>>('/v1/social/posts/$postId/share');
+    return res.data?['shareCount'] as int? ?? 0;
+  }
+
+  Future<bool> isPostShared(String postId) async {
+    final res = await _client.get<Map<String, dynamic>>('/v1/social/posts/$postId/shared');
+    return res.data?['shared'] as bool? ?? false;
+  }
+
+  Future<List<Map<String, dynamic>>> getTrendingPosts({int limit = 30}) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/feed/trending', query: {'limit': limit},
+    );
+    return ((res.data?['posts']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  // Expose raw get/post/delete for social_repository
+  Future<Response<T>> get<T>(String path, {Map<String, dynamic>? query}) =>
+      _client.get<T>(path, query: query);
+  Future<Response<T>> post<T>(String path, {dynamic data}) =>
+      _client.post<T>(path, data: data);
+  Future<Response<T>> delete<T>(String path) =>
+      _client.delete<T>(path);
+  Future<Response<T>> patch<T>(String path, {dynamic data}) =>
+      _client.patch<T>(path, data: data);
+
 }

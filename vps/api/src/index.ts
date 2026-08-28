@@ -21,6 +21,7 @@ import { aiRouter }        from './routes/ai.js'
 import { nearbyRouter }    from './routes/nearby.js'
 import { notifRouter }     from './routes/notifications.js'
 import { socialRouter }    from './routes/social.js'
+import { newsRouter }     from './routes/news.js'
 import { authRouter }     from './routes/auth.js'
 
 const app = new Hono()
@@ -68,6 +69,7 @@ app.route('/v1/nearby',        nearbyRouter)
 app.route('/v1/notifications', notifRouter)
 app.route('/v1/ai',            aiRouter)
 app.route('/v1/social',        socialRouter)
+app.route('/v1/news',          newsRouter)
 
 // ── Admin routes (JWT + admin role) ───────────────────────────────────────────
 app.use('/v1/admin/*', adminMiddleware)

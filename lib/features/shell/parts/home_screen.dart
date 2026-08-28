@@ -1,4 +1,6 @@
 part of '../app_shell.dart';
+// ignore: unused_import
+import '../../../core/data/vps_repository.dart';
 
 class _HomeScreen extends StatefulWidget {
   const _HomeScreen();
@@ -142,14 +144,10 @@ class _TrendingContentState extends State<_TrendingContent> {
 
   Future<void> _load() async {
     try {
-      final rows = await Supabase.instance.client
-          .from('Post')
-          .select()
-          .order('likeCount', ascending: false)
-          .limit(30);
+      final rows = await VpsRepository().getTrendingPosts(limit: 30);
       if (mounted) {
         setState(() {
-          _rows = [for (final r in rows as List) Map<String, dynamic>.from(r as Map)];
+          _rows = rows;
           _loading = false;
         });
       }
@@ -183,14 +181,9 @@ class _TrendingContentState extends State<_TrendingContent> {
 
           return GestureDetector(
             onTap: () async {
-              // Navigate to the author's profile
               try {
-                final profile = await Supabase.instance.client
-                    .from('profiles')
-                    .select('handle')
-                    .eq('id', userId)
-                    .maybeSingle();
-                final handle = profile?['handle'] as String?;
+                final profile = await VpsRepository().getProfile(userId);
+                final handle = profile['handle'] as String?;
                 if (handle != null && handle.isNotEmpty && context.mounted) {
                   context.push('/profile/$handle');
                 }
@@ -272,48 +265,19 @@ class _CommunityContentState extends State<_CommunityContent> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      // Try Community table first
+      final vps = VpsRepository();
       List<Map<String, dynamic>> list = [];
       try {
-        final rows = await Supabase.instance.client
-            .from('Community')
-            .select()
-            .order('memberCount', ascending: false)
-            .limit(40);
-        list = [for (final r in rows as List) Map<String, dynamic>.from(r as Map)];
+        list = await vps.getCommunities(limit: 40);
       } catch (_) {}
 
-      // If empty, fall back to entity_communities (fan communities auto-created per team)
-      if (list.isEmpty) {
-        try {
-          final rows = await Supabase.instance.client
-              .from('entity_communities')
-              .select()
-              .order('member_count', ascending: false)
-              .limit(40);
-          list = [for (final r in rows as List) {
-            'id': (r as Map)['id'],
-            'name': r['name'],
-            'description': r['description'] ?? 'Fan community',
-            'memberCount': r['member_count'] ?? 0,
-            'topic': 'Football',
-            '_source': 'entity',
-          }];
-        } catch (_) {}
-      }
-
-      final uid = Supabase.instance.client.auth.currentUser?.id;
+      // Check which communities current user has joined
       final joined = <String>{};
-      if (uid != null) {
+      for (final g in list) {
+        final id = g['id']?.toString();
+        if (id == null) continue;
         try {
-          final mem = await Supabase.instance.client
-              .from('CommunityMember')
-              .select('communityId')
-              .eq('userId', uid);
-          for (final r in mem as List) {
-            final id = (r as Map)['communityId']?.toString();
-            if (id != null) joined.add(id);
-          }
+          if (await vps.isCommunityMember(id)) joined.add(id);
         } catch (_) {}
       }
       if (mounted) {

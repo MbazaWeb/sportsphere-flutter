@@ -52,3 +52,17 @@ feedRouter.post('/view', async (c) => {
   )
   return c.json({ ok: true })
 })
+
+// GET /v1/feed/trending?limit=30
+feedRouter.get('/trending', async (c) => {
+  const limit = Math.min(Number(c.req.query('limit') ?? 30), 100)
+  const posts = await query(
+    `SELECT p.*, u.handle, u."avatarUrl", u.name
+     FROM public."Post" p
+     JOIN public."User" u ON u.id = p."userId"
+     ORDER BY p."likeCount" DESC, p."createdAt" DESC
+     LIMIT $1`,
+    [limit]
+  )
+  return c.json({ ok: true, posts })
+})
