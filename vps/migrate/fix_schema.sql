@@ -131,3 +131,31 @@ CREATE TABLE IF NOT EXISTS public.password_resets (
 );
 
 SELECT 'Schema patched ✅' as status;
+
+-- Add fan_count to profiles (fans of this entity/profile)
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS fan_count integer NOT NULL DEFAULT 0;
+
+-- Add PollVote unique constraint (one vote per user per poll)
+ALTER TABLE public."PollVote" DROP CONSTRAINT IF EXISTS "PollVote_pollId_userId_key";
+ALTER TABLE public."PollVote" ADD CONSTRAINT "PollVote_pollId_userId_key" UNIQUE("pollId","userId");
+
+-- Add CommentLike unique constraint
+ALTER TABLE public."CommentLike" DROP CONSTRAINT IF EXISTS "CommentLike_commentId_userId_key";
+ALTER TABLE public."CommentLike" ADD CONSTRAINT "CommentLike_commentId_userId_key" UNIQUE("commentId","userId");
+
+-- Add entity_follows unique constraint
+ALTER TABLE public.entity_follows DROP CONSTRAINT IF EXISTS entity_follows_follower_entity_key;
+ALTER TABLE public.entity_follows ADD CONSTRAINT entity_follows_follower_entity_key 
+  UNIQUE(follower_id, entity_type, entity_id);
+
+-- Add likeCount to Comment if missing  
+ALTER TABLE public."Comment" ADD COLUMN IF NOT EXISTS "likeCount" integer NOT NULL DEFAULT 0;
+
+-- Add viewCount to Post if missing
+ALTER TABLE public."Post" ADD COLUMN IF NOT EXISTS "viewCount" integer NOT NULL DEFAULT 0;
+ALTER TABLE public."Post" ADD COLUMN IF NOT EXISTS "isBreaking" boolean NOT NULL DEFAULT false;
+ALTER TABLE public."Post" ADD COLUMN IF NOT EXISTS "communityId" text;
+ALTER TABLE public."Post" ADD COLUMN IF NOT EXISTS "matchId" text;
+ALTER TABLE public."Post" ADD COLUMN IF NOT EXISTS "playerTag" text;
+
+SELECT 'Schema v2 patched ✅' as status;
