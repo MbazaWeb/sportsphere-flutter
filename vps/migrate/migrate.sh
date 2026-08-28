@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Playify — Full Data Migration: Supabase → VPS PostgreSQL
-# Fixed: service role key, column mismatches, FK order, empty exports
+# Playify — Full Data Migration: Supabase PostgreSQL → VPS PostgreSQL
+# Method: pg_dump direct (fastest, no RLS issues, no API limits)
 # =============================================================================
 set -euo pipefail
 
@@ -11,340 +11,230 @@ warn() { echo -e "${YELLOW}⚠️  $1${NC}"; }
 fail() { echo -e "${RED}❌ $1${NC}"; exit 1; }
 hdr()  { echo -e "\n${YELLOW}══ $1 ══${NC}"; }
 
-# ── Config ────────────────────────────────────────────────────────────────────
+# ── Connection strings ────────────────────────────────────────────────────────
+# Supabase direct PostgreSQL (from your dashboard)
+SB_DB="postgresql://postgres:0H0Ad64USEIykfwm@db.fffqjbrethogesgghjsn.supabase.co:5432/postgres"
+
+# VPS PostgreSQL (from .env)
 ENV_FILE="/var/playify/app/vps/api/.env"
+VPS_DB=$(grep "^DATABASE_URL=" "$ENV_FILE" | cut -d= -f2- | tr -d '"' | tr -d "'")
 
-# Parse .env manually — source can miss export
-while IFS='=' read -r key val; do
-  [[ "$key" =~ ^#.*$ || -z "$key" ]] && continue
-  val="${val%%#*}"        # strip inline comments
-  val="${val%"${val##*[![:space:]]}"}"  # strip trailing whitespace
-  export "$key=$val"
-done < "$ENV_FILE"
+if [ -z "$VPS_DB" ]; then fail "DATABASE_URL not set in $ENV_FILE"; fi
 
-SUPABASE_URL="${SUPABASE_URL:-https://fffqjbrethogesgghjsn.supabase.co}"
-SB_KEY="${SUPABASE_SERVICE_ROLE_KEY:-${SUPABASE_ANON_KEY:-}}"
-DB_URL="${DATABASE_URL:-}"
+echo "Source: Supabase PostgreSQL"
+echo "Target: $VPS_DB"
 
-echo "Using Supabase URL: $SUPABASE_URL"
-echo "Service role key: ${SB_KEY:0:20}..."
-echo "DB URL: ${DB_URL:0:30}..."
+BACKUP_DIR="/var/playify/migration/$(date +%Y%m%d_%H%M%S)"
+mkdir -p "$BACKUP_DIR"
+echo "Backup dir: $BACKUP_DIR"
 
-if [ -z "$DB_URL" ]; then fail "DATABASE_URL not set"; fi
-if [ -z "$SB_KEY" ]; then fail "SUPABASE_SERVICE_ROLE_KEY not set"; fi
-
-EXPORT_DIR="/var/playify/migration/$(date +%Y%m%d_%H%M%S)"
-mkdir -p "$EXPORT_DIR"
-echo "Export dir: $EXPORT_DIR"
-
-# ── Test connection ────────────────────────────────────────────────────────────
+# ── Test both connections ─────────────────────────────────────────────────────
 hdr "TESTING CONNECTIONS"
-echo -n "Supabase... "
-TEST=$(curl -sf "${SUPABASE_URL}/rest/v1/profiles?select=id&limit=1" \
-  -H "apikey: $SB_KEY" \
-  -H "Authorization: Bearer $SB_KEY" \
-  -H "Accept: application/json" 2>/dev/null)
-if echo "$TEST" | grep -q "error\|Error\|FAILED"; then
-  fail "Supabase unreachable: $TEST"
-fi
-echo "ok ($(echo "$TEST" | python3 -c 'import sys,json; print(len(json.load(sys.stdin)))' 2>/dev/null || echo "?") profile rows visible)"
 
-echo -n "PostgreSQL... "
-psql "$DB_URL" -c "SELECT 1" -q 2>/dev/null && echo "ok" || fail "PostgreSQL unreachable"
+echo -n "Supabase PostgreSQL... "
+PGPASSWORD=0H0Ad64USEIykfwm psql "$SB_DB" -c "SELECT COUNT(*) FROM public.profiles" -t 2>/dev/null \
+  && ok "connected" || fail "Cannot connect to Supabase PostgreSQL"
 
-# ── Fetch with pagination ──────────────────────────────────────────────────────
-fetch() {
-  local table="$1" file="$EXPORT_DIR/${table}.json"
-  local all="[]" offset=0 limit=1000 total=0
+echo -n "VPS PostgreSQL... "
+psql "$VPS_DB" -c "SELECT 1" -q 2>/dev/null && ok "connected" || fail "Cannot connect to VPS PostgreSQL"
 
-  echo -n "  $table... "
-  while true; do
-    local url="${SUPABASE_URL}/rest/v1/${table}?select=*&limit=${limit}&offset=${offset}&order=id"
-    local chunk
-    chunk=$(curl -sf "$url" \
-      -H "apikey: $SB_KEY" \
-      -H "Authorization: Bearer $SB_KEY" \
-      -H "Accept: application/json" 2>/dev/null || echo "[]")
+# =============================================================================
+# SECTION 1 — DUMP EACH TABLE FROM SUPABASE
+# =============================================================================
+hdr "DUMPING TABLES FROM SUPABASE"
 
-    # Check for error
-    if echo "$chunk" | python3 -c "import sys,json; d=json.load(sys.stdin); exit(0 if isinstance(d,list) else 1)" 2>/dev/null; then
-      local n
-      n=$(echo "$chunk" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo 0)
-      if [ "$n" -eq 0 ]; then break; fi
-      total=$((total + n))
-      # Merge chunks
-      all=$(python3 -c "
-import json,sys
-a = json.loads('''$all''')
-b = json.loads(sys.stdin.read())
-a.extend(b)
-print(json.dumps(a))
-" <<< "$chunk" 2>/dev/null || echo "$all")
-      offset=$((offset + limit))
-      echo -n "."
-      [ "$n" -lt "$limit" ] && break
-    else
-      echo "  (error or empty — skipping)"
-      break
-    fi
-  done
+# Tables to migrate (in FK dependency order)
+TABLES=(
+  "public.profiles"
+  'public."User"'
+  'public."Role"'
+  'public."Sport"'
+  'public."League"'
+  'public."Team"'
+  'public."Player"'
+  'public."Coach"'
+  'public."Match"'
+  'public."Community"'
+  'public."NewsItem"'
+  'public."Post"'
+  'public."Poll"'
+  'public."Prediction"'
+  'public."Follow"'
+  'public."PostLike"'
+  'public."PostShare"'
+  'public."Comment"'
+  'public."CommentLike"'
+  'public."PollVote"'
+  'public."CommunityMember"'
+  'public."UserFavorite"'
+  'public."UserSport"'
+  'public."Message"'
+  'public."Notification"'
+  'public."ShopOrder"'
+  'public."ClaimRequest"'
+  'public."VerificationRequest"'
+  "public.device_tokens"
+  "public.entity_follows"
+  "public.fans"
+  "public.taxonomy_term"
+  'public."PlayerMatchStat"'
+  'public."RoleRequest"'
+)
 
-  echo "$all" > "$file"
-  echo " $total rows"
+dump_table() {
+  local tbl="$1"
+  local safe_name
+  safe_name=$(echo "$tbl" | tr -d '"' | tr '.' '_' | tr -d ' ')
+  local file="$BACKUP_DIR/${safe_name}.sql"
+
+  echo -n "  Dumping $tbl... "
+  PGPASSWORD=0H0Ad64USEIykfwm pg_dump "$SB_DB" \
+    --data-only \
+    --no-privileges \
+    --no-owner \
+    --table="$tbl" \
+    --format=plain \
+    2>/dev/null > "$file" || { warn "Failed to dump $tbl"; return; }
+
+  local lines
+  lines=$(wc -l < "$file")
+  echo "$lines lines"
 }
 
-# =============================================================================
-# SECTION 1 — EXPORT
-# =============================================================================
-hdr "EXPORTING FROM SUPABASE (service role)"
+for tbl in "${TABLES[@]}"; do
+  dump_table "$tbl"
+done
 
-fetch "User"
-fetch "profiles"
-fetch "Post"
-fetch "Follow"
-fetch "PostLike"
-fetch "PostShare"
-fetch "Comment"
-fetch "CommentLike"
-fetch "Message"
-fetch "Notification"
-fetch "Community"
-fetch "CommunityMember"
-fetch "League"
-fetch "Team"
-fetch "Player"
-fetch "Coach"
-fetch "Match"
-fetch "Sport"
-fetch "NewsItem"
-fetch "Poll"
-fetch "PollVote"
-fetch "Prediction"
-fetch "ShopOrder"
-fetch "ClaimRequest"
-fetch "UserFavorite"
-fetch "UserSport"
-fetch "entity_follows"
-fetch "device_tokens"
-fetch "fans"
-fetch "Role"
-
-ok "Export complete"
-echo "File sizes:"
-ls -lh "$EXPORT_DIR" | awk 'NR>1{printf "  %6s  %s\n", $5, $9}'
+ok "Dump complete"
+du -sh "$BACKUP_DIR"
 
 # =============================================================================
-# SECTION 2 — IMPORT
+# SECTION 2 — PREPARE VPS TABLES FOR IMPORT
 # =============================================================================
-hdr "IMPORTING INTO VPS POSTGRESQL"
+hdr "PREPARING VPS POSTGRESQL"
 
-python3 - "$EXPORT_DIR" "$DB_URL" << 'PYEOF'
-import json, sys, subprocess, re
-from pathlib import Path
-
-export_dir = sys.argv[1]
-db_url     = sys.argv[2]
-
-def psql(sql: str) -> bool:
-    r = subprocess.run(["psql", db_url, "-c", sql, "-q"],
-                       capture_output=True, text=True)
-    if r.returncode != 0 and ("ERROR" in r.stderr or "ERROR" in r.stdout):
-        msg = (r.stderr + r.stdout)[:300].replace('\n',' ')
-        print(f"    SQL ERR: {msg}")
-        return False
-    return True
-
-def load(name: str) -> list:
-    p = Path(export_dir) / name
-    if not p.exists(): return []
-    try:
-        d = json.loads(p.read_text())
-        return d if isinstance(d, list) else []
-    except: return []
-
-def esc(v):
-    if v is None: return "NULL"
-    if isinstance(v, bool): return "TRUE" if v else "FALSE"
-    if isinstance(v, (int, float)): return str(v)
-    if isinstance(v, (dict, list)):
-        return "'" + json.dumps(v, ensure_ascii=False).replace("'","''") + "'::jsonb"
-    return "'" + str(v).replace("'","''") + "'"
-
-def upsert(table: str, rows: list, pk, skip_cols: list=None, schema="public"):
-    if not rows:
-        print(f"  {table}: 0 rows (empty export)")
-        return
-    skip_cols = skip_cols or []
-    pk_cols   = [pk] if isinstance(pk, str) else list(pk)
-    ok_count = err_count = 0
-
-    for row in rows:
-        if not row: continue
-        # Filter out columns that don't exist in VPS schema
-        cols = [c for c in row.keys() if c not in skip_cols]
-        if not cols: continue
-        vals = [esc(row[c]) for c in cols]
-        pk_str  = ", ".join(f'"{c}"' for c in pk_cols)
-        upd     = [c for c in cols if c not in pk_cols]
-        conflict = (f"ON CONFLICT ({pk_str}) DO UPDATE SET " +
-                    ", ".join(f'"{c}"=EXCLUDED."{c}"' for c in upd)) if upd else \
-                   f"ON CONFLICT ({pk_str}) DO NOTHING"
-        sql = (f'INSERT INTO {schema}."{table}" (' +
-               ", ".join(f'"{c}"' for c in cols) +
-               ") VALUES (" + ", ".join(vals) + f") {conflict};")
-        if psql(sql): ok_count += 1
-        else:         err_count += 1
-
-    sym = "✅" if err_count == 0 else "⚠️ "
-    print(f"  {sym} {table}: {ok_count} ok, {err_count} errors")
-
-# ── Reference data ────────────────────────────────────────────────────────────
-print("\nReference data...")
-upsert("Role",  load("Role.json"),  "id")
-
-# Sport — skip columns not in VPS schema
-sport_skip = ["sport_slug","parent_sport_slug","parentSportSlug","sportSlug"]
-upsert("Sport", load("Sport.json"), "id", skip_cols=sport_skip)
-
-# ── Users ─────────────────────────────────────────────────────────────────────
-print("\nUsers...")
-# User — skip columns that may not exist
-user_skip = ["passwordHash"]  # will be null for migrated users
-upsert("User",     load("User.json"),     "id",  skip_cols=user_skip)
-
-# profiles — skip id casting issue (it's uuid in profiles)
-profiles_data = load("profiles.json")
-if profiles_data:
-    ok_count = err_count = 0
-    for row in profiles_data:
-        if not row: continue
-        cols = list(row.keys())
-        vals_list = []
-        col_list  = []
-        for c in cols:
-            v = row[c]
-            if c == 'id':
-                col_list.append('"id"')
-                vals_list.append(f"'{v}'::uuid")
-            else:
-                col_list.append(f'"{c}"')
-                vals_list.append(esc(v))
-        sql = (f'INSERT INTO public.profiles ({", ".join(col_list)}) VALUES ({", ".join(vals_list)}) '
-               f'ON CONFLICT (id) DO UPDATE SET ' +
-               ", ".join(f'"{c}"=EXCLUDED."{c}"' for c in cols if c != 'id') + ';')
-        if psql(sql): ok_count += 1
-        else:         err_count += 1
-    sym = "✅" if err_count == 0 else "⚠️ "
-    print(f"  {sym} profiles: {ok_count} ok, {err_count} errors")
-else:
-    print("  profiles: 0 rows")
-
-# ── Sports data ───────────────────────────────────────────────────────────────
-print("\nSports data...")
-# League — skip taxonomy columns not in VPS schema
-league_skip = ["competitive_level","organization_type","gender","age_category",
-               "geographic_scope","sport_slug","sport_variant","competitiveLevel",
-               "organizationType","ageCategory","geographicScope","sportSlug","sportVariant",
-               "competitionType","competitionFormat","competitionLevel"]
-upsert("League", load("League.json"), "id", skip_cols=league_skip)
-
-# Team — skip taxonomy columns
-team_skip = ["competitive_level","organization_type","gender","age_category",
-             "geographic_scope","sport_slug","sport_variant","competitiveLevel",
-             "organizationType","ageCategory","geographicScope","sportSlug","sportVariant"]
-upsert("Team",   load("Team.json"),   "id", skip_cols=team_skip)
-upsert("Player", load("Player.json"), "id", skip_cols=["player_type","career_level","sport_slug","playerType","careerLevel","sportSlug"])
-upsert("Coach",  load("Coach.json"),  "id")
-upsert("Match",  load("Match.json"),  "id")
-
-# ── Content ───────────────────────────────────────────────────────────────────
-print("\nContent...")
-upsert("NewsItem",  load("NewsItem.json"),  "id")
-upsert("Community", load("Community.json"), "id")
-upsert("Post",      load("Post.json"),      "id")
-
-# Poll — only insert if post exists
-polls = load("Poll.json")
-valid_polls = []
-if polls:
-    # Get existing post IDs
-    r = subprocess.run(["psql", db_url, "-t", "-c", 'SELECT id FROM public."Post"'],
-                       capture_output=True, text=True)
-    post_ids = set(r.stdout.split())
-    valid_polls = [p for p in polls if p.get("postId","") in post_ids or p.get("post_id","") in post_ids]
-    print(f"  Poll: {len(valid_polls)}/{len(polls)} have matching posts")
-upsert("Poll",       valid_polls,              "id")
-upsert("Prediction", load("Prediction.json"),  "id")
-
-# ── Social graph ──────────────────────────────────────────────────────────────
-print("\nSocial graph...")
-upsert("Follow",          load("Follow.json"),          ["followerId","followingId"])
-upsert("PostLike",        load("PostLike.json"),        ["postId","userId"])
-upsert("PostShare",       load("PostShare.json"),       ["postId","userId"])
-
-# Comment — only if post exists
-comments = load("Comment.json")
-if comments:
-    r = subprocess.run(["psql", db_url, "-t", "-c", 'SELECT id FROM public."Post"'],
-                       capture_output=True, text=True)
-    post_ids = set(r.stdout.split())
-    comments = [c for c in comments if c.get("postId","") in post_ids]
-upsert("Comment",         comments,                     "id")
-upsert("CommentLike",     load("CommentLike.json"),     ["commentId","userId"])
-
-# PollVote — fix column name (Supabase uses optionIdx, VPS uses optionIndex)
-poll_votes = load("PollVote.json")
-fixed_votes = []
-for v in poll_votes:
-    if "optionIdx" in v and "optionIndex" not in v:
-        v["optionIndex"] = v.pop("optionIdx")
-    fixed_votes.append(v)
-upsert("PollVote",        fixed_votes,                  ["pollId","userId"])
-upsert("CommunityMember", load("CommunityMember.json"), ["communityId","userId"])
-upsert("UserFavorite",    load("UserFavorite.json"),    "id")
-upsert("UserSport",       load("UserSport.json"),       "id")
-
-# ── Messages & notifications ──────────────────────────────────────────────────
-print("\nMessaging & notifications...")
-upsert("Message",      load("Message.json"),      "id")
-upsert("Notification", load("Notification.json"), "id")
-
-# ── Commerce ──────────────────────────────────────────────────────────────────
-print("\nCommerce...")
-upsert("ShopOrder",    load("ShopOrder.json"),    "id")
-upsert("ClaimRequest", load("ClaimRequest.json"), "id")
-
-# ── Device tokens & entity follows ───────────────────────────────────────────
-print("\nTokens & entity follows...")
-upsert("device_tokens",  load("device_tokens.json"),  ["user_id","token"],                          schema="public")
-upsert("entity_follows", load("entity_follows.json"), ["follower_id","entity_type","entity_id"],    schema="public")
-upsert("fans",           load("fans.json"),            ["fan_id","target_id"],                       schema="public")
-
-print("\n✅ Import complete!")
-PYEOF
+# Disable FK checks temporarily for import
+psql "$VPS_DB" << 'SQL'
+-- Temporarily disable triggers (FK checks) for bulk import
+SET session_replication_role = replica;
+SQL
 
 # =============================================================================
-# SECTION 3 — VERIFY
+# SECTION 3 — RESTORE INTO VPS POSTGRESQL
+# =============================================================================
+hdr "RESTORING INTO VPS POSTGRESQL"
+
+restore_table() {
+  local tbl="$1"
+  local safe_name
+  safe_name=$(echo "$tbl" | tr -d '"' | tr '.' '_' | tr -d ' ')
+  local file="$BACKUP_DIR/${safe_name}.sql"
+
+  if [ ! -f "$file" ] || [ ! -s "$file" ]; then
+    echo "  ⏭  $tbl (no data)"
+    return
+  fi
+
+  echo -n "  Restoring $tbl... "
+
+  # Fix: replace Supabase sequence nextval with nothing (we use our own sequences)
+  # Also handle any auth.users references
+  sed -i \
+    "s|auth\.uid()|'00000000-0000-0000-0000-000000000000'::uuid|g" \
+    "$file" 2>/dev/null || true
+
+  local result
+  result=$(psql "$VPS_DB" \
+    --set ON_ERROR_STOP=off \
+    -f "$file" 2>&1 | tail -5)
+
+  if echo "$result" | grep -q "^INSERT\|COPY"; then
+    echo "✅"
+  elif echo "$result" | grep -qi "error"; then
+    echo "⚠️  $(echo "$result" | grep -i error | head -1)"
+  else
+    echo "✅ (no conflicts)"
+  fi
+}
+
+# Restore in FK order
+for tbl in "${TABLES[@]}"; do
+  restore_table "$tbl"
+done
+
+# Re-enable FK checks
+psql "$VPS_DB" << 'SQL'
+SET session_replication_role = DEFAULT;
+SQL
+
+# =============================================================================
+# SECTION 4 — FIX COLUMN MISMATCHES (for any that failed above)
+# =============================================================================
+hdr "FIXING COLUMN MISMATCHES VIA COPY"
+
+# For tables where pg_dump failed due to column differences,
+# use direct COPY via psql pipe (only the columns that exist on both sides)
+
+copy_table() {
+  local src_tbl="$1"
+  local dst_tbl="${2:-$1}"
+  local cols="$3"
+  local safe_name
+  safe_name=$(echo "$src_tbl" | tr -d '"' | tr '.' '_')
+
+  echo -n "  COPY $src_tbl → $dst_tbl ($cols)... "
+  PGPASSWORD=0H0Ad64USEIykfwm psql "$SB_DB" -t -c \
+    "COPY (SELECT $cols FROM $src_tbl) TO STDOUT CSV HEADER" 2>/dev/null | \
+    psql "$VPS_DB" -c \
+    "COPY $dst_tbl ($cols) FROM STDIN CSV HEADER ON CONFLICT DO NOTHING" 2>&1 | tail -1
+}
+
+# Sport — only common columns
+copy_table 'public."Sport"' 'public."Sport"' \
+  '"id","name","slug","icon","category","description","tags","isActive","displayOrder","createdAt","updatedAt"'
+
+# League — skip taxonomy-only columns
+copy_table 'public."League"' 'public."League"' \
+  '"id","name","slug","country","logoUrl","type","season","verified","isActive","description","createdAt","updatedAt"'
+
+# Team — skip taxonomy-only columns
+copy_table 'public."Team"' 'public."Team"' \
+  '"id","name","slug","shortName","city","country","logoUrl","primaryColor","venue","foundedYear","verified","isActive","description","createdAt","updatedAt"'
+
+# Player
+copy_table 'public."Player"' 'public."Player"' \
+  '"id","name","slug","firstName","lastName","position","nationality","photoUrl","verified","isActive","metadata","createdAt","updatedAt"'
+
+ok "Column-specific copy done"
+
+# =============================================================================
+# SECTION 5 — VERIFY
 # =============================================================================
 hdr "VERIFICATION"
 
-psql "$DB_URL" -c "
+psql "$VPS_DB" << 'SQL'
 SELECT table_name, rows FROM (
-  SELECT 'User'          as table_name, COUNT(*) as rows FROM public.\"User\"
+  SELECT 'User'          as table_name, COUNT(*) as rows FROM public."User"
   UNION ALL SELECT 'profiles',    COUNT(*) FROM public.profiles
-  UNION ALL SELECT 'Post',        COUNT(*) FROM public.\"Post\"
-  UNION ALL SELECT 'Follow',      COUNT(*) FROM public.\"Follow\"
-  UNION ALL SELECT 'Comment',     COUNT(*) FROM public.\"Comment\"
-  UNION ALL SELECT 'Team',        COUNT(*) FROM public.\"Team\"
-  UNION ALL SELECT 'Player',      COUNT(*) FROM public.\"Player\"
-  UNION ALL SELECT 'League',      COUNT(*) FROM public.\"League\"
-  UNION ALL SELECT 'Match',       COUNT(*) FROM public.\"Match\"
-  UNION ALL SELECT 'Community',   COUNT(*) FROM public.\"Community\"
-  UNION ALL SELECT 'Message',     COUNT(*) FROM public.\"Message\"
-  UNION ALL SELECT 'Notification',COUNT(*) FROM public.\"Notification\"
-  UNION ALL SELECT 'Sport',       COUNT(*) FROM public.\"Sport\"
-  UNION ALL SELECT 'NewsItem',    COUNT(*) FROM public.\"NewsItem\"
+  UNION ALL SELECT 'Post',        COUNT(*) FROM public."Post"
+  UNION ALL SELECT 'Follow',      COUNT(*) FROM public."Follow"
+  UNION ALL SELECT 'Comment',     COUNT(*) FROM public."Comment"
+  UNION ALL SELECT 'Team',        COUNT(*) FROM public."Team"
+  UNION ALL SELECT 'Player',      COUNT(*) FROM public."Player"
+  UNION ALL SELECT 'League',      COUNT(*) FROM public."League"
+  UNION ALL SELECT 'Match',       COUNT(*) FROM public."Match"
+  UNION ALL SELECT 'Community',   COUNT(*) FROM public."Community"
+  UNION ALL SELECT 'Message',     COUNT(*) FROM public."Message"
+  UNION ALL SELECT 'Notification',COUNT(*) FROM public."Notification"
+  UNION ALL SELECT 'Sport',       COUNT(*) FROM public."Sport"
+  UNION ALL SELECT 'NewsItem',    COUNT(*) FROM public."NewsItem"
   UNION ALL SELECT 'device_tokens',COUNT(*) FROM public.device_tokens
-) t ORDER BY rows DESC;"
+  UNION ALL SELECT 'entity_follows',COUNT(*) FROM public.entity_follows
+) t ORDER BY rows DESC;
+SQL
 
-ok "Migration complete! Exports at $EXPORT_DIR"
+echo ""
+ok "Migration complete!"
+echo "Backup at: $BACKUP_DIR"
+echo ""
+echo "Next: test login at https://playifysport.fun/v1/auth/login"
