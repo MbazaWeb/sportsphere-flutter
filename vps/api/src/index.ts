@@ -55,9 +55,6 @@ app.route('/v1/news', newsRouter)
 app.post('/v1/mpesa/callback', mpesaCallbackHandler)
 
 // ── Public auth routes (no JWT required) ─────────────────────────────────────
-app.route('/v1/auth/register', authRouter)
-app.route('/v1/auth/login',    authRouter)
-app.route('/v1/auth/refresh',  authRouter)
 
 // Search: public — guests can search without JWT
 app.get('/v1/social/search', async (c) => {
@@ -83,6 +80,14 @@ app.get('/v1/social/search', async (c) => {
   ]
   return c.json({ ok: true, results })
 })
+
+// ── Public auth routes — MUST be before app.use('/v1/*', authMiddleware) ────────
+// Hono applies middleware before route handlers — these MUST be
+// registered as direct handlers (not via router) to bypass auth.
+app.post('/v1/auth/register', (c) => authRouter.fetch(c.req.raw, c.env))
+app.post('/v1/auth/login',    (c) => authRouter.fetch(c.req.raw, c.env))
+app.post('/v1/auth/refresh',  (c) => authRouter.fetch(c.req.raw, c.env))
+app.post('/v1/auth/forgot-password', (c) => authRouter.fetch(c.req.raw, c.env))
 
 // ── Auth middleware — all /v1/* ────────────────────────────────────────────────
 app.use('/v1/*', authMiddleware)
