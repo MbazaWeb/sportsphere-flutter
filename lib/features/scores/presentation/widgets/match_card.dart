@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/data/social_repository.dart';
+import '../../../../core/data/vps_repository.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/utils/friendly_error.dart';
 import '../../../../core/utils/rate_limiter.dart';
@@ -51,18 +52,13 @@ class _MatchCardState extends State<MatchCard> {
 
   Future<void> _seedLikedState() async {
     final postId = widget.match.postId;
-    final uid = Supabase.instance.client.auth.currentUser?.id;
-    if (postId == null || postId.isEmpty || uid == null) return;
+    if (postId == null || postId.isEmpty) return;
+    if (Supabase.instance.client.auth.currentUser == null) return;
     try {
-      final row = await Supabase.instance.client
-          .from('PostLike')
-          .select('userId')
-          .eq('postId', postId)
-          .eq('userId', uid)
-          .maybeSingle();
-      if (mounted && row != null) setState(() => _liked = true);
+      final liked = await VpsRepository().isPostLiked(postId);
+      if (mounted && liked) setState(() => _liked = true);
     } catch (_) {
-      // Seeding is best-effort; if it fails we just start "unliked".
+      // best-effort
     }
   }
 
@@ -253,38 +249,24 @@ class _MatchCardState extends State<MatchCard> {
       return;
     }
     final m = widget.match;
-    final sb = Supabase.instance.client;
-    final uid = sb.auth.currentUser?.id;
-
-    setState(() {
-      _liked = !_liked;
-      _likeBusy = true;
-    });
-
+    if (m.postId == null || m.postId!.isEmpty) {
+      setState(() => _liked = !_liked);
+      _toast(_liked ? 'Liked' : 'Like removed');
+      return;
+    }
+    if (Supabase.instance.client.auth.currentUser == null) {
+      _toast('Sign in to like');
+      return;
+    }
+    setState(() { _liked = !_liked; _likeBusy = true; });
     try {
-      if (m.postId == null || m.postId!.isEmpty || uid == null) {
-        // No linked post (or not signed in) — keep the local toggle only.
-        _toast(_liked ? 'Liked ${m.homeTeamName} vs ${m.awayTeamName}' : 'Like removed');
-        return;
-      }
       if (_liked) {
-        await sb.from('PostLike').upsert({
-          'postId': m.postId,
-          'userId': uid,
-          'createdAt': DateTime.now().toIso8601String(),
-        });
+        await VpsRepository().likePost(m.postId!);
       } else {
-        await sb
-            .from('PostLike')
-            .delete()
-            .eq('postId', m.postId!)
-            .eq('userId', uid);
+        await VpsRepository().unlikePost(m.postId!);
       }
-      // Recount so the post counter stays in sync.
-      await const SocialRepository().recountPostCounters(m.postId!);
       _toast(_liked ? 'Liked' : 'Like removed');
     } catch (e) {
-      // Roll back the optimistic toggle on failure.
       if (mounted) setState(() => _liked = !_liked);
       _toast(friendlyError(e));
     } finally {
@@ -325,17 +307,12 @@ class _MatchCardState extends State<MatchCard> {
       await Share.share(text, subject: 'Playify · Match');
       // Record the share if there's a linked post (best-effort).
       final postId = m.postId;
-      final uid = Supabase.instance.client.auth.currentUser?.id;
-      if (postId != null && postId.isNotEmpty && uid != null) {
+      if (postId != null && postId.isNotEmpty &&
+          Supabase.instance.client.auth.currentUser != null) {
         try {
-          await Supabase.instance.client.from('PostShare').upsert({
-            'postId': postId,
-            'userId': uid,
-            'createdAt': DateTime.now().toIso8601String(),
-          });
-          await const SocialRepository().recountPostCounters(postId);
+          await VpsRepository().sharePost(postId);
         } catch (_) {
-          // Counter sync is best-effort — the share itself already succeeded.
+          // best-effort
         }
       }
     } catch (e) {

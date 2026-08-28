@@ -1,4 +1,6 @@
 part of '../app_shell.dart';
+// ignore: unused_import
+import '../../../core/data/vps_repository.dart';
 
 class _SearchSheet extends StatefulWidget {
   const _SearchSheet();
@@ -324,76 +326,29 @@ class _SearchResultTile extends StatelessWidget {
 class _SearchData {
   static Future<List<Map<String, dynamic>>> search(String q) async {
     if (q.trim().length < 2) return [];
-    final sb = Supabase.instance.client;
     final query = q.trim().replaceAll('@', '');
-    final results = <Map<String, dynamic>>[];
-
-    // Search users
     try {
-      final users = await sb
-          .from('User')
-          .select('id, name, handle, avatarUrl, role')
-          .or('handle.ilike.%$query%,name.ilike.%$query%')
-          .limit(10);
-      for (final r in users as List) {
-        final m = Map<String, dynamic>.from(r as Map);
-        results.add({
-          'type': 'user',
-          'id': m['id'],
-          'title': m['name'] ?? m['handle'],
-          'subtitle': '@${m['handle']}',
-          'avatar': m['avatarUrl'],
-          'role': m['role'],
-          'route': '/profile/${m['handle']}',
-        });
-      }
-    } catch (_) {}
-
-    // Search teams
-    try {
-      final teams = await sb
-          .from('Team')
-          .select('id, name, slug, logoUrl')
-          .ilike('name', '%$query%')
-          .limit(5);
-      for (final r in teams as List) {
-        final m = Map<String, dynamic>.from(r as Map);
-        final slug = (m['slug'] as String?) ?? '';
-        results.add({
-          'type': 'team',
-          'id': m['id'],
-          'title': m['name'],
-          'subtitle': 'Team',
-          'avatar': m['logoUrl'],
-          'role': 'team',
-          'route': '/team/${slug.replaceAll('-', '_')}',
-        });
-      }
-    } catch (_) {}
-
-    // Search posts (top 5 by likes)
-    try {
-      final posts = await sb
-          .from('Post')
-          .select('id, content, likeCount')
-          .ilike('content', '%$query%')
-          .order('likeCount', ascending: false)
-          .limit(5);
-      for (final r in posts as List) {
-        final m = Map<String, dynamic>.from(r as Map);
-        results.add({
-          'type': 'post',
-          'id': m['id'],
-          'title': (m['content'] as String?)?.substring(0, 60) ?? 'Post',
-          'subtitle': '♥ ${m['likeCount'] ?? 0}',
-          'avatar': null,
-          'role': 'post',
-          'route': null,
-        });
-      }
-    } catch (_) {}
-
-    return results;
+      final raw = await VpsRepository().searchAll(query, limit: 30);
+      return raw.map((r) {
+        final kind = r['_kind'] as String? ?? r['role'] as String? ?? 'user';
+        final name = (r['first_name'] as String? ?? '') +
+            ((r['last_name'] as String?)?.isNotEmpty == true ? ' ${r['last_name']}' : '');
+        final handle = (r['handle'] as String?) ?? '';
+        return {
+          'type': kind,
+          'id':   r['id'],
+          'title': name.trim().isNotEmpty ? name.trim() : handle,
+          'subtitle': kind == 'user' ? '@$handle' : (r['_subtitle'] ?? kind),
+          'avatar': r['avatar_url'] ?? r['logoUrl'],
+          'role':  r['role'] ?? kind,
+          'route': kind == 'user' ? '/profile/$handle'
+                 : kind == 'team' ? '/team/${handle.replaceAll('-','_')}'
+                 : null,
+        };
+      }).toList();
+    } catch (_) {
+      return [];
+    }
   }
 }
 
@@ -495,11 +450,8 @@ class _MessageSheetState extends State<_MessageSheet> {
   void _unsubscribe() {
     final ch = _channel;
     _channel = null;
-    if (ch != null) {
-      try {
-        Supabase.instance.client.removeChannel(ch);
-      } catch (_) {}
-    }
+    // channel cleanup (Soketi migration pending)
+    _ = ch;
   }
 
   Future<void> _loadInbox() async {

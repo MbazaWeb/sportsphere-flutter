@@ -76,3 +76,22 @@ matchRouter.get('/:id', async (c) => {
   if (!rows.length) return c.json({ error: 'Match not found' }, 404)
   return c.json({ ok: true, match: rows[0] })
 })
+
+// GET /v1/matches/all?limit=200
+matchRouter.get('/all', async (c) => {
+  const limit = Math.min(Number(c.req.query('limit') ?? 200), 500)
+  const rows  = await query(
+    `SELECT * FROM public."Match" ORDER BY "kickoffAt" DESC LIMIT $1`, [limit]
+  )
+  return c.json({ ok: true, matches: rows })
+})
+
+// GET /v1/matches/leagues — distinct league names from all matches
+matchRouter.get('/leagues', async (c) => {
+  const rows = await query<{ league: string }>(
+    `SELECT DISTINCT league FROM public."Match"
+     WHERE league IS NOT NULL AND league != ''
+     ORDER BY league`
+  )
+  return c.json({ ok: true, leagues: rows.map(r => r.league) })
+})

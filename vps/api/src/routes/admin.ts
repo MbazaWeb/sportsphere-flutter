@@ -121,3 +121,28 @@ adminRouter.patch('/matches/:id', async (c) => {
   await execute(`UPDATE public."Match" SET ${sets.join(',')}, "updatedAt"=NOW() WHERE id=$${params.length}`, params)
   return c.json({ ok: true })
 })
+
+// GET /v1/admin/teams?limit=200
+adminRouter.get('/teams', async (c) => {
+  const limit = Math.min(Number(c.req.query('limit') ?? 200), 500)
+  const rows  = await query(
+    `SELECT id, name, "logoUrl", "accountUserId", slug, city, country, "isActive"
+     FROM public."Team" WHERE "isActive"=true ORDER BY name LIMIT $1`,
+    [limit]
+  )
+  return c.json({ ok: true, teams: rows })
+})
+
+// GET /v1/admin/players/search?q=&limit=20
+adminRouter.get('/players/search', async (c) => {
+  const q     = c.req.query('q') ?? ''
+  const limit = Math.min(Number(c.req.query('limit') ?? 20), 100)
+  const rows  = await query(
+    `SELECT id, name, slug, "teamId", position
+     FROM public."Player"
+     WHERE name ILIKE $1 AND "isActive"=true
+     ORDER BY name LIMIT $2`,
+    [`%${q}%`, limit]
+  )
+  return c.json({ ok: true, players: rows })
+})

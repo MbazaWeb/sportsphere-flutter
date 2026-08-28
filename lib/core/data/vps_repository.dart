@@ -395,4 +395,14 @@ class VpsRepository {
   Future<Response<T>> patch<T>(String path, {dynamic data}) =>
       _client.patch<T>(path, data: data);
 
+  // ── Search ───────────────────────────────────────────────────────────────
+
+  /// Search users, teams, leagues, players in one call.
+  Future<List<Map<String, dynamic>>> searchAll(String q, {int limit = 50}) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/social/search', query: {'q': q, 'limit': limit},
+    );
+    return ((res.data?['results']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
 }

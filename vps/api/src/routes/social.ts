@@ -490,3 +490,117 @@ socialRouter.post('/polls', async (c) => {
   )
   return c.json({ ok: true, poll: rows[0] }, 201)
 })
+
+// ── SEARCH ────────────────────────────────────────────────────────────────────
+
+// GET /v1/social/search?q=&limit=50
+socialRouter.get('/search', async (c) => {
+  const q     = (c.req.query('q') ?? '').trim()
+  const limit = Math.min(Number(c.req.query('limit') ?? 15), 50)
+  if (!q) return c.json({ ok: true, results: [] })
+
+  const pat = `%${q}%`
+
+  const [users, leagues, teams, players] = await Promise.all([
+    query(`SELECT id, handle, first_name, last_name, role, avatar_url,
+                  'user' as _kind, '' as _subtitle
+           FROM public.profiles
+           WHERE handle ILIKE $1 OR first_name ILIKE $1 OR last_name ILIKE $1
+           LIMIT $2`, [pat, limit]),
+
+    query(`SELECT id, name, country, type, season FROM public."League"
+           WHERE name ILIKE $1 OR country ILIKE $1 LIMIT $2`, [pat, Math.floor(limit/3)]),
+
+    query(`SELECT id, name, country, city, "logoUrl" FROM public."Team"
+           WHERE name ILIKE $1 OR city ILIKE $1 OR country ILIKE $1
+           AND "isActive"=true LIMIT $2`, [pat, Math.floor(limit/3)]),
+
+    query(`SELECT id, name, position, nationality FROM public."Player"
+           WHERE name ILIKE $1 OR position ILIKE $1 OR nationality ILIKE $1
+           AND "isActive"=true LIMIT $2`, [pat, Math.floor(limit/3)]),
+  ])
+
+  const results: unknown[] = [
+    ...users.map((r: any) => ({ ...r, _kind: 'user' })),
+    ...leagues.map((r: any) => ({
+      id: r.id, handle: String(r.name||'').toLowerCase().replace(/ /g,'_'),
+      first_name: r.name, last_name: '', role: 'league', avatar_url: null,
+      _kind: 'league', _subtitle: `${r.country||''} · ${r.type||''} · ${r.season||''}`,
+    })),
+    ...teams.map((r: any) => ({
+      id: r.id, handle: String(r.name||'').toLowerCase().replace(/ /g,'_'),
+      first_name: r.name, last_name: '', role: 'team', avatar_url: r.logoUrl,
+      _kind: 'team', _subtitle: `${r.city||''} · ${r.country||''}`,
+    })),
+    ...players.map((r: any) => ({
+      id: r.id, handle: String(r.name||'').toLowerCase().replace(/ /g,'_'),
+      first_name: r.name, last_name: '', role: 'player', avatar_url: null,
+      _kind: 'player', _subtitle: `${r.position||''} · ${r.nationality||''}`,
+    })),
+  ]
+
+  return c.json({ ok: true, results })
+})
+
+// GET /v1/social/fans-by-teams?ids=id1,id2&exclude=userId
+socialRouter.get('/fans-by-teams', async (c) => {
+  const ids     = (c.req.query('ids') ?? '').split(',').filter(Boolean)
+  const exclude = c.req.query('exclude') ?? ''
+  if (!ids.length) return c.json({ ok: true, fans: [] })
+  const placeholders = ids.map((_,i) => `$${i+1}`).join(',')
+  const rows = await query(
+    `SELECT uf."userId", uf."targetId", uf."targetName"
+     FROM public."UserFavorite" uf
+     WHERE uf."targetId" IN (${placeholders})
+       AND uf."userId" != $${ids.length+1}
+     LIMIT 100`,
+    [...ids, exclude]
+  )
+  return c.json({ ok: true, fans: rows })
+})
+
+// GET /v1/social/fans-by-sports?ids=id1,id2&exclude=userId
+socialRouter.get('/fans-by-sports', async (c) => {
+  const ids     = (c.req.query('ids') ?? '').split(',').filter(Boolean)
+  const exclude = c.req.query('exclude') ?? ''
+  if (!ids.length) return c.json({ ok: true, fans: [] })
+  const placeholders = ids.map((_,i) => `$${i+1}`).join(',')
+  const rows = await query(
+    `SELECT us."userId", us."sportId"
+     FROM public."UserSport" us
+     WHERE us."sportId" IN (${placeholders})
+       AND us."userId" != $${ids.length+1}
+     LIMIT 100`,
+    [...ids, exclude]
+  )
+  return c.json({ ok: true, fans: rows })
+})
+
+// GET /v1/social/fans-by-country?country=Tanzania&exclude=userId&limit=50
+socialRouter.get('/fans-by-country', async (c) => {
+  const country = c.req.query('country') ?? ''
+  const exclude = c.req.query('exclude') ?? ''
+  const limit   = Math.min(Number(c.req.query('limit') ?? 50), 200)
+  const rows = await query(
+    `SELECT id, handle, name, "avatarUrl", role, "currentCountry", location
+     FROM public."User"
+     WHERE ("currentCountry" ILIKE $1 OR location ILIKE $1)
+       AND id != $2
+     LIMIT $3`,
+    [`%${country}%`, exclude, limit]
+  )
+  return c.json({ ok: true, fans: rows })
+})
+
+// GET /v1/social/my-favorites?type=TEAM
+socialRouter.get('/my-favorites', async (c) => {
+  const userId = c.get('userId') as string
+  const type   = c.req.query('type') ?? 'TEAM'
+  const rows   = await query(
+    `SELECT "targetId", "targetName", "targetType"
+     FROM public."UserFavorite"
+     WHERE "userId"=$1 AND "targetType"=$2`,
+    [userId, type]
+  )
+  return c.json({ ok: true, favorites: rows })
+})

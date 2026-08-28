@@ -1,4 +1,4 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/data/vps_repository.dart';
 
 import '../../../core/data/nbc_club_badges.dart';
 import '../domain/models/match_model.dart';
@@ -77,12 +77,12 @@ MatchModel matchFromRow(Map<String, dynamic> row) {
 }
 
 Future<List<MatchModel>> fetchLiveMatches({int limit = kMaxMatchesPerFetch}) async {
-  final rows = await Supabase.instance.client
-      .from('Match')
-      .select()
-      .order('kickoffAt')
-      .limit(limit);
-  return [for (final r in rows as List) matchFromRow(Map<String, dynamic>.from(r))];
+  try {
+    final rows = await VpsRepository().getLiveMatches();
+    return rows.map(matchFromRow).toList();
+  } catch (_) {
+    return [];
+  }
 }
 
 List<MatchModel> filterLive(List<MatchModel> all) =>

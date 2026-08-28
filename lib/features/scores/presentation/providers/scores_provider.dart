@@ -1,8 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../../data/live_scores.dart';
 import '../../data/scores_repository.dart';
 import '../../domain/models/match_model.dart';
@@ -22,24 +20,17 @@ final scoresRepositoryProvider = Provider<ScoresRepository>(
 //
 // Every time a Match row changes (insert/update/delete) we bump a counter so
 // any provider that calls `ref.watch(matchRealtimeTickProvider)` re-fetches.
+// Realtime polling every 20s — replaces Supabase channel (Soketi wiring next)
 final matchRealtimeTickProvider = StreamProvider<int>((ref) {
   final controller = StreamController<int>.broadcast();
   var n = 0;
   controller.add(n);
-  final channel = Supabase.instance.client
-      .channel('scores-realtime')
-      .onPostgresChanges(
-        event: PostgresChangeEvent.all,
-        schema: 'public',
-        table: 'Match',
-        callback: (_) {
-          n += 1;
-          controller.add(n);
-        },
-      )
-      .subscribe();
+  final timer = Timer.periodic(const Duration(seconds: 20), (_) {
+    n += 1;
+    controller.add(n);
+  });
   ref.onDispose(() {
-    Supabase.instance.client.removeChannel(channel);
+    timer.cancel();
     controller.close();
   });
   return controller.stream;

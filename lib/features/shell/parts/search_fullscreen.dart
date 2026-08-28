@@ -1,4 +1,6 @@
 part of '../app_shell.dart';
+// ignore: unused_import
+import '../../../core/data/vps_repository.dart';
 
 class _FullScreenSearch extends StatefulWidget {
   const _FullScreenSearch();
@@ -41,88 +43,13 @@ class _FullScreenSearchState extends State<_FullScreenSearch>
   Future<void> _search(String q) async {
     if (!mounted) return;
     setState(() => _loading = true);
-    final sb = Supabase.instance.client;
-    final pattern = '%$q%';
     final merged = <Map<String, dynamic>>[];
     try {
-      final profiles = await sb
-          .from('profiles')
-          .select('id, handle, first_name, last_name, role, avatar_url')
-          .or('handle.ilike.$pattern,first_name.ilike.$pattern,last_name.ilike.$pattern')
-          .limit(20);
-      for (final r in profiles as List) {
-        final m = Map<String, dynamic>.from(r as Map);
-        m['_kind'] = 'user';
-        merged.add(m);
-      }
-    } catch (_) {}
-    try {
-      final leagues = await sb
-          .from('League')
-          .select('id, name, country, type, season')
-          .or('name.ilike.$pattern,country.ilike.$pattern,season.ilike.$pattern')
-          .limit(15);
-      for (final r in leagues as List) {
-        final m = Map<String, dynamic>.from(r as Map);
-        merged.add({
-          'id': m['id'],
-          'handle': (m['name'] as String? ?? 'league')
-              .toLowerCase()
-              .replaceAll(' ', '_'),
-          'first_name': m['name'],
-          'last_name': '',
-          'role': 'league',
-          'avatar_url': null,
-          '_kind': 'league',
-          '_subtitle':
-              '${m['country'] ?? ''} · ${m['type'] ?? ''} · ${m['season'] ?? ''}',
-        });
-      }
-    } catch (_) {}
-    try {
-      final teams = await sb
-          .from('Team')
-          .select('id, name, country, city, logoUrl')
-          .or('name.ilike.$pattern,country.ilike.$pattern,city.ilike.$pattern')
-          .limit(15);
-      for (final r in teams as List) {
-        final m = Map<String, dynamic>.from(r as Map);
-        merged.add({
-          'id': m['id'],
-          'handle': (m['name'] as String? ?? 'team')
-              .toLowerCase()
-              .replaceAll(' ', '_'),
-          'first_name': m['name'],
-          'last_name': '',
-          'role': 'team',
-          'avatar_url': m['logoUrl'],
-          '_kind': 'team',
-          '_subtitle': '${m['city'] ?? ''} · ${m['country'] ?? ''}',
-        });
-      }
-    } catch (_) {}
-    try {
-      final players = await sb
-          .from('Player')
-          .select('id, name, position, nationality, teamId')
-          .or('name.ilike.$pattern,position.ilike.$pattern,nationality.ilike.$pattern')
-          .limit(15);
-      for (final r in players as List) {
-        final m = Map<String, dynamic>.from(r as Map);
-        merged.add({
-          'id': m['id'],
-          'handle': (m['name'] as String? ?? 'player')
-              .toLowerCase()
-              .replaceAll(' ', '_'),
-          'first_name': m['name'],
-          'last_name': '',
-          'role': 'player',
-          'avatar_url': null,
-          '_kind': 'player',
-          '_subtitle': '${m['position'] ?? ''} · ${m['nationality'] ?? ''}',
-        });
-      }
-    } catch (_) {}
+      final res = await VpsRepository().searchAll(q);
+      merged.addAll(res);
+    } catch (e) {
+      debugPrint('[SEARCH] $e');
+    }
     if (mounted) {
       setState(() {
         _results = merged;
@@ -490,14 +417,9 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
       _myLng = position.longitude;
 
       // Save location to profile for future queries
-      final uid = _sb.auth.currentUser?.id;
-      if (uid != null) {
+      if (Supabase.instance.client.auth.currentUser != null) {
         try {
-          await _sb.from('profiles').update({
-            'latitude': _myLat,
-            'longitude': _myLng,
-            'location_updated_at': DateTime.now().toIso8601String(),
-          }).eq('id', uid);
+          await VpsRepository().updateLocation(_myLat!, _myLng!);
         } catch (_) {}
       }
     } catch (e) {
@@ -521,23 +443,20 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
 
     try {
       // Load my profile (country + GPS)
-      final me = await _sb
-          .from('User')
-          .select('currentCountry, countryOfOrigin, location')
-          .eq('id', uid)
-          .maybeSingle();
-      if (me != null) {
+      try {
+        final me = await VpsRepository().getProfile(uid);
         _myCountry = (me['currentCountry'] as String?) ??
-            (me['countryOfOrigin'] as String?) ??
+            (me['country'] as String?) ??
             (me['location'] as String?);
-      }
+      } catch (_) {}
 
       // Load my favorite teams
-      final favTeams = await _sb
-          .from('UserFavorite')
-          .select('targetId')
-          .eq('userId', uid)
-          .eq('targetType', 'TEAM');
+      final favTeams = <Map<String, dynamic>>[];
+      try {
+        final res = await VpsRepository().get<Map<String, dynamic>>(
+          '/v1/social/my-favorites', query: {'type': 'TEAM'});
+        favTeams.addAll((res.data?['favorites'] as List? ?? []).cast<Map<String, dynamic>>());
+      } catch (_) {}
       for (final r in favTeams as List) {
         final id = (r as Map)['targetId'] as String?;
         if (id != null && id.isNotEmpty) _myTeamIds.add(id);
@@ -568,20 +487,17 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
       // ── GPS-based nearby fans ─────────────────────────────────
       if (_myLat != null && _myLng != null &&
           (_filter == _NearbyFilter.all || _filter == _NearbyFilter.country)) {
-        final rows = await _sb.rpc('nearby_fans', params: {
-          'p_lat': _myLat,
-          'p_lng': _myLng,
-          'p_radius_m': 100000, // 100km radius
-          'p_limit': 50,
-        });
-
+        final rows = await VpsRepository().getNearbyFans(
+          lat: _myLat!, lng: _myLng!,
+          radiusM: 100000, limit: 50,
+        );
         final profiles = <Map<String, dynamic>>[];
-        for (final r in rows as List) {
-          final m = Map<String, dynamic>.from(r as Map);
+        for (final m in rows) {
+          final updated = Map<String, dynamic>.from(m);
           final distM = (m['distance_m'] as num?)?.toDouble() ?? 0;
-          m['_distance'] = _formatDistance(distM);
-          m['_reason'] = '${_formatDistance(distM)} away';
-          profiles.add(m);
+          updated['_distance'] = _formatDistance(distM);
+          updated['_reason'] = '\${_formatDistance(distM)} away';
+          profiles.add(updated);
         }
 
         if (mounted) {
@@ -596,11 +512,10 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
 
       // ── Filter: Same Team ─────────────────────────────────────
       if (_filter == _NearbyFilter.team && _myTeamIds.isNotEmpty) {
-        final teamFans = await _sb
-            .from('UserFavorite')
-            .select('userId, targetId, targetName')
-            .inFilter('targetId', _myTeamIds.toList())
-            .neq('userId', _myUid!);
+        final teamFansRes = await VpsRepository().get<Map<String, dynamic>>(
+            '/v1/social/fans-by-teams',
+            query: {'ids': _myTeamIds.join(','), 'exclude': _myUid!});
+        final teamFans = (teamFansRes.data?['fans'] as List? ?? []).cast<Map<String,dynamic>>();
         final uids = <String>{};
         final reasons = <String, String>{};
         for (final r in teamFans as List) {
@@ -617,11 +532,10 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
 
       // ── Filter: Same Sport ────────────────────────────────────
       if (_filter == _NearbyFilter.sport && _mySportIds.isNotEmpty) {
-        final sportFans = await _sb
-            .from('UserSport')
-            .select('userId, sportId')
-            .inFilter('sportId', _mySportIds.toList())
-            .neq('userId', _myUid!);
+        final sportFansRes = await VpsRepository().get<Map<String, dynamic>>(
+            '/v1/social/fans-by-sports',
+            query: {'ids': _mySportIds.join(','), 'exclude': _myUid!});
+        final sportFans = (sportFansRes.data?['fans'] as List? ?? []).cast<Map<String,dynamic>>();
         final uids = <String>{};
         final reasons = <String, String>{};
         for (final r in sportFans as List) {
@@ -638,11 +552,10 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
 
       // ── Filter: Fan Engagements ───────────────────────────────
       if (_filter == _NearbyFilter.engagements && _myTeamIds.isNotEmpty) {
-        final engagements = await _sb
-            .from('UserFavorite')
-            .select('userId, targetId, targetName')
-            .inFilter('targetId', _myTeamIds.toList())
-            .neq('userId', _myUid!);
+        final engagementsRes = await VpsRepository().get<Map<String, dynamic>>(
+            '/v1/social/fans-by-teams',
+            query: {'ids': _myTeamIds.join(','), 'exclude': _myUid!});
+        final engagements = (engagementsRes.data?['fans'] as List? ?? []).cast<Map<String,dynamic>>();
         final uids = <String>{};
         final reasons = <String, String>{};
         for (final r in engagements as List) {
@@ -659,12 +572,10 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
 
       // ── Fallback: Same Country (text-based) ───────────────────
       if (_myCountry != null && _myCountry!.isNotEmpty) {
-        final countryFans = await _sb
-            .from('User')
-            .select('id, handle, name, avatarUrl, role, currentCountry, location')
-            .or('currentCountry.ilike.%$_myCountry%,countryOfOrigin.ilike.%$_myCountry%,location.ilike.%$_myCountry%')
-            .neq('id', _myUid!)
-            .limit(50);
+        final countryFansRes = await VpsRepository().get<Map<String, dynamic>>(
+            '/v1/social/fans-by-country',
+            query: {'country': _myCountry!, 'exclude': _myUid!, 'limit': '50'});
+        final countryFans = (countryFansRes.data?['fans'] as List? ?? []).cast<Map<String,dynamic>>();
         final profiles = <Map<String, dynamic>>[];
         for (final r in countryFans as List) {
           final m = Map<String, dynamic>.from(r as Map);
@@ -721,13 +632,12 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
     for (var i = 0; i < uidList.length; i += 100) {
       final chunk = uidList.sublist(
           i, (i + 100 > uidList.length) ? uidList.length : i + 100);
-      final rows = await _sb
-          .from('User')
-          .select('id, handle, name, avatarUrl, role, currentCountry, location, bio')
-          .inFilter('id', chunk);
-      for (final r in rows as List) {
-        final m = Map<String, dynamic>.from(r as Map);
-        m['_reason'] = reasons[m['id']] ?? 'Nearby fan';
+      final batchRes = await VpsRepository().post<Map<String, dynamic>>(
+          '/v1/social/profiles/batch', data: {'ids': chunk});
+      final profileMap = (batchRes.data?['profiles'] as Map? ?? {});
+      for (final entry in profileMap.entries) {
+        final m = Map<String, dynamic>.from(entry.value as Map);
+        m['_reason'] = reasons[entry.key] ?? 'Nearby fan';
         m['_distance'] = null;
         profiles.add(m);
       }
@@ -1339,39 +1249,24 @@ class _FanActionButtonsState extends State<_FanActionButtons> {
   }
 
   Future<void> _checkFollowStatus() async {
-    final me = _sb.auth.currentUser?.id;
-    if (me == null) return;
+    if (Supabase.instance.client.auth.currentUser == null) return;
     try {
-      final row = await _sb
-          .from('Follow')
-          .select()
-          .eq('followerId', me)
-          .eq('followingId', widget.uid)
-          .maybeSingle();
-      if (mounted) setState(() => _following = row != null);
+      final following = await VpsRepository().isFollowing(widget.uid);
+      if (mounted) setState(() => _following = following);
     } catch (_) {}
   }
 
   Future<void> _toggleFollow() async {
     if (_busy) return;
-    final me = _sb.auth.currentUser?.id;
-    if (me == null) return;
+    if (Supabase.instance.client.auth.currentUser == null) return;
     setState(() => _busy = true);
     final wasFollowing = _following;
     setState(() => _following = !wasFollowing);
     try {
       if (wasFollowing) {
-        await _sb
-            .from('Follow')
-            .delete()
-            .eq('followerId', me)
-            .eq('followingId', widget.uid);
+        await VpsRepository().unfollowUser(widget.uid);
       } else {
-        await _sb.from('Follow').insert({
-          'followerId': me,
-          'followingId': widget.uid,
-          'createdAt': DateTime.now().toIso8601String(),
-        });
+        await VpsRepository().followUser(widget.uid);
       }
     } catch (e) {
       if (mounted) {
