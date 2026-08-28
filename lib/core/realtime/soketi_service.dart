@@ -11,6 +11,7 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:pusher_channels_flutter/pusher_channels_flutter.dart';
 
 import '../../app/config/env.dart';
@@ -36,6 +37,11 @@ class SoketiService {
   bool get isConnected => _connected;
 
   Future<void> init({required String userId, required String accessToken}) async {
+    // pusher_channels_flutter doesn't support web — use polling fallback on web
+    if (kIsWeb) {
+      debugPrint('[Soketi] Web platform — polling fallback active');
+      return;
+    }
     if (_initialized) {
       await _subscribePrivate(userId);
       return;
