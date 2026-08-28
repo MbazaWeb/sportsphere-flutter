@@ -174,15 +174,11 @@ adminRouter.post('/users', async (c) => {
     await c.req.json<any>()
   if (!email || !password) return c.json({ error: 'email and password required' }, 400)
 
-  // Use VPS auth register — same flow as self-registration
-  const { register } = await import('./auth.js')
-  const userId = crypto.randomUUID()
-  const { hashPassword } = await import('../lib/db.js').then(() => ({
-    hashPassword: async (pw: string) => Bun.password.hash(pw, { algorithm: 'bcrypt', cost: 12 })
-  }))
+  const userId     = crypto.randomUUID()
   const hash       = await Bun.password.hash(password, { algorithm: 'bcrypt', cost: 12 })
   const userRole   = role ?? 'fan'
-  const finalHandle = (handle ?? email.split('@')[0]).toLowerCase().replace(/[^a-z0-9_]/g,'').slice(0,30) || 'user'
+  const finalHandle = ((handle ?? email.split('@')[0]) as string)
+    .toLowerCase().replace(/[^a-z0-9_]/g,'').slice(0,30) || 'user'
   const name       = [firstName, lastName].filter(Boolean).join(' ') || finalHandle
 
   await execute(
@@ -616,7 +612,7 @@ adminRouter.post('/reconcile', async (c) => {
       `SELECT id, "${nameCol}", "${slugCol}", "${logo}", "accountUserId" FROM public."${table}"
        WHERE "accountUserId" IS NULL AND "isActive"=true LIMIT 100`
     )
-    for (const r: any of rows) {
+    for (const row of rows) { const r = row as any;
       const handle = (r[slugCol]??r[nameCol]??'').toLowerCase().replace(/[^a-z0-9_]/g,'').slice(0,30)
       if (!handle || !r.id || !r[nameCol]) continue
       try {
