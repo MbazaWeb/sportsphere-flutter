@@ -142,9 +142,11 @@ const honoFetch = app.fetch.bind(app)
 export default {
   port: 3000,
   async fetch(req: Request, server: any) {
-    const path = new URL(req.url).pathname
+    const path    = new URL(req.url).pathname
+    const upgrade = req.headers.get('upgrade')?.toLowerCase()
     // Intercept WebSocket upgrades for /app/{key} BEFORE Hono
-    if (path.startsWith('/app/')) {
+    // Check both path AND Upgrade header (must be 'websocket')
+    if (path.startsWith('/app/') && upgrade === 'websocket') {
       const ok = server.upgrade(req, { data: { socketId: '', channels: new Set<string>() } })
       if (ok) return undefined
       return new Response('WebSocket upgrade failed', { status: 400 })
