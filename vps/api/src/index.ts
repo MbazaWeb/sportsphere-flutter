@@ -61,6 +61,11 @@ app.post('/v1/mpesa/callback', mpesaCallbackHandler)
 
 // ── Public auth routes (no JWT required) ─────────────────────────────────────
 
+// WebSocket stats — internal monitoring (no auth)
+app.get('/ws/stats', async (c) => {
+  return c.json({ ok: true, ...getStats() })
+})
+
 // Search: public — guests can search without JWT
 app.get('/v1/social/search', async (c) => {
   const { query: dbQuery } = await import('./lib/db.js')
