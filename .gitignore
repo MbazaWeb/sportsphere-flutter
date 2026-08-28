@@ -74,3 +74,7 @@ deploy.env
 logs/
 debug-info/
 deploy_fixed.ps1
+
+# Bun / VPS
+vps/api/bun.lock
+vps/api/node_modules/
