@@ -15,7 +15,7 @@ nearbyRouter.get('/', async (c) => {
   const fans = await query(`
     SELECT
       u.id, u.handle, u.name, u."avatarUrl", u.role,
-      p.latitude, p.longitude, p."currentCountry" as "currentCountry",
+      p.latitude, p.longitude, p.country as "currentCountry",
       (6371000.0 * 2.0 * ASIN(SQRT(
         POWER(SIN(RADIANS(p.latitude  - $1) / 2.0), 2) +
         COS(RADIANS($1)) * COS(RADIANS(p.latitude)) *
