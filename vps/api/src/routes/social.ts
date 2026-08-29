@@ -441,9 +441,13 @@ socialRouter.get('/messages', async (c) => {
 socialRouter.get('/communities', async (c) => {
   const limit = Math.min(Number(c.req.query('limit') ?? 20), 100)
   const rows  = await query(
-    `SELECT c.*, t."logoUrl" as "imageUrl"
+    `SELECT c.*,
+            CASE
+              WHEN c.name ILIKE '%simba%' THEN (SELECT "logoUrl" FROM public."Team" WHERE name ILIKE '%simba%' AND "logoUrl" IS NOT NULL LIMIT 1)
+              WHEN c.name ILIKE '%yanga%' OR c.name ILIKE '%young african%' THEN (SELECT "logoUrl" FROM public."Team" WHERE name ILIKE '%young african%' AND "logoUrl" IS NOT NULL LIMIT 1)
+              ELSE (SELECT t2."logoUrl" FROM public."Team" t2 WHERE t2.id = c."teamId" AND t2."logoUrl" IS NOT NULL LIMIT 1)
+            END as "imageUrl"
      FROM public."Community" c
-     LEFT JOIN public."Team" t ON LOWER(t.name) = LOWER(c.topic) OR LOWER(t.name) = LOWER(c.name)
      ORDER BY c."memberCount" DESC LIMIT $1`, [limit]
   )
   return c.json({ ok: true, communities: rows })
