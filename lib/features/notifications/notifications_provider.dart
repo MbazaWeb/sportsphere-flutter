@@ -162,7 +162,7 @@ class NotificationsNotifier extends Notifier<NotificationState> {
       if (!ref.mounted) return;
       // Only poll if user is logged in
       final auth = ref.read(authControllerProvider);
-      if (auth.status == AuthStatus.authenticated) start();
+      if (auth.isAuthenticated) start();
     });
     ref.onDispose(stop);
     return const NotificationState();
@@ -184,7 +184,7 @@ class NotificationsNotifier extends Notifier<NotificationState> {
   Future<void> load({int limit = 50}) async {
     // Skip if not logged in — avoids 401 on app start
     final auth = ref.read(authControllerProvider);
-    if (auth.status != AuthStatus.authenticated) return;
+    if (!auth.isAuthenticated) return;
     state = state.copyWith(isLoading: true);
     try {
       final items = await _vps.getNotifications(limit: limit);
