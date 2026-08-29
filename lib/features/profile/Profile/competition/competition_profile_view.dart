@@ -1,3 +1,4 @@
+import '../../../core/data/vps_repository.dart';
 import '../../../../core/data/vps_supabase_compat.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -61,8 +62,9 @@ class _CompetitionProfileViewState extends State<CompetitionProfileView>
       final id = widget.competitionId;
       if (id != null && id.isNotEmpty) {
         try {
-          row = await sb.from('Competition').select().eq('id', id).maybeSingle();
-          row ??= await sb.from('League').select().eq('id', id).maybeSingle();
+          final r1 = await const VpsRepository().get<Map<String,dynamic>>('/v1/admin/leagues');
+          final leagues = (r1.data?['leagues'] as List? ?? []).cast<Map<String,dynamic>>();
+          row = leagues.where((l) => l['id'] == id).firstOrNull;
         } catch (e) {
           debugPrint('competition load by id: $e');
         }
@@ -73,7 +75,7 @@ class _CompetitionProfileViewState extends State<CompetitionProfileView>
         if (key.isNotEmpty) {
           try {
             row = await sb
-                .from('Competition')
+                // competition from VPS
                 .select()
                 .or('slug.eq.$key,name.ilike.%$key%')
                 .limit(1)
@@ -84,7 +86,7 @@ class _CompetitionProfileViewState extends State<CompetitionProfileView>
           if (row == null) {
             try {
               final rows = await sb
-                  .from('League')
+                  // league from VPS
                   .select()
                   .or('slug.eq.$key,name.ilike.%$key%')
                   .limit(1);
@@ -113,7 +115,7 @@ class _CompetitionProfileViewState extends State<CompetitionProfileView>
         final name = (row['name'] ?? '').toString();
         if (name.isNotEmpty) {
           final mRows = await sb
-              .from('Match')
+              // matches now from VPS
               .select()
               .ilike('league', '%$name%')
               .order('kickoffAt', ascending: false)

@@ -1,3 +1,4 @@
+import '../../../core/data/vps_repository.dart';
 import '../../../../core/data/vps_supabase_compat.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -62,7 +63,9 @@ class _CoachProfileViewState extends State<CoachProfileView>
       final id = widget.coachId;
       if (id != null && id.isNotEmpty) {
         try {
-          row = await sb.from('Coach').select().eq('id', id).maybeSingle();
+          final coachRes = await const VpsRepository().get<Map<String,dynamic>>('/v1/admin/coaches');
+          final coaches = (coachRes.data?['coaches'] as List? ?? []).cast<Map<String,dynamic>>();
+          row = coaches.where((c) => c['id'] == id).firstOrNull;
         } catch (e) {
           debugPrint('coach load by id: $e');
         }
@@ -72,7 +75,7 @@ class _CoachProfileViewState extends State<CoachProfileView>
         if (key.isNotEmpty) {
           try {
             row = await sb
-                .from('Coach')
+                // coach from VPS
                 .select()
                 .or('slug.eq.$key,name.ilike.%$key%')
                 .limit(1)
@@ -97,7 +100,9 @@ class _CoachProfileViewState extends State<CoachProfileView>
       final teamId = row['teamId']?.toString();
       if (teamId != null && teamId.isNotEmpty) {
         try {
-          team = await sb.from('Team').select().eq('id', teamId).maybeSingle();
+          final teamRes = await const VpsRepository().get<Map<String,dynamic>>('/v1/admin/teams');
+          final teams = (teamRes.data?['teams'] as List? ?? []).cast<Map<String,dynamic>>();
+          team = teams.where((t) => t['id'] == teamId).firstOrNull;
         } catch (e) {
           debugPrint('coach team load: $e');
         }
@@ -108,7 +113,7 @@ class _CoachProfileViewState extends State<CoachProfileView>
       if (teamId != null && teamId.isNotEmpty) {
         try {
           final rows = await sb
-              .from('Player')
+              // player from VPS
               .select()
               .eq('teamId', teamId)
               .order('shirtNumber')

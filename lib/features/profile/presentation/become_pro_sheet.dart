@@ -1,3 +1,4 @@
+import '../../../core/data/vps_repository.dart';
 import '../../../core/data/vps_supabase_compat.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -92,7 +93,7 @@ class _BecomeProSheetState extends ConsumerState<BecomeProSheet> {
       // Insert into RoleRequest table
       bool saved = false;
       try {
-        await sb.from('RoleRequest').insert({
+        await const VpsRepository().post<void>('/v1/claims/role-request', data: {
           'id': reqId,
           'userId': uid,
           'requestedRole': role.id,
@@ -106,7 +107,7 @@ class _BecomeProSheetState extends ConsumerState<BecomeProSheet> {
       // Fallback: Claim table
       if (!saved) {
         try {
-          await sb.from('Claim').insert({
+          await const VpsRepository().post<void>('/v1/claims', data: {
             'id': reqId,
             'claimantId': uid,
             'profileType': role.id,

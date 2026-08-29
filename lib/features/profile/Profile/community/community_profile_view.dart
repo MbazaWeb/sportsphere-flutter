@@ -43,13 +43,19 @@ class _CommunityProfileViewState extends State<CommunityProfileView> {
       Map<String, dynamic>? row;
 
       if (widget.communityId != null) {
-        final r = await _sb.from('Community').select().eq('id', widget.communityId!).maybeSingle();
+        final res = await const VpsRepository().get<Map<String,dynamic>>('/v1/social/communities');
+        final all = (res.data?['communities'] as List? ?? []).cast<Map<String,dynamic>>();
+        final r = all.firstWhere((c) => c['id'] == widget.communityId, orElse: () => <String,dynamic>{});
         row = r != null ? Map<String, dynamic>.from(r) : null;
       } else if (widget.handle != null) {
         final h = widget.handle!.replaceAll('@', '');
         // Try handle column first, fall back to name match
-        var r = await _sb.from('Community').select().eq('handle', h).maybeSingle();
-        r ??= await _sb.from('Community').select().ilike('name', '%$h%').maybeSingle();
+        final res2 = await const VpsRepository().get<Map<String,dynamic>>('/v1/social/communities');
+        final all2 = (res2.data?['communities'] as List? ?? []).cast<Map<String,dynamic>>();
+        final r = all2.firstWhere((c) =>
+          (c['id'] as String? ?? '') == h ||
+          (c['name'] as String? ?? '').toLowerCase().contains(h.toLowerCase()),
+          orElse: () => <String,dynamic>{});
         row = r != null ? Map<String, dynamic>.from(r) : null;
       }
 
@@ -62,7 +68,10 @@ class _CommunityProfileViewState extends State<CommunityProfileView> {
       final uid = _sb.auth.currentUser?.id;
       bool joined = false;
       if (uid != null) {
-        final mem = await _sb.from('CommunityMember')
+        final memRes = await const VpsRepository().get<Map<String,dynamic>>(
+            '/v1/social/communities/\${id}/member');
+        final mem = memRes.data?['isMember'] == true ? {'userId': uid} : null;
+        final _unused = await Future.value(null); // was: _sb.from('CommunityMember')
             .select('id')
             .eq('communityId', row['id']?.toString() ?? '')
             .eq('userId', uid)

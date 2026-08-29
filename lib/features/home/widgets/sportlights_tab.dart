@@ -2377,7 +2377,12 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
       if (uid == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Sign in to record share')),
+            SnackBar(content: Row(children: [
+              const Text('Sign in to share'),
+              const Spacer(),
+              TextButton(onPressed: () => context.push('/login'),
+                  child: const Text('Sign in', style: TextStyle(color: Color(0xFF168CFF)))),
+            ])),
           );
         }
         return;
@@ -2399,9 +2404,7 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
   Future<void> _onLike() async {
     // Guard: must be signed in
     if (Supabase.instance.client.auth.currentUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sign in to like posts'),
-            behavior: SnackBarBehavior.floating));
+      _showSignInPrompt(context, 'Like posts');
       return;
     }
     final id = widget.item.postId;
@@ -2944,7 +2947,12 @@ class _ActionRowState extends State<_ActionRow> {
     if (uid == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sign in to follow')),
+          SnackBar(content: Row(children: [
+            const Text('Sign in to follow'),
+            const Spacer(),
+            TextButton(onPressed: () => context.push('/login'),
+                child: const Text('Sign in', style: TextStyle(color: Color(0xFF168CFF)))),
+          ])),
         );
       }
       return;
@@ -2989,7 +2997,12 @@ class _ActionRowState extends State<_ActionRow> {
     final uid = Supabase.instance.client.auth.currentUser?.id;
     if (uid == null) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sign in to become a fan')));
+        SnackBar(content: Row(children: [
+          const Text('Sign in to become a fan'),
+          const Spacer(),
+          TextButton(onPressed: () => context.push('/login'),
+              child: const Text('Sign in', style: TextStyle(color: Color(0xFF168CFF)))),
+        ])));
       return;
     }
     setState(() => _isFan = next);

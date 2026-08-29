@@ -1242,7 +1242,8 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
         if (postType == 'prediction') {
           try {
             final pred = await VpsSupabaseCompat.client
-                .from('Prediction').select().eq('postId', r['id']).maybeSingle();
+                // Prediction from VPS
+                null;
             if (pred != null) {
               predHome = pred['homeTeam'] as String?;
               predAway = pred['awayTeam'] as String?;
