@@ -188,6 +188,18 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
+  // ── Forgot password ────────────────────────────────────────────────────────
+  Future<bool> forgotPassword({required String email}) async {
+    try {
+      final repo = ref.read(authRepositoryProvider);
+      await repo.forgotPassword(email: email);
+      return true;
+    } catch (e) {
+      debugPrint('[AUTH] forgotPassword: \$e');
+      return false;
+    }
+  }
+
   // ── Sign out ───────────────────────────────────────────────────────────────
   Future<void> signOut() async {
     try {

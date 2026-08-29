@@ -267,6 +267,10 @@ class AuthRepository {
     await _vps.forgotPassword(email);
   }
 
+  Future<void> forgotPassword({required String email}) async {
+    if (email.isNotEmpty) await _vps.forgotPassword(email);
+  }
+
   Future<void> resendConfirmation(String email) async {
     await _vps.post<void>('/v1/auth/resend-confirmation',
         data: {'email': email.trim().toLowerCase()});

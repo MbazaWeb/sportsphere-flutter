@@ -61,9 +61,63 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         );
 
     if (!mounted) return;
-    if (ok) {
-      context.go('/home');
+    if (ok) { context.go('/home'); return; }
+
+    // Handle migrated users who haven't set a VPS password yet
+    final authState = ref.read(authControllerProvider);
+    final err = authState.errorMessage ?? '';
+    if (err.contains('PASSWORD_NOT_SET') || err.contains('set your Playify password')) {
+      _showPasswordResetDialog();
     }
+  }
+
+  void _showPasswordResetDialog() {
+    final email = _identifierCtrl.text.trim();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0D1F35),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(children: [
+          Icon(Icons.lock_reset_rounded, color: Color(0xFF168CFF), size: 24),
+          SizedBox(width: 10),
+          Text('Set Your Password', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
+        ]),
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text(
+            'Your account was migrated to Playify. Please set a new password to continue.',
+            style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
+          ),
+          const SizedBox(height: 12),
+          Text('We will send a reset link to your email.',
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12)),
+        ]),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel', style: TextStyle(color: Colors.white.withValues(alpha: 0.4))),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF168CFF)),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              // Send forgot-password email
+              await ref.read(authControllerProvider.notifier).forgotPassword(
+                email: email.contains('@') ? email : '',
+              );
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text('Password reset link sent — check your email'),
+                  behavior: SnackBarBehavior.floating,
+                  backgroundColor: Color(0xFF168CFF),
+                ));
+              }
+            },
+            child: const Text('Send Reset Link', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

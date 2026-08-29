@@ -73,6 +73,17 @@ class ApiClient {
       return await run();
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
+        // Check for PASSWORD_NOT_SET from migrated users
+        final body = e.response?.data;
+        final code = body is Map ? body['code'] as String? : null;
+        final msg  = body is Map ? body['error'] as String? : null;
+        if (code == 'PASSWORD_NOT_SET') {
+          throw ApiException(
+            message: msg ?? 'Please reset your password to continue.',
+            statusCode: 401,
+            code: 'PASSWORD_NOT_SET',
+          );
+        }
         throw ApiException(
           message: 'Session expired. Please log in again.',
           statusCode: 401,
