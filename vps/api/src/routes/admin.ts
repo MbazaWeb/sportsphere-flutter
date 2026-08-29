@@ -660,3 +660,84 @@ adminRouter.post('/reconcile', async (c) => {
   }
   return c.json({ ok: true, reconciled: report.length, report })
 })
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ADDITIONS — routes the Flutter admin client calls but were previously missing
+// ══════════════════════════════════════════════════════════════════════════════
+
+// DELETE /v1/admin/matches/:id — delete a match
+adminRouter.delete('/matches/:id', async (c) => {
+  const id = c.req.param('id')
+  await execute(`DELETE FROM public."Match" WHERE id=$1`, [id])
+  await broadcast('public:matches', 'match.updated', { id, deleted: true }).catch(() => {})
+  return c.json({ ok: true })
+})
+
+// PATCH /v1/admin/news/:id — update a news article
+adminRouter.patch('/news/:id', async (c) => {
+  const id = c.req.param('id')
+  const b  = await c.req.json<any>()
+  const sets: string[] = []; const params: unknown[] = []
+  const add = (col: string, val: unknown) => { params.push(val); sets.push(`"${col}"=$${params.length}`) }
+  if (b.title       !== undefined) add('title', b.title)
+  if (b.body        !== undefined) { add('body', b.body); if (b.summary === undefined) add('summary', String(b.body).slice(0, 200)) }
+  if (b.summary     !== undefined) add('summary', b.summary)
+  if (b.category    !== undefined) add('category', b.category)
+  if (b.source      !== undefined) add('source', b.source)
+  if (b.imageUrl    !== undefined) add('imageUrl', b.imageUrl)
+  if (b.coverUrl    !== undefined) add('imageUrl', b.coverUrl)
+  if (b.cover_url   !== undefined) add('imageUrl', b.cover_url)
+  if (b.themeColor  !== undefined) add('themeColor', b.themeColor)
+  if (b.theme_color !== undefined) add('themeColor', b.theme_color)
+  if (b.isBreaking  !== undefined) add('is_breaking', !!b.isBreaking)
+  if (b.is_breaking !== undefined) add('is_breaking', !!b.is_breaking)
+  if (b.status      !== undefined) { add('status', b.status); if (b.status === 'published') add('publishedAt', new Date()) }
+  if (!sets.length) return c.json({ error: 'Nothing to update' }, 400)
+  params.push(id)
+  const rows = await query(
+    `UPDATE public."NewsItem" SET ${sets.join(',')}, "updatedAt"=NOW() WHERE id=$${params.length} RETURNING *`,
+    params
+  )
+  if (!rows.length) return c.json({ error: 'News item not found' }, 404)
+  return c.json({ ok: true, news: rows[0] })
+})
+
+// GET /v1/admin/role-requests?status=pending — list PRO role requests
+adminRouter.get('/role-requests', async (c) => {
+  const status = c.req.query('status') ?? 'pending'
+  const limit  = Math.min(Number(c.req.query('limit') ?? 50), 200)
+  const rows   = await query(
+    `SELECT r.*, p.handle, p.first_name, p.last_name, p.role AS "currentRole"
+       FROM public."RoleRequest" r
+       LEFT JOIN public.profiles p ON p.id::text = r."userId"
+      WHERE r.status=$1
+      ORDER BY r."createdAt" ASC LIMIT $2`,
+    [status, limit]
+  )
+  return c.json({ ok: true, requests: rows })
+})
+
+// PATCH /v1/admin/role-requests/:id — approve / reject a PRO request
+adminRouter.patch('/role-requests/:id', async (c) => {
+  const id = c.req.param('id')
+  const b  = await c.req.json<any>()
+  const status = String(b.status ?? '')
+  if (!['approved', 'rejected', 'pending'].includes(status)) {
+    return c.json({ error: "status must be 'approved' | 'rejected' | 'pending'" }, 400)
+  }
+  const req = await queryOne<{ id: string; userId: string; requestedRole: string }>(
+    `SELECT id,"userId","requestedRole" FROM public."RoleRequest" WHERE id=$1`, [id]
+  )
+  if (!req) return c.json({ error: 'Role request not found' }, 404)
+  await execute(
+    `UPDATE public."RoleRequest" SET status=$1, notes=COALESCE($2, notes), "reviewedAt"=NOW() WHERE id=$3`,
+    [status, b.reviewNotes ?? b.notes ?? null, id]
+  )
+  // On approval, cascade the role to profiles + User (client never writes roles directly)
+  if (status === 'approved') {
+    const role = String(b.role ?? req.requestedRole)
+    await execute(`UPDATE public.profiles SET role=$1 WHERE id::text=$2`, [role, req.userId]).catch(() => {})
+    await execute(`UPDATE public."User" SET role=$1 WHERE id=$2`, [role, req.userId]).catch(() => {})
+  }
+  return c.json({ ok: true })
+})

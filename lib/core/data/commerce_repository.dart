@@ -102,15 +102,15 @@ class CommerceRepository {
   }
 
   Future<void> leaveCommunity(String communityId) async {
-    await _vps.post<void>('/v1/social/communities/$communityId/leave');
+    await _vps.delete<void>('/v1/social/communities/$communityId/leave');
   }
 
   Future<bool> isMember(String communityId) async {
     try {
       final res = await _vps.get<Map<String, dynamic>>(
-        '/v1/social/communities/$communityId/membership',
+        '/v1/social/communities/$communityId/member',
       );
-      return res.data?['member'] as bool? ?? false;
+      return res.data?['isMember'] as bool? ?? false;
     } catch (_) {
       return false;
     }

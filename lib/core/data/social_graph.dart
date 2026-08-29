@@ -1,4 +1,5 @@
 import '../../core/data/vps_supabase_compat.dart';
+import '../../core/data/vps_repository.dart';
 import 'package:flutter/foundation.dart';
 
 /// Represents a person in the social graph
@@ -55,31 +56,21 @@ class SocialGraph {
   Future<String?> resolveId(String idOrHandle) => _resolve(idOrHandle);
 
   /// Check if user [me] is following [targetId]
+  /// (delegates to the VPS status route — the compat shim's Follow select
+  /// only honors the first filter and cannot express this compound check)
   Future<bool> isFollowing(String me, String targetId) async {
     try {
-      final rows = await _sb
-          .from('Follow')
-          .select('followerId')
-          .eq('followerId', me)
-          .eq('followingId', targetId)
-          .limit(1);
-      return (rows as List).isNotEmpty;
+      return await const VpsRepository().isFollowing(targetId);
     } catch (e) {
       debugPrint('isFollowing($me -> $targetId) error: $e');
       return false;
     }
   }
 
-  /// Check if user [me] is a fan of [targetId]
-  Future<bool> isFan(String me, String targetId) async {
+  /// Check if user [me] is a fan of [targetId] (entity of [entityType])
+  Future<bool> isFan(String me, String targetId, {String entityType = 'team'}) async {
     try {
-      final rows = await _sb
-          .from('fans')
-          .select('fan_id')
-          .eq('fan_id', me)
-          .eq('target_id', targetId)
-          .limit(1);
-      return (rows as List).isNotEmpty;
+      return await const VpsRepository().isFan(targetId, entityType: entityType);
     } catch (e) {
       debugPrint('isFan($me -> $targetId) error: $e');
       return false;

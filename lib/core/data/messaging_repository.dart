@@ -43,11 +43,11 @@ class MessagingRepository {
     if (unique.isEmpty) return {};
     final out = <String, PeerProfile>{};
     try {
-      final res = await _vps.get<Map<String, dynamic>>(
-        '/v1/social/users/batch',
-        query: {'ids': unique.join(',')},
+      final res = await _vps.post<Map<String, dynamic>>(
+        '/v1/social/profiles/batch',
+        data: {'ids': unique},
       );
-      final users = (res.data?['users'] as List? ?? []).cast<Map<String, dynamic>>();
+      final users = (res.data?['profiles'] as List? ?? []).cast<Map<String, dynamic>>();
       for (final u in users) {
         final id = '${u['id']}';
         final fn = (u['first_name'] ?? u['firstName'] ?? '') as String;
@@ -73,7 +73,7 @@ class MessagingRepository {
 
   Future<List<Map<String, dynamic>>> listConversations() async {
     try {
-      final res = await _vps.get<Map<String, dynamic>>('/v1/social/conversations');
+      final res = await _vps.get<Map<String, dynamic>>('/v1/social/messages');
       return ((res.data?['conversations']) as List? ?? []).cast<Map<String, dynamic>>();
     } catch (e) {
       debugPrint('listConversations: $e');

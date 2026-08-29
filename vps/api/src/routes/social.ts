@@ -712,3 +712,117 @@ socialRouter.get('/posts/by-tag', async (c) => {
   )
   return c.json({ ok: true, posts: rows })
 })
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ADDITIONS — routes the Flutter client calls but were previously missing
+// ══════════════════════════════════════════════════════════════════════════════
+
+// PATCH /v1/social/posts/:id — edit own post
+socialRouter.patch('/posts/:id', async (c) => {
+  const userId = c.get('userId') as string
+  const postId = c.req.param('id')
+  const b = await c.req.json<any>()
+  const allowed: Record<string, unknown> = {}
+  if (b.content     !== undefined) allowed.content     = String(b.content)
+  if (b.mediaUrls   !== undefined) allowed.mediaUrls   = JSON.stringify(b.mediaUrls ?? [])
+  if (b.hashtags    !== undefined) allowed.hashtags    = JSON.stringify(b.hashtags ?? [])
+  if (b.teamTag     !== undefined) allowed.teamTag     = b.teamTag
+  if (b.playerTag   !== undefined) allowed.playerTag   = b.playerTag
+  if (b.sportTag    !== undefined) allowed.sportTag    = b.sportTag
+  if (b.communityId !== undefined) allowed.communityId = b.communityId
+  if (b.matchId     !== undefined) allowed.matchId     = b.matchId
+  if (b.isBreaking  !== undefined) allowed.isBreaking  = !!b.isBreaking
+  const keys = Object.keys(allowed)
+  if (!keys.length) return c.json({ error: 'Nothing to update' }, 400)
+  const sets = keys.map((k, i) => `"${k}"=$${i + 2}`).join(', ')
+  const rows = await query(
+    `UPDATE public."Post" SET ${sets}, "updatedAt"=NOW()
+      WHERE id=$1 AND "userId"=$2 RETURNING *`,
+    [postId, userId, ...keys.map(k => allowed[k])]
+  )
+  if (!rows.length) return c.json({ error: 'Post not found or not yours' }, 404)
+  return c.json({ ok: true, post: rows[0] })
+})
+
+// DELETE /v1/social/posts/:id/share — undo own share
+socialRouter.delete('/posts/:id/share', async (c) => {
+  const userId = c.get('userId') as string
+  const postId = c.req.param('id')
+  await query(`
+    WITH del AS (
+      DELETE FROM public."PostShare" WHERE "postId"=$1 AND "userId"=$2 RETURNING 1
+    )
+    UPDATE public."Post" SET "shareCount"=GREATEST(COALESCE("shareCount",0)-1,0)
+    WHERE id=$1 AND EXISTS(SELECT 1 FROM del)
+  `, [postId, userId])
+  const row = await queryOne<{shareCount:number}>(`SELECT "shareCount" FROM public."Post" WHERE id=$1`,[postId])
+  return c.json({ ok: true, shareCount: row?.shareCount ?? 0 })
+})
+
+// GET /v1/social/communities/:id/members — member list with profile info
+socialRouter.get('/communities/:id/members', async (c) => {
+  const communityId = c.req.param('id')
+  const limit = Math.min(Number(c.req.query('limit') ?? 100), 500)
+  const rows = await query(
+    `SELECT cm."userId", cm.role AS "memberRole", cm."joinedAt",
+            p.handle, p.first_name, p.last_name, p.role, p.avatar_url
+       FROM public."CommunityMember" cm
+       LEFT JOIN public.profiles p ON p.id::text = cm."userId"
+      WHERE cm."communityId"=$1
+      ORDER BY cm."joinedAt" ASC LIMIT $2`,
+    [communityId, limit]
+  )
+  return c.json({ ok: true, members: rows })
+})
+
+// GET /v1/social/players/search — player lookup for signed-in users
+socialRouter.get('/players/search', async (c) => {
+  const q     = c.req.query('q') ?? ''
+  const limit = Math.min(Number(c.req.query('limit') ?? 20), 100)
+  if (!q.trim()) return c.json({ ok: true, players: [] })
+  const rows = await query(
+    `SELECT id, name, slug, "teamId", position
+       FROM public."Player"
+      WHERE name ILIKE $1 AND "isActive"=true
+      ORDER BY name LIMIT $2`,
+    [`%${q}%`, limit]
+  )
+  return c.json({ ok: true, players: rows })
+})
+
+// GET /v1/social/players/:id/stats — aggregated career stats
+socialRouter.get('/players/:id/stats', async (c) => {
+  const playerId = c.req.param('id')
+  const season   = c.req.query('season')
+  const row = await queryOne<any>(
+    `SELECT COUNT(*)::int                    AS played,
+            COALESCE(SUM(goals),0)::int      AS goals,
+            COALESCE(SUM(assists),0)::int    AS assists,
+            COALESCE(SUM(saves),0)::int      AS saves,
+            COALESCE(SUM(minutes),0)::int    AS minutes,
+            COALESCE(SUM("yellowCards"),0)::int AS "yellowCards",
+            COALESCE(SUM("redCards"),0)::int    AS "redCards"
+       FROM public."PlayerMatchStat"
+      WHERE "playerId"=$1 ${season ? 'AND season=$2' : ''}`,
+    season ? [playerId, season] : [playerId]
+  )
+  return c.json({ ok: true, ...(row ?? { played: 0 }) })
+})
+
+// GET /v1/social/fans-of/:userId — entities a user follows as fan
+// (includes the team's linked account id so callers can resolve profiles)
+socialRouter.get('/fans-of/:userId', async (c) => {
+  const rows = await query(
+    `SELECT ef.entity_type AS "entityType", ef.entity_id AS "entityId",
+            COALESCE(t.name, l.name, p.name) AS name,
+            t."accountUserId" AS "accountUserId"
+       FROM public.entity_follows ef
+       LEFT JOIN public."Team"        t ON ef.entity_type='team'   AND t.id=ef.entity_id
+       LEFT JOIN public."League"      l ON ef.entity_type='league' AND l.id=ef.entity_id
+       LEFT JOIN public."Player"      p ON ef.entity_type='player' AND p.id=ef.entity_id
+      WHERE ef.follower_id=$1::uuid AND ef.is_fan=true
+      ORDER BY ef.created_at DESC`,
+    [c.req.param('userId')]
+  )
+  return c.json({ ok: true, favorites: rows })
+})

@@ -326,6 +326,21 @@ BUN_BIN=$(command -v bun || echo "/root/.bun/bin/bun")
 # Stop old process if running with wrong config
 pm2 delete playify-api 2>/dev/null || true
 
+# Ensure auth tables exist (refresh_tokens, password_resets) — /v1/auth/*
+# crashes with "relation does not exist" without them (fix_schema.sql is
+# idempotent — safe to run on every deploy)
+DB_URL=$(grep "^DATABASE_URL=" "$ENV_FILE" | cut -d= -f2- | tr -d '"' | tr -d "'")
+if [ -n "$DB_URL" ] && [ -f "$APP_DIR/vps/migrate/fix_schema.sql" ]; then
+  if psql "$DB_URL" -f "$APP_DIR/vps/migrate/fix_schema.sql" -q > /tmp/fixschema.log 2>&1; then
+    ok "Schema patched (auth tables present)"
+  else
+    warn "fix_schema.sql failed — /v1/auth/* may 500 until applied"
+  fi
+  grep -v "NOTICE\|already exists" /tmp/fixschema.log 2>/dev/null || true
+else
+  warn "DATABASE_URL or fix_schema.sql missing — skipped schema patch"
+fi
+
 # Start API
 cd "$API_DIR"
 pm2 start "$BUN_BIN" \
@@ -339,7 +354,7 @@ ok "playify-api started"
 
 # Soketi — restart to pick up latest config
 if ! pm2 show playify-soketi &>/dev/null; then
-  SOKETI_BIN=$(command -v soketi || npm root -g 2>/dev/null | xargs -I{} echo "{}/soketi/bin/soketi" 2>/dev/null | head -1 || echo "soketi")
+  SOKETI_BIN=$(command -v soketi || echo "$(npm root -g 2>/dev/null)/@soketi/soketi/bin/soketi")
   pm2 start "$SOKETI_BIN" \
     --name playify-soketi \
     --log "$LOG_DIR/soketi.log" \

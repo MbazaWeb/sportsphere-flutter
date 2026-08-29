@@ -1,6 +1,6 @@
 // vps/api/src/routes/claims.ts
 import { Hono } from 'hono'
-import { queryOne, execute } from '../lib/db.js'
+import { query, queryOne, execute } from '../lib/db.js'
 
 export const claimsRouter = new Hono()
 

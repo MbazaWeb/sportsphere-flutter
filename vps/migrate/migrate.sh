@@ -11,8 +11,10 @@ warn() { echo -e "${YELLOW}⚠️  $1${NC}"; }
 fail() { echo -e "${RED}❌ $1${NC}"; exit 1; }
 hdr()  { echo -e "\n${YELLOW}══ $1 ══${NC}"; }
 
-SB_DB="postgresql://postgres:0H0Ad64USEIykfwm@db.fffqjbrethogesgghjsn.supabase.co:5432/postgres"
-ENV_FILE="/var/playify/app/vps/api/.env"
+# Supabase source connection — set SB_DB in the environment or in the API .env
+# (NEVER hardcode credentials here; the previous committed password was rotated)
+ENV_FILE="${ENV_FILE:-/var/playify/app/vps/api/.env}"
+SB_DB="${SB_DB:-$(grep "^SUPABASE_DB_URL=" "$ENV_FILE" 2>/dev/null | cut -d= -f2- | tr -d '"' | tr -d "'")}"
 VPS_DB=$(grep "^DATABASE_URL=" "$ENV_FILE" | cut -d= -f2- | tr -d '"' | tr -d "'")
 SCHEMA_FIX="/var/playify/app/vps/migrate/fix_schema.sql"
 
@@ -25,7 +27,7 @@ echo "Backup dir: $BACKUP_DIR"
 # ── Test connections ──────────────────────────────────────────────────────────
 hdr "TESTING CONNECTIONS"
 echo -n "Supabase... "
-PGPASSWORD=0H0Ad64USEIykfwm psql "$SB_DB" -c "SELECT 1" -q 2>/dev/null \
+SB_PW=$(echo "$SB_DB" | sed -n "s|://[^:]*:\([^@]*\)@.*|\1|p"); PGPASSWORD="$SB_PW" psql "$SB_DB" -c "SELECT 1" -q 2>/dev/null \
   && ok "ok" || fail "Cannot connect to Supabase"
 echo -n "VPS... "
 psql "$VPS_DB" -c "SELECT 1" -q 2>/dev/null && ok "ok" || fail "Cannot connect to VPS"
@@ -46,7 +48,7 @@ dump_table() {
   local file="$BACKUP_DIR/${safe}.csv"
   echo -n "  $schema_tbl... "
 
-  PGPASSWORD=0H0Ad64USEIykfwm psql "$SB_DB" -t -c \
+  SB_PW=$(echo "$SB_DB" | sed -n "s|://[^:]*:\([^@]*\)@.*|\1|p"); PGPASSWORD="$SB_PW" psql "$SB_DB" -t -c \
     "COPY (SELECT $cols FROM $schema_tbl) TO STDOUT CSV HEADER" \
     > "$file" 2>/dev/null || { warn "dump failed"; return; }
 

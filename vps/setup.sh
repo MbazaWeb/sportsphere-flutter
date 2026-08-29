@@ -12,9 +12,11 @@ export DEBIAN_FRONTEND=noninteractive
 PLAYIFY_DB_PASS="${PLAYIFY_DB_PASS:-$(openssl rand -hex 24)}"
 MINIO_ROOT_USER="${MINIO_ROOT_USER:-playify}"
 MINIO_ROOT_PASS="${MINIO_ROOT_PASS:-$(openssl rand -hex 24)}"
-SOKETI_APP_ID="${SOKETI_APP_ID:-playify}"
+SOKETI_APP_ID="${SOKETI_APP_ID:-playify-app}"   # must match Flutter client + API fallback
 SOKETI_APP_KEY="${SOKETI_APP_KEY:-$(openssl rand -hex 16)}"
 SOKETI_APP_SECRET="${SOKETI_APP_SECRET:-$(openssl rand -hex 32)}"
+JWT_SECRET="${JWT_SECRET:-$(openssl rand -hex 32)}"
+REFRESH_SECRET="${REFRESH_SECRET:-$(openssl rand -hex 32)}"
 DOMAIN="${DOMAIN:-playifysport.fun}"
 
 echo "================================================================"
@@ -174,6 +176,15 @@ fi
 sed -i "s|DATABASE_URL=.*|DATABASE_URL=postgresql://playify:${PLAYIFY_DB_PASS}@localhost:5432/playify|" .env
 sed -i "s|MINIO_ROOT_USER=.*|MINIO_ROOT_USER=${MINIO_ROOT_USER}|" .env
 sed -i "s|MINIO_ROOT_PASSWORD=.*|MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASS}|" .env
+# Soketi credentials — MUST match /etc/playify/soketi.json or channel auth fails
+sed -i "s|^SOKETI_APP_ID=.*|SOKETI_APP_ID=${SOKETI_APP_ID}|" .env
+sed -i "s|^SOKETI_APP_KEY=.*|SOKETI_APP_KEY=${SOKETI_APP_KEY}|" .env
+sed -i "s|^SOKETI_SECRET=.*|SOKETI_SECRET=${SOKETI_APP_SECRET}|" .env
+sed -i "s|^SOKETI_APP_SECRET=.*|SOKETI_SECRET=${SOKETI_APP_SECRET}|" .env
+grep -q "^SOKETI_SECRET=" .env || echo "SOKETI_SECRET=${SOKETI_APP_SECRET}" >> .env
+# JWT signing secrets — never ship CHANGE_ME to production
+sed -i "s|^JWT_SECRET=.*|JWT_SECRET=${JWT_SECRET}|" .env
+sed -i "s|^REFRESH_SECRET=.*|REFRESH_SECRET=${REFRESH_SECRET}|" .env
 
 pm2 start /usr/local/bin/bun --name playify-api -- run src/index.ts
 pm2 save
@@ -253,6 +264,19 @@ NGINX_EOF
 
 ln -sf /etc/nginx/sites-available/playify /etc/nginx/sites-enabled/playify
 rm -f /etc/nginx/sites-enabled/default
+
+# TLS chicken-and-egg fix: nginx -t fails if the Let's Encrypt certs do not
+# exist yet (certbot runs later). Install short-lived self-signed placeholders
+# so first boot succeeds; certbot replaces them on issuance.
+if [ ! -f "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem" ]; then
+  mkdir -p "/etc/letsencrypt/live/${DOMAIN}"
+  openssl req -x509 -nodes -newkey rsa:2048 -days 7 \
+    -keyout "/etc/letsencrypt/live/${DOMAIN}/privkey.pem" \
+    -out    "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem" \
+    -subj "/CN=${DOMAIN}" >/dev/null 2>&1
+  echo "⚠  Placeholder self-signed cert installed — run certbot to get a real one"
+fi
+
 nginx -t && systemctl reload nginx
 echo "Nginx configured"
 

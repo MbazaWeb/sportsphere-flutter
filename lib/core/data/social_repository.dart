@@ -152,7 +152,7 @@ class SocialRepository {
       // VpsRepository.getComments does not accept a `limit` param — pass
       // it as a query param directly so the server can clamp the result set.
       final res = await _vps.get<Map<String, dynamic>>(
-        '/v1/social/comments/$postId',
+        '/v1/social/posts/$postId/comments',
         query: {'limit': limit},
       );
       return ((res.data?['comments']) as List? ?? [])
@@ -174,7 +174,7 @@ class SocialRepository {
     // VpsRepository.addComment does not accept `parentId` — post directly
     // so the server can wire up the nested-comment relationship.
     await _vps.post<void>(
-      '/v1/social/comments/$postId',
+      '/v1/social/posts/$postId/comments',
       data: <String, dynamic>{
         'content':   content,
         if (parentId != null) 'parentId': parentId,

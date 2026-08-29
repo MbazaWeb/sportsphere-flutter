@@ -483,23 +483,24 @@ class VpsRepository {
 
   // ── Profile lookups (single entity by id or slug) ──────────────────────────
 
-  /// GET /v1/social/profiles/:idOrSlug — batch-safe single profile lookup
+  /// GET /v1/social/profile/:idOrSlug — batch-safe single profile lookup
   Future<Map<String, dynamic>?> getProfile(String idOrSlug) async {
     try {
       final res = await _client.get<Map<String, dynamic>>(
-        '/v1/social/profiles/$idOrSlug',
+        '/v1/social/profile/$idOrSlug',
       );
-      return res.data?['profile'] as Map<String, dynamic>?;
+      // Server returns the row under 'user' — accept 'profile' too for safety.
+      return (res.data?['user'] ?? res.data?['profile']) as Map<String, dynamic>?;
     } catch (_) {
       return null;
     }
   }
 
-  /// POST /v1/social/profiles-batch — fetch multiple profiles by IDs
+  /// POST /v1/social/profiles/batch — fetch multiple profiles by IDs
   Future<List<Map<String, dynamic>>> getProfilesBatch(List<String> ids) async {
     if (ids.isEmpty) return [];
     final res = await _client.post<Map<String, dynamic>>(
-      '/v1/social/profiles-batch',
+      '/v1/social/profiles/batch',
       data: {'ids': ids},
     );
     return ((res.data?['profiles']) as List? ?? []).cast<Map<String, dynamic>>();
@@ -528,19 +529,37 @@ class VpsRepository {
     await _client.delete('/v1/social/posts/$postId');
   }
 
-  /// POST /v1/social/likes/:postId — toggle like
-  Future<bool> toggleLike(String postId) async {
+  /// POST /v1/social/posts/:id/like — like (idempotent)
+  Future<bool> likePost(String postId) async {
     final res = await _client.post<Map<String, dynamic>>(
-      '/v1/social/likes/$postId', data: {},
+      '/v1/social/posts/$postId/like', data: {},
     );
-    return res.data?['liked'] == true;
+    return res.data?['ok'] == true;
   }
 
-  /// GET /v1/social/likes/:postId/check — check if current user liked
+  /// DELETE /v1/social/posts/:id/like — remove like
+  Future<bool> unlikePost(String postId) async {
+    final res = await _client.delete<Map<String, dynamic>>(
+      '/v1/social/posts/$postId/like',
+    );
+    return res.data?['ok'] == true;
+  }
+
+  /// Toggle like — checks current state then POST/DELETE accordingly.
+  Future<bool> toggleLike(String postId) async {
+    if (await hasLiked(postId)) {
+      await unlikePost(postId);
+      return false;
+    }
+    await likePost(postId);
+    return true;
+  }
+
+  /// GET /v1/social/posts/:id/liked — check if current user liked
   Future<bool> hasLiked(String postId) async {
     try {
       final res = await _client.get<Map<String, dynamic>>(
-        '/v1/social/likes/$postId/check',
+        '/v1/social/posts/$postId/liked',
       );
       return res.data?['liked'] == true;
     } catch (_) {
@@ -548,35 +567,53 @@ class VpsRepository {
     }
   }
 
-  /// GET /v1/social/comments/:postId — list comments
+  /// GET /v1/social/posts/:id/comments — list comments
   Future<List<Map<String, dynamic>>> getComments(String postId) async {
     final res = await _client.get<Map<String, dynamic>>(
-      '/v1/social/comments/$postId',
+      '/v1/social/posts/$postId/comments',
     );
     return ((res.data?['comments']) as List? ?? []).cast<Map<String, dynamic>>();
   }
 
-  /// POST /v1/social/comments/:postId — add comment
+  /// POST /v1/social/posts/:id/comments — add comment
   Future<Map<String, dynamic>> addComment(String postId, String content) async {
     final res = await _client.post<Map<String, dynamic>>(
-      '/v1/social/comments/$postId', data: {'content': content},
+      '/v1/social/posts/$postId/comments', data: {'content': content},
     );
     return (res.data?['comment'] as Map?)?.cast<String, dynamic>() ?? {};
   }
 
-  /// POST /v1/social/follows/:targetId — toggle follow
-  Future<bool> toggleFollow(String targetId) async {
+  /// POST /v1/social/follow/:targetId — follow (idempotent)
+  Future<bool> followUser(String targetId) async {
     final res = await _client.post<Map<String, dynamic>>(
-      '/v1/social/follows/$targetId', data: {},
+      '/v1/social/follow/$targetId', data: {},
     );
-    return res.data?['following'] == true;
+    return res.data?['ok'] == true;
   }
 
-  /// GET /v1/social/follows/:targetId/check — check if following
+  /// DELETE /v1/social/follow/:targetId — unfollow
+  Future<bool> unfollowUser(String targetId) async {
+    final res = await _client.delete<Map<String, dynamic>>(
+      '/v1/social/follow/$targetId',
+    );
+    return res.data?['ok'] == true;
+  }
+
+  /// Toggle follow — checks current state then POST/DELETE accordingly.
+  Future<bool> toggleFollow(String targetId) async {
+    if (await isFollowing(targetId)) {
+      await unfollowUser(targetId);
+      return false;
+    }
+    await followUser(targetId);
+    return true;
+  }
+
+  /// GET /v1/social/follow/:targetId/status — check if following
   Future<bool> isFollowing(String targetId) async {
     try {
       final res = await _client.get<Map<String, dynamic>>(
-        '/v1/social/follows/$targetId/check',
+        '/v1/social/follow/$targetId/status',
       );
       return res.data?['following'] == true;
     } catch (_) {
@@ -584,35 +621,53 @@ class VpsRepository {
     }
   }
 
-  /// GET /v1/social/follows/followers/:userId — list followers
+  /// GET /v1/social/followers/:userId — list followers
   Future<List<Map<String, dynamic>>> getFollowers(String userId) async {
     final res = await _client.get<Map<String, dynamic>>(
-      '/v1/social/follows/followers/$userId',
+      '/v1/social/followers/$userId',
     );
     return ((res.data?['followers']) as List? ?? []).cast<Map<String, dynamic>>();
   }
 
-  /// GET /v1/social/follows/following/:userId — list following
+  /// GET /v1/social/following/:userId — list following
   Future<List<Map<String, dynamic>>> getFollowing(String userId) async {
     final res = await _client.get<Map<String, dynamic>>(
-      '/v1/social/follows/following/$userId',
+      '/v1/social/following/$userId',
     );
     return ((res.data?['following']) as List? ?? []).cast<Map<String, dynamic>>();
   }
 
-  /// POST /v1/social/fans/:targetId — toggle fan
-  Future<bool> toggleFan(String targetId) async {
+  /// POST /v1/social/fan/:entityType/:entityId — become fan (idempotent)
+  Future<bool> becomeFan(String targetId, {String entityType = 'team'}) async {
     final res = await _client.post<Map<String, dynamic>>(
-      '/v1/social/fans/$targetId', data: {},
+      '/v1/social/fan/$entityType/$targetId', data: {},
     );
-    return res.data?['isFan'] == true;
+    return res.data?['ok'] == true;
   }
 
-  /// GET /v1/social/fans/:targetId/check — check if fan
-  Future<bool> isFan(String targetId) async {
+  /// DELETE /v1/social/fan/:entityType/:entityId — stop being a fan
+  Future<bool> stopBeingFan(String targetId, {String entityType = 'team'}) async {
+    final res = await _client.delete<Map<String, dynamic>>(
+      '/v1/social/fan/$entityType/$targetId',
+    );
+    return res.data?['ok'] == true;
+  }
+
+  /// Toggle fan — checks current state then POST/DELETE accordingly.
+  Future<bool> toggleFan(String targetId, {String entityType = 'team'}) async {
+    if (await isFan(targetId, entityType: entityType)) {
+      await stopBeingFan(targetId, entityType: entityType);
+      return false;
+    }
+    await becomeFan(targetId, entityType: entityType);
+    return true;
+  }
+
+  /// GET /v1/social/fan/:entityType/:entityId/status — check if fan
+  Future<bool> isFan(String targetId, {String entityType = 'team'}) async {
     try {
       final res = await _client.get<Map<String, dynamic>>(
-        '/v1/social/fans/$targetId/check',
+        '/v1/social/fan/$entityType/$targetId/status',
       );
       return res.data?['isFan'] == true;
     } catch (_) {
@@ -620,22 +675,28 @@ class VpsRepository {
     }
   }
 
-  /// GET /v1/social/fans/by-teams — fans of my teams
+  /// GET /v1/social/fans-by-teams — fans of my teams
   Future<List<Map<String, dynamic>>> getFansByTeams() async {
-    final res = await _client.get<Map<String, dynamic>>('/v1/social/fans/by-teams');
+    final res = await _client.get<Map<String, dynamic>>('/v1/social/fans-by-teams');
     return ((res.data?['fans']) as List? ?? []).cast<Map<String, dynamic>>();
   }
 
-  /// GET /v1/social/fans/by-sports — fans of my sports
+  /// GET /v1/social/fans-by-sports — fans of my sports
   Future<List<Map<String, dynamic>>> getFansBySports() async {
-    final res = await _client.get<Map<String, dynamic>>('/v1/social/fans/by-sports');
+    final res = await _client.get<Map<String, dynamic>>('/v1/social/fans-by-sports');
     return ((res.data?['fans']) as List? ?? []).cast<Map<String, dynamic>>();
   }
 
-  /// GET /v1/social/fans/by-country — fans in my country
+  /// GET /v1/social/fans-by-country — fans in my country
   Future<List<Map<String, dynamic>>> getFansByCountry() async {
-    final res = await _client.get<Map<String, dynamic>>('/v1/social/fans/by-country');
+    final res = await _client.get<Map<String, dynamic>>('/v1/social/fans-by-country');
     return ((res.data?['fans']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
+
+  /// GET /v1/social/fans-of/:userId — entities a user is a fan of
+  Future<List<Map<String, dynamic>>> getFansOf(String userId) async {
+    final res = await _client.get<Map<String, dynamic>>('/v1/social/fans-of/$userId');
+    return ((res.data?['favorites']) as List? ?? []).cast<Map<String, dynamic>>();
   }
 
   /// GET /v1/social/my-favorites — current user's favorites
@@ -652,25 +713,25 @@ class VpsRepository {
 
   // ── Messages ──────────────────────────────────────────────────────────────
 
-  /// GET /v1/social/messages/conversations — list conversations
+  /// GET /v1/social/messages — list conversations
   Future<List<Map<String, dynamic>>> getConversations() async {
     final res = await _client.get<Map<String, dynamic>>(
-      '/v1/social/messages/conversations',
+      '/v1/social/messages',
     );
     return ((res.data?['conversations']) as List? ?? []).cast<Map<String, dynamic>>();
   }
 
-  /// GET /v1/social/messages/thread/:peerId — get thread with peer
+  /// GET /v1/social/messages/:withUserId — get thread with peer
   Future<List<Map<String, dynamic>>> getMessageThread(String peerId) async {
     final res = await _client.get<Map<String, dynamic>>(
-      '/v1/social/messages/thread/$peerId',
+      '/v1/social/messages/$peerId',
     );
     return ((res.data?['messages']) as List? ?? []).cast<Map<String, dynamic>>();
   }
 
-  /// POST /v1/social/messages/:receiverId — send message
+  /// POST /v1/social/messages — send message
   Future<void> sendMessage(String receiverId, String content) async {
-    await _client.post('/v1/social/messages/$receiverId', data: {'content': content});
+    await _client.post('/v1/social/messages', data: {'receiverId': receiverId, 'content': content});
   }
 
   // ── Communities ────────────────────────────────────────────────────────────
@@ -680,9 +741,9 @@ class VpsRepository {
     await _client.post('/v1/social/communities/$communityId/join', data: {});
   }
 
-  /// POST /v1/social/communities/:id/leave — leave community
+  /// DELETE /v1/social/communities/:id/leave — leave community
   Future<void> leaveCommunity(String communityId) async {
-    await _client.post('/v1/social/communities/$communityId/leave', data: {});
+    await _client.delete('/v1/social/communities/$communityId/leave');
   }
 
   /// GET /v1/social/communities/:id/members — list members
@@ -747,14 +808,8 @@ class VpsRepository {
 
   // ── Aliases for backward compatibility with old method names ───────────────
 
-  /// Alias for toggleLike — old callers used likePost/unlikePost
-  Future<void> likePost(String postId) => toggleLike(postId);
-  Future<void> unlikePost(String postId) => toggleLike(postId);
+  /// Alias kept for old callers.
   Future<bool> isPostLiked(String postId) => hasLiked(postId);
-
-  /// Alias for toggleFollow — old callers used followUser/unfollowUser
-  Future<bool> followUser(String targetId) => toggleFollow(targetId);
-  Future<bool> unfollowUser(String targetId) => toggleFollow(targetId);
 
   /// Update profile — delegates to auth profile update
   Future<void> updateProfile({
@@ -783,10 +838,10 @@ class VpsRepository {
     await _client.patch('/v1/auth/profile', data: patch);
   }
 
-  /// Update news post (for news tab)
+  /// Update news post (admin — canonical route on the VPS)
   Future<Map<String, dynamic>> updatePost(String postId, Map<String, dynamic> body) async {
     final res = await _client.patch<Map<String, dynamic>>(
-      '/v1/news/$postId', data: body,
+      '/v1/admin/news/$postId', data: body,
     );
     return (res.data?['news'] as Map?)?.cast<String, dynamic>() ?? {};
   }
@@ -803,7 +858,7 @@ class VpsRepository {
   Future<bool> isCommunityMember(String communityId) async {
     try {
       final res = await _client.get<Map<String, dynamic>>(
-        '/v1/social/communities/$communityId/membership',
+        '/v1/social/communities/$communityId/member',
       );
       return res.data?['isMember'] == true;
     } catch (_) {
@@ -811,30 +866,20 @@ class VpsRepository {
     }
   }
 
-  /// Create a news post (for admin/news)
+  /// Create a news post (admin — canonical route on the VPS)
   Future<Map<String, dynamic>> createNewsPost(Map<String, dynamic> body) async {
     final res = await _client.post<Map<String, dynamic>>(
-      '/v1/news', data: body,
+      '/v1/admin/news', data: body,
     );
     return (res.data?['news'] as Map?)?.cast<String, dynamic>() ?? {};
   }
 
-  /// Search players
+  /// Search players (admin lookup)
   Future<List<Map<String, dynamic>>> searchPlayers(String q, {int limit = 20}) async {
-    // NOTE: /v1/admin/players/search is the canonical route on the VPS
-    // (see vps/api/src/routes/admin.ts). The `/v1/admin/players-search`
-    // variant below is kept as a fallback for older deployments.
-    try {
-      final res = await _client.get<Map<String, dynamic>>(
-        '/v1/admin/players/search', query: {'q': q, 'limit': limit},
-      );
-      return ((res.data?['players']) as List? ?? []).cast<Map<String, dynamic>>();
-    } catch (_) {
-      final res = await _client.get<Map<String, dynamic>>(
-        '/v1/admin/players-search', query: {'q': q, 'limit': limit},
-      );
-      return ((res.data?['players']) as List? ?? []).cast<Map<String, dynamic>>();
-    }
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/admin/players/search', query: {'q': q, 'limit': limit},
+    );
+    return ((res.data?['players']) as List? ?? []).cast<Map<String, dynamic>>();
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -963,9 +1008,8 @@ class VpsRepository {
   }
 
   /// DELETE /v1/admin/players/:id — delete player.
-  // TODO(VPS): add `DELETE /v1/admin/players/:id` route on the VPS.
   Future<void> deleteAdminPlayer(String id) async {
-    await _client.delete<void>('/v1/admin/players/\$id');
+    await _client.delete<void>('/v1/admin/players/$id');
   }
 
   /// POST /v1/admin/players/:id/stats — upsert a PlayerMatchStat row.
