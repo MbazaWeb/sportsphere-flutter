@@ -489,9 +489,11 @@ class _Step2 extends StatelessWidget {
   final Uint8List? avatarBytes;
   final String? country;
   final DateTime? dob;
+  final TextEditingController phoneCtrl;
   final VoidCallback onPickAvatar, onPickCountry, onPickDob, onNext;
   const _Step2({
     required this.avatarBytes, required this.country, required this.dob,
+    required this.phoneCtrl,
     required this.onPickAvatar, required this.onPickCountry, required this.onPickDob,
     required this.onNext,
   });
@@ -556,6 +558,14 @@ class _Step2 extends StatelessWidget {
           hint: 'Select your date of birth',
           icon: Icons.cake_outlined,
           onTap: onPickDob,
+        ),
+        const SizedBox(height: 14),
+        _Field(
+          ctrl: phoneCtrl,
+          label: 'Mobile Number (optional)',
+          hint: '+255 712 345 678',
+          icon: Icons.phone_outlined,
+          keyboard: TextInputType.phone,
         ),
         const SizedBox(height: 20),
         _Btn(label: 'Next — Fan Setup', icon: Icons.arrow_forward_rounded, onTap: onNext),

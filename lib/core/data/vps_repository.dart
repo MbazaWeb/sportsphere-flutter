@@ -430,15 +430,6 @@ class VpsRepository {
       _client.patch<T>(path, data: data);
 
   /// Remove fan from entity (team/player/coach/league)
-  Future<void> unfan(String entityType, String entityId) async {
-    await _client.delete<void>('/v1/social/fan/\$entityType/\$entityId');
-  }
-
-  /// Become fan of entity (team/player/coach/league)
-  Future<void> becomeFan(String entityType, String entityId) async {
-    await _client.post<void>('/v1/social/fan/\$entityType/\$entityId', data: {});
-  }
-
   // ── Search ───────────────────────────────────────────────────────────────
 
   /// Search users, teams, leagues, players in one call.
