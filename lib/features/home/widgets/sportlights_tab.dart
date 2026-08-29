@@ -2373,8 +2373,7 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
     // the `trg_post_share_count` DB trigger bumps `Post.shareCount` on
     // INSERT, so we mirror that locally with `_shares + 1`.
     try {
-      // sb removed — using VpsRepository
-      final uid = Supabase.instance.client.auth.currentUser?.id;
+        final uid = Supabase.instance.client.auth.currentUser?.id;
       if (uid == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -2883,7 +2882,6 @@ class _ActionRowState extends State<_ActionRow> {
 
   Future<String?> _resolveTargetId() async {
     final item = widget.item;
-    // sb removed — using VpsRepository
     final handle = item.handle.replaceAll('@', '').trim();
 
     // Team / welcome posts: follow the TEAM account, never the admin author
@@ -2892,19 +2890,19 @@ class _ActionRowState extends State<_ActionRow> {
         Map<String, dynamic>? team;
         if (item.targetUserId != null && item.targetUserId!.isNotEmpty) {
           // may already be team id or user id
-          team = await sb
+          team = await Supabase.instance.client
               .from('Team')
               .select('id, accountUserId, name, slug')
               .eq('id', item.targetUserId!)
               .maybeSingle();
         }
-        team ??= await sb
+        team ??= await Supabase.instance.client
             .from('Team')
             .select('id, accountUserId, name, slug')
             .or('id.eq.$handle,slug.eq.$handle')
             .maybeSingle();
         if (team == null && handle.isNotEmpty) {
-          final rows = await sb
+          final rows = await Supabase.instance.client
               .from('Team')
               .select('id, accountUserId, name, slug')
               .ilike('name', '%$handle%')
