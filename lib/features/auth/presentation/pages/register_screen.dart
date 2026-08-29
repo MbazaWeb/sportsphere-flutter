@@ -75,6 +75,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   List<Map<String,dynamic>> _teams  = [];
   bool _loadingTeams = true;
   final _teamSearch = TextEditingController();
+  final _phoneCtrl  = TextEditingController();
 
   late final AnimationController _progressCtrl;
   late final Animation<double> _progressAnim;
@@ -98,6 +99,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     _emailCtrl.dispose(); _handleCtrl.dispose();
     _passCtrl.dispose(); _confirmCtrl.dispose();
     _teamSearch.dispose();
+    _phoneCtrl.dispose();
     super.dispose();
   }
 
@@ -222,6 +224,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
       password:   _passCtrl.text,
       favTeamIds: _selectedTeamIds.toList(),
       avatarUrl:  _avatarDataUri,
+      phone:      _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
     );
 
     if (!mounted) return;
@@ -340,6 +343,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                 avatarBytes: _avatarBytes,
                 country:     _country,
                 dob:         _dob,
+                phoneCtrl:   _phoneCtrl,
                 onPickAvatar:  _pickAvatar,
                 onPickCountry: _pickCountry,
                 onPickDob:     _pickDob,

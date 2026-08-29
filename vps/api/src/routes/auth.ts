@@ -412,3 +412,137 @@ authRouter.post('/resend-confirmation', async (c) => {
   // This is a no-op stub for API compatibility
   return c.json({ ok: true, message: 'Confirmation resent if email exists' })
 })
+
+// ── POST /v1/auth/otp/send ─────────────────────────────────────────────────
+// Send 6-digit OTP to email for identity verification
+authRouter.post('/otp/send', async (c) => {
+  const { email } = await c.req.json<{ email: string }>()
+  if (!email) return c.json({ error: 'email required' }, 400)
+
+  const user = await queryOne<any>(`SELECT id, name FROM public."User" WHERE email=$1`,
+    [email.trim().toLowerCase()])
+  if (!user) return c.json({ ok: true }) // silent — don't reveal if email exists
+
+  // Generate 6-digit OTP valid 10 min
+  const otp      = Math.floor(100000 + Math.random() * 900000).toString()
+  const otpHash  = createHash('sha256').update(otp).digest('hex')
+  const expires  = new Date(Date.now() + 10 * 60 * 1000).toISOString()
+
+  // Store OTP in password_resets table (reuse for simplicity)
+  await execute(`DELETE FROM public.password_resets WHERE user_id=$1`, [user.id]).catch(()=>{})
+  await execute(
+    `INSERT INTO public.password_resets(id, user_id, token_hash, expires_at, created_at)
+     VALUES(gen_random_uuid()::text, $1, $2, $3, NOW())`,
+    [user.id, otpHash, expires]
+  )
+
+  const { sendEmail } = await import('../lib/email.js')
+  await sendEmail({
+    to: email.trim().toLowerCase(),
+    subject: 'Your Playify verification code',
+    html: `<div style="font-family:sans-serif;background:#071420;padding:32px;color:#fff">
+      <h2 style="color:#168CFF">Your verification code</h2>
+      <p>Hi ${user.name}, use this code to verify your identity on Playify:</p>
+      <div style="font-size:42px;font-weight:900;letter-spacing:8px;color:#fff;
+        background:#0d2137;padding:24px;border-radius:12px;text-align:center;margin:24px 0">
+        ${otp}
+      </div>
+      <p style="color:rgba(255,255,255,0.5);font-size:12px">Expires in 10 minutes. Do not share this code.</p>
+    </div>`,
+  })
+
+  console.log(`[OTP] ${user.id}: ${otp}`) // fallback if email fails
+  return c.json({ ok: true })
+})
+
+// ── POST /v1/auth/verify-identity ─────────────────────────────────────────
+// Verify identity via DOB or OTP (no password change yet — just verify)
+authRouter.post('/verify-identity', async (c) => {
+  const { email, method, dob, otp } = await c.req.json<any>()
+  if (!email) return c.json({ error: 'email required' }, 400)
+
+  const user = await queryOne<any>(
+    `SELECT u.id, u."dateOfBirth", p.dob FROM public."User" u
+     LEFT JOIN public.profiles p ON p.id::text=u.id
+     WHERE u.email=$1`,
+    [email.trim().toLowerCase()]
+  )
+  if (!user) return c.json({ error: 'Verification failed' }, 400)
+
+  if (method === 'dob') {
+    const userDob = (user.dob ?? user.dateOfBirth ?? '').toString().slice(0,10)
+    const inputDob = new Date(dob).toISOString().slice(0,10)
+    if (!userDob || userDob !== inputDob) {
+      return c.json({ error: 'Date of birth does not match our records' }, 400)
+    }
+    return c.json({ ok: true, verified: true })
+  }
+
+  if (method === 'otp') {
+    const otpHash = createHash('sha256').update(otp ?? '').digest('hex')
+    const reset   = await queryOne<any>(
+      `SELECT id, expires_at FROM public.password_resets WHERE user_id=$1 AND token_hash=$2`,
+      [user.id, otpHash]
+    )
+    if (!reset) return c.json({ error: 'Invalid or expired code' }, 400)
+    if (new Date(reset.expires_at) < new Date()) return c.json({ error: 'Code has expired — request a new one' }, 400)
+    return c.json({ ok: true, verified: true })
+  }
+
+  return c.json({ error: 'Invalid verification method' }, 400)
+})
+
+// ── POST /v1/auth/set-password ────────────────────────────────────────────
+// Set password after identity verification (DOB or OTP)
+authRouter.post('/set-password', async (c) => {
+  const { email, password, method, dob, otp } = await c.req.json<any>()
+  if (!email || !password) return c.json({ error: 'email and password required' }, 400)
+  if (password.length < 8) return c.json({ error: 'Password must be at least 8 characters' }, 400)
+
+  const user = await queryOne<any>(
+    `SELECT u.id, u."dateOfBirth", u.name, u.handle, u.role, p.dob
+     FROM public."User" u LEFT JOIN public.profiles p ON p.id::text=u.id
+     WHERE u.email=$1`,
+    [email.trim().toLowerCase()]
+  )
+  if (!user) return c.json({ error: 'User not found' }, 404)
+
+  // Re-verify identity
+  let verified = false
+  if (method === 'dob') {
+    const userDob  = (user.dob ?? user.dateOfBirth ?? '').toString().slice(0,10)
+    const inputDob = new Date(dob).toISOString().slice(0,10)
+    verified = !!(userDob && userDob === inputDob)
+  } else if (method === 'otp') {
+    const otpHash = createHash('sha256').update(otp ?? '').digest('hex')
+    const reset   = await queryOne<any>(
+      `SELECT id, expires_at FROM public.password_resets WHERE user_id=$1 AND token_hash=$2`,
+      [user.id, otpHash]
+    )
+    verified = !!(reset && new Date(reset.expires_at) >= new Date())
+    if (verified) await execute(`UPDATE public.password_resets SET used_at=NOW() WHERE id=$1`, [reset.id])
+  }
+
+  if (!verified) return c.json({ error: 'Identity verification failed' }, 401)
+
+  // Set password
+  const hash = await Bun.password.hash(password, { algorithm: 'bcrypt', cost: 12 })
+  await execute(`UPDATE public."User" SET "passwordHash"=$1,"updatedAt"=NOW() WHERE id=$2`, [hash, user.id])
+  await execute(`DELETE FROM public.refresh_tokens WHERE user_id=$1`, [user.id]).catch(()=>{})
+
+  // Issue new tokens (auto-login)
+  const JWT_SECRET     = Bun.env.JWT_SECRET ?? ''
+  const REFRESH_SECRET = Bun.env.REFRESH_SECRET ?? ''
+  const { SignJWT }    = await import('jose')
+  const enc            = new TextEncoder()
+
+  const accessToken  = await new SignJWT({ sub: user.id, role: user.role, handle: user.handle })
+    .setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('15m')
+    .sign(enc.encode(JWT_SECRET))
+  const refreshToken = await new SignJWT({ sub: user.id, type: 'refresh' })
+    .setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('30d')
+    .sign(enc.encode(REFRESH_SECRET))
+
+  return c.json({ ok: true, accessToken, refreshToken,
+    user: { id: user.id, name: user.name, handle: user.handle, role: user.role } })
+})

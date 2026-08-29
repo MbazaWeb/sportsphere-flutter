@@ -139,6 +139,7 @@ class AuthRepository {
     required String password,
     List<String> favTeamIds = const [],
     String? avatarUrl,  // data URI (base64) OR null
+    String? phone,
   }) async {
     if (password.isEmpty) throw ArgumentError('Password is required');
 
@@ -151,6 +152,7 @@ class AuthRepository {
       country:   country,
       dob:       dob.toIso8601String(),
       role:      'fan',
+      phone:     phone,
     );
     await _saveSession(data);
 
