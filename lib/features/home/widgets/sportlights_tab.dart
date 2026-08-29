@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
@@ -2927,11 +2928,11 @@ class _ActionRowState extends State<_ActionRow> {
     }
     if (handle.isEmpty) return null;
     try {
-      final u = await sb.from('User').select('id').eq('handle', handle).maybeSingle();
+      final u = await Supabase.instance.client.from('User').select('id').eq('handle', handle).maybeSingle();
       if (u?['id'] != null) return u!['id'].toString();
     } catch (_) {}
     try {
-      final p = await sb.from('profiles').select('id').eq('handle', handle).maybeSingle();
+      final p = await Supabase.instance.client.from('profiles').select('id').eq('handle', handle).maybeSingle();
       return p?['id']?.toString();
     } catch (_) {
       return null;
