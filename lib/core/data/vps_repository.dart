@@ -343,6 +343,7 @@ class VpsRepository {
     String? country,
     String? dob,
     String? role,
+    String? phone,
   }) async {
     final res = await _client.post<Map<String, dynamic>>('/v1/auth/register', data: {
       'email':     email.trim().toLowerCase(),
@@ -353,6 +354,7 @@ class VpsRepository {
       if (country   != null) 'country':   country,
       if (dob       != null) 'dob':       dob,
       if (role      != null) 'role':      role,
+      if (phone     != null) 'phone':     phone,
     });
     return res.data ?? {};
   }
