@@ -1,4 +1,4 @@
-import '../../../core/data/vps_supabase_compat.dart';
+
 import '../../../core/admin/app_admin.dart';
 import '../../../core/branding.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +16,6 @@ import '../templates/role_profile_model.dart';
 class ProfileLoader {
   const ProfileLoader._();
 
-  static get _sb => VpsSupabaseCompat.client;
 
   /// Live social counts for any profile id (all roles) — via VPS API.
   static Future<({int posts, int followers, int following})> _liveCounts(
@@ -132,22 +131,12 @@ class ProfileLoader {
     var fanOf = '';  // empty — user must pick a team, no default
     try {
       if (profileId.isNotEmpty) {
-        final fans =
-            await const VpsRepository().get<Map<String, dynamic>>('/v1/social/fans/\$profileId/teams');
-        final tids = [
-          for (final r in fans as List) (r as Map)['target_id']?.toString()
-        ].whereType<String>().toList();
-        if (tids.isNotEmpty) {
-          final teams = await _sb
-              .from('Team')
-              .select('name,accountUserId')
-              .inFilter('accountUserId', tids)
-              .limit(1);
-          if ((teams as List).isNotEmpty) {
-            final n = '${(teams.first as Map)['name']}'
-                .replaceAll(RegExp(r'\s+(SC|FC)$'), '');
-            fanOf = '$n Fan';
-          }
+        final fansRes = await const VpsRepository().get<Map<String, dynamic>>(
+            '/v1/social/fans/$profileId/teams');
+        final teamNames = (fansRes.data?['teams'] as List? ?? []).cast<String>();
+        if (teamNames.isNotEmpty) {
+          final n = teamNames.first.replaceAll(RegExp(r'\s+(SC|FC)\$'), '');
+          fanOf = '$n Fan';
         }
       }
     } catch (_) {}

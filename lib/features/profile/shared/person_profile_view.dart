@@ -1,4 +1,4 @@
-import '../../../core/data/vps_supabase_compat.dart';
+import '../../../core/data/vps_repository.dart';
 import 'package:flutter/material.dart';
 import '../../../core/theme/colors.dart';
 
@@ -78,17 +78,13 @@ class _PersonProfileViewState extends State<PersonProfileView> {
 
   Future<void> _fetchPosts() async {
     try {
-      final row = await VpsSupabaseCompat.client
-          .from('User').select('id')
-          .eq('handle', widget.profile.handle).maybeSingle();
-      if (row == null) { if (mounted) setState(() => _loading = false); return; }
-      final rows = await VpsSupabaseCompat.client
-          .from('Post').select()
-          .eq('userId', row['id'].toString())
-          .order('createdAt', ascending: false).limit(30);
+      final profile = await const VpsRepository().getProfile(widget.profile.handle);
+      final uid = profile['id']?.toString() ?? '';
+      if (uid.isEmpty) { if (mounted) setState(() => _loading = false); return; }
+      final posts = await const VpsRepository().getUserPosts(uid, limit: 30);
       if (mounted) {
         setState(() {
-          _posts = List<Map<String, dynamic>>.from(rows as List);
+          _posts = posts;
           _loading = false;
         });
       }
