@@ -1,3 +1,4 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
 part of '../app_shell.dart';
 
 // VpsRepository is re-exported via the parent app_shell.dart import chain
@@ -376,8 +377,12 @@ class _CommunityContentState extends State<_CommunityContent> {
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 leading: CircleAvatar(
                   backgroundColor: PlayifyColors.electricBlue.withValues(alpha: 0.15),
-                  child: const Icon(Icons.groups_rounded,
-                      color: PlayifyColors.electricBlue, size: 20),
+                  backgroundImage: (g['imageUrl'] as String?)?.startsWith('http') == true
+                      ? NetworkImage(g['imageUrl'] as String) : null,
+                  child: (g['imageUrl'] as String?)?.startsWith('http') != true
+                      ? const Icon(Icons.groups_rounded,
+                          color: PlayifyColors.electricBlue, size: 20)
+                      : null,
                 ),
                 title: Text(
                   '${g['name'] ?? 'Community'}',

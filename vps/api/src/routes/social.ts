@@ -441,7 +441,10 @@ socialRouter.get('/messages', async (c) => {
 socialRouter.get('/communities', async (c) => {
   const limit = Math.min(Number(c.req.query('limit') ?? 20), 100)
   const rows  = await query(
-    `SELECT * FROM public."Community" ORDER BY "memberCount" DESC LIMIT $1`, [limit]
+    `SELECT c.*, t."logoUrl" as "imageUrl"
+     FROM public."Community" c
+     LEFT JOIN public."Team" t ON LOWER(t.name) = LOWER(c.topic) OR LOWER(t.name) = LOWER(c.name)
+     ORDER BY c."memberCount" DESC LIMIT $1`, [limit]
   )
   return c.json({ ok: true, communities: rows })
 })
