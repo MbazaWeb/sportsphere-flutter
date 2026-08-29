@@ -2397,22 +2397,24 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
   }
 
   Future<void> _onLike() async {
-    final next = !_liked;
-    setState(() {
-      _liked = next;
-      _likes += next ? 1 : -1;
-    });
+    // Guard: must be signed in
+    if (Supabase.instance.client.auth.currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sign in to like posts'),
+            behavior: SnackBarBehavior.floating));
+      return;
+    }
     final id = widget.item.postId;
     if (id == null) return;
+    final next = !_liked;
+    setState(() { _liked = next; _likes += next ? 1 : -1; });
     try {
       await _social.toggleLike(id, like: next);
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _liked = !next;
-          _likes += next ? -1 : 1;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
+        setState(() { _liked = !next; _likes += next ? -1 : 1; });
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(friendlyError(e))));
       }
     }
   }
