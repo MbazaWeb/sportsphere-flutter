@@ -73,13 +73,13 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
 
   bool _needsPhone(String method) {
     final m = method.toLowerCase();
-    return m.contains('pesa') || m.contains('airtel');
+    return m.contains('pesa'); // Only M-Pesa active; airtel/card disabled
   }
 
   String _methodKey(String method) {
     final m = method.toLowerCase();
     if (m.contains('pesa')) return 'mpesa';
-    if (m.contains('airtel')) return 'airtel';
+    if (m.contains('airtel')) return 'airtel'; // disabled
     return 'card';
   }
 
@@ -128,7 +128,7 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
           debugPrint('STK: $stk');
         }
       } else if (method == 'airtel') {
-        debugPrint('Airtel Money: no gateway wired yet for $orderId');
+        throw Exception('Airtel Money payments are coming soon. Please use M-Pesa.');
       } else {
         debugPrint('Card: no gateway wired yet for $orderId');
       }
@@ -294,7 +294,7 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
         ],
         const SizedBox(height: 18),
         Row(children: [
-          for (final m in const ['M-Pesa', 'Airtel Money', 'Card']) ...[
+          for (final m in const ['M-Pesa', 'Airtel Money (Coming Soon)', 'Card (Coming Soon)']) ...[
             Expanded(
               child: GestureDetector(
                 onTap: () => setState(() => _method = m),

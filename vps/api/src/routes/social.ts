@@ -9,9 +9,10 @@ export const socialRouter = new Hono()
 // ── PROFILE ───────────────────────────────────────────────────────────────────
 
 socialRouter.get('/profile/:handleOrId', async (c) => {
-  const key = c.req.param('handleOrId').replace('@','')
+  const key      = c.req.param('handleOrId').replace('@','')
+  const viewerId = c.get('userId') as string | undefined // null for guests
   const row = await queryOne(`
-    SELECT u.id, u.name, u.handle, u.email, u.role, u."avatarUrl", u."coverUrl",
+    SELECT u.id, u.name, u.handle, u.role, u."avatarUrl", u."coverUrl",
            u."isVerified", u."registeredAt",
            p.bio, p.avatar_url, p.cover_url, p.dob, p.theme_color,
            p.is_verified, p.is_pro,
@@ -28,7 +29,10 @@ socialRouter.get('/profile/:handleOrId', async (c) => {
     WHERE u.handle = $1 OR u.id = $1
   `, [key])
   if (!row) return c.json({ error: 'User not found' }, 404)
-  return c.json({ ok: true, user: row })
+  // Hide email/phone from non-owner viewers
+  const safe = { ...row } as any
+  if (safe.id !== viewerId) { delete safe.email; delete safe.phone; delete safe.latitude; delete safe.longitude }
+  return c.json({ ok: true, user: safe })
 })
 
 socialRouter.patch('/profile', async (c) => {

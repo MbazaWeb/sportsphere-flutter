@@ -315,7 +315,7 @@ authRouter.post('/forgot-password', async (c) => {
 
   if (!emailSent) {
     console.error(`[Password Reset] Email failed for ${user.id} — token logged for manual delivery`)
-    console.log(`[Password Reset] MANUAL: ${resetUrl}`)
+    // Reset URL not logged in production — check email delivery
   }
 
   return c.json({ ok: true })
@@ -451,7 +451,8 @@ authRouter.post('/otp/send', async (c) => {
     </div>`,
   })
 
-  console.log(`[OTP] ${user.id}: ${otp}`) // fallback if email fails
+  // OTP logged only in development
+  if (Bun.env.NODE_ENV === 'development') console.log(`[OTP] ${user.id}: ${otp}`)
   return c.json({ ok: true })
 })
 
