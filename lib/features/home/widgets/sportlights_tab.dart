@@ -3002,9 +3002,9 @@ class _ActionRowState extends State<_ActionRow> {
       if (entityType != null && entityId.isNotEmpty) {
         // Use entity_follows — works regardless of whether accountUserId exists
         if (next) {
-          await VpsRepository().becomeFan(entityType, entityId);
+          await VpsRepository().becomeFan(entityId, entityType: entityType);
         } else {
-          await VpsRepository().unfan(entityType, entityId);
+          await VpsRepository().stopBeingFan(entityId, entityType: entityType);
         }
       } else {
         // Fall back to fans table for user profiles
