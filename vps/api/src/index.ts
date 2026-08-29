@@ -72,22 +72,44 @@ app.get('/v1/social/search', async (c) => {
   const limit = Math.min(Number(c.req.query('limit') ?? 15), 50)
   if (!q) return c.json({ ok: true, results: [] })
   const pat = `%${q}%`
-  const [users, leagues, teams, players] = await Promise.all([
-    dbQuery(`SELECT id, handle, first_name, last_name, role, avatar_url, 'user' as _kind, '' as _subtitle FROM public.profiles WHERE handle ILIKE $1 OR first_name ILIKE $1 OR last_name ILIKE $1 LIMIT $2`, [pat, limit]),
+
+  const [profiles, leagues, teams, players] = await Promise.all([
+    dbQuery(`SELECT id::text, handle, first_name, last_name, role, avatar_url FROM public.profiles WHERE handle ILIKE $1 OR first_name ILIKE $1 OR last_name ILIKE $1 LIMIT $2`, [pat, limit]),
     dbQuery(`SELECT id, name, country, type, season FROM public."League" WHERE name ILIKE $1 OR country ILIKE $1 LIMIT $2`, [pat, Math.floor(limit/3)]),
-    dbQuery(`SELECT id, name, country, city, "logoUrl" FROM public."Team" WHERE name ILIKE $1 AND "isActive"=true LIMIT $2`, [pat, Math.floor(limit/3)]),
-    dbQuery(`SELECT id, name, position, nationality FROM public."Player" WHERE name ILIKE $1 AND "isActive"=true LIMIT $2`, [pat, Math.floor(limit/3)]),
+    dbQuery(`SELECT t.id, t.name, t.country, t.city, t."logoUrl", t."accountUserId" FROM public."Team" t WHERE t.name ILIKE $1 AND t."isActive"=true LIMIT $2`, [pat, Math.floor(limit/3)]),
+    dbQuery(`SELECT p.id, p.name, p.position, p.nationality, p."accountUserId" FROM public."Player" p WHERE p.name ILIKE $1 AND p."isActive"=true LIMIT $2`, [pat, Math.floor(limit/3)]),
   ])
-  const results = [
-    ...users.map((r: any) => {
-      const kind = ['team','league','player','coach','organization'].includes(r.role) ? r.role : 'user'
-      return { ...r, _kind: kind }
-    }),
-    ...leagues.map((r: any) => ({ id: r.id, handle: String(r.name||'').toLowerCase().replace(/ /g,'_'), first_name: r.name, last_name: '', role: 'league', avatar_url: null, _kind: 'league', _subtitle: `${r.country||''} · ${r.type||''}` })),
-    ...teams.map((r: any) => ({ id: r.id, handle: String(r.name||'').toLowerCase().replace(/ /g,'_'), first_name: r.name, last_name: '', role: 'team', avatar_url: r.logoUrl, _kind: 'team', _subtitle: `${r.city||''} · ${r.country||''}` })),
-    ...players.map((r: any) => ({ id: r.id, handle: String(r.name||'').toLowerCase().replace(/ /g,'_'), first_name: r.name, last_name: '', role: 'player', avatar_url: null, _kind: 'player', _subtitle: `${r.position||''} · ${r.nationality||''}` })),
-  ]
-  return c.json({ ok: true, results })
+
+  // IDs already covered by profiles (entity accounts)
+  const profileIds = new Set((profiles as any[]).map((r: any) => r.id))
+  const seen = new Set<string>()
+  const out: any[] = []
+
+  const add = (r: any) => {
+    const key = `${r.id}|${r.first_name}`
+    if (seen.has(key)) return
+    seen.add(key); out.push(r)
+  }
+
+  for (const r of profiles as any[]) {
+    const kind = ['team','league','player','coach','organization'].includes(r.role) ? r.role : 'user'
+    add({ ...r, _kind: kind, _subtitle: kind === 'user' ? `@${r.handle}` : r.role })
+  }
+  const leagueNames = new Set<string>()
+  for (const r of leagues as any[]) {
+    if (leagueNames.has(r.name)) continue; leagueNames.add(r.name)
+    add({ id: r.id, handle: String(r.name||'').toLowerCase().replace(/ /g,'_'), first_name: r.name, last_name: '', role: 'league', avatar_url: null, _kind: 'league', _subtitle: `${r.country||''} · ${r.type||''}` })
+  }
+  for (const r of teams as any[]) {
+    if (r.accountUserId && profileIds.has(r.accountUserId)) continue
+    add({ id: r.id, handle: String(r.name||'').toLowerCase().replace(/ /g,'_'), first_name: r.name, last_name: '', role: 'team', avatar_url: r.logoUrl, _kind: 'team', _subtitle: `${r.city||''} · ${r.country||''}` })
+  }
+  for (const r of players as any[]) {
+    if (r.accountUserId && profileIds.has(r.accountUserId)) continue
+    add({ id: r.id, handle: String(r.name||'').toLowerCase().replace(/ /g,'_'), first_name: r.name, last_name: '', role: 'player', avatar_url: null, _kind: 'player', _subtitle: `${r.position||''} · ${r.nationality||''}` })
+  }
+
+  return c.json({ ok: true, results: out.slice(0, limit) })
 })
 
 // ── Auth middleware — all /v1/* EXCEPT public auth endpoints ─────────────────
