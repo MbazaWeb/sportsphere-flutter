@@ -622,7 +622,13 @@ adminRouter.post('/reconcile', async (c) => {
        WHERE "accountUserId" IS NULL AND "isActive"=true LIMIT 100`
     )
     for (const row of rows) { const r = row as any;
-      const handle = (r[slugCol]??r[nameCol]??'').toLowerCase().replace(/[^a-z0-9_]/g,'').slice(0,30)
+      // Clean handle from name: "Young Africans SC" → "youngafricans"
+      const rawName: string = String(r[nameCol] ?? r[slugCol] ?? '')
+      const handle = rawName
+        .toLowerCase()
+        .replace(/(\s+(sc|fc|ac|cf|united|city|town|sport\s*club)\s*)$/gi, '')
+        .replace(/[^a-z0-9]/g, '')
+        .slice(0, 25) || rawName.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,25)
       if (!handle || !r.id || !r[nameCol]) continue
       try {
         const email  = `${handle}@entity.playifysport.fun`
