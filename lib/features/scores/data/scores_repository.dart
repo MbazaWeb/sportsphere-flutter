@@ -116,8 +116,9 @@ class ScoresRepository {
 
   Future<List<String>> listLeagues({String? sportSlug}) async {
     try {
-      // Get distinct league names from VPS matches
-      final res = await _vps.get<Map<String, dynamic>>('/v1/matches/leagues');
+      final query = <String, dynamic>{};
+      if (sportSlug != null && sportSlug.isNotEmpty) query['sport'] = sportSlug;
+      final res = await _vps.get<Map<String, dynamic>>('/v1/matches/leagues', query: query);
       return ((res.data?['leagues']) as List? ?? []).cast<String>();
     } catch (_) {
       // Fallback: get from results

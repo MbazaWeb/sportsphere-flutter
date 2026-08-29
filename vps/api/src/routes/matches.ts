@@ -79,14 +79,30 @@ matchRouter.get('/all', async (c) => {
   return c.json({ ok: true, matches: rows })
 })
 
-// GET /v1/matches/leagues — distinct league names from all matches
+// GET /v1/matches/leagues?sport= — distinct league names filtered by sport
 matchRouter.get('/leagues', async (c) => {
-  const rows = await query<{ league: string }>(
-    `SELECT DISTINCT league FROM public."Match"
-     WHERE league IS NOT NULL AND league != ''
-     ORDER BY league`
-  )
-  return c.json({ ok: true, leagues: rows.map(r => r.league) })
+  const sport = (c.req.query('sport') ?? c.req.query('sportSlug') ?? '').trim().toLowerCase()
+  let rows: { league: string }[]
+  if (sport && sport !== 'all' && sport !== 'football') {
+    // Non-football sport: check if we have matches for it
+    rows = await query<{ league: string }>(
+      `SELECT DISTINCT league FROM public."Match"
+       WHERE league IS NOT NULL AND league != ''
+         AND (LOWER("sportSlug") = $1 OR LOWER("sport_slug") = $1)
+       ORDER BY league`,
+      [sport]
+    )
+  } else if (sport === '' || sport === 'football' || sport === 'all') {
+    // Default: football or no filter
+    rows = await query<{ league: string }>(
+      `SELECT DISTINCT league FROM public."Match"
+       WHERE league IS NOT NULL AND league != ''
+       ORDER BY league`
+    )
+  } else {
+    rows = []
+  }
+  return c.json({ ok: true, leagues: rows.map((r: any) => r.league) })
 })
 
 // GET /v1/matches/:id

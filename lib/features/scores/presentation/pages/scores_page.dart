@@ -717,12 +717,24 @@ class _StandingsViewState extends State<_StandingsView> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: FutureBuilder<List<StandingRow>>(
+            child: (!_loadingLeagues && _leagues.isEmpty)
+              ? Center(child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.sports_rounded,
+                        color: PlayifyColors.muted, size: 48),
+                    const SizedBox(height: 12),
+                    const Text('No league table available',
+                        style: TextStyle(color: PlayifyColors.white,
+                            fontSize: 16, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 6),
+                    const Text('No standings found for this sport',
+                        style: TextStyle(color: PlayifyColors.muted, fontSize: 13)),
+                  ],
+                ))
+              : FutureBuilder<List<StandingRow>>(
               future: const ScoresRepository()
                   .getStandings(league: _league, sportSlug: _sport),
-              // Key by sport + league + season so the FutureBuilder properly
-              // re-runs when any of them changes (previously keyed by league
-              // only — switching sport didn't re-query).
               key: ValueKey('$_sport|$_league|$_season'),
               builder: (context, snap) {
                 if (snap.connectionState == ConnectionState.waiting) {
