@@ -49,9 +49,18 @@ class ScoresRepository {
     }
   }
 
-  Future<List<MatchModel>> getUpcoming({DateTime? day, int limit = kMaxMatchesPerFetch}) async {
+  Future<List<MatchModel>> getUpcoming({
+    DateTime? day, DateTime? from, DateTime? to,
+    int limit = kMaxMatchesPerFetch, int offset = 0,
+    String? league,
+  }) async {
     try {
-      final rows = await _vps.getUpcomingMatches();
+      final rows = await _vps.getUpcomingMatches(
+        limit: limit, offset: offset,
+        from: from?.toUtc().toIso8601String(),
+        to: to?.toUtc().toIso8601String(),
+        league: league,
+      );
       var list = rows.map(_fromRow).toList();
       if (day != null) {
         list = list.where((m) =>
@@ -66,9 +75,18 @@ class ScoresRepository {
     }
   }
 
-  Future<List<MatchModel>> getResults({DateTime? day, int limit = kMaxMatchesPerFetch}) async {
+  Future<List<MatchModel>> getResults({
+    DateTime? day, DateTime? from, DateTime? to,
+    int limit = kMaxMatchesPerFetch, int offset = 0,
+    String? league,
+  }) async {
     try {
-      final rows = await _vps.getResults();
+      final rows = await _vps.getResults(
+        limit: limit, offset: offset,
+        from: from?.toUtc().toIso8601String(),
+        to: to?.toUtc().toIso8601String(),
+        league: league,
+      );
       var list = rows.map(_fromRow).toList();
       if (list.isEmpty) {
         final now = DateTime.now().toUtc();

@@ -30,23 +30,47 @@ matchRouter.get('/today', async (c) => {
 })
 
 matchRouter.get('/upcoming', async (c) => {
-  const rows = await query(
-    `SELECT * FROM public."Match"
-     WHERE "kickoffAt" > NOW() AND status NOT IN ('ft','finished','full time','FT','Finished')
-     ORDER BY "kickoffAt" LIMIT 100`,
-    []
-  )
-  return c.json({ ok: true, matches: rows })
+  const limit  = Math.min(Number(c.req.query('limit')  ?? 200), 1000)
+  const offset = Number(c.req.query('offset') ?? 0)
+  const from   = c.req.query('from')  // optional: ISO date filter from
+  const to     = c.req.query('to')    // optional: ISO date filter to
+  const league = c.req.query('league') ?? ''
+
+  let sql = `SELECT * FROM public."Match"
+     WHERE "kickoffAt" > NOW()
+       AND status NOT IN ('ft','finished','full time','FT','Finished','cancelled')`
+  const params: unknown[] = []
+
+  if (from) { params.push(from); sql += ` AND "kickoffAt" >= $${params.length}` }
+  if (to)   { params.push(to);   sql += ` AND "kickoffAt" <= $${params.length}` }
+  if (league) { params.push(league); sql += ` AND league ILIKE $${params.length}` }
+
+  params.push(limit, offset)
+  sql += ` ORDER BY "kickoffAt" ASC LIMIT $${params.length-1} OFFSET $${params.length}`
+
+  const rows = await query(sql, params)
+  return c.json({ ok: true, matches: rows, limit, offset })
 })
 
 matchRouter.get('/results', async (c) => {
-  const rows = await query(
-    `SELECT * FROM public."Match"
-     WHERE status = ANY($1)
-     ORDER BY "kickoffAt" DESC LIMIT 100`,
-    [DONE]
-  )
-  return c.json({ ok: true, matches: rows })
+  const limit  = Math.min(Number(c.req.query('limit')  ?? 200), 1000)
+  const offset = Number(c.req.query('offset') ?? 0)
+  const from   = c.req.query('from')   // optional: ISO date filter from
+  const to     = c.req.query('to')     // optional: ISO date filter to
+  const league = c.req.query('league') ?? ''
+
+  let sql = `SELECT * FROM public."Match" WHERE status = ANY($1)`
+  const params: unknown[] = [DONE]
+
+  if (from)   { params.push(from);   sql += ` AND "kickoffAt" >= $${params.length}` }
+  if (to)     { params.push(to);     sql += ` AND "kickoffAt" <= $${params.length}` }
+  if (league) { params.push(league); sql += ` AND league ILIKE $${params.length}` }
+
+  params.push(limit, offset)
+  sql += ` ORDER BY "kickoffAt" DESC LIMIT $${params.length-1} OFFSET $${params.length}`
+
+  const rows = await query(sql, params)
+  return c.json({ ok: true, matches: rows, limit, offset })
 })
 
 matchRouter.get('/standings', async (c) => {

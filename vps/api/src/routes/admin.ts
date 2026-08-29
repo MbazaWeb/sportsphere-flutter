@@ -221,7 +221,20 @@ adminRouter.post('/teams', async (c) => {
      b.venue??null, b.foundedYear??null, b.leagueId??null, b.sportId??null,
      b.accountUserId??null, b.identity_status??'pending', b.description??null]
   )
-  return c.json({ ok: true, team: rows[0] }, 201)
+  const team = rows[0] as any
+  // Auto-create team community
+  await execute(
+    `INSERT INTO public."Community"(id, name, description, topic, "teamId", "imageUrl", "memberCount", "createdAt")
+     VALUES(gen_random_uuid()::text, $1, $2, 'Team', $3, $4, 0, NOW())
+     ON CONFLICT DO NOTHING`,
+    [
+      `${team.name} Fans`,
+      `Official fan community for ${team.name} supporters. Match discussions, news and meetups.`,
+      team.id,
+      team.logoUrl ?? null,
+    ]
+  ).catch(() => {})
+  return c.json({ ok: true, team }, 201)
 })
 
 // PATCH /v1/admin/teams/:id
@@ -375,7 +388,19 @@ adminRouter.post('/leagues', async (c) => {
      b.country??'Tanzania', b.logoUrl??null, b.type??'league',
      b.season??null, b.description??null]
   )
-  return c.json({ ok: true, league: rows[0] }, 201)
+  const league = rows[0] as any
+  // Auto-create league community channel
+  await execute(
+    `INSERT INTO public."Community"(id, name, description, topic, "imageUrl", "memberCount", "createdAt")
+     VALUES(gen_random_uuid()::text, $1, $2, 'League', $3, 0, NOW())
+     ON CONFLICT DO NOTHING`,
+    [
+      `${league.name} Channel`,
+      `Official channel for ${league.name}. Fixtures, standings, match discussions and breaking news.`,
+      league.logoUrl ?? null,
+    ]
+  ).catch(() => {})
+  return c.json({ ok: true, league }, 201)
 })
 
 // PATCH /v1/admin/leagues/:id

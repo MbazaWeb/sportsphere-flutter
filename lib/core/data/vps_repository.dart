@@ -154,13 +154,32 @@ class VpsRepository {
     return ((res.data?['matches']) as List? ?? []).cast<Map<String, dynamic>>();
   }
 
-  Future<List<Map<String, dynamic>>> getUpcomingMatches() async {
-    final res = await _client.get<Map<String, dynamic>>('/v1/matches/upcoming');
+  /// Upcoming matches — no date cap, supports pagination and league filter.
+  /// [from] / [to] = ISO date strings for date range filter.
+  /// [league] = filter by league name.
+  Future<List<Map<String, dynamic>>> getUpcomingMatches({
+    int limit = 200, int offset = 0,
+    String? from, String? to, String? league,
+  }) async {
+    final query = <String, dynamic>{'limit': limit, 'offset': offset};
+    if (from   != null) query['from']   = from;
+    if (to     != null) query['to']     = to;
+    if (league != null) query['league'] = league;
+    final res = await _client.get<Map<String, dynamic>>('/v1/matches/upcoming', query: query);
     return ((res.data?['matches']) as List? ?? []).cast<Map<String, dynamic>>();
   }
 
-  Future<List<Map<String, dynamic>>> getResults() async {
-    final res = await _client.get<Map<String, dynamic>>('/v1/matches/results');
+  /// Results — no date cap, supports pagination and league filter.
+  /// [from] / [to] = ISO date strings (e.g. 6 months ago to today).
+  Future<List<Map<String, dynamic>>> getResults({
+    int limit = 200, int offset = 0,
+    String? from, String? to, String? league,
+  }) async {
+    final query = <String, dynamic>{'limit': limit, 'offset': offset};
+    if (from   != null) query['from']   = from;
+    if (to     != null) query['to']     = to;
+    if (league != null) query['league'] = league;
+    final res = await _client.get<Map<String, dynamic>>('/v1/matches/results', query: query);
     return ((res.data?['matches']) as List? ?? []).cast<Map<String, dynamic>>();
   }
 
