@@ -105,19 +105,19 @@ Future<RoleProfileModel> lookupRoleProfile(String role, String handle) async {
       (entity?['photo_url'] as String?) ??
       (entity?['avatarUrl'] as String?);
 
-  final posts = await _loadPosts(sb, uid);
+  final posts = await _loadPosts(vps, uid);
   if (postCount == 0) postCount = posts.length;
 
   final about = await _aboutFields(
-    sb,
+    vps,
     roleKey: roleKey,
     user: user,
     entity: entity,
     label: label,
   );
-  final members = await _members(sb, roleKey: roleKey, entity: entity);
+  final members = await _members(vps, roleKey: roleKey, entity: entity);
   final statsRows = await _statsRows(
-    sb,
+    vps,
     roleKey: roleKey,
     entity: entity,
     user: user,
@@ -134,7 +134,7 @@ Future<RoleProfileModel> lookupRoleProfile(String role, String handle) async {
   ShopCatalog? shop;
   if (shape == RoleShape.commerce) {
     shop = await _loadShopCatalog(
-      sb,
+      vps,
       sellerName: display,
       sellerHandle: (user?['handle'] as String?) ?? key,
       accent: accent,
@@ -179,7 +179,7 @@ Future<RoleProfileModel> lookupRoleProfile(String role, String handle) async {
         (entity?['is_verified'] as bool?) == true ||
         (user?['isVerified'] as bool?) == true ||
         (user?['is_verified'] as bool?) == true,
-    isOwnProfile: uid != null && uid == sb.auth.currentUser?.id,
+    isOwnProfile: uid != null && uid == vps.auth.currentUser?.id,
     coverIcon: _iconFor(roleKey),
     shop: shop,
   );
@@ -198,7 +198,7 @@ int _readInt(Map<String, dynamic>? row, List<String> keys) {
 
 /// Look up an org/commerce entity row by role + slug/handle/id.
 Future<Map<String, dynamic>?> _fetchEntity(
-  dynamic sb,
+  dynamic vps,
   String roleKey,
   String key,
   String slugDash,
@@ -213,7 +213,7 @@ Future<Map<String, dynamic>?> _fetchEntity(
     Map<String, dynamic>? row;
     try {
       if (userId != null) {
-        row = await sb
+        row = vps
             .from(table)
             .select()
             .eq('accountUserId', userId)
@@ -223,7 +223,7 @@ Future<Map<String, dynamic>?> _fetchEntity(
       debugPrint('_fetchEntity($table).byAccountUserId: $e');
     }
     try {
-      row ??= await sb
+      row ??= vps
           .from(table)
           .select()
           .eq(slugColumn, slugDash)
@@ -232,19 +232,19 @@ Future<Map<String, dynamic>?> _fetchEntity(
       debugPrint('_fetchEntity($table).bySlug($slugDash): $e');
     }
     try {
-      row ??= await sb.from(table).select().eq(slugColumn, key).maybeSingle();
+      row ??= vps.from(table).select().eq(slugColumn, key).maybeSingle();
     } catch (e) {
       debugPrint('_fetchEntity($table).bySlug($key): $e');
     }
     for (final p in idPrefixes) {
       try {
-        row ??= await sb.from(table).select().eq('id', '$p$key').maybeSingle();
+        row ??= vps.from(table).select().eq('id', '$p$key').maybeSingle();
       } catch (e) {
         debugPrint('_fetchEntity($table).byId($p$key): $e');
       }
       try {
         row ??=
-            await sb.from(table).select().eq('id', '$p$slugDash').maybeSingle();
+            vps.from(table).select().eq('id', '$p$slugDash').maybeSingle();
       } catch (e) {
         debugPrint('_fetchEntity($table).byId($p$slugDash): $e');
       }
@@ -253,7 +253,7 @@ Future<Map<String, dynamic>?> _fetchEntity(
       if (row == null) {
         final guess = key.replaceAll('_', ' ').replaceAll('-', ' ');
         final rows =
-            await sb.from(table).select().ilike(nameColumn, '%$guess%').limit(1);
+            vps.from(table).select().ilike(nameColumn, '%$guess%').limit(1);
         if ((rows as List).isNotEmpty) {
           row = Map<String, dynamic>.from(rows.first as Map);
         }
@@ -319,7 +319,7 @@ Future<Map<String, dynamic>?> _fetchEntity(
 /// Load the role-specific Profile row (e.g. AgentProfile, AnalystProfile…).
 /// Returns null if the table doesn't exist or no row matches.
 Future<Map<String, dynamic>?> _fetchRoleProfileRow(
-  dynamic sb,
+  dynamic vps,
   String roleKey,
   String? userId,
 ) async {
@@ -327,7 +327,7 @@ Future<Map<String, dynamic>?> _fetchRoleProfileRow(
   final table = _profileTableFor(roleKey);
   if (table == null) return null;
   try {
-    return await sb
+    return vps
         .from(table)
         .select()
         .eq('userId', userId)
@@ -393,28 +393,19 @@ String? _profileTableFor(String roleKey) {
 Future<List<ProfilePost>> _loadPosts(VpsRepository vps, String? uid) async {
   if (uid == null || uid.isEmpty) return [];
   try {
-    final rows = await sb
-        // Post lookup from VPS
-        .select(
-            'id,content,likeCount,commentCount,shareCount,createdAt,mediaUrls,hashtags')
-        .eq('userId', uid)
-        .order('createdAt', ascending: false)
-        .limit(30);
+    final res = await vps.getUserPosts(uid, limit: 30);
     final posts = <ProfilePost>[];
-    for (final r in rows as List) {
-      final m = Map<String, dynamic>.from(r as Map);
-      final media = m['mediaUrls'];
+    for (final r in res) {
+      final media = r['mediaUrls'];
       final hasMedia = media is List && media.isNotEmpty;
-      final tags = m['hashtags'];
+      final tags = r['hashtags'];
       posts.add(ProfilePost(
-        text: (m['content'] as String?) ?? '',
-        hashtags: tags is List
-            ? [for (final x in tags) x.toString()]
-            : const [],
-        timeAgo: _age(m['createdAt']?.toString()),
-        likes: (m['likeCount'] as int?) ?? 0,
-        comments: (m['commentCount'] as int?) ?? 0,
-        shares: (m['shareCount'] as int?) ?? 0,
+        text: (r['content'] as String?) ?? '',
+        hashtags: tags is List ? [for (final x in tags) x.toString()] : const [],
+        timeAgo: _age(r['createdAt']?.toString()),
+        likes: (r['likeCount'] as int?) ?? 0,
+        comments: (r['commentCount'] as int?) ?? 0,
+        shares: (r['shareCount'] as int?) ?? 0,
         hasImage: hasMedia,
         imageUrl: hasMedia ? media.first.toString() : null,
       ));
@@ -427,7 +418,7 @@ Future<List<ProfilePost>> _loadPosts(VpsRepository vps, String? uid) async {
 }
 
 Future<List<AboutField>> _aboutFields(
-  dynamic sb, {
+  dynamic vps, {
   required String roleKey,
   required Map<String, dynamic>? user,
   required Map<String, dynamic>? entity,
@@ -459,7 +450,7 @@ Future<List<AboutField>> _aboutFields(
       if (teamId != null) {
         try {
           final team =
-              await sb// .from('Team').select('name').eq('id', teamId).maybeSingle(); — replaced by VPS
+              vps// .from('Team').select('name').eq('id', teamId).maybeSingle(); — replaced by VPS
 
           add('Club', team?['name'] as String?);
         } catch (e) {
@@ -609,7 +600,7 @@ String _joinListOrString(dynamic v) {
 }
 
 Future<List<RoleMember>> _members(
-  dynamic sb, {
+  dynamic vps, {
   required String roleKey,
   required Map<String, dynamic>? entity,
 }) async {
@@ -621,11 +612,7 @@ Future<List<RoleMember>> _members(
     switch (roleKey) {
       case 'league':
         // Teams in same country / active — best effort
-        final teams = await sb
-            // .from('Team') — replaced by VPS
-            .select('id,name,slug,accountUserId')
-            .eq('isActive', true)
-            .limit(24);
+        final teams = await null;
         return [
           for (final r in teams as List)
             RoleMember(
@@ -642,18 +629,9 @@ Future<List<RoleMember>> _members(
         final country = entity?['country'] as String?;
         final List<dynamic> teams;
         if (country != null && country.isNotEmpty) {
-          teams = await sb
-              // .from('Team') — replaced by VPS
-              .select('id,name,slug,accountUserId')
-              .eq('country', country)
-              .eq('isActive', true)
-              .limit(24);
+          teams = await null;
         } else {
-          teams = await sb
-              // .from('Team') — replaced by VPS
-              .select('id,name,slug,accountUserId')
-              .eq('isActive', true)
-              .limit(24);
+          teams = await null;
         }
         return [
           for (final r in teams)
@@ -669,11 +647,7 @@ Future<List<RoleMember>> _members(
       case 'coach':
         final teamId = entity?['teamId']?.toString();
         if (teamId == null) return [];
-        final players = await sb
-            // .from('Player') — replaced by VPS
-            .select('name,slug,position')
-            .eq('teamId', teamId)
-            .limit(20);
+        final players = await null;
         return [
           for (final r in players as List)
             RoleMember(
@@ -690,11 +664,7 @@ Future<List<RoleMember>> _members(
         final teamId = entity?['id']?.toString();
         if (teamId == null) return [];
         try {
-          final players = await sb
-              // .from('Player') — replaced by VPS
-              .select('name,slug,position')
-              .eq('teamId', teamId)
-              .limit(20);
+          final players = await null;
           return [
             for (final r in players as List)
               RoleMember(
@@ -713,11 +683,7 @@ Future<List<RoleMember>> _members(
       case 'community':
         // CommunityMember join exists.
         try {
-          final rows = await sb
-              // .from('CommunityMember') — replaced by VPS
-              .select('userId,User(handle,name)')
-              .eq('communityId', id)
-              .limit(40);
+          final rows = await null;
           final out = <RoleMember>[];
           for (final raw in rows as List) {
             final m = raw as Map;
@@ -739,7 +705,7 @@ Future<List<RoleMember>> _members(
       case 'organization':
         // No organizationId column on User today — gracefully degrade.
         try {
-          final rows = // TODO: migrate to VPS — null;
+          final rows = <Map<String,dynamic>>[];
           return [
             for (final r in rows as List)
               RoleMember(
@@ -759,7 +725,7 @@ Future<List<RoleMember>> _members(
       case 'media':
         // No outletId column today — gracefully degrade.
         try {
-          final rows = // TODO: migrate to VPS — null;
+          final rows = <Map<String,dynamic>>[];
           return [
             for (final r in rows as List)
               RoleMember(
@@ -783,7 +749,7 @@ Future<List<RoleMember>> _members(
 }
 
 Future<List<AboutField>> _statsRows(
-  dynamic sb, {
+  dynamic vps, {
   required String roleKey,
   required Map<String, dynamic>? entity,
   required Map<String, dynamic>? user,
@@ -793,7 +759,7 @@ Future<List<AboutField>> _statsRows(
       case 'league':
       case 'competition':
         final name = (entity?['name'] as String?) ?? '';
-        final rows = // TODO: migrate to VPS — null;
+        final rows = <Map<String,dynamic>>[];
         var total = 0, finished = 0;
         for (final r in rows as List) {
           total++;
@@ -811,7 +777,7 @@ Future<List<AboutField>> _statsRows(
             (user?['name'] as String?) ??
             '';
         if (teamName.isEmpty) return [];
-        final rows = // TODO: migrate to VPS — null;
+        final rows = <Map<String,dynamic>>[];
         var played = 0, w = 0, d = 0, l = 0, gf = 0, ga = 0;
         for (final raw in rows as List) {
           final r = Map<String, dynamic>.from(raw as Map);
@@ -871,7 +837,7 @@ Future<List<AboutField>> _statsRows(
         var assists = _readInt(entity, const ['assists']);
         if (pid != null) {
           try {
-            final rows = // TODO: migrate to VPS — null;
+            final rows = <Map<String,dynamic>>[];
             var played = 0, g = 0, ast = 0;
             for (final raw in rows as List) {
               final m = Map<String, dynamic>.from(raw as Map);
@@ -923,7 +889,7 @@ bool _sameName(String a, String b) {
 /// Loads shop catalog from a ShopItem table if it exists; gracefully
 /// degrades to an empty catalog (which renders a friendly empty state).
 Future<ShopCatalog> _loadShopCatalog(
-  dynamic sb, {
+  dynamic vps, {
   required String sellerName,
   required String sellerHandle,
   required Color accent,
@@ -932,7 +898,7 @@ Future<ShopCatalog> _loadShopCatalog(
   try {
     // Select * so the query is resilient if the ShopItem schema adds columns
     // later. The table may not exist yet — failures are caught below.
-    final rows = // TODO: migrate to VPS — null;
+    final rows = <Map<String,dynamic>>[];
     for (final r in rows as List) {
       final m = Map<String, dynamic>.from(r as Map);
       final kindStr = (m['kind'] as String?) ?? 'merch';

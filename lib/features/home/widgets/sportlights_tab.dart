@@ -2401,6 +2401,21 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
     }
   }
 
+  void _showSignInPrompt(BuildContext ctx, String action) {
+    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+      content: Row(children: [
+        Text('Sign in to $action'),
+        const Spacer(),
+        TextButton(
+          onPressed: () => ctx.push('/login'),
+          child: const Text('Sign in',
+              style: TextStyle(color: Color(0xFF168CFF), fontWeight: FontWeight.w700)),
+        ),
+      ]),
+      behavior: SnackBarBehavior.floating,
+    ));
+  }
+
   Future<void> _onLike() async {
     // Guard: must be signed in
     if (Supabase.instance.client.auth.currentUser == null) {
