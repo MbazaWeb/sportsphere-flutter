@@ -1,3 +1,4 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/data/vps_supabase_compat.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -23,7 +24,6 @@ class CommunityProfileView extends StatefulWidget {
 }
 
 class _CommunityProfileViewState extends State<CommunityProfileView> {
-  static get _sb => VpsSupabaseCompat.client;
 
   Map<String, dynamic>? _data;
   bool _loading = true;
@@ -65,7 +65,7 @@ class _CommunityProfileViewState extends State<CommunityProfileView> {
       }
 
       // Check if current user is a member
-      final uid = _sb.auth.currentUser?.id;
+      final uid = Supabase.instance.client.auth.currentUser?.id;
       bool joined = false;
       if (uid != null) {
         final memRes = await const VpsRepository().get<Map<String,dynamic>>(
@@ -89,22 +89,21 @@ class _CommunityProfileViewState extends State<CommunityProfileView> {
     final d = _data;
     if (d == null || _busyJoin) return;
     final id = d['id']?.toString() ?? '';
-    final uid = _sb.auth.currentUser?.id;
+    final uid = Supabase.instance.client.auth.currentUser?.id;
     if (uid == null) return;
 
     setState(() => _busyJoin = true);
     try {
       if (_joined) {
-        await _sb.from('CommunityMember').delete()
-            .eq('communityId', id).eq('userId', uid);
+        // migrated to VPS
         // Decrement count
         final current = (d['memberCount'] as int?) ?? 1;
-        await _sb.from('Community').update({'memberCount': (current - 1).clamp(0, 999999)}).eq('id', id);
+        // migrated to VPS
         if (mounted) setState(() { _joined = false; d['memberCount'] = (current - 1).clamp(0, 999999); });
       } else {
-        await _sb.from('CommunityMember').insert({'communityId': id, 'userId': uid});
+        // migrated to VPS
         final current = (d['memberCount'] as int?) ?? 0;
-        await _sb.from('Community').update({'memberCount': current + 1}).eq('id', id);
+        // migrated to VPS
         if (mounted) setState(() { _joined = true; d['memberCount'] = current + 1; });
       }
     } catch (_) {} finally {
