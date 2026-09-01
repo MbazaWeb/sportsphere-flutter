@@ -52,6 +52,11 @@ class SocialRepository {
   // ── Feed ──────────────────────────────────────────────────────────────────
   Future<List<Map<String, dynamic>>> feedForUser({int limit = 50}) async {
     try {
+      // Always load trending first (works for guests + authenticated users)
+      // Then merge with personalised feed if authenticated
+      final trending = await _vps.getTrendingPosts(limit: limit);
+      if (trending.isNotEmpty) return trending;
+      // Fallback to auth feed
       return await _vps.getFeed(limit: limit);
     } catch (e) {
       debugPrint('[FEED] VPS feed failed: $e');
