@@ -1026,9 +1026,3 @@ String _age(String? iso) {
   if (d.inDays < 7) return '${d.inDays}d';
   return '${dt.day}/${dt.month}/${dt.year}';
 }
-Future<Map<String, dynamic>?> _fetchRoleProfileRow(dynamic vpsArg, String roleKey, String? userId) async {
-  // Role-specific profile rows not yet in VPS — return null
-  return null;
-}
-
-
