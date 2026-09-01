@@ -61,6 +61,13 @@ app.post('/v1/mpesa/callback', mpesaCallbackHandler)
 // ── Public auth routes (no JWT required) ─────────────────────────────────────
 
 // WebSocket stats — internal monitoring (no auth)
+app.get('/v1/app/version', (c) => c.json({
+  ok: true, version: '1.1.0', versionCode: 3,
+  downloadUrl: 'https://playifysport.fun/downloads/playify.apk',
+  releaseNotes: 'Bug fixes, improved feed, password reset, community features.',
+  forceUpdate: false, minVersionCode: 1,
+}))
+
 app.get('/ws/stats', async (c) => {
   return c.json({ ok: true, ...getStats() })
 })
