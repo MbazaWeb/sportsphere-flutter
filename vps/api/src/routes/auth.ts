@@ -13,7 +13,7 @@ export const authRouter = new Hono()
 
 // ── JWT helpers ───────────────────────────────────────────────────────────────
 const JWT_SECRET = Bun.env.JWT_SECRET ?? randomBytes(64).toString('hex')
-const JWT_EXPIRES = Bun.env.JWT_EXPIRES_IN ?? '15m'
+const JWT_EXPIRES = Bun.env.JWT_EXPIRES_IN ?? '2h'
 const REFRESH_SECRET = Bun.env.REFRESH_SECRET ?? randomBytes(64).toString('hex')
 const REFRESH_EXPIRES = Bun.env.REFRESH_EXPIRES_IN ?? '30d'
 
@@ -370,7 +370,7 @@ authRouter.post('/reset-password', async (c) => {
   const enc             = new TextEncoder()
 
   const accessToken = await new SignJWT({ sub: userRow.id, role: userRow.role, handle: userRow.handle })
-    .setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('15m')
+    .setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('2h')
     .sign(enc.encode(JWT_SECRET))
   const refreshToken = await new SignJWT({ sub: userRow.id, type: 'refresh' })
     .setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('30d')
@@ -552,7 +552,7 @@ authRouter.post('/set-password', async (c) => {
   const enc            = new TextEncoder()
 
   const accessToken  = await new SignJWT({ sub: user.id, role: user.role, handle: user.handle })
-    .setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('15m')
+    .setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('2h')
     .sign(enc.encode(JWT_SECRET))
   const refreshToken = await new SignJWT({ sub: user.id, type: 'refresh' })
     .setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('30d')

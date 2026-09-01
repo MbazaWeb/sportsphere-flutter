@@ -84,6 +84,27 @@ class ApiClient {
             code: 'PASSWORD_NOT_SET',
           );
         }
+        // Try to refresh token before giving up
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final refreshToken = prefs.getString('auth_refresh_token');
+          if (refreshToken != null && refreshToken.isNotEmpty) {
+            final refreshDio = Dio();
+            final refreshRes = await refreshDio.post(
+              '${e.requestOptions.baseUrl}/v1/auth/refresh',
+              data: {'refreshToken': refreshToken},
+            );
+            final newToken = refreshRes.data?['accessToken'] as String?;
+            if (newToken != null) {
+              await prefs.setString('auth_access_token', newToken);
+              // Retry the original request with new token
+              final opts = e.requestOptions;
+              opts.headers['Authorization'] = 'Bearer $newToken';
+              final retry = await _dio.fetch(opts);
+              return handler.resolve(retry);
+            }
+          }
+        } catch (_) {}
         throw ApiException(
           message: 'Session expired. Please log in again.',
           statusCode: 401,
