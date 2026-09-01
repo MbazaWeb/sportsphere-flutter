@@ -24,6 +24,7 @@ import '../../core/widgets/glass_container.dart';
 import '../../features/auth/domain/auth_state.dart';
 import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/notifications/notifications_provider.dart';
+import '../../core/update/app_update_service.dart';
 import '../../features/profile/Profile/fan/fan_profile_view.dart';
 import '../../features/profile/presentation/profile_loader.dart';
 import '../home/widgets/sportlights_tab.dart';
@@ -58,6 +59,14 @@ class _PlayifyShellState extends ConsumerState<PlayifyShell> {
   // sync _index to it.
   int _index = 0;
   int _lastSyncedTab = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) AppUpdateService.checkForUpdate(context);
+    });
+  }
 
   void goHome() {
     if (!mounted) return;

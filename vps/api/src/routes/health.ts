@@ -15,3 +15,16 @@ healthRouter.get('/', async (c) => {
     db:      dbOk ? 'ok' : 'error',
   }, status)
 })
+
+// GET /app/version — current APK version info
+healthRouter.get('/version', (c) => {
+  return c.json({
+    ok: true,
+    version:     '1.2.0',   // bump this when you release a new APK
+    versionCode: 4,          // must be > previous versionCode
+    downloadUrl: 'https://playifysport.fun/app/playify.apk',
+    releaseNotes: 'Bug fixes, improved feed, password reset, community updates.',
+    forceUpdate: false,      // set true to force update (critical fixes)
+    minVersionCode: 1,       // versions below this are force-updated
+  })
+})
