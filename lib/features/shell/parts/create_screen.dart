@@ -328,15 +328,21 @@ class _CreateComposerState extends State<_CreateComposer>
 
         // ── Take photo with camera (mobile only) ──
         case 'camera_image':
-          if (kIsWeb) break; // camera not available on web
-          final file = await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
-          if (file == null) return;
+          if (kIsWeb) break;
+          final camFile = await _picker.pickImage(source: ImageSource.camera, imageQuality: 92);
+          if (camFile == null) break;
+          // Open image editor
+          final camRaw = await camFile.readAsBytes();
+          if (!context.mounted) break;
+          final camEdited = await openMediaEditor(context, camRaw, filename: camFile.name);
+          if (camEdited == null) break; // user cancelled
           setState(() => _posting = true);
-          final url = await _social.uploadPickedFile(
-            bucket: 'posts', folder: 'images', file: file,
+          final camUrl = await _social.uploadBytes(
+            bytes: camEdited, bucket: 'posts', folder: 'images',
+            filename: '${DateTime.now().millisecondsSinceEpoch}.jpg',
           );
           setState(() {
-            _mediaTiles.add(url);
+            _mediaTiles.add(camUrl);
             _mediaIsVideo.add(false);
             _posting = false;
           });
@@ -344,14 +350,20 @@ class _CreateComposerState extends State<_CreateComposer>
 
         // ── Photo from gallery ──
         case 'gallery_image':
-          final file = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-          if (file == null) return;
+          final galFile = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 92);
+          if (galFile == null) break;
+          // Open image editor
+          final galRaw = await galFile.readAsBytes();
+          if (!context.mounted) break;
+          final galEdited = await openMediaEditor(context, galRaw, filename: galFile.name);
+          final galBytes = galEdited ?? galRaw; // if editor cancelled, use original
           setState(() => _posting = true);
-          final url = await _social.uploadPickedFile(
-            bucket: 'posts', folder: 'images', file: file,
+          final galUrl = await _social.uploadBytes(
+            bytes: galBytes, bucket: 'posts', folder: 'images',
+            filename: '${DateTime.now().millisecondsSinceEpoch}.jpg',
           );
           setState(() {
-            _mediaTiles.add(url);
+            _mediaTiles.add(galUrl);
             _mediaIsVideo.add(false);
             _posting = false;
           });
