@@ -1,6 +1,5 @@
 // lib/features/shell/parts/text_image_composer.dart
-// Compose a "text card" — text rendered over a background color/gradient.
-// Output: PNG bytes that get uploaded to R2 like any photo.
+// Text Card composer — headline + body text on gradient background.
 
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -11,8 +10,8 @@ import 'package:flutter/services.dart';
 import '../../../core/theme/colors.dart';
 
 const _kBlue = PlayifyColors.electricBlue;
+const _kGold = Color(0xFFFFD700);
 
-// ── Presets ────────────────────────────────────────────────────────────────────
 class _BgPreset {
   final String label;
   final List<Color> colors;
@@ -35,12 +34,13 @@ const _kPresets = [
   _BgPreset('Cream',    [Color(0xFFFFF8DC), Color(0xFFFFFACD)], isDark: false),
 ];
 
-const _kFonts = ['Default', 'Bold', 'Light', 'Italic', 'Mono'];
-const _kAligns = [TextAlign.left, TextAlign.center, TextAlign.right];
-const _kAlignIcons = [Icons.format_align_left_rounded,
-    Icons.format_align_center_rounded, Icons.format_align_right_rounded];
+const _kAligns    = [TextAlign.left, TextAlign.center, TextAlign.right];
+const _kAlignIcons = [
+  Icons.format_align_left_rounded,
+  Icons.format_align_center_rounded,
+  Icons.format_align_right_rounded,
+];
 
-/// Opens the text-image composer. Returns PNG bytes or null if cancelled.
 Future<Uint8List?> openTextImageComposer(BuildContext context) =>
     showModalBottomSheet<Uint8List?>(
       context: context,
@@ -55,56 +55,66 @@ class _TextImageComposer extends StatefulWidget {
   State<_TextImageComposer> createState() => _TextImageComposerState();
 }
 
-class _TextImageComposerState extends State<_TextImageComposer> {
-  final _ctrl       = TextEditingController();
+class _TextImageComposerState extends State<_TextImageComposer>
+    with SingleTickerProviderStateMixin {
+  final _headCtrl   = TextEditingController();
+  final _bodyCtrl   = TextEditingController();
   final _repaintKey = GlobalKey();
+  late final TabController _tabCtrl;
 
   int    _bgIndex   = 0;
-  int    _fontIndex = 0;
-  int    _alignIdx  = 1; // center default
-  double _fontSize  = 28;
+  int    _alignIdx  = 1;
+  double _headSize  = 32;
+  double _bodySize  = 18;
+  bool   _boldHead  = true;
   bool   _exporting = false;
 
-  _BgPreset get _bg => _kPresets[_bgIndex];
+  // 0 = editing header, 1 = editing body
+  int _activeField = 0;
 
+  _BgPreset get _bg => _kPresets[_bgIndex];
   Color get _textColor => _bg.isDark ? Colors.white : Colors.black87;
 
-  FontWeight get _fontWeight => _fontIndex == 1 ? FontWeight.w900 : FontWeight.w500;
-  FontStyle  get _fontStyle  => _fontIndex == 3 ? FontStyle.italic : FontStyle.normal;
-  String?    get _fontFamily => _fontIndex == 4 ? 'monospace' : null;
+  @override
+  void initState() {
+    super.initState();
+    _tabCtrl = TabController(length: 2, vsync: this);
+    _tabCtrl.addListener(() => setState(() => _activeField = _tabCtrl.index));
+  }
 
-  Future<Uint8List?> _capture() async {
-    final boundary = _repaintKey.currentContext!
-        .findRenderObject() as RenderRepaintBoundary;
-    final image = await boundary.toImage(pixelRatio: 3.0);
-    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-    return byteData?.buffer.asUint8List();
+  @override
+  void dispose() {
+    _headCtrl.dispose();
+    _bodyCtrl.dispose();
+    _tabCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _done() async {
-    if (_ctrl.text.trim().isEmpty) {
+    if (_headCtrl.text.trim().isEmpty && _bodyCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Type something first'),
+          content: Text('Add a headline or body text'),
           behavior: SnackBarBehavior.floating));
       return;
     }
     setState(() => _exporting = true);
     try {
-      final bytes = await _capture();
+      final boundary = _repaintKey.currentContext!
+          .findRenderObject() as RenderRepaintBoundary;
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      final bytes = byteData?.buffer.asUint8List();
       if (mounted) Navigator.pop(context, bytes);
     } catch (e) {
       setState(() => _exporting = false);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e')));
+          SnackBar(content: Text('Error: $e')));
     }
   }
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
-
-  @override
   Widget build(BuildContext context) {
-    final h = MediaQuery.of(context).size.height * 0.92;
+    final h = MediaQuery.of(context).size.height * 0.94;
     return Container(
       height: h,
       decoration: const BoxDecoration(
@@ -112,14 +122,12 @@ class _TextImageComposerState extends State<_TextImageComposer> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(children: [
-        // Handle
         const SizedBox(height: 8),
         Container(width: 40, height: 4, decoration: BoxDecoration(
             color: Colors.white24, borderRadius: BorderRadius.circular(2))),
-        const SizedBox(height: 4),
 
         // Top bar
-        Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        Padding(padding: const EdgeInsets.fromLTRB(4, 8, 16, 0),
           child: Row(children: [
             IconButton(
               icon: const Icon(Icons.close_rounded, color: Colors.white54),
@@ -130,210 +138,332 @@ class _TextImageComposerState extends State<_TextImageComposer> {
                 style: TextStyle(color: Colors.white,
                     fontSize: 16, fontWeight: FontWeight.w800))),
             _exporting
-              ? const SizedBox(width: 44, height: 44,
+              ? const SizedBox(width: 56, height: 36,
                   child: Center(child: CircularProgressIndicator(
                       color: _kBlue, strokeWidth: 2)))
               : FilledButton(
                   onPressed: _done,
-                  style: FilledButton.styleFrom(backgroundColor: _kBlue,
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10))),
-                  child: const Text('Post', style: TextStyle(
-                      fontWeight: FontWeight.w800, fontSize: 14)),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _kBlue,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Post',
+                      style: TextStyle(fontWeight: FontWeight.w800)),
                 ),
           ]),
         ),
 
-        // Preview card (the thing that gets rendered to PNG)
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: AspectRatio(
-              aspectRatio: 1.0,
-              child: RepaintBoundary(
-                key: _repaintKey,
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: _bg.colors,
-                    ),
+        // Live preview
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+          child: AspectRatio(
+            aspectRatio: 1.0,
+            child: RepaintBoundary(
+              key: _repaintKey,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: _bg.colors,
                   ),
-                  padding: const EdgeInsets.all(32),
-                  child: Center(child: AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 150),
-                    style: TextStyle(
-                      color: _textColor,
-                      fontSize: _fontSize,
-                      fontWeight: _fontWeight,
-                      fontStyle: _fontStyle,
-                      fontFamily: _fontFamily,
-                      height: 1.4,
+                ),
+                padding: const EdgeInsets.all(28),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: _alignIdx == 0
+                      ? CrossAxisAlignment.start
+                      : _alignIdx == 2
+                          ? CrossAxisAlignment.end
+                          : CrossAxisAlignment.center,
+                  children: [
+                    // Headline
+                    ValueListenableBuilder(
+                      valueListenable: _headCtrl,
+                      builder: (_, __, ___) {
+                        final text = _headCtrl.text;
+                        if (text.isEmpty && _bodyCtrl.text.isNotEmpty) {
+                          return const SizedBox.shrink();
+                        }
+                        return Text(
+                          text.isEmpty ? 'Headline...' : text,
+                          textAlign: _kAligns[_alignIdx],
+                          style: TextStyle(
+                            color: text.isEmpty
+                                ? _textColor.withValues(alpha: 0.3)
+                                : _textColor,
+                            fontSize: _headSize,
+                            fontWeight: _boldHead
+                                ? FontWeight.w900 : FontWeight.w600,
+                            height: 1.2,
+                          ),
+                        );
+                      },
                     ),
-                    child: ValueListenableBuilder(
-                      valueListenable: _ctrl,
-                      builder: (_, __, ___) => Text(
-                        _ctrl.text.isEmpty ? 'Type your text...' : _ctrl.text,
-                        textAlign: _kAligns[_alignIdx],
-                        style: TextStyle(
-                          color: _ctrl.text.isEmpty
-                              ? _textColor.withValues(alpha: 0.35)
-                              : _textColor,
-                          fontSize: _fontSize,
-                          fontWeight: _fontWeight,
-                          fontStyle: _fontStyle,
-                          fontFamily: _fontFamily,
-                          height: 1.4,
-                        ),
+                    // Divider if both fields have content
+                    ValueListenableBuilder(
+                      valueListenable: _headCtrl,
+                      builder: (_, __, ___) => ValueListenableBuilder(
+                        valueListenable: _bodyCtrl,
+                        builder: (_, __, ___) {
+                          if (_headCtrl.text.isEmpty || _bodyCtrl.text.isEmpty) {
+                            return const SizedBox.shrink();
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            child: Container(
+                              height: 1.5,
+                              color: _textColor.withValues(alpha: 0.25),
+                            ),
+                          );
+                        },
                       ),
                     ),
-                  )),
+                    // Body
+                    ValueListenableBuilder(
+                      valueListenable: _bodyCtrl,
+                      builder: (_, __, ___) {
+                        final text = _bodyCtrl.text;
+                        if (text.isEmpty && _headCtrl.text.isNotEmpty) {
+                          return const SizedBox.shrink();
+                        }
+                        return Text(
+                          text.isEmpty ? 'Body text...' : text,
+                          textAlign: _kAligns[_alignIdx],
+                          style: TextStyle(
+                            color: text.isEmpty
+                                ? _textColor.withValues(alpha: 0.3)
+                                : _textColor.withValues(alpha: 0.85),
+                            fontSize: _bodySize,
+                            fontWeight: FontWeight.w400,
+                            height: 1.5,
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
         ),
 
-        // Font size slider
-        Padding(padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-          child: Row(children: [
-            const Icon(Icons.text_fields_rounded, color: Colors.white38, size: 16),
-            Expanded(child: SliderTheme(
-              data: SliderThemeData(
-                activeTrackColor: _kBlue,
-                inactiveTrackColor: Colors.white12,
-                thumbColor: _kBlue,
-                overlayColor: _kBlue.withValues(alpha: 0.15),
-                trackHeight: 3,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
-              ),
-              child: Slider(
-                value: _fontSize,
-                min: 14, max: 56,
-                onChanged: (v) => setState(() => _fontSize = v),
-              ),
-            )),
-            const Icon(Icons.text_fields_rounded, color: Colors.white, size: 22),
-          ]),
+        const SizedBox(height: 10),
+
+        // Tab switcher: Headline / Body
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: TabBar(
+            controller: _tabCtrl,
+            labelColor: _kGold,
+            unselectedLabelColor: Colors.white38,
+            indicatorColor: _kGold,
+            indicatorSize: TabBarIndicatorSize.label,
+            labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+            tabs: const [Tab(text: 'Headline'), Tab(text: 'Body')],
+          ),
         ),
 
-        // Controls row
-        Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        // Controls for active field
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+          child: _activeField == 0
+              ? _HeadlineControls(
+                  size: _headSize,
+                  bold: _boldHead,
+                  onSizeChanged: (v) => setState(() => _headSize = v),
+                  onBoldChanged: (v) => setState(() => _boldHead = v),
+                )
+              : _BodyControls(
+                  size: _bodySize,
+                  onSizeChanged: (v) => setState(() => _bodySize = v),
+                ),
+        ),
+
+        // Alignment + backgrounds
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
           child: Row(children: [
             // Alignment
             ..._kAlignIcons.asMap().entries.map((e) => GestureDetector(
               onTap: () => setState(() => _alignIdx = e.key),
               child: Container(
-                margin: const EdgeInsets.only(right: 6),
-                padding: const EdgeInsets.all(8),
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.all(7),
                 decoration: BoxDecoration(
                   color: _alignIdx == e.key
-                      ? _kBlue.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.07),
+                      ? _kBlue.withValues(alpha: 0.2)
+                      : Colors.white.withValues(alpha: 0.07),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                       color: _alignIdx == e.key ? _kBlue : Colors.transparent),
                 ),
                 child: Icon(e.value,
-                    color: _alignIdx == e.key ? _kBlue : Colors.white54, size: 18),
+                    color: _alignIdx == e.key ? _kBlue : Colors.white38,
+                    size: 18),
               ),
             )),
-            const SizedBox(width: 8),
-            // Font style
-            ..._kFonts.asMap().entries.map((e) => GestureDetector(
-              onTap: () => setState(() => _fontIndex = e.key),
-              child: Container(
-                margin: const EdgeInsets.only(right: 6),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: _fontIndex == e.key
-                      ? _kBlue.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.07),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                      color: _fontIndex == e.key ? _kBlue : Colors.transparent),
-                ),
-                child: Text(e.value[0],
-                    style: TextStyle(
-                      color: _fontIndex == e.key ? _kBlue : Colors.white54,
-                      fontSize: 13, fontWeight: FontWeight.w700,
-                    )),
-              ),
-            )),
-          ]),
-        ),
-
-        // Background color presets
-        Padding(padding: const EdgeInsets.fromLTRB(0, 12, 0, 8),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20),
-              child: Text('Background', style: TextStyle(
-                  color: Colors.white54, fontSize: 11, fontWeight: FontWeight.w600)),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(height: 52, child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _kPresets.length,
-              itemBuilder: (_, i) {
-                final p = _kPresets[i];
-                final sel = _bgIndex == i;
-                return GestureDetector(
-                  onTap: () => setState(() => _bgIndex = i),
-                  child: Container(
-                    width: 44, height: 44,
-                    margin: const EdgeInsets.only(right: 8),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft, end: Alignment.bottomRight,
-                        colors: p.colors,
+            const Spacer(),
+            // BG presets (horizontal scroll mini)
+            SizedBox(height: 32, width: 220,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: _kPresets.length,
+                itemBuilder: (_, i) {
+                  final p = _kPresets[i];
+                  final sel = _bgIndex == i;
+                  return GestureDetector(
+                    onTap: () => setState(() => _bgIndex = i),
+                    child: Container(
+                      width: 32, height: 32,
+                      margin: const EdgeInsets.only(right: 6),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: p.colors,
+                        ),
+                        border: Border.all(
+                          color: sel ? Colors.white : Colors.transparent,
+                          width: 2,
+                        ),
                       ),
-                      border: Border.all(
-                        color: sel ? Colors.white : Colors.transparent,
-                        width: 2.5,
-                      ),
-                      boxShadow: sel ? [BoxShadow(
-                          color: p.colors.first.withValues(alpha: 0.5),
-                          blurRadius: 8)] : null,
+                      child: sel
+                          ? const Icon(Icons.check_rounded,
+                              color: Colors.white, size: 14)
+                          : null,
                     ),
-                    child: sel ? const Icon(Icons.check_rounded,
-                        color: Colors.white, size: 20) : null,
-                  ),
-                );
-              },
-            )),
+                  );
+                },
+              ),
+            ),
           ]),
         ),
 
-        // Text input
-        Padding(
+        // Text inputs
+        Expanded(child: Padding(
           padding: EdgeInsets.fromLTRB(16, 0, 16,
-              MediaQuery.of(context).viewInsets.bottom + 16),
-          child: TextField(
-            controller: _ctrl,
-            maxLines: 4,
-            maxLength: 280,
-            style: const TextStyle(color: Colors.white, fontSize: 15),
-            decoration: InputDecoration(
-              hintText: 'Write something inspiring...',
-              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
-              filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.07),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: _kBlue, width: 1.5)),
-              counterStyle: const TextStyle(color: Colors.white38, fontSize: 11),
+              MediaQuery.of(context).viewInsets.bottom + 12),
+          child: TabBarView(controller: _tabCtrl, children: [
+            // Headline input
+            TextField(
+              controller: _headCtrl,
+              maxLines: 3,
+              maxLength: 100,
+              style: TextStyle(color: Colors.white,
+                  fontSize: 17, fontWeight: FontWeight.w700),
+              decoration: _inputDeco('Headline text...',
+                  'Short, punchy headline (max 100 chars)'),
+              inputFormatters: [LengthLimitingTextInputFormatter(100)],
             ),
-            inputFormatters: [LengthLimitingTextInputFormatter(280)],
-          ),
-        ),
+            // Body input
+            TextField(
+              controller: _bodyCtrl,
+              maxLines: 5,
+              maxLength: 280,
+              style: const TextStyle(color: Colors.white, fontSize: 15),
+              decoration: _inputDeco('Body text...',
+                  'Supporting text, quote, or detail (max 280 chars)'),
+              inputFormatters: [LengthLimitingTextInputFormatter(280)],
+            ),
+          ]),
+        )),
       ]),
     );
   }
+
+  InputDecoration _inputDeco(String hint, String helper) => InputDecoration(
+    hintText: hint,
+    helperText: helper,
+    hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+    helperStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 11),
+    filled: true,
+    fillColor: Colors.white.withValues(alpha: 0.06),
+    counterStyle: const TextStyle(color: Colors.white24, fontSize: 10),
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: _kGold, width: 1.5)),
+  );
+}
+
+// ── Headline controls ──────────────────────────────────────────────────────────
+class _HeadlineControls extends StatelessWidget {
+  final double size; final bool bold;
+  final ValueChanged<double> onSizeChanged;
+  final ValueChanged<bool> onBoldChanged;
+  const _HeadlineControls({required this.size, required this.bold,
+      required this.onSizeChanged, required this.onBoldChanged});
+
+  @override
+  Widget build(BuildContext context) => Row(children: [
+    const Text('H', style: TextStyle(color: Colors.white54,
+        fontSize: 12, fontWeight: FontWeight.w600)),
+    Expanded(child: SliderTheme(
+      data: SliderThemeData(
+        activeTrackColor: _kGold,
+        inactiveTrackColor: Colors.white12,
+        thumbColor: _kGold,
+        trackHeight: 3,
+        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+        overlayColor: _kGold.withValues(alpha: 0.15),
+      ),
+      child: Slider(value: size, min: 20, max: 52,
+          onChanged: onSizeChanged),
+    )),
+    Text('${size.toInt()}px',
+        style: const TextStyle(color: Colors.white38, fontSize: 11, width: 36)),
+    const SizedBox(width: 8),
+    GestureDetector(
+      onTap: () => onBoldChanged(!bold),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: bold ? _kGold.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: bold ? _kGold : Colors.transparent),
+        ),
+        child: Text('B', style: TextStyle(
+          color: bold ? _kGold : Colors.white38,
+          fontWeight: FontWeight.w900, fontSize: 14,
+        )),
+      ),
+    ),
+  ]);
+}
+
+// ── Body controls ──────────────────────────────────────────────────────────────
+class _BodyControls extends StatelessWidget {
+  final double size;
+  final ValueChanged<double> onSizeChanged;
+  const _BodyControls({required this.size, required this.onSizeChanged});
+
+  @override
+  Widget build(BuildContext context) => Row(children: [
+    const Text('B', style: TextStyle(color: Colors.white54,
+        fontSize: 11, fontWeight: FontWeight.w600)),
+    Expanded(child: SliderTheme(
+      data: SliderThemeData(
+        activeTrackColor: _kBlue,
+        inactiveTrackColor: Colors.white12,
+        thumbColor: _kBlue,
+        trackHeight: 3,
+        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+        overlayColor: _kBlue.withValues(alpha: 0.15),
+      ),
+      child: Slider(value: size, min: 12, max: 32,
+          onChanged: onSizeChanged),
+    )),
+    Text('${size.toInt()}px',
+        style: const TextStyle(color: Colors.white38, fontSize: 11)),
+    const SizedBox(width: 12),
+    Text('Regular', style: TextStyle(
+        color: Colors.white.withValues(alpha: 0.3), fontSize: 11)),
+  ]);
 }
