@@ -62,7 +62,7 @@ app.post('/v1/mpesa/callback', mpesaCallbackHandler)
 
 // WebSocket stats — internal monitoring (no auth)
 app.get('/v1/app/version', (c) => c.json({
-  ok: true, version: '1.2.0', versionCode: 4,
+  ok: true, version: '1.2.1', versionCode: 5,
   downloadUrl: 'https://playifysport.fun/downloads/playify.apk',
   releaseNotes: 'Bug fixes, improved feed, password reset, community features.',
   forceUpdate: false, minVersionCode: 1,
