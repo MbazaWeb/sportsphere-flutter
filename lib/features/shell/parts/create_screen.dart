@@ -249,6 +249,13 @@ class _CreateComposerState extends State<_CreateComposer>
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
+              leading: const Icon(Icons.text_fields_rounded, color: Color(0xFFFFD700)),
+              title: const Text('Text Card', style: TextStyle(color: PlayifyColors.white)),
+              subtitle: const Text('Text on colored background',
+                  style: TextStyle(color: PlayifyColors.muted, fontSize: 12)),
+              onTap: () => Navigator.pop(sheetCtx, 'text_card'),
+            ),
+            ListTile(
               leading: const Icon(Icons.photo_library_rounded, color: PlayifyColors.electricBlue),
               title: const Text('Photo from Gallery', style: TextStyle(color: PlayifyColors.white)),
               onTap: () => Navigator.pop(sheetCtx, 'gallery_image'),
@@ -351,6 +358,24 @@ class _CreateComposerState extends State<_CreateComposer>
           );
           setState(() {
             _mediaTiles.add(camUrl);
+            _mediaIsVideo.add(false);
+            _posting = false;
+          });
+          break;
+
+        // ── Text Card ──
+        case 'text_card':
+          final textBytes = await openTextImageComposer(context);
+          if (textBytes == null || !context.mounted) break;
+          setState(() => _posting = true);
+          final textUrl = await _social.uploadBytes(
+            bytes: textBytes,
+            bucket: 'posts',
+            folder: 'images',
+            filename: 'textcard_${DateTime.now().millisecondsSinceEpoch}.png',
+          );
+          setState(() {
+            _mediaTiles.add(textUrl);
             _mediaIsVideo.add(false);
             _posting = false;
           });
