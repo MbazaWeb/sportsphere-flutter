@@ -11,6 +11,13 @@
 
 ## Complete build + deploy sequence
 
+### Prerequisites
+
+- **Windows**: Flutter SDK, Git, SSH client (OpenSSH)
+- **Server**: Ubuntu 24.04, Flutter installed OR use pre-built web artifacts
+
+---
+
 ### Step 1 — Windows (build APK and Web)
 
 ```bash
@@ -23,14 +30,14 @@ flutter build apk --release \
   --dart-define=SUPABASE_URL=https://fffqjbrethogesgghjsn.supabase.co \
   --dart-define=SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
-echo APK built: build\app\outputs\flutter-apk\app-release.apk
+echo APK: build\app\outputs\flutter-apk\app-release.apk
 
 # Build Web
 flutter build web --release \
   --dart-define=SUPABASE_URL=https://fffqjbrethogesgghjsn.supabase.co \
   --dart-define=SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
-echo Web built: build\web\
+echo Web: build\web\
 ```
 
 ### Step 2 — Upload APK to server
@@ -39,27 +46,43 @@ echo Web built: build\web\
 scp build\app\outputs\flutter-apk\app-release.apk deploy@104.152.50.173:/tmp/playify.apk
 ```
 
-### Step 3 — Server (deploy all components)
+### Step 3a — Upload Web build (from Windows to server)
 
 ```bash
-# 1. Update app code and restart API
+# If building on Windows, upload the web build:
+scp -r build\web/* deploy@104.152.50.173:/tmp/playify-web/
+```
+
+### Step 3b — Server (deploy with git rebase + restart API)
+
+```bash
+# SSH to server
+ssh deploy@104.152.50.173
+
+# Run the fix script (one-time) to resolve git divergence
+sudo bash /var/playify/app/vps/fix_deployment.sh
+
+# OR manually:
 cd /var/playify/app
-git stash
-git pull origin main
-git stash pop 2>/dev/null || true
+git config pull.rebase true
+git fetch origin main
+git reset --hard origin/main
+rm -f pubspec.lock
+
+# Deploy web (if uploaded)
+if [ -d /tmp/playify-web ]; then
+  sudo cp -r /tmp/playify-web/* /var/www/playify/
+  rm -rf /tmp/playify-web
+fi
+
+# Deploy APK
+sudo mv /tmp/playify.apk /var/www/playify/downloads/playify.apk
+sudo chmod 644 /var/www/playify/downloads/playify.apk
+
+# Restart API
 sudo /usr/bin/pm2 restart playify-api --update-env
 
-# 2. Deploy web build (from uploaded or built on server)
-~/flutter/bin/flutter build web --release \
-  --dart-define=SUPABASE_URL=https://fffqjbrethogesgghjsn.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... && \
-sudo cp -r build/web/* /var/www/playify/
-
-# 3. Deploy APK to download directory
-sudo mv /tmp/playify.apk /var/www/playify/download/Playify.apk
-sudo chmod 644 /var/www/playify/download/Playify.apk
-
-# 4. Verify deployments
+# Verify
 echo "=== Checking API health ==="
 curl -s https://playifysport.fun/health | python3 -m json.tool
 
@@ -67,7 +90,7 @@ echo "=== Checking app version endpoint ==="
 curl -s https://playifysport.fun/v1/app/version | python3 -m json.tool
 
 echo "=== Checking APK download ==="
-curl -I https://playifysport.fun/download/Playify.apk 2>&1 | grep "HTTP\|Content-Length"
+curl -I https://playifysport.fun/downloads/playify.apk 2>&1 | grep "HTTP\|Content-Length"
 
 echo "✅ All deployments verified"
 ```

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { createOfficialPost } from '../lib/api'
 
-export function playifyPage() {
+export function PlayifyPage() {
   const [content, setContent] = useState('')
   const [mediaUrl, setMediaUrl] = useState('')
   const [type, setType] = useState('text')
