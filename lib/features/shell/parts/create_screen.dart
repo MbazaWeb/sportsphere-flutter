@@ -1,3 +1,4 @@
+import 'dart:io';
 part of '../app_shell.dart';
 
 // VpsRepository is re-exported via the parent app_shell.dart import chain
@@ -282,6 +283,7 @@ class _CreateComposerState extends State<_CreateComposer>
       switch (source) {
         // ── Any-format video via FilePicker ──
         case 'any_video':
+          // After picking, open video editor
           final result = await FilePicker.pickFiles(
             type: FileType.video,
             allowMultiple: false,
@@ -313,7 +315,13 @@ class _CreateComposerState extends State<_CreateComposer>
         // ── Record video with camera (mobile only) ──
         case 'camera_video':
           if (kIsWeb) break; // camera not available on web
-          final file = await _picker.pickVideo(source: ImageSource.camera);
+          final rawVid = await _picker.pickVideo(source: ImageSource.camera,
+              maxDuration: const Duration(minutes: 3));
+          if (rawVid == null) break;
+          // Open video editor (trim, crop, rotate)
+          if (!context.mounted) break;
+          final editedVid = await openVideoEditor(context, File(rawVid.path));
+          final vidToUpload = editedVid != null ? XFile(editedVid.path) : rawVid;
           if (file == null) return;
           setState(() => _posting = true);
           final url = await _social.uploadPickedFile(
