@@ -127,25 +127,27 @@ authRouter.post('/login', async (c) => {
   if (!raw) return c.json({ error: 'Email or username required' }, 400)
 
   const isEmail = raw.includes('@') && !raw.startsWith('@')
-  const lookup  = raw.replace('@', '').toLowerCase()
+  // For email: keep the @ | For handle: strip the @
+  const emailLookup  = raw.trim().toLowerCase()
+  const handleLookup = raw.replace('@', '').trim().toLowerCase()
 
   let user: any = null
 
   if (isEmail) {
-    // Try email first
+    // Try email (keep full email including @)
     user = await queryOne(
       `SELECT id, name, email, handle, role, "passwordHash", "avatarUrl", "isVerified", "isBanned"
        FROM public."User" WHERE LOWER(email) = $1`,
-      [lookup]
+      [emailLookup]
     )
   }
 
   if (!user) {
-    // Try handle (works for @handle or plain handle)
+    // Try handle (strip @ prefix)
     user = await queryOne(
       `SELECT id, name, email, handle, role, "passwordHash", "avatarUrl", "isVerified", "isBanned"
        FROM public."User" WHERE LOWER(handle) = $1`,
-      [lookup]
+      [handleLookup]
     )
   }
 
