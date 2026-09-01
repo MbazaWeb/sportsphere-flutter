@@ -28,6 +28,7 @@ dependencies:
   pro_image_editor: ^7.0.0     # full-featured image editor (crop, filter, text, draw, emoji)
   image_cropper: ^8.0.2        # native crop fallback
   video_editor: ^3.0.0         # video trim, crop, rotate, cover pick
+  ffmpeg_kit_flutter_min: ^6.0.3  # FFmpeg execution for video export
   video_thumbnail: ^0.5.3      # generate video thumbnails
   video_player: ^2.9.5
   file_picker: ^11.0.3

@@ -5,6 +5,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:video_editor/video_editor.dart';
+import 'package:ffmpeg_kit_flutter_min/ffmpeg_kit.dart';
+import 'package:ffmpeg_kit_flutter_min/return_code.dart';
 
 import '../../../core/theme/colors.dart';
 
@@ -60,20 +62,51 @@ class _VideoEditorScreenState extends State<_VideoEditorScreen> {
   Future<void> _export() async {
     setState(() { _exporting = true; _exportProgress = 0; });
 
-    await _ctrl.exportVideo(
-      onProgress: (stats, value) =>
-          setState(() => _exportProgress = value),
-      onCompleted: (file) {
-        if (mounted) Navigator.pop(context, file);
-      },
-      onError: (msg, _) {
+    try {
+      final config = VideoFFmpegVideoEditorConfig(_ctrl);
+      final execute = await config.getExecuteConfig();
+      
+      if (execute == null) {
+        if (mounted) {
+          setState(() => _exporting = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Export failed: Unable to create export config'),
+                backgroundColor: Colors.redAccent),
+          );
+        }
+        return;
+      }
+      
+      // Execute FFmpeg command
+      final session = await FFmpegKit.executeAsync(
+        execute.command,
+        (session) async {
+          final returnCode = await session.getReturnCode();
+          if (mounted) {
+            if (ReturnCode.isSuccess(returnCode)) {
+              final outputFile = File(execute.outputPath);
+              if (outputFile.existsSync()) {
+                Navigator.pop(context, outputFile);
+              }
+            } else {
+              setState(() => _exporting = false);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Export failed with code: $returnCode'),
+                    backgroundColor: Colors.redAccent),
+              );
+            }
+          }
+        },
+      );
+    } catch (e) {
+      if (mounted) {
         setState(() => _exporting = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $msg'),
+          SnackBar(content: Text('Export error: $e'),
               backgroundColor: Colors.redAccent),
         );
-      },
-    );
+      }
+    }
   }
 
   @override
@@ -168,13 +201,10 @@ class _VideoEditorScreenState extends State<_VideoEditorScreen> {
             const Text('Trim', style: TextStyle(color: Colors.white,
                 fontSize: 13, fontWeight: FontWeight.w700)),
             const Spacer(),
-            ValueListenableBuilder(
-              valueListenable: _ctrl,
-              builder: (_, __, ___) => Text(
-                '${_ctrl.trimmedDuration.inSeconds}s',
-                style: const TextStyle(color: _kBlue, fontSize: 12,
-                    fontWeight: FontWeight.w700),
-              ),
+            Text(
+              '${_ctrl.trimmedDuration.inSeconds}s',
+              style: const TextStyle(color: _kBlue, fontSize: 12,
+                  fontWeight: FontWeight.w700),
             ),
           ]),
           const SizedBox(height: 8),
@@ -193,9 +223,7 @@ class _VideoEditorScreenState extends State<_VideoEditorScreen> {
           const Text('Cover Frame', style: TextStyle(color: Colors.white,
               fontSize: 12, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          CoverViewer(controller: _ctrl, height: 60),
-          const SizedBox(height: 4),
-          CoverSlider(controller: _ctrl),
+          CoverViewer(controller: _ctrl),
         ],
       ),
     ),

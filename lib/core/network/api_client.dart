@@ -101,7 +101,7 @@ class ApiClient {
               final opts = e.requestOptions;
               opts.headers['Authorization'] = 'Bearer $newToken';
               final retry = await _dio.fetch(opts);
-              return handler.resolve(retry);
+              return retry as Response<T>;
             }
           }
         } catch (_) {}

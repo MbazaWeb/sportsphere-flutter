@@ -329,10 +329,10 @@ class _CreateComposerState extends State<_CreateComposer>
           if (!context.mounted) break;
           final editedVid = await openVideoEditor(context, File(rawVid.path));
           final vidToUpload = editedVid != null ? XFile(editedVid.path) : rawVid;
-          if (file == null) return;
+          if (vidToUpload == null) return;
           setState(() => _posting = true);
           final url = await _social.uploadPickedFile(
-            bucket: 'media', folder: 'videos', file: file,
+            bucket: 'media', folder: 'videos', file: vidToUpload,
           );
           setState(() {
             _mediaTiles.add(url);
@@ -353,8 +353,8 @@ class _CreateComposerState extends State<_CreateComposer>
           if (camEdited == null) break; // user cancelled
           setState(() => _posting = true);
           final camUrl = await _social.uploadBytes(
-            bytes: camEdited, bucket: 'posts', folder: 'images',
-            filename: '${DateTime.now().millisecondsSinceEpoch}.jpg',
+            bytes: camEdited, bucket: 'posts', path: 'images/${DateTime.now().millisecondsSinceEpoch}.jpg',
+            contentType: 'image/jpeg',
           );
           setState(() {
             _mediaTiles.add(camUrl);
@@ -371,8 +371,8 @@ class _CreateComposerState extends State<_CreateComposer>
           final textUrl = await _social.uploadBytes(
             bytes: textBytes,
             bucket: 'posts',
-            folder: 'images',
-            filename: 'textcard_${DateTime.now().millisecondsSinceEpoch}.png',
+            path: 'images/textcard_${DateTime.now().millisecondsSinceEpoch}.png',
+            contentType: 'image/png',
           );
           setState(() {
             _mediaTiles.add(textUrl);
@@ -392,8 +392,8 @@ class _CreateComposerState extends State<_CreateComposer>
           final galBytes = galEdited ?? galRaw; // if editor cancelled, use original
           setState(() => _posting = true);
           final galUrl = await _social.uploadBytes(
-            bytes: galBytes, bucket: 'posts', folder: 'images',
-            filename: '${DateTime.now().millisecondsSinceEpoch}.jpg',
+            bytes: galBytes, bucket: 'posts', path: 'images/${DateTime.now().millisecondsSinceEpoch}.jpg',
+            contentType: 'image/jpeg',
           );
           setState(() {
             _mediaTiles.add(galUrl);

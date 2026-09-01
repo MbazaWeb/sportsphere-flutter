@@ -417,8 +417,9 @@ class _HeadlineControls extends StatelessWidget {
       child: Slider(value: size, min: 20, max: 52,
           onChanged: onSizeChanged),
     )),
-    Text('${size.toInt()}px',
-        style: const TextStyle(color: Colors.white38, fontSize: 11, width: 36)),
+    SizedBox(width: 36, child: Text('${size.toInt()}px',
+        style: const TextStyle(color: Colors.white38, fontSize: 11),
+        textAlign: TextAlign.center)),
     const SizedBox(width: 8),
     GestureDetector(
       onTap: () => onBoldChanged(!bold),

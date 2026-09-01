@@ -34,6 +34,9 @@ import '../shop/models/shop_models.dart';
 import '../shop/presentation/shop_tab.dart';
 import '../../core/utils/friendly_error.dart';
 import 'nav_provider.dart';
+import 'parts/media_editor.dart';
+import 'parts/text_image_composer.dart';
+import 'parts/video_editor_screen.dart';
 
 part 'parts/home_screen.dart';
 part 'parts/search_fullscreen.dart';

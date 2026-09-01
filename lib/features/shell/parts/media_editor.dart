@@ -27,47 +27,34 @@ Future<Uint8List?> openMediaEditor(
             result = bytes;
             if (context.mounted) Navigator.pop(context);
           },
-          onCloseEditor: ({required bool ignoreChanges}) {
+          onCloseEditor: () {
             if (context.mounted) Navigator.pop(context);
           },
         ),
         configs: ProImageEditorConfigs(
-          mainEditorConfigs: MainEditorConfigs(
+          mainEditor: MainEditorConfigs(
             style: MainEditorStyle(
               background: PlayifyColors.background,
-              appBarBackground: const Color(0xFF0D1F35),
-              appBarForeground: Colors.white,
-              bottomBarBackground: const Color(0xFF0D1F35),
-              bottomBarForeground: Colors.white,
             ),
           ),
-          cropRotateEditorConfigs: const CropRotateEditorConfigs(
+          cropRotateEditor: const CropRotateEditorConfigs(
             enabled: true,
             canChangeAspectRatio: true,
-            initAspectRatio: CropAspectRatios.custom,
           ),
-          filterEditorConfigs: const FilterEditorConfigs(
+          filterEditor: const FilterEditorConfigs(
             enabled: true,
           ),
-          tuneEditorConfigs: const TuneEditorConfigs(
+          tuneEditor: const TuneEditorConfigs(
             enabled: true,
           ),
-          paintEditorConfigs: const PaintEditorConfigs(
+          paintEditor: const PaintEditorConfigs(
             enabled: true,
           ),
-          textEditorConfigs: const TextEditorConfigs(
+          textEditor: const TextEditorConfigs(
             enabled: true,
           ),
-          emojiEditorConfigs: const EmojiEditorConfigs(
+          emojiEditor: const EmojiEditorConfigs(
             enabled: true,
-          ),
-          stickerEditorConfigs: StickerEditorConfigs(
-            enabled: false, // disable until stickers configured
-            buildStickers: (setLayer, scrollController) => const SizedBox(),
-          ),
-          imageGenerationConfigs: const ImageGenerationConfigs(
-            outputFormat: OutputFormat.jpg,
-            jpegQuality: 88,
           ),
           i18n: const I18n(
             various: I18nVarious(closeEditorWarningTitle: 'Discard changes?'),
@@ -80,7 +67,7 @@ Future<Uint8List?> openMediaEditor(
             tuneEditor: I18nTuneEditor(
               bottomNavigationBarText: 'Adjust',
             ),
-            paintEditor: I18nPaintingEditor(
+            paintEditor: I18nPaintEditor(
               bottomNavigationBarText: 'Draw',
             ),
             textEditor: I18nTextEditor(
