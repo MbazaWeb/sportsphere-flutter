@@ -16,7 +16,7 @@ healthRouter.get('/', async (c) => {
   }, status)
 })
 
-// GET /app/version — current APK version info
+// GET /health/version — current APK version info (use /v1/app/version in index.ts)
 healthRouter.get('/version', (c) => {
   return c.json({
     ok: true,

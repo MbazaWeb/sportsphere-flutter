@@ -122,7 +122,7 @@ app.use('/v1/*', async (c, next) => {
     '/v1/auth/forgot-password',
     '/v1/auth/resend-confirmation',
     '/v1/auth/reset-password',
-    '/app/version',
+    '/v1/app/version',
     '/v1/auth/otp/send',
     '/v1/auth/verify-identity',
     '/v1/auth/set-password',

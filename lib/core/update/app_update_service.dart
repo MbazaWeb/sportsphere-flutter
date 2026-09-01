@@ -14,7 +14,7 @@ class AppUpdateService {
   static Future<void> checkForUpdate(BuildContext context) async {
     if (kIsWeb) return;
     try {
-      final res  = await _vps.get<Map<String,dynamic>>('/app/version');
+      final res  = await _vps.get<Map<String,dynamic>>('/v1/app/version');
       final data = res.data; if (data == null) return;
 
       final serverCode  = (data['versionCode']    as int?)    ?? 0;
