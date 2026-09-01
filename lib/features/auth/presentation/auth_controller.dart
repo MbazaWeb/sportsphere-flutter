@@ -8,6 +8,7 @@ import '../data/auth_repository.dart';
 import '../../../core/realtime/soketi_service.dart';
 import '../domain/auth_state.dart';
 import '../../../core/utils/friendly_error.dart';
+import '../../../core/network/api_exception.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // PROVIDERS
@@ -125,10 +126,12 @@ class AuthController extends Notifier<AuthState> {
       }
       return true;
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: friendlyError(e),
-      );
+      // Preserve PASSWORD_NOT_SET code so login screen can show reset modal
+      String errMsg = friendlyError(e);
+      if (e is ApiException && e.code == 'PASSWORD_NOT_SET') {
+        errMsg = 'PASSWORD_NOT_SET: ${e.message}';
+      }
+      state = state.copyWith(isLoading: false, errorMessage: errMsg);
       return false;
     }
   }

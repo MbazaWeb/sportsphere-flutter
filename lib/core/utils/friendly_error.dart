@@ -122,6 +122,20 @@ String friendlyError(Object? error, {String fallback = 'Something went wrong. Pl
   }
 
   // ═══════════════════════════════════════════════════════════════════════
+  // ApiException — errors from our VPS API.
+  // ═══════════════════════════════════════════════════════════════════════
+  if (error.runtimeType.toString().contains('ApiException')) {
+    // Pass through the message directly — it's already user-friendly
+    final cleaned2 = raw
+      .replaceFirst(RegExp(r'^ApiException\(\d+/[^)]*\):\s*'), '')
+      .replaceFirst(RegExp(r'^ApiException\(\d+\):\s*'), '')
+      .trim();
+    if (cleaned2.isNotEmpty && !cleaned2.contains('{') && cleaned2.length < 200) {
+      return cleaned2;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
   // Generic / unknown error types — use keyword matching.
   // ═══════════════════════════════════════════════════════════════════════
 
