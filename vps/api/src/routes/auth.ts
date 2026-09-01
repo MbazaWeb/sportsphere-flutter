@@ -117,23 +117,35 @@ authRouter.post('/register', async (c) => {
 
 // ── POST /v1/auth/login ───────────────────────────────────────────────────────
 authRouter.post('/login', async (c) => {
-  const { email, password, handle } = await c.req.json<{ email?: string; password: string; handle?: string }>()
+  const { email, password, handle, identifier } = await c.req.json<{
+    email?: string; password: string; handle?: string; identifier?: string
+  }>()
   if (!password) return c.json({ error: 'Password required' }, 400)
+
+  // Accept email, handle, or identifier field (Flutter sends email field for both)
+  const raw = (identifier ?? email ?? handle ?? '').trim()
+  if (!raw) return c.json({ error: 'Email or username required' }, 400)
+
+  const isEmail = raw.includes('@') && !raw.startsWith('@')
+  const lookup  = raw.replace('@', '').toLowerCase()
 
   let user: any = null
 
-  if (email) {
+  if (isEmail) {
+    // Try email first
     user = await queryOne(
       `SELECT id, name, email, handle, role, "passwordHash", "avatarUrl", "isVerified", "isBanned"
-       FROM public."User" WHERE email = $1`,
-      [email.trim().toLowerCase()]
+       FROM public."User" WHERE LOWER(email) = $1`,
+      [lookup]
     )
-  } else if (handle) {
-    // Login by handle — resolve to email
+  }
+
+  if (!user) {
+    // Try handle (works for @handle or plain handle)
     user = await queryOne(
       `SELECT id, name, email, handle, role, "passwordHash", "avatarUrl", "isVerified", "isBanned"
-       FROM public."User" WHERE handle = $1`,
-      [handle.replace('@','').toLowerCase()]
+       FROM public."User" WHERE LOWER(handle) = $1`,
+      [lookup]
     )
   }
 

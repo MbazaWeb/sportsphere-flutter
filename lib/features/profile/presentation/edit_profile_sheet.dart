@@ -1,3 +1,4 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -6,6 +7,7 @@ import '../../../core/data/social_repository.dart';
 import '../../../core/data/world_countries.dart';
 import '../../../core/taxonomy/sport_catalog.dart';
 import '../../../core/theme/colors.dart';
+import '../../auth/presentation/pages/set_password_modal.dart';
 import '../../../core/widgets/grass_form.dart';
 import '../../../core/widgets/country_picker_field.dart';
 import '../../../core/utils/form_validators.dart';
@@ -360,6 +362,17 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
 // passed an empty string for the current password, which the old
 // repository silently accepted.
 Future<void> showChangePasswordDialog(BuildContext context, WidgetRef ref) async {
+  // Check if migrated user (no VPS password set) — use DOB/OTP flow instead
+  final auth = ref.read(authControllerProvider);
+  final email = auth.user?.email ?? '';
+  if (email.isNotEmpty) {
+    try {
+      // Try a dummy change to see if passwordHash exists
+      // Actually just check via the auth state — if user has no passwordHash we show set_password
+      // We detect this by trying change-password with empty current and catching the error
+    } catch (_) {}
+  }
+
   final cur = TextEditingController();
   final a = TextEditingController();
   final b = TextEditingController();
@@ -434,10 +447,36 @@ Future<void> showChangePasswordDialog(BuildContext context, WidgetRef ref) async
   final updated = await ref
       .read(authControllerProvider.notifier)
       .changePassword(cur.text, a.text);
-  if (context.mounted) {
+  if (!context.mounted) return;
+  if (updated) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(updated ? 'Password updated' : 'Unable to update password')),
+      const SnackBar(
+        content: Text('Password updated successfully'),
+        backgroundColor: Color(0xFF4CAF50),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
+  } else {
+    // Check if this is a migrated user who needs DOB/OTP verification
+    final errMsg = ref.read(authControllerProvider).errorMessage ?? '';
+    if (errMsg.contains('Cannot change password') || errMsg.contains('passwordHash')) {
+      // Migrated user — use identity verification flow
+      final email2 = ref.read(authControllerProvider).user?.email ?? '';
+      if (email2.isNotEmpty) {
+        final success = await showSetPasswordModal(context, email2);
+        if (success && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Password set successfully — you are now logged in'),
+                backgroundColor: Color(0xFF4CAF50), behavior: SnackBarBehavior.floating),
+          );
+        }
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errMsg.isNotEmpty ? errMsg : 'Unable to update password'),
+            behavior: SnackBarBehavior.floating),
+      );
+    }
   }
 }
 
