@@ -9,11 +9,15 @@ import '../theme/colors.dart';
 const _kBlue = PlayifyColors.electricBlue;
 
 class AppUpdateService {
-  static const _vps = VpsRepository();
+  static bool _checkedThisSession = false;
+  static final _vps = const VpsRepository();
 
   static Future<void> checkForUpdate(BuildContext context) async {
     if (kIsWeb) return;
     try {
+      // Only check once per session (avoid repeated prompts)
+      if (_checkedThisSession) return;
+      _checkedThisSession = true;
       final res  = await _vps.get<Map<String,dynamic>>('/v1/app/version');
       final data = res.data; if (data == null) return;
 
@@ -26,7 +30,8 @@ class AppUpdateService {
 
       final info      = await PackageInfo.fromPlatform();
       final localCode = int.tryParse(info.buildNumber) ?? 0;
-      if (serverCode <= localCode) return;
+      debugPrint('[Update] local=$localCode server=$serverCode version=${info.version}');
+      if (serverCode <= localCode) return; // up to date
 
       final mustUpdate = forceUpdate || localCode < minCode;
       if (!context.mounted) return;
