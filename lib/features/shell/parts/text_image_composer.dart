@@ -1,7 +1,6 @@
 // lib/features/shell/parts/text_image_composer.dart
 // Text Card composer — headline + body text on gradient background.
 
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -13,10 +12,10 @@ const _kBlue = PlayifyColors.electricBlue;
 const _kGold = Color(0xFFFFD700);
 
 class _BgPreset {
+  const _BgPreset(this.label, this.colors, {this.isDark = true});
   final String label;
   final List<Color> colors;
   final bool isDark;
-  const _BgPreset(this.label, this.colors, {this.isDark = true});
 }
 
 const _kPresets = [
@@ -107,8 +106,10 @@ class _TextImageComposerState extends State<_TextImageComposer>
       if (mounted) Navigator.pop(context, bytes);
     } catch (e) {
       setState(() => _exporting = false);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e')));
+      }
     }
   }
 
@@ -354,7 +355,7 @@ class _TextImageComposerState extends State<_TextImageComposer>
               controller: _headCtrl,
               maxLines: 3,
               maxLength: 100,
-              style: TextStyle(color: Colors.white,
+              style: const TextStyle(color: Colors.white,
                   fontSize: 17, fontWeight: FontWeight.w700),
               decoration: _inputDeco('Headline text...',
                   'Short, punchy headline (max 100 chars)'),
@@ -395,11 +396,11 @@ class _TextImageComposerState extends State<_TextImageComposer>
 
 // ── Headline controls ──────────────────────────────────────────────────────────
 class _HeadlineControls extends StatelessWidget {
+  const _HeadlineControls({required this.size, required this.bold,
+      required this.onSizeChanged, required this.onBoldChanged});
   final double size; final bool bold;
   final ValueChanged<double> onSizeChanged;
   final ValueChanged<bool> onBoldChanged;
-  const _HeadlineControls({required this.size, required this.bold,
-      required this.onSizeChanged, required this.onBoldChanged});
 
   @override
   Widget build(BuildContext context) => Row(children: [
@@ -441,9 +442,9 @@ class _HeadlineControls extends StatelessWidget {
 
 // ── Body controls ──────────────────────────────────────────────────────────────
 class _BodyControls extends StatelessWidget {
+  const _BodyControls({required this.size, required this.onSizeChanged});
   final double size;
   final ValueChanged<double> onSizeChanged;
-  const _BodyControls({required this.size, required this.onSizeChanged});
 
   @override
   Widget build(BuildContext context) => Row(children: [

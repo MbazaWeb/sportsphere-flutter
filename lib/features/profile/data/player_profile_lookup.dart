@@ -53,7 +53,7 @@ Future<PlayerProfileModel> lookupPlayerProfile(String handle) async {
   if (player == null) {
     try {
       final guess = key.replaceAll('_', ' ').replaceAll('-', ' ');
-      final rows = await sb
+      final rows = sb
           .from('Player')
           .select()
           .ilike('name', '%$guess%')
@@ -158,7 +158,7 @@ Future<PlayerProfileModel> lookupPlayerProfile(String handle) async {
   final pid = player?['id']?.toString();
   if (pid != null) {
     try {
-      final rows = await sb.from('PlayerMatchStat').select().eq('playerId', pid);
+      final rows = sb.from('PlayerMatchStat').select().eq('playerId', pid);
       var played = 0, goals = 0, assists = 0, saves = 0, minutes = 0, y = 0, r = 0;
       for (final raw in rows as List) {
         final m = Map<String, dynamic>.from(raw as Map);

@@ -234,10 +234,12 @@ class _TeamProfileViewState extends State<TeamProfileView>
     }
     try {
       await const VpsRepository().toggleFan(p.id ?? '');
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(next ? 'You are now a ${p.name} fan!' : 'Removed fan status'),
         duration: const Duration(seconds: 2),
       ));
+      }
     } catch (e) {
       debugPrint('team fan: $e');
       if (mounted) setState(() => _isFan = !next);
@@ -387,6 +389,20 @@ class _TeamProfileViewState extends State<TeamProfileView>
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _TeamHeader extends StatelessWidget {
+
+  const _TeamHeader({
+    required this.profile,
+    required this.following,
+    required this.isFan,
+    required this.busyFollow,
+    required this.busyFan,
+    required this.onFollow,
+    required this.onBecomeFan,
+    required this.onBack,
+    required this.onShare,
+    required this.onMore,
+    required this.onInfo,
+  });
   final TeamProfileModel profile;
   final bool following;
   final bool isFan;
@@ -402,20 +418,6 @@ class _TeamHeader extends StatelessWidget {
   final VoidCallback onShare;
   final VoidCallback onMore;
   final VoidCallback onInfo;
-
-  const _TeamHeader({
-    required this.profile,
-    required this.following,
-    required this.isFan,
-    required this.busyFollow,
-    required this.busyFan,
-    required this.onFollow,
-    required this.onBecomeFan,
-    required this.onBack,
-    required this.onShare,
-    required this.onMore,
-    required this.onInfo,
-  });
 
   @override
   Widget build(BuildContext context) {
@@ -652,14 +654,6 @@ class _TeamHeader extends StatelessWidget {
 // ── Follow + Fan row ───────────────────────────────────────────────────────────
 
 class _FollowRow extends StatelessWidget {
-  final bool following;
-  final bool isFan;
-  final bool busyFollow;
-  final bool busyFan;
-  final Color accent;
-  final VoidCallback onFollow;
-  // #FIX-NULLABLE — see _TeamHeader: async + nullable to allow admin gating.
-  final Future<void> Function()? onBecomeFan;
 
   const _FollowRow({
     required this.following,
@@ -670,6 +664,14 @@ class _FollowRow extends StatelessWidget {
     required this.onFollow,
     required this.onBecomeFan,
   });
+  final bool following;
+  final bool isFan;
+  final bool busyFollow;
+  final bool busyFan;
+  final Color accent;
+  final VoidCallback onFollow;
+  // #FIX-NULLABLE — see _TeamHeader: async + nullable to allow admin gating.
+  final Future<void> Function()? onBecomeFan;
 
   @override
   Widget build(BuildContext context) {
@@ -921,9 +923,9 @@ class _SportlightsTab extends StatelessWidget {
                 style: TextStyle(color: PlayifyColors.white,
                     fontSize: 18, fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
-            Text('Posts from \${profile.name} will appear here.',
+            const Text('Posts from \${profile.name} will appear here.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: PlayifyColors.muted, fontSize: 14)),
+                style: TextStyle(color: PlayifyColors.muted, fontSize: 14)),
           ],
         ),
       ),
@@ -1072,15 +1074,15 @@ class _SquadTab extends StatelessWidget {
 }
 
 class _SquadSection extends StatelessWidget {
-  final String title;
-  final List<SquadMember> members;
-  final Color accent;
 
   const _SquadSection({
     required this.title,
     required this.members,
     required this.accent,
   });
+  final String title;
+  final List<SquadMember> members;
+  final Color accent;
 
   @override
   Widget build(BuildContext context) {
@@ -1125,15 +1127,15 @@ class _SquadSection extends StatelessWidget {
 }
 
 class _SquadRow extends StatelessWidget {
-  final SquadMember member;
-  final Color accent;
-  final bool isLast;
 
   const _SquadRow({
     required this.member,
     required this.accent,
     required this.isLast,
   });
+  final SquadMember member;
+  final Color accent;
+  final bool isLast;
 
   @override
   Widget build(BuildContext context) {
@@ -1371,15 +1373,15 @@ class _StatsTabState extends State<_StatsTab> {
 // ── Season dropdown ────────────────────────────────────────────────────────────
 
 class _SeasonDropdown extends StatelessWidget {
-  final String value;
-  final List<String> options;
-  final ValueChanged<String> onChanged;
 
   const _SeasonDropdown({
     required this.value,
     required this.options,
     required this.onChanged,
   });
+  final String value;
+  final List<String> options;
+  final ValueChanged<String> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -1567,15 +1569,15 @@ class _ResultBar extends StatelessWidget {
 }
 
 class _ResultLabel extends StatelessWidget {
-  final Color color;
-  final String label;
-  final int value;
 
   const _ResultLabel({
     required this.color,
     required this.label,
     required this.value,
   });
+  final Color color;
+  final String label;
+  final int value;
 
   @override
   Widget build(BuildContext context) {

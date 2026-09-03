@@ -14,7 +14,6 @@ import '../../../core/utils/form_validators.dart';
 import '../../../features/auth/presentation/auth_controller.dart';
 import '../scores/presentation/admin_live_control.dart';
 import 'admin_repository.dart';
-import 'bulk_upload_screen.dart';
 import '../../../core/utils/friendly_error.dart';
 import '../profile/presentation/edit_profile_sheet.dart' show showEntityEditSheet, EntityType;
 
@@ -31,7 +30,7 @@ Future<String?> _currentAdminUid() async {
   }
 }
 
-final _repo = const AdminRepository();
+const _repo = AdminRepository();
 
 class AdminDashboard extends ConsumerStatefulWidget {
   const AdminDashboard({super.key});
@@ -125,14 +124,14 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard>
 
 // ══ OVERVIEW ═══════════════════════════════════════════════════════════════════
 class _OverviewTab extends ConsumerWidget {
+  const _OverviewTab({required this.stats,required this.loading,required this.onRefresh,required this.tabCtrl});
   final Map<String,int> stats; final bool loading;
   final VoidCallback onRefresh; final TabController tabCtrl;
-  const _OverviewTab({required this.stats,required this.loading,required this.onRefresh,required this.tabCtrl});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return RefreshIndicator(onRefresh:()async=>onRefresh(),color:PlayifyColors.electricBlue,
       child:ListView(padding:const EdgeInsets.all(16),children:[
-        _Label('PLATFORM STATISTICS'), const SizedBox(height:10),
+        const _Label('PLATFORM STATISTICS'), const SizedBox(height:10),
         if(loading) const Center(child:CircularProgressIndicator(color:PlayifyColors.electricBlue,strokeWidth:2))
         else GridView.count(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),crossAxisCount:2,
           mainAxisSpacing:10,crossAxisSpacing:10,childAspectRatio:1.55,children:[
@@ -145,7 +144,7 @@ class _OverviewTab extends ConsumerWidget {
             _StatCard('Competitions','${stats['competitions']??0}',Icons.emoji_events_rounded,const Color(0xFFFFD700)),
             _StatCard('News','${stats['news']??0}',Icons.newspaper_rounded,PlayifyColors.brightBlue),
         ]),
-        const SizedBox(height:24), _Label('QUICK ACTIONS'), const SizedBox(height:10),
+        const SizedBox(height:24), const _Label('QUICK ACTIONS'), const SizedBox(height:10),
         _ActionCard(Icons.sensors_rounded,const Color(0xFFE31B23),'Live Match Control','Update scores, status and minutes live',()=>openAdminLiveControl(context,ref)),
         _ActionCard(Icons.healing_rounded,const Color(0xFF9B6DFF),'Reconcile Identities','Fix entities missing Playify identity',()=>_showReconcileDialog(context)),
         _ActionCard(Icons.emoji_events_rounded,const Color(0xFFFFD700),'Create Competition','Add new league or cup',()=>_showCreateCompetition(context)),
@@ -325,6 +324,9 @@ class _CompetitionsTabState extends State<_CompetitionsTab> with SingleTickerPro
   }
 }
 class _EList extends StatelessWidget {
+  const _EList({required this.items,required this.icon,required this.color,
+      required this.addLabel,required this.onAdd,required this.sub,required this.onDelete,
+      this.entityType, this.onEdited});
   final List<Map<String,dynamic>> items; final IconData icon; final Color color;
   final String addLabel; final VoidCallback onAdd;
   final String Function(Map<String,dynamic>) sub;
@@ -334,9 +336,6 @@ class _EList extends StatelessWidget {
   final EntityType? entityType;
   /// Called after a successful edit (typically reloads the list).
   final Future<void> Function()? onEdited;
-  const _EList({required this.items,required this.icon,required this.color,
-      required this.addLabel,required this.onAdd,required this.sub,required this.onDelete,
-      this.entityType, this.onEdited});
   @override Widget build(BuildContext context)=>Column(children:[
     _AddBar(addLabel,onAdd),
     Expanded(child:items.isEmpty?const _Empty('Nothing here yet'):ListView.separated(
@@ -386,8 +385,8 @@ class _EList extends StatelessWidget {
 
 // ══ MATCHES ════════════════════════════════════════════════════════════════════
 class _MatchesTab extends ConsumerStatefulWidget {
-  final VoidCallback onRefresh; final WidgetRef parentRef;
   const _MatchesTab({required this.onRefresh,required this.parentRef});
+  final VoidCallback onRefresh; final WidgetRef parentRef;
   @override ConsumerState<_MatchesTab> createState()=>_MatchesTabState();
 }
 class _MatchesTabState extends ConsumerState<_MatchesTab> {
@@ -510,8 +509,8 @@ class _ContentTabState extends State<_ContentTab> {
 }
 
 // ══ NEWS ═══════════════════════════════════════════════════════════════════════
-class _NewsTab extends StatefulWidget {
-  final VoidCallback onRefresh; const _NewsTab({required this.onRefresh});
+class _NewsTab extends StatefulWidget { const _NewsTab({required this.onRefresh});
+  final VoidCallback onRefresh;
   @override State<_NewsTab> createState()=>_NewsTabState();
 }
 class _NewsTabState extends State<_NewsTab> {
@@ -566,13 +565,15 @@ Future<void> _showReconcileDialog(BuildContext ctx) async {
             final created = report.where((r) => r['status'] == 'RECONCILED').length;
             final failed  = report.where((r) => r['status'] == 'FAILED').length;
             final healthy = report.where((r) => r['status'] == 'ALREADY_HAS_IDENTITY').length;
-            if (ctx.mounted) showDialog<void>(context: ctx, builder: (_) => AlertDialog(
+            if (ctx.mounted) {
+              showDialog<void>(context: ctx, builder: (_) => AlertDialog(
               backgroundColor: GrassForm.sheetBg,
               title: const Text('Done', style: TextStyle(color: PlayifyColors.white)),
               content: Text('Scanned: ${report.length}\nCreated: $created\nHealthy: $healthy\nFailed: $failed',
                   style: const TextStyle(color: PlayifyColors.white, fontSize: 13)),
               actions: [TextButton(onPressed: () => Navigator.pop(c), child: const Text('OK'))],
             ));
+            }
           } catch (e) {
             if (ctx.mounted) {
               Navigator.of(ctx, rootNavigator: true).pop();
@@ -596,7 +597,7 @@ Future<String?> _pickAndUpload(BuildContext ctx, {String folder='admin'}) async 
   final xf = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
   if (xf == null) return null;
   try {
-    return await SocialRepository().uploadPickedFile(bucket:'media', folder:folder, file:xf);
+    return await const SocialRepository().uploadPickedFile(bucket:'media', folder:folder, file:xf);
   } catch (e) {
     if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content:Text('Upload failed: $e')));
     return null;
@@ -660,8 +661,10 @@ Future<void> _showCreateUser(BuildContext ctx) {
                     const SnackBar(content: Text('User created successfully')));
                 }
               } catch (e) {
-                if (c.mounted) ScaffoldMessenger.of(c)
+                if (c.mounted) {
+                  ScaffoldMessenger.of(c)
                     .showSnackBar(SnackBar(content: Text('Failed: $e')));
+                }
               }
             },
             child: const Text('Create'),
@@ -1447,7 +1450,7 @@ Future<void> _showCreateMatch(BuildContext ctx) async {
                     // VPS POST /v1/social/posts creates the Post row
                     // server-side with the caller's uid (from JWT). The
                     // matchId column links the Post to the new Match row.
-                    await SocialRepository().createPost(
+                    await const SocialRepository().createPost(
                       content: '$home vs $away — ${leagueCtrl.text.trim()}',
                       postType: 'match',
                       matchId: matchId,
@@ -1471,7 +1474,7 @@ Future<void> _showNewsCompose(BuildContext ctx) {
         bodyCtrl=TextEditingController(), sourceCtrl=TextEditingController(text:'Playify');
   String category='updates';
   bool isBreaking=false;
-  List<String> images=[];
+  final List<String> images=[];
   bool uploading=false;
 
   return showModalBottomSheet<void>(context:ctx, isScrollControlled:true,
@@ -1518,8 +1521,11 @@ Future<void> _showNewsCompose(BuildContext ctx) {
           onPressed:uploading?null:() async {
             setL(()=>uploading=true);
             final url=await _pickAndUpload(c, folder:'news');
-            if(url!=null) setL((){images.add(url);uploading=false;});
-            else setL(()=>uploading=false);
+            if(url!=null) {
+              setL((){images.add(url);uploading=false;});
+            } else {
+              setL(()=>uploading=false);
+            }
           }),
         const SizedBox(height:16),
         SizedBox(width:double.infinity, child:FilledButton(
@@ -1549,7 +1555,7 @@ Future<void> _showCreatePost(BuildContext ctx) async {
   String postType = 'text';
   String? teamId;
   bool uploading = false;
-  List<String> mediaUrls = [];
+  final List<String> mediaUrls = [];
 
   // #8.3 — Poll state (question + dynamic option list + optional match link)
   final pollQuestionCtrl = TextEditingController();
@@ -1936,7 +1942,7 @@ Future<void> _showCreatePost(BuildContext ctx) async {
                             // linking column added by migration 20260824010000.
                             // The VPS POST /v1/social/polls route creates the
                             // Post + Poll rows atomically.
-                            await SocialRepository().createPollWithPost(
+                            await const SocialRepository().createPollWithPost(
                               question:    q,
                               options:     opts,
                               postContent: q,
@@ -1984,13 +1990,13 @@ Future<void> _showCreatePost(BuildContext ctx) async {
                             // VPS POST /v1/social/posts creates the Post row;
                             // VPS POST /v1/social/predictions creates the
                             // Prediction row linked via postId + matchId.
-                            final postId = await SocialRepository().createPost(
+                            final postId = await const SocialRepository().createPost(
                               content:  content,
                               postType: 'prediction',
                               sportTag: 'football',
                               matchId:  predMatchId,
                             );
-                            await SocialRepository().createPrediction(
+                            await const SocialRepository().createPrediction(
                               homeTeam:      homeTeam,
                               awayTeam:      awayTeam,
                               predictedHome: ph,
@@ -2020,7 +2026,7 @@ Future<void> _showCreatePost(BuildContext ctx) async {
                                 u.toLowerCase().contains('/videos/'));
                             pt = anyVid ? 'video' : 'image';
                           }
-                          await SocialRepository().createPost(
+                          await const SocialRepository().createPost(
                             content: textCtrl.text.trim(),
                             postType: pt,
                             mediaUrls: mediaUrls,
@@ -2101,7 +2107,7 @@ Future<void> _showPostMatchToFeed(BuildContext ctx, Map<String, dynamic> m) asyn
                             final matchId = m['id']?.toString() ?? '';
                             // VPS POST /v1/social/posts — server-side inserts
                             // the Post row using the caller's uid (from JWT).
-                            await SocialRepository().createPost(
+                            await const SocialRepository().createPost(
                               content:  bodyCtrl.text.trim(),
                               postType: 'match',
                               matchId:  matchId,
@@ -2230,7 +2236,7 @@ Future<void> _showCreatePollForMatch(
                             // VPS POST /v1/social/polls creates the Post +
                             // Poll rows atomically (server-side) and links
                             // them to the match via the matchId column.
-                            await SocialRepository().createPollWithPost(
+                            await const SocialRepository().createPollWithPost(
                               question:    q,
                               options:     opts,
                               postContent: q,
@@ -2353,13 +2359,13 @@ Future<void> _showCreatePredictionForMatch(
                             // (postType=prediction) linked to the match via
                             // matchId; VPS POST /v1/social/predictions creates
                             // the Prediction row.
-                            await SocialRepository().createPost(
+                            await const SocialRepository().createPost(
                               content:  content,
                               postType: 'prediction',
                               sportTag: 'football',
                               matchId:  matchId,
                             );
-                            await SocialRepository().createPrediction(
+                            await const SocialRepository().createPrediction(
                               homeTeam:      homeTeam,
                               awayTeam:      awayTeam,
                               predictedHome: ph,
@@ -2393,16 +2399,16 @@ Future<void> _showCreatePredictionForMatch(
 
 // ── Upload Button widget ───────────────────────────────────────────────────────
 class _UploadButton extends StatelessWidget {
-  final String? url;
-  final bool uploading;
-  final String label;
-  final VoidCallback onTap;
   const _UploadButton({
     required this.url,
     required this.uploading,
     required this.label,
     required this.onTap,
   });
+  final String? url;
+  final bool uploading;
+  final String label;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -2416,14 +2422,14 @@ class _UploadButton extends StatelessWidget {
 }
 
 
-class _Label extends StatelessWidget {
-  final String t; const _Label(this.t);
+class _Label extends StatelessWidget { const _Label(this.t);
+  final String t;
   @override Widget build(BuildContext context)=>Text(t,style:TextStyle(color:PlayifyColors.muted.withValues(alpha:0.7),fontSize:11,fontWeight:FontWeight.w800,letterSpacing:1.1));
 }
 
 class _StatCard extends StatelessWidget {
-  final String label,value; final IconData icon; final Color color;
   const _StatCard(this.label,this.value,this.icon,this.color);
+  final String label,value; final IconData icon; final Color color;
   @override Widget build(BuildContext context)=>Container(
     padding:const EdgeInsets.all(14),
     decoration:BoxDecoration(color:color.withValues(alpha:0.08),borderRadius:BorderRadius.circular(16),border:Border.all(color:color.withValues(alpha:0.22))),
@@ -2438,8 +2444,8 @@ class _StatCard extends StatelessWidget {
 }
 
 class _ActionCard extends StatelessWidget {
-  final IconData icon; final Color color; final String title,subtitle; final VoidCallback onTap;
   const _ActionCard(this.icon,this.color,this.title,this.subtitle,this.onTap);
+  final IconData icon; final Color color; final String title,subtitle; final VoidCallback onTap;
   @override Widget build(BuildContext context)=>GestureDetector(onTap:onTap,child:Container(
     margin:const EdgeInsets.only(bottom:10),padding:const EdgeInsets.all(14),
     decoration:BoxDecoration(color:const Color(0xD0071422),borderRadius:BorderRadius.circular(16),border:Border.all(color:Colors.white.withValues(alpha:0.07))),
@@ -2456,8 +2462,8 @@ class _ActionCard extends StatelessWidget {
 }
 
 class _AddBar extends StatelessWidget {
-  final String label; final VoidCallback onTap;
   const _AddBar(this.label,this.onTap);
+  final String label; final VoidCallback onTap;
   @override Widget build(BuildContext context)=>Padding(
     padding:const EdgeInsets.fromLTRB(16,12,16,8),
     child:SizedBox(width:double.infinity,child:FilledButton.icon(
@@ -2466,8 +2472,8 @@ class _AddBar extends StatelessWidget {
 }
 
 class _SearchField extends StatelessWidget {
-  final TextEditingController controller; final String hint; final Function(String) onSearch;
   const _SearchField({required this.controller,required this.hint,required this.onSearch});
+  final TextEditingController controller; final String hint; final Function(String) onSearch;
   @override Widget build(BuildContext context)=>TextField(
     controller:controller,style:const TextStyle(color:PlayifyColors.white),
     decoration:InputDecoration(hintText:hint,hintStyle:const TextStyle(color:PlayifyColors.muted),
@@ -2478,11 +2484,6 @@ class _SearchField extends StatelessWidget {
 }
 
 class _AdminField extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final int maxLines;
-  final TextInputType? keyboardType;
-  final String? Function(String?)? validator;
   const _AdminField({
     required this.controller,
     required this.label,
@@ -2490,6 +2491,11 @@ class _AdminField extends StatelessWidget {
     this.keyboardType,
     this.validator,
   });
+  final TextEditingController controller;
+  final String label;
+  final int maxLines;
+  final TextInputType? keyboardType;
+  final String? Function(String?)? validator;
 
   @override
   Widget build(BuildContext context) {
@@ -2508,8 +2514,8 @@ class _Loader extends StatelessWidget {
   @override Widget build(BuildContext ctx)=>const Center(child:CircularProgressIndicator(color:PlayifyColors.electricBlue,strokeWidth:2));
 }
 
-class _Empty extends StatelessWidget {
-  final String msg; const _Empty(this.msg);
+class _Empty extends StatelessWidget { const _Empty(this.msg);
+  final String msg;
   @override Widget build(BuildContext ctx)=>Center(child:Text(msg,style:const TextStyle(color:PlayifyColors.muted),textAlign:TextAlign.center));
 }
 
@@ -2538,7 +2544,7 @@ class _ProQueueTabState extends State<_ProQueueTab> {
   Future<void> _load() async {
     if (!mounted) return;
     setState(() => _loading = true);
-    final vps = const VpsRepository();
+    const vps = VpsRepository();
     final results = <Map<String, dynamic>>[];
 
     // RoleRequest table (PRO requests from Become Pro sheet).
@@ -2589,7 +2595,7 @@ class _ProQueueTabState extends State<_ProQueueTab> {
   }
 
   Future<void> _decide(Map<String, dynamic> req, String status) async {
-    final vps = const VpsRepository();
+    const vps = VpsRepository();
     final src = req['_source'] as String;
     final id  = req['id']?.toString() ?? '';
     try {
@@ -2615,8 +2621,10 @@ class _ProQueueTabState extends State<_ProQueueTab> {
         }
       }
       await _load();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(status == 'approved' ? '✓ Approved and role activated' : 'Rejected')));
+      }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     }
@@ -2725,9 +2733,9 @@ class _ProQueueTabState extends State<_ProQueueTab> {
 }
 
 class _Chip extends StatelessWidget {
+  const _Chip(this.label, this.color);
   final String label;
   final Color color;
-  const _Chip(this.label, this.color);
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),

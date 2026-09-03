@@ -2,8 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
-
 import '../data/auth_repository.dart';
 import '../../../core/realtime/soketi_service.dart';
 import '../domain/auth_state.dart';
@@ -24,10 +22,10 @@ final authControllerProvider =
 // AUTH CONTROLLER
 // ══════════════════════════════════════════════════════════════════════════════
 //
-// All auth flows now go through Supabase (via AuthRepository).
-// Supabase persists the session automatically — _hydrate() just reads it.
-// The Riverpod state (AuthState / UserProfile) is the single source of truth
-// for the UI; Supabase.instance.client is the source of truth for tokens.
+// All auth flows now go through the VPS-backed AuthRepository.
+// The session is persisted locally by the server-backed auth flow and
+// hydrated on startup. The Riverpod state (AuthState / UserProfile) is the
+// single source of truth for the UI; the active VPS JWT is cached in memory.
 
 class AuthController extends Notifier<AuthState> {
   @override
@@ -56,7 +54,7 @@ class AuthController extends Notifier<AuthState> {
     return const AuthState();
   }
 
-  // ── Hydrate: read persisted Supabase session on app start ─────────────────
+  // ── Hydrate: read persisted VPS session on app start ────────────────────
   Future<void> _hydrate() async {
     final repo = ref.read(authRepositoryProvider);
 
@@ -82,19 +80,8 @@ class AuthController extends Notifier<AuthState> {
           accessToken: token,
         ).catchError((_) {}); // non-fatal
       }
-    } on AuthException catch (e) {
-      // AuthException means Supabase Auth confirmed the session is invalid.
-      // ONLY in this case do we clear the local session.
-      debugPrint('[AUTH] _hydrate: AuthException — clearing session: ${e.message}');
-      try {
-        await repo.signOutLocal();
-      } catch (_) {}
-      state = const AuthState(status: AuthStatus.guest);
     } catch (e) {
-      // Any other error (network, RLS, DB schema) does NOT mean the session
-      // is invalid. Become a guest for now but do NOT destroy the session
-      // — the user may be able to retry.
-      debugPrint('[AUTH] _hydrate: non-auth error, becoming guest without signOut: $e');
+      debugPrint('[AUTH] _hydrate: failed to hydrate VPS session: $e');
       state = const AuthState(status: AuthStatus.guest);
     }
   }
@@ -219,12 +206,11 @@ class AuthController extends Notifier<AuthState> {
   void clearError() => state = state.clearError();
 
   // ── Token refresh hook (called by ApiClient interceptor if needed) ─────────
-  /// Returns the current Supabase access token, refreshing if expired.
+  /// Returns the current VPS access token for authenticated requests.
   Future<String?> freshToken() async {
     try {
       final session = ref.read(authRepositoryProvider).currentSession;
       if (session == null) return null;
-      // Supabase auto-refreshes; just return the current token.
       return session.accessToken;
     } catch (_) {
       return null;

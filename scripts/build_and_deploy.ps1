@@ -29,8 +29,8 @@ param(
     [switch]$SkipWeb,
     [switch]$SkipApk,
     [switch]$SkipServer,
-    [string]$ServerHost = "104.152.50.173",
-    [string]$ServerUser = "deploy",
+    [string]$ServerHost = "95.217.20.12",
+    [string]$ServerUser = "david",
     [string]$WebPath = "/var/www/playify",
     [string]$ApkPath = "/var/www/playify/downloads"
 )

@@ -1,17 +1,16 @@
 import '../../core/services/update_checker.dart';
 import 'package:geolocator/geolocator.dart';
+import 'dart:io';
 import 'dart:ui';
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:cross_file/cross_file.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/theme/colors.dart';
 import '../../core/admin/app_admin.dart';

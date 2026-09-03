@@ -103,21 +103,6 @@ class _Stories extends StatelessWidget {
 
 // ignore: unused_element
 class _PostCard extends StatelessWidget {
-  final String username;
-  final String handle;
-  final String time;
-  final String title;
-  final String description;
-  final String? imageAsset;
-  final String likes;
-  final String comments;
-  final String reposts;
-  final bool featured;
-  // M6 — Verified badge was previously rendered unconditionally for every
-  // post. Add an `isVerified` flag so the badge only appears for posts
-  // authored by verified accounts. Defaults to false to preserve the
-  // previous behaviour for any caller that doesn't pass the new flag.
-  final bool isVerified;
 
   const _PostCard({
     required this.username,
@@ -131,8 +116,18 @@ class _PostCard extends StatelessWidget {
     required this.reposts,
     // ignore: unused_element_parameter
     this.featured = false,
-    this.isVerified = false,
   });
+  final String username;
+  final String handle;
+  final String time;
+  final String title;
+  final String description;
+  final String? imageAsset;
+  final String likes;
+  final String comments;
+  final String reposts;
+  final bool isVerified = false;
+  final bool featured;
 
   @override
   Widget build(BuildContext context) {
@@ -296,10 +291,10 @@ class _PostCard extends StatelessWidget {
 }
 
 class _Action extends StatelessWidget {
-  final IconData icon;
-  final String value;
 
   const _Action({required this.icon, required this.value});
+  final IconData icon;
+  final String value;
 
   @override
   Widget build(BuildContext context) {

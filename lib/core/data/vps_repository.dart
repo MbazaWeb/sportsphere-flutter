@@ -59,7 +59,7 @@ class VpsRepository {
     });
     final res = await _client.upload<Map<String, dynamic>>('/v1/media/image', form);
     final urls = (res.data?['urls'] as Map?)?.cast<String, String>() ?? {};
-    if (urls.isEmpty) throw ApiException(message: 'Upload returned no URLs');
+    if (urls.isEmpty) throw const ApiException(message: 'Upload returned no URLs');
     return urls;
   }
 
@@ -85,7 +85,7 @@ class VpsRepository {
     });
     final res = await _client.upload<Map<String, dynamic>>('/v1/media/avatar', form);
     final url = res.data?['url'] as String?;
-    if (url == null || url.isEmpty) throw ApiException(message: 'Avatar upload failed');
+    if (url == null || url.isEmpty) throw const ApiException(message: 'Avatar upload failed');
     return url;
   }
 
@@ -100,7 +100,7 @@ class VpsRepository {
     });
     final res = await _client.upload<Map<String, dynamic>>('/v1/media/avatar', form);
     final url = res.data?['url'] as String?;
-    if (url == null || url.isEmpty) throw ApiException(message: 'Avatar upload failed');
+    if (url == null || url.isEmpty) throw const ApiException(message: 'Avatar upload failed');
     return url;
   }
 
@@ -1033,6 +1033,19 @@ class VpsRepository {
   }
 
   // ── Coaches ──────────────────────────────────────────────────────────────
+
+  /// GET /v1/admin/players — list players (optionally filtered by teamId).
+  Future<List<Map<String, dynamic>>> getAdminPlayers({
+    String? teamId,
+    int limit = 200,
+  }) async {
+    final q = <String, dynamic>{'limit': limit};
+    if (teamId != null && teamId.isNotEmpty) q['teamId'] = teamId;
+    final res = await _client.get<Map<String, dynamic>>(
+      '/v1/admin/players', query: q,
+    );
+    return ((res.data?['players']) as List? ?? []).cast<Map<String, dynamic>>();
+  }
 
   /// GET /v1/admin/coaches — list coaches.
   // TODO(VPS): add `GET /v1/admin/coaches` route on the VPS.

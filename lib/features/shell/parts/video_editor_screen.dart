@@ -25,8 +25,8 @@ Future<File?> openVideoEditor(BuildContext context, File videoFile) async {
 }
 
 class _VideoEditorScreen extends StatefulWidget {
-  final File file;
   const _VideoEditorScreen({required this.file});
+  final File file;
   @override
   State<_VideoEditorScreen> createState() => _VideoEditorScreenState();
 }
@@ -66,19 +66,8 @@ class _VideoEditorScreenState extends State<_VideoEditorScreen> {
       final config = VideoFFmpegVideoEditorConfig(_ctrl);
       final execute = await config.getExecuteConfig();
       
-      if (execute == null) {
-        if (mounted) {
-          setState(() => _exporting = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Export failed: Unable to create export config'),
-                backgroundColor: Colors.redAccent),
-          );
-        }
-        return;
-      }
-      
       // Execute FFmpeg command
-      final session = await FFmpegKit.executeAsync(
+      await FFmpegKit.executeAsync(
         execute.command,
         (session) async {
           final returnCode = await session.getReturnCode();
@@ -231,8 +220,8 @@ class _VideoEditorScreenState extends State<_VideoEditorScreen> {
 }
 
 class _ToolBtn extends StatelessWidget {
-  final IconData icon; final String label; final VoidCallback onTap;
   const _ToolBtn(this.icon, this.label, this.onTap);
+  final IconData icon; final String label; final VoidCallback onTap;
   @override
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,

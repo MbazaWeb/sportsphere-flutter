@@ -1,11 +1,11 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/data/vps_supabase_compat.dart';
+import '../../../../core/data/vps_repository.dart';
 import 'package:flutter/material.dart';
+
+import '../../../auth/data/auth_repository.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../../../shared/org_profile_view.dart';
-import '../../shared/profile_widgets.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // COMMUNITY PROFILE VIEW
@@ -13,11 +13,11 @@ import '../../shared/profile_widgets.dart';
 // ══════════════════════════════════════════════════════════════════════════════
 
 class CommunityProfileView extends StatefulWidget {
+
+  const CommunityProfileView({super.key, this.handle, this.communityId});
   /// Either [handle] or [communityId] must be supplied.
   final String? handle;
   final String? communityId;
-
-  const CommunityProfileView({super.key, this.handle, this.communityId});
 
   @override
   State<CommunityProfileView> createState() => _CommunityProfileViewState();
@@ -46,7 +46,7 @@ class _CommunityProfileViewState extends State<CommunityProfileView> {
         final res = await const VpsRepository().get<Map<String,dynamic>>('/v1/social/communities');
         final all = (res.data?['communities'] as List? ?? []).cast<Map<String,dynamic>>();
         final r = all.firstWhere((c) => c['id'] == widget.communityId, orElse: () => <String,dynamic>{});
-        row = r != null ? Map<String, dynamic>.from(r) : null;
+        row = r.isNotEmpty ? Map<String, dynamic>.from(r) : null;
       } else if (widget.handle != null) {
         final h = widget.handle!.replaceAll('@', '');
         // Try handle column first, fall back to name match
@@ -56,7 +56,7 @@ class _CommunityProfileViewState extends State<CommunityProfileView> {
           (c['id'] as String? ?? '') == h ||
           (c['name'] as String? ?? '').toLowerCase().contains(h.toLowerCase()),
           orElse: () => <String,dynamic>{});
-        row = r != null ? Map<String, dynamic>.from(r) : null;
+        row = r.isNotEmpty ? Map<String, dynamic>.from(r) : null;
       }
 
       if (row == null) {
@@ -65,18 +65,16 @@ class _CommunityProfileViewState extends State<CommunityProfileView> {
       }
 
       // Check if current user is a member
-      final uid = Supabase.instance.client.auth.currentUser?.id;
+      final uid = const AuthRepository().currentSession?.user?.id;
       bool joined = false;
       if (uid != null) {
-        final memRes = await const VpsRepository().get<Map<String,dynamic>>(
-            '/v1/social/communities/\${id}/member');
-        final mem = memRes.data?['isMember'] == true ? {'userId': uid} : null;
-        final _unused = await Future.value(null); // was: _sb.from('CommunityMember')
-            .select('id')
-            .eq('communityId', row['id']?.toString() ?? '')
-            .eq('userId', uid)
-            .maybeSingle();
-        joined = mem != null;
+        try {
+          final memRes = await const VpsRepository().get<Map<String, dynamic>>(
+            '/v1/social/communities/${row['id']?.toString() ?? ''}/member');
+          joined = memRes.data?['isMember'] == true;
+        } catch (_) {
+          joined = false;
+        }
       }
 
       if (mounted) setState(() { _data = row; _joined = joined; _loading = false; });
@@ -88,8 +86,7 @@ class _CommunityProfileViewState extends State<CommunityProfileView> {
   Future<void> _toggleMembership() async {
     final d = _data;
     if (d == null || _busyJoin) return;
-    final id = d['id']?.toString() ?? '';
-    final uid = Supabase.instance.client.auth.currentUser?.id;
+    final uid = const AuthRepository().currentSession?.user?.id;
     if (uid == null) return;
 
     setState(() => _busyJoin = true);

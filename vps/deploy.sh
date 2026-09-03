@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 # Playify — Full Deploy + Audit Script
-# Server: 104.152.50.173 | Domain: playifysport.fun
+# Server: david@95.217.20.12 | Domain: playifysport.fun
 # Run as root: bash vps/deploy.sh
 # =============================================================================
 set -euo pipefail

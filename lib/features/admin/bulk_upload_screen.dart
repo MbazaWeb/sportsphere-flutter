@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 
 import 'package:excel/excel.dart' hide Border;
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../../core/data/vps_supabase_compat.dart';
@@ -13,13 +12,13 @@ import 'bulk_upload_web.dart' if (dart.library.io) 'bulk_upload_stub.dart';
 // ── Column definition ──────────────────────────────────────────────────────
 
 class _Col {
+  const _Col(this.key, this.label, this.example,
+      {this.required = false, this.hint = ''});
   final String key;
   final String label;
   final String example;
   final bool required;
   final String hint;
-  const _Col(this.key, this.label, this.example,
-      {this.required = false, this.hint = ''});
 }
 
 // ── Sheet templates ────────────────────────────────────────────────────────
@@ -132,8 +131,6 @@ class _BulkUploadScreenState extends State<BulkUploadScreen>
   final List<String?> _results = [null, null, null];
   final List<bool> _uploading = [false, false, false];
 
-  int get _idx => _tabs.index;
-
   @override
   void initState() {
     super.initState();
@@ -156,8 +153,10 @@ class _BulkUploadScreenState extends State<BulkUploadScreen>
             content: Text('Template downloaded — fill all 3 sheets then upload')));
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Download failed: $e')));
+      }
     } finally {
       if (mounted) setState(() => _downloading = false);
     }
@@ -206,8 +205,10 @@ class _BulkUploadScreenState extends State<BulkUploadScreen>
                 'Players: ${_rows[1].length}, Fixtures: ${_rows[2].length} rows')));
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error reading file: $e')));
+      }
     }
   }
 
@@ -230,8 +231,11 @@ class _BulkUploadScreenState extends State<BulkUploadScreen>
         if (v.isEmpty) return;
         const intCols = ['shirtNumber', 'heightCm', 'weightKg', 'foundedYear',
                          'homeScore', 'awayScore'];
-        if (intCols.contains(k)) insert[k] = int.tryParse(v) ?? v;
-        else insert[k] = v;
+        if (intCols.contains(k)) {
+          insert[k] = int.tryParse(v) ?? v;
+        } else {
+          insert[k] = v;
+        }
       });
 
       if (insert.isEmpty) continue;
@@ -419,8 +423,8 @@ class _BulkUploadScreenState extends State<BulkUploadScreen>
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                headingRowColor: WidgetStatePropertyAll(PlayifyColors.surface),
-                dataRowColor: WidgetStatePropertyAll(PlayifyColors.background),
+                headingRowColor: const WidgetStatePropertyAll(PlayifyColors.surface),
+                dataRowColor: const WidgetStatePropertyAll(PlayifyColors.background),
                 headingTextStyle: const TextStyle(color: PlayifyColors.electricBlue,
                     fontSize: 11, fontWeight: FontWeight.w700),
                 dataTextStyle: const TextStyle(color: PlayifyColors.white, fontSize: 11),
@@ -478,9 +482,9 @@ class _BulkUploadScreenState extends State<BulkUploadScreen>
 }
 
 class _Step extends StatelessWidget {
+  const _Step({required this.n, required this.text});
   final String n;
   final String text;
-  const _Step({required this.n, required this.text});
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 6),

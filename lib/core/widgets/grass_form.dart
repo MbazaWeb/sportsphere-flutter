@@ -74,11 +74,6 @@ class GrassPitchPainter extends CustomPainter {
 
 /// Bottom sheet shell with grass header band.
 class GrassFormSheet extends StatelessWidget {
-  final String title;
-  final String? subtitle;
-  final IconData icon;
-  final List<Widget> children;
-  final Widget? footer;
 
   const GrassFormSheet({
     super.key,
@@ -88,6 +83,11 @@ class GrassFormSheet extends StatelessWidget {
     required this.children,
     this.footer,
   });
+  final String title;
+  final String? subtitle;
+  final IconData icon;
+  final List<Widget> children;
+  final Widget? footer;
 
   static Future<T?> show<T>({
     required BuildContext context,
@@ -158,9 +158,6 @@ class GrassFormSheet extends StatelessWidget {
 }
 
 class GrassFormHeader extends StatelessWidget {
-  final String title;
-  final String? subtitle;
-  final IconData icon;
 
   const GrassFormHeader({
     super.key,
@@ -168,6 +165,9 @@ class GrassFormHeader extends StatelessWidget {
     this.subtitle,
     this.icon = Icons.sports_soccer_rounded,
   });
+  final String title;
+  final String? subtitle;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -227,17 +227,6 @@ class GrassFormHeader extends StatelessWidget {
 
 /// Text field with turf fill + green focus ring.
 class GrassTextField extends StatelessWidget {
-  final TextEditingController? controller;
-  final String label;
-  final String? hint;
-  final IconData? icon;
-  final int maxLines;
-  final TextInputType? keyboardType;
-  final bool obscure;
-  final String? Function(String?)? validator;
-  final bool readOnly;
-  final VoidCallback? onTap;
-  final ValueChanged<String>? onChanged;
 
   const GrassTextField({
     super.key,
@@ -253,6 +242,17 @@ class GrassTextField extends StatelessWidget {
     this.onTap,
     this.onChanged,
   });
+  final TextEditingController? controller;
+  final String label;
+  final String? hint;
+  final IconData? icon;
+  final int maxLines;
+  final TextInputType? keyboardType;
+  final bool obscure;
+  final String? Function(String?)? validator;
+  final bool readOnly;
+  final VoidCallback? onTap;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -319,10 +319,6 @@ class GrassTextField extends StatelessWidget {
 
 /// Primary CTA with grass gradient.
 class GrassSubmitButton extends StatelessWidget {
-  final String label;
-  final VoidCallback? onPressed;
-  final bool loading;
-  final IconData? icon;
 
   const GrassSubmitButton({
     super.key,
@@ -331,6 +327,10 @@ class GrassSubmitButton extends StatelessWidget {
     this.loading = false,
     this.icon,
   });
+  final String label;
+  final VoidCallback? onPressed;
+  final bool loading;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -399,10 +399,6 @@ class GrassSubmitButton extends StatelessWidget {
 
 /// Upload tile with pitch background.
 class GrassUploadTile extends StatelessWidget {
-  final String label;
-  final String? url;
-  final bool uploading;
-  final VoidCallback onTap;
 
   const GrassUploadTile({
     super.key,
@@ -411,6 +407,10 @@ class GrassUploadTile extends StatelessWidget {
     this.url,
     this.uploading = false,
   });
+  final String label;
+  final String? url;
+  final bool uploading;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -466,8 +466,8 @@ class GrassUploadTile extends StatelessWidget {
 
 /// Section label used inside long forms.
 class GrassSectionLabel extends StatelessWidget {
-  final String text;
   const GrassSectionLabel(this.text, {super.key});
+  final String text;
 
   @override
   Widget build(BuildContext context) {
@@ -502,12 +502,6 @@ class GrassSectionLabel extends StatelessWidget {
 
 /// Styled dropdown matching grass form fields.
 class GrassDropdown<T> extends StatelessWidget {
-  final String label;
-  final T? value;
-  final List<DropdownMenuItem<T>> items;
-  final ValueChanged<T?> onChanged;
-  final String? Function(T?)? validator;
-  final IconData? icon;
 
   const GrassDropdown({
     super.key,
@@ -518,6 +512,12 @@ class GrassDropdown<T> extends StatelessWidget {
     this.validator,
     this.icon,
   });
+  final String label;
+  final T? value;
+  final List<DropdownMenuItem<T>> items;
+  final ValueChanged<T?> onChanged;
+  final String? Function(T?)? validator;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {

@@ -1,7 +1,5 @@
-import '../../../core/data/vps_repository.dart';
-import '../../../../core/data/vps_supabase_compat.dart';
+import '../../../../core/data/vps_repository.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/admin/app_admin.dart';
 import '../../../../core/theme/colors.dart';
@@ -55,47 +53,28 @@ class _CompetitionProfileViewState extends State<CompetitionProfileView>
       _loading = true;
       _error = null;
     });
-    final sb = VpsSupabaseCompat.client;
     try {
       Map<String, dynamic>? row;
-      // Preferred: lookup by id.
       final id = widget.competitionId;
       if (id != null && id.isNotEmpty) {
         try {
-          final r1 = await const VpsRepository().get<Map<String,dynamic>>('/v1/admin/leagues');
-          final leagues = (r1.data?['leagues'] as List? ?? []).cast<Map<String,dynamic>>();
+          final leagues = await const VpsRepository().getAdminLeagues();
           row = leagues.where((l) => l['id'] == id).firstOrNull;
         } catch (e) {
           debugPrint('competition load by id: $e');
         }
       }
-      // Fallback: lookup by slug / handle.
       if (row == null) {
         final key = (widget.handle ?? '').replaceAll('@', '').trim();
         if (key.isNotEmpty) {
           try {
-            row = await sb
-                // competition from VPS
-                .select()
-                .or('slug.eq.$key,name.ilike.%$key%')
-                .limit(1)
-                .maybeSingle();
+            final leagues = await const VpsRepository().getAdminLeagues();
+            row = leagues.where((l) =>
+              (l['slug'] as String? ?? '').toLowerCase() == key.toLowerCase() ||
+              ((l['name'] as String? ?? '').toLowerCase().contains(key.toLowerCase()))
+            ).firstOrNull;
           } catch (e) {
             debugPrint('competition load by slug: $e');
-          }
-          if (row == null) {
-            try {
-              final rows = await sb
-                  // league from VPS
-                  .select()
-                  .or('slug.eq.$key,name.ilike.%$key%')
-                  .limit(1);
-              if ((rows as List).isNotEmpty) {
-                row = Map<String, dynamic>.from(rows.first as Map);
-              }
-            } catch (e) {
-              debugPrint('league load by slug: $e');
-            }
           }
         }
       }
@@ -109,18 +88,14 @@ class _CompetitionProfileViewState extends State<CompetitionProfileView>
         return;
       }
 
-      // Load related matches (by league name or season).
       List<Map<String, dynamic>> matches = [];
       try {
         final name = (row['name'] ?? '').toString();
         if (name.isNotEmpty) {
-          final mRows = await sb
-              // matches now from VPS
-              .select()
-              .ilike('league', '%$name%')
-              .order('kickoffAt', ascending: false)
-              .limit(50);
-          matches = List<Map<String, dynamic>>.from(mRows as List);
+          final allMatches = await const VpsRepository().getAllMatches(limit: 200);
+          matches = allMatches
+              .where((m) => (m['league'] as String? ?? '').toLowerCase().contains(name.toLowerCase()))
+              .toList();
         }
       } catch (e) {
         debugPrint('competition matches load: $e');

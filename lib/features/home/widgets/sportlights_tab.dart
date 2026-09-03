@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../auth/data/auth_repository.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 import '../../../core/admin/app_admin.dart';
@@ -121,44 +121,7 @@ const _commerceRoles = {
 // MODEL
 // ============================================================
 
-class SpotlightItem {
-  final SpotlightType type;
-  final String author;
-  final String role;
-  final String handle;
-  final String? targetUserId;
-  final String? postId;
-  final String? matchId;
-  final String age;
-  final String? asset;
-  final int likes;
-  final int comments;
-  final int shares;
-  final Color accent;
-  final String? content;
-  final String? pollId;
-  final List<String> pollOptions;
-  final int? pollTotalVotes;
-  final int? myPollVote;
-  final Map<int, int> pollCounts;
-  final String? predHome;
-  final String? predAway;
-  final int? predHomeScore;
-  final int? predAwayScore;
-  final String? myPrediction;  // "homeScore-awayScore" if current user already predicted
-  final String? predMatchId;   // Match.id for "View Match" navigation
-  // Match card fields (for SpotlightType.match posts)
-  final String? homeTeam;
-  final String? awayTeam;
-  final String? matchScore;
-  final String? matchStatus;
-  final String? matchLeague;
-  final String? matchVenue;
-  final String? matchKickoff;
-  final String? homeBadge;
-  final String? awayBadge;
-  final String? leagueBadge;
-  final String? authorAvatarUrl;  // PART J (rule 38-42): real author avatar
+class SpotlightItem {  // PART J (rule 38-42): real author avatar
 
   const SpotlightItem({
     required this.type,
@@ -198,6 +161,43 @@ class SpotlightItem {
     this.leagueBadge,
     this.authorAvatarUrl,
   });
+  final SpotlightType type;
+  final String author;
+  final String role;
+  final String handle;
+  final String? targetUserId;
+  final String? postId;
+  final String? matchId;
+  final String age;
+  final String? asset;
+  final int likes;
+  final int comments;
+  final int shares;
+  final Color accent;
+  final String? content;
+  final String? pollId;
+  final List<String> pollOptions;
+  final int? pollTotalVotes;
+  final int? myPollVote;
+  final Map<int, int> pollCounts;
+  final String? predHome;
+  final String? predAway;
+  final int? predHomeScore;
+  final int? predAwayScore;
+  final String? myPrediction;  // "homeScore-awayScore" if current user already predicted
+  final String? predMatchId;   // Match.id for "View Match" navigation
+  // Match card fields (for SpotlightType.match posts)
+  final String? homeTeam;
+  final String? awayTeam;
+  final String? matchScore;
+  final String? matchStatus;
+  final String? matchLeague;
+  final String? matchVenue;
+  final String? matchKickoff;
+  final String? homeBadge;
+  final String? awayBadge;
+  final String? leagueBadge;
+  final String? authorAvatarUrl;
 
   String get profilePath {
     final h = handle.replaceAll('@', '');
@@ -243,8 +243,6 @@ class SpotlightItem {
 }
 
 // ============================================================
-final _feedItems = <SpotlightItem>[];
-
 /// Public helper — converts a Post.postType string to the internal spotlight type.
 /// Use this from other files that import sportlights_tab.dart.
 SpotlightType spotlightTypeFromPostType(String postType, {String? assetUrl}) {
@@ -328,7 +326,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
   Future<Map<String, Map<String, dynamic>>> _batchProfiles(
       List<String> uids) async {
     try {
-      return await SocialRepository().batchProfiles(uids);
+      return await const SocialRepository().batchProfiles(uids);
     } catch (e) {
       debugPrint('batchProfiles: $e');
       return {};
@@ -343,7 +341,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
       });
     }
     try {
-      final rows = await SocialRepository().feedForUser();
+      final rows = await const SocialRepository().feedForUser();
       debugPrint('sportlights feed rows: ${rows.length}');
 
       // Collect author ids for one batched lookup
@@ -407,7 +405,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
             (r['post_type'] as String?) ??
             '';
         final teamTag = r['teamTag']?.toString() ?? r['team_tag']?.toString();
-        String? targetUserId = uid;
+        final String? targetUserId = uid;
 
         if (postType == 'live_coverage') {
           type = SpotlightType.liveCoverage;
@@ -563,8 +561,8 @@ class _SportlightsTabState extends State<SportlightsTab> {
           predHomeScore: predHs,
           predAwayScore: predAs,
           myPrediction: (predHs != null && predAs != null &&
-              Supabase.instance.client.auth.currentUser != null)
-              ? (predHs! > predAs! ? 'home' : predHs! < predAs! ? 'away' : 'draw') : null,
+              const AuthRepository().currentSession?.user != null)
+              ? (predHs > predAs ? 'home' : predHs < predAs ? 'away' : 'draw') : null,
           predMatchId: predMatchId,
           // ── Match card fields (previously fetched but not passed — fixed) ──
           homeTeam: mHome,
@@ -708,10 +706,10 @@ class _SportlightsTabState extends State<SportlightsTab> {
 // ============================================================
 
 class SpotlightCard extends StatelessWidget {
+  const SpotlightCard({super.key, required this.item, this.isAdmin = false, this.onDeleted});
   final SpotlightItem item;
   final bool isAdmin;
   final VoidCallback? onDeleted;
-  const SpotlightCard({required this.item, this.isAdmin = false, this.onDeleted});
 
   @override
   Widget build(BuildContext context) {
@@ -754,14 +752,14 @@ class SpotlightCard extends StatelessWidget {
 // ============================================================
 
 class _AuthorHeader extends StatelessWidget {
-  final SpotlightItem item;
-  final bool isAdmin;
-  final VoidCallback? onDeleted;
   const _AuthorHeader({
     required this.item,
     this.isAdmin = false,
     this.onDeleted,
   });
+  final SpotlightItem item;
+  final bool isAdmin;
+  final VoidCallback? onDeleted;
 
   Future<void> _adminMenu(BuildContext context) async {
     final id = item.postId;
@@ -800,7 +798,7 @@ class _AuthorHeader extends StatelessWidget {
       ),
     );
     if (!context.mounted || action == null) return;
-    final social = SocialRepository();
+    const social = SocialRepository();
     try {
       if (action == 'delete') {
         final ok = await showDialog<bool>(
@@ -992,8 +990,8 @@ class _AuthorHeader extends StatelessWidget {
 }
 
 class _RoleBadge extends StatelessWidget {
-  final String label;
   const _RoleBadge({required this.label});
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -1021,8 +1019,8 @@ class _RoleBadge extends StatelessWidget {
 // ============================================================
 
 class _MediaArea extends StatelessWidget {
-  final SpotlightItem item;
   const _MediaArea({required this.item});
+  final SpotlightItem item;
 
   @override
   Widget build(BuildContext context) {
@@ -1042,8 +1040,8 @@ class _MediaArea extends StatelessWidget {
 }
 
 class _ImageContent extends StatelessWidget {
-  final SpotlightItem item;
   const _ImageContent({required this.item});
+  final SpotlightItem item;
 
   @override
   Widget build(BuildContext context) {
@@ -1121,8 +1119,8 @@ class _ImageContent extends StatelessWidget {
 }
 
 class _VideoContent extends StatefulWidget {
-  final SpotlightItem item;
   const _VideoContent({required this.item});
+  final SpotlightItem item;
   @override
   State<_VideoContent> createState() => _VideoContentState();
 }
@@ -1237,7 +1235,7 @@ class _VideoContentState extends State<_VideoContent> {
                 child: VideoProgressIndicator(
                   _ctrl!,
                   allowScrubbing: true,
-                  colors: VideoProgressColors(
+                  colors: const VideoProgressColors(
                     playedColor: PlayifyColors.electricBlue,
                     bufferedColor: Colors.white24,
                     backgroundColor: Colors.black26,
@@ -1258,8 +1256,8 @@ class _VideoContentState extends State<_VideoContent> {
 }
 
 class _PollContent extends StatefulWidget {
-  final SpotlightItem item;
   const _PollContent({required this.item});
+  final SpotlightItem item;
 
   @override
   State<_PollContent> createState() => _PollContentState();
@@ -1292,7 +1290,7 @@ class _PollContentState extends State<_PollContent> {
     if (_voted == i) {
       setState(() => _busy = true);
       try {
-        final uid = Supabase.instance.client.auth.currentUser?.id;
+        final uid = const AuthRepository().currentSession?.user?.id;
         if (uid != null) {
           try {
             await const VpsRepository().delete<void>('/v1/social/polls/$pollId/vote');
@@ -1400,11 +1398,6 @@ class _PollContentState extends State<_PollContent> {
 }
 
 class _PollOption extends StatelessWidget {
-  final String label;
-  final int percentage;
-  final bool voted;
-  final bool revealed;
-  final VoidCallback? onTap;
 
   const _PollOption({
     required this.label,
@@ -1413,6 +1406,11 @@ class _PollOption extends StatelessWidget {
     required this.revealed,
     required this.onTap,
   });
+  final String label;
+  final int percentage;
+  final bool voted;
+  final bool revealed;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1449,11 +1447,11 @@ class _PollOption extends StatelessWidget {
               child: Row(
                 children: [
                   if (voted)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
+                    const Padding(
+                      padding: EdgeInsets.only(right: 8),
                       child: Icon(
                         Icons.check_circle_rounded,
-                        color: const Color(0xFF168CFF),
+                        color: Color(0xFF168CFF),
                         size: 16,
                       ),
                     ),
@@ -1486,15 +1484,13 @@ class _PollOption extends StatelessWidget {
 }
 
 class _PredictionContent extends StatelessWidget {
-  final SpotlightItem item;
   const _PredictionContent({required this.item});
+  final SpotlightItem item;
 
   @override
   Widget build(BuildContext context) {
     final home = item.predHome ?? 'Home';
     final away = item.predAway ?? 'Away';
-    final hs = item.predHomeScore ?? 0;
-    final as_ = item.predAwayScore ?? 0;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -1540,11 +1536,11 @@ class _PredictionContent extends StatelessWidget {
               ]),
             ),
           // HOME | X | AWAY outcome display
-          Row(children: [
+          const Row(children: [
             _OutcomePill(label: 'HOME', active: false),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             _OutcomePill(label: 'X',   active: false),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             _OutcomePill(label: 'AWAY', active: false),
           ]),
           const SizedBox(height: 14),
@@ -1589,14 +1585,13 @@ String _outcomeLabel(String raw) {
 }
 
 class _OutcomePill extends StatelessWidget {
+  const _OutcomePill({required this.label, required this.active});
   final String label;
   final bool active;
-  final Color? activeColor;
-  const _OutcomePill({required this.label, required this.active, this.activeColor});
 
   @override
   Widget build(BuildContext context) {
-    final color = activeColor ?? (label == 'X' ? PlayifyColors.sportOrange : PlayifyColors.sportGreen);
+    final color = label == 'X' ? PlayifyColors.sportOrange : PlayifyColors.sportGreen;
     return Expanded(child: Container(
       padding: const EdgeInsets.symmetric(vertical: 14),
       decoration: BoxDecoration(
@@ -1617,28 +1612,6 @@ class _OutcomePill extends StatelessWidget {
   }
 }
 
-class _PredictionTeam extends StatelessWidget {
-  final String name;
-  const _PredictionTeam({required this.name});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const Icon(Icons.shield_rounded, color: Colors.white70, size: 38),
-        const SizedBox(height: 6),
-        Text(
-          name,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 // ============================================================
 // MATCH CONTENT — full match card in the feed
 // ============================================================
@@ -1649,8 +1622,8 @@ class _PredictionTeam extends StatelessWidget {
 // SocialRepository.createPrediction().
 
 class _MatchContent extends StatefulWidget {
-  final SpotlightItem item;
   const _MatchContent({required this.item});
+  final SpotlightItem item;
 
   @override
   State<_MatchContent> createState() => _MatchContentState();
@@ -1663,7 +1636,7 @@ class _MatchContentState extends State<_MatchContent> {
 
   Future<void> _predict(String outcome) async {
     if (_submitting) return;
-    final uid = Supabase.instance.client.auth.currentUser?.id;
+    final uid = const AuthRepository().currentSession?.user?.id;
     if (uid == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1699,7 +1672,7 @@ class _MatchContentState extends State<_MatchContent> {
     final matchId = widget.item.matchId;
 
     try {
-      await SocialRepository().createPrediction(
+      await const SocialRepository().createPrediction(
         homeTeam: homeName,
         awayTeam: awayName,
         predictedHome: home,
@@ -2099,8 +2072,8 @@ class _MatchContentState extends State<_MatchContent> {
 
 
 class _GeneratedContent extends StatelessWidget {
-  final SpotlightItem item;
   const _GeneratedContent({required this.item});
+  final SpotlightItem item;
 
   @override
   Widget build(BuildContext context) {
@@ -2266,8 +2239,8 @@ String _typeLabel(SpotlightType type) {
 // ============================================================
 
 class _EngagementRow extends ConsumerStatefulWidget {
-  final SpotlightItem item;
   const _EngagementRow({required this.item});
+  final SpotlightItem item;
 
   @override
   ConsumerState<_EngagementRow> createState() => _EngagementRowState();
@@ -2373,7 +2346,7 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
     // the `trg_post_share_count` DB trigger bumps `Post.shareCount` on
     // INSERT, so we mirror that locally with `_shares + 1`.
     try {
-        final uid = Supabase.instance.client.auth.currentUser?.id;
+      final uid = const AuthRepository().currentSession?.user?.id;
       if (uid == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -2418,7 +2391,7 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
 
   Future<void> _onLike() async {
     // Guard: must be signed in
-    if (Supabase.instance.client.auth.currentUser == null) {
+    if (const AuthRepository().currentSession?.user == null) {
       _showSignInPrompt(context, 'Like posts');
       return;
     }
@@ -2542,9 +2515,9 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
 }
 
 class _CommentSheet extends StatefulWidget {
+  const _CommentSheet({required this.postId, required this.social});
   final String postId;
   final SocialRepository social;
-  const _CommentSheet({required this.postId, required this.social});
 
   @override
   State<_CommentSheet> createState() => _CommentSheetState();
@@ -2872,14 +2845,14 @@ class _CommentSheetState extends State<_CommentSheet> {
 // ============================================================
 
 class _ActionRow extends StatefulWidget {
-  final SpotlightItem item;
-  final bool isAdmin;
-  final VoidCallback? onDeleted;
   const _ActionRow({
     required this.item,
     this.isAdmin = false,
     this.onDeleted,
   });
+  final SpotlightItem item;
+  final bool isAdmin;
+  final VoidCallback? onDeleted;
 
   @override
   State<_ActionRow> createState() => _ActionRowState();
@@ -2904,39 +2877,19 @@ class _ActionRowState extends State<_ActionRow> {
     final item = widget.item;
     final handle = item.handle.replaceAll('@', '').trim();
 
-    // Team / welcome posts: follow the TEAM account, never the admin author
     if (item.type == SpotlightType.team) {
       try {
-        Map<String, dynamic>? team;
-        if (item.targetUserId != null && item.targetUserId!.isNotEmpty) {
-          // may already be team id or user id
-          team = await Supabase.instance.client
-              .from('Team')
-              .select('id, accountUserId, name, slug')
-              .eq('id', item.targetUserId!)
-              .maybeSingle();
-        }
-        team ??= await Supabase.instance.client
-            .from('Team')
-            .select('id, accountUserId, name, slug')
-            .or('id.eq.$handle,slug.eq.$handle')
-            .maybeSingle();
-        if (team == null && handle.isNotEmpty) {
-          final rows = await Supabase.instance.client
-              .from('Team')
-              .select('id, accountUserId, name, slug')
-              .ilike('name', '%$handle%')
-              .limit(1);
-          if ((rows as List).isNotEmpty) {
-            team = Map<String, dynamic>.from(rows.first as Map);
+        final results = await const VpsRepository().searchAll(handle.isEmpty ? item.author : handle, limit: 20);
+        for (final r in results) {
+          final role = (r['role'] ?? r['_kind'] ?? '').toString();
+          final slug = (r['handle'] ?? r['slug'] ?? '').toString();
+          final match = role.toLowerCase() == 'team' || slug.toLowerCase() == handle.toLowerCase();
+          if (match) {
+            final aid = (r['accountUserId'] ?? r['userId'] ?? r['id'])?.toString();
+            if (aid != null && aid.isNotEmpty) return aid;
+            final id = r['id']?.toString();
+            if (id != null && id.isNotEmpty) return id;
           }
-        }
-        if (team != null) {
-          final aid = team['accountUserId']?.toString();
-          if (aid != null && aid.isNotEmpty) return aid;
-          // Fallback: team id itself (graph may resolve)
-          final tid = team['id']?.toString();
-          if (tid != null && tid.isNotEmpty) return tid;
         }
       } catch (_) {}
     }
@@ -2946,19 +2899,15 @@ class _ActionRowState extends State<_ActionRow> {
     }
     if (handle.isEmpty) return null;
     try {
-      final u = await Supabase.instance.client.from('User').select('id').eq('handle', handle).maybeSingle();
-      if (u?['id'] != null) return u!['id'].toString();
+      final profile = await const VpsRepository().getProfile(handle);
+      final id = profile?['id']?.toString() ?? profile?['userId']?.toString();
+      if (id != null && id.isNotEmpty) return id;
     } catch (_) {}
-    try {
-      final p = await Supabase.instance.client.from('profiles').select('id').eq('handle', handle).maybeSingle();
-      return p?['id']?.toString();
-    } catch (_) {
-      return null;
-    }
+    return null;
   }
 
   Future<void> _toggleFollow(bool next) async {
-    final uid = Supabase.instance.client.auth.currentUser?.id;
+    final uid = const AuthRepository().currentSession?.user?.id;
     if (uid == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2991,7 +2940,7 @@ class _ActionRowState extends State<_ActionRow> {
     }
     setState(() => _following = next);
     try {
-      final graph = SocialGraph();
+      const graph = SocialGraph();
       await graph.follow(target, on: next);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -3009,15 +2958,17 @@ class _ActionRowState extends State<_ActionRow> {
   }
 
   Future<void> _toggleFan(bool next) async {
-    final uid = Supabase.instance.client.auth.currentUser?.id;
+    final uid = const AuthRepository().currentSession?.user?.id;
     if (uid == null) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Row(children: [
           const Text('Sign in to become a fan'),
           const Spacer(),
           TextButton(onPressed: () => context.push('/login'),
               child: const Text('Sign in', style: TextStyle(color: Color(0xFF168CFF)))),
         ])));
+      }
       return;
     }
     setState(() => _isFan = next);
@@ -3030,15 +2981,15 @@ class _ActionRowState extends State<_ActionRow> {
       if (entityType != null && entityId.isNotEmpty) {
         // Use entity_follows — works regardless of whether accountUserId exists
         if (next) {
-          await VpsRepository().becomeFan(entityId, entityType: entityType);
+          await const VpsRepository().becomeFan(entityId, entityType: entityType);
         } else {
-          await VpsRepository().stopBeingFan(entityId, entityType: entityType);
+          await const VpsRepository().stopBeingFan(entityId, entityType: entityType);
         }
       } else {
         // Fall back to fans table for user profiles
         final target = await _resolveTargetId();
         if (target != null) {
-          final graph = SocialGraph();
+          const graph = SocialGraph();
           await graph.fan(target, on: next);
           await graph.refreshCounts(uid);
         }
@@ -3069,12 +3020,12 @@ class _ActionRowState extends State<_ActionRow> {
   }
 
   Future<void> _loadInitialState() async {
-    final uid = Supabase.instance.client.auth.currentUser?.id;
+    final uid = const AuthRepository().currentSession?.user?.id;
     if (uid == null) return;
     try {
       final target = await _resolveTargetId();
       if (target == null) return;
-      final graph = SocialGraph();
+      const graph = SocialGraph();
       final results = await Future.wait([
         graph.isFollowing(uid, target),
         if (_fanRoles.contains(widget.item.type)) graph.isFan(uid, target),
@@ -3293,8 +3244,8 @@ class _ActionRowState extends State<_ActionRow> {
 // ── Layout helpers ─────────────────────────────────────────
 
 class _OneButton extends StatelessWidget {
-  final Widget child;
   const _OneButton({required this.child});
+  final Widget child;
 
   @override
   Widget build(BuildContext context) => SizedBox(
@@ -3304,9 +3255,9 @@ class _OneButton extends StatelessWidget {
 }
 
 class _TwoButtons extends StatelessWidget {
+  const _TwoButtons({required this.primary, required this.secondary});
   final Widget primary;
   final Widget secondary;
-  const _TwoButtons({required this.primary, required this.secondary});
 
   @override
   Widget build(BuildContext context) => Row(
@@ -3323,11 +3274,6 @@ class _TwoButtons extends StatelessWidget {
 // ── Individual button ──────────────────────────────────────
 
 class _Btn extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color color;
-  final bool outlined;
-  final VoidCallback onTap;
 
   const _Btn({
     required this.label,
@@ -3336,6 +3282,11 @@ class _Btn extends StatelessWidget {
     required this.onTap,
     this.outlined = false,
   });
+  final String label;
+  final IconData icon;
+  final Color color;
+  final bool outlined;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -3385,8 +3336,8 @@ class _Btn extends StatelessWidget {
 // ============================================================
 
 class _ContentLabel extends StatelessWidget {
-  final String text;
   const _ContentLabel({required this.text});
+  final String text;
 
   @override
   Widget build(BuildContext context) {

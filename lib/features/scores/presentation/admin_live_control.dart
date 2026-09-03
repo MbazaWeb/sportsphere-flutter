@@ -188,7 +188,7 @@ class _AdminLiveControlSheetState extends ConsumerState<_AdminLiveControlSheet>
                   keyboardType: TextInputType.number,
                   style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
-                    labelText: "Minute (live)",
+                    labelText: 'Minute (live)',
                     labelStyle: TextStyle(color: Colors.white54),
                   ),
                 ),

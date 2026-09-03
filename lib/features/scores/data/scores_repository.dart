@@ -16,7 +16,7 @@ const int kMaxMatchesPerFetch = 200;
 class ScoresRepository {
   const ScoresRepository();
 
-  static final _vps = const VpsRepository();
+  static const _vps = VpsRepository();
 
   // ── Live / Today / Upcoming / Results ────────────────────────────────────
 
@@ -123,7 +123,9 @@ class ScoresRepository {
       ]);
       final all = <Map<String, dynamic>>{};
       for (final list in results) {
-        for (final m in list) all.add(m);
+        for (final m in list) {
+          all.add(m);
+        }
       }
       return all.map(_fromRow).toList()
         ..sort((a, b) => a.startTime.compareTo(b.startTime));

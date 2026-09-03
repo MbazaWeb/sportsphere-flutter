@@ -31,32 +31,32 @@ Future<Uint8List?> openMediaEditor(
             if (context.mounted) Navigator.pop(context);
           },
         ),
-        configs: ProImageEditorConfigs(
+        configs: const ProImageEditorConfigs(
           mainEditor: MainEditorConfigs(
             style: MainEditorStyle(
               background: PlayifyColors.background,
             ),
           ),
-          cropRotateEditor: const CropRotateEditorConfigs(
+          cropRotateEditor: CropRotateEditorConfigs(
             enabled: true,
             canChangeAspectRatio: true,
           ),
-          filterEditor: const FilterEditorConfigs(
+          filterEditor: FilterEditorConfigs(
             enabled: true,
           ),
-          tuneEditor: const TuneEditorConfigs(
+          tuneEditor: TuneEditorConfigs(
             enabled: true,
           ),
-          paintEditor: const PaintEditorConfigs(
+          paintEditor: PaintEditorConfigs(
             enabled: true,
           ),
-          textEditor: const TextEditorConfigs(
+          textEditor: TextEditorConfigs(
             enabled: true,
           ),
-          emojiEditor: const EmojiEditorConfigs(
+          emojiEditor: EmojiEditorConfigs(
             enabled: true,
           ),
-          i18n: const I18n(
+          i18n: I18n(
             various: I18nVarious(closeEditorWarningTitle: 'Discard changes?'),
             cropRotateEditor: I18nCropRotateEditor(
               bottomNavigationBarText: 'Crop & Rotate',

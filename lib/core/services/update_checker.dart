@@ -73,19 +73,19 @@ class UpdateChecker {
 }
 
 class UpdateInfo {
+  const UpdateInfo({required this.current, required this.latest,
+      required this.notes, required this.mandatory});
   final String current;
   final String latest;
   final String notes;
   final bool mandatory;
-  const UpdateInfo({required this.current, required this.latest,
-      required this.notes, required this.mandatory});
 }
 
 // ── Banner shown at top of home screen ───────────────────────────────────────
 
 class UpdateBanner extends StatefulWidget {
-  final Widget child;
   const UpdateBanner({super.key, required this.child});
+  final Widget child;
   @override State<UpdateBanner> createState() => _UpdateBannerState();
 }
 
@@ -125,7 +125,7 @@ class _UpdateBannerState extends State<UpdateBanner> {
     final show = update != null && !_dismissed;
     return Column(children: [
       if (show) _Banner(
-        update: update!,
+        update: update,
         onDismiss: update.mandatory ? null : _dismiss,
         onUpdate: UpdateChecker.launchDownload,
       ),
@@ -135,10 +135,10 @@ class _UpdateBannerState extends State<UpdateBanner> {
 }
 
 class _Banner extends StatelessWidget {
+  const _Banner({required this.update, required this.onDismiss, required this.onUpdate});
   final UpdateInfo update;
   final VoidCallback? onDismiss;
   final VoidCallback onUpdate;
-  const _Banner({required this.update, required this.onDismiss, required this.onUpdate});
 
   @override
   Widget build(BuildContext context) {

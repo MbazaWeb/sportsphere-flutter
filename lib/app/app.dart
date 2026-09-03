@@ -261,8 +261,8 @@ class _AuthListenable extends ChangeNotifier {
 // ============================================================
 
 class _FanProfilePage extends StatefulWidget {
-  final String handle;
   const _FanProfilePage({required this.handle});
+  final String handle;
   @override
   State<_FanProfilePage> createState() => _FanProfilePageState();
 }
@@ -292,8 +292,8 @@ class _FanProfilePageState extends State<_FanProfilePage> {
 }
 
 class _PlayerProfilePage extends StatefulWidget {
-  final String handle;
   const _PlayerProfilePage({required this.handle});
+  final String handle;
   @override
   State<_PlayerProfilePage> createState() => _PlayerProfilePageState();
 }
@@ -323,8 +323,8 @@ class _PlayerProfilePageState extends State<_PlayerProfilePage> {
 }
 
 class _TeamProfilePage extends StatefulWidget {
-  final String handle;
   const _TeamProfilePage({required this.handle});
+  final String handle;
   @override
   State<_TeamProfilePage> createState() => _TeamProfilePageState();
 }
@@ -354,9 +354,9 @@ class _TeamProfilePageState extends State<_TeamProfilePage> {
 }
 
 class _RoleProfilePage extends StatefulWidget {
+  const _RoleProfilePage({required this.role, required this.handle});
   final String role;
   final String handle;
-  const _RoleProfilePage({required this.role, required this.handle});
   @override
   State<_RoleProfilePage> createState() => _RoleProfilePageState();
 }

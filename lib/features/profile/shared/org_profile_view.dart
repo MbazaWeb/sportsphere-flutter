@@ -53,8 +53,8 @@ class OrgProfileModel {
 // ── OrgProfileView ─────────────────────────────────────────────────────────────
 
 class OrgProfileView extends StatefulWidget {
-  final OrgProfileModel profile;
   const OrgProfileView({super.key, required this.profile});
+  final OrgProfileModel profile;
   @override
   State<OrgProfileView> createState() => _OrgProfileViewState();
 }
@@ -72,6 +72,10 @@ class _OrgProfileViewState extends State<OrgProfileView> {
   Future<void> _fetchPosts() async {
     try {
       final profile = await const VpsRepository().getProfile(widget.profile.handle);
+      if (profile == null) {
+        if (mounted) setState(() => _loading = false);
+        return;
+      }
       final uid = profile['id']?.toString() ?? '';
       if (uid.isEmpty) { if (mounted) setState(() => _loading = false); return; }
       final posts = await const VpsRepository().getUserPosts(uid, limit: 30);

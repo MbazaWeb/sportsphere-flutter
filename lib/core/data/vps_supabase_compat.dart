@@ -15,7 +15,7 @@ class VpsSupabaseCompat {
 }
 
 class _VpsCompatClient {
-  static final VpsRepository _vps = const VpsRepository();
+  static const VpsRepository _vps = VpsRepository();
 
   _VpsCompatAuth get auth => _VpsCompatAuth();
 
@@ -65,19 +65,6 @@ class _VpsCompatAuth {
     }
   }
 
-  static Future<void> refreshUser() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final uid = prefs.getString('auth_user_id');
-      if (uid != null && uid.isNotEmpty) {
-        _VpsCompatUserCache.user = _VpsCompatUser(uid);
-      } else {
-        _VpsCompatUserCache.user = null;
-      }
-    } catch (e) {
-      debugPrint('VpsSupabaseCompat.refreshUser: $e');
-    }
-  }
 }
 
 class _VpsCompatUserCache {
@@ -85,9 +72,9 @@ class _VpsCompatUserCache {
 }
 
 class _VpsCompatUser {
+  _VpsCompatUser(this.id);
   final String id;
   String? email;
-  _VpsCompatUser(this.id, {this.email});
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -96,10 +83,10 @@ class _VpsCompatUser {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _VpsCompatQuery {
-  final String _table;
-  final VpsRepository _vps;
 
   _VpsCompatQuery(this._table, this._vps);
+  final String _table;
+  final VpsRepository _vps;
 
   /// select() returns a filter builder (NOT a Future).
   _VpsCompatFilterBuilder select([String? columns]) {
@@ -133,15 +120,6 @@ class _VpsCompatQuery {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _VpsCompatFilterBuilder {
-  final String _table;
-  final VpsRepository _vps;
-  final Map<String, dynamic>? _updateData;
-  final bool _isDelete;
-
-  final List<_FilterEntry> _filters = [];
-  String? _orderColumn;
-  bool _ascending = false;
-  int? _limit;
 
   _VpsCompatFilterBuilder._(
     this._table,
@@ -150,6 +128,13 @@ class _VpsCompatFilterBuilder {
     bool isDelete = false,
   })  : _updateData = updateData,
         _isDelete = isDelete;
+  final String _table;
+  final VpsRepository _vps;
+  final Map<String, dynamic>? _updateData;
+  final bool _isDelete;
+
+  final List<_FilterEntry> _filters = [];
+  int? _limit;
 
   // ── Filter methods (return this for chaining) ──
 
@@ -171,8 +156,6 @@ class _VpsCompatFilterBuilder {
   _VpsCompatFilterBuilder or(String filter) => this;
 
   _VpsCompatFilterBuilder order(String column, {bool ascending = false}) {
-    _orderColumn = column;
-    _ascending = ascending;
     return this;
   }
 
@@ -216,7 +199,7 @@ class _VpsCompatFilterBuilder {
 
   Future<List<Map<String, dynamic>>> catchError(
     Function onError, {
-    bool test(Object error)?,
+    bool Function(Object error)? test,
   }) {
     return _execute().catchError(onError, test: test);
   }
@@ -423,8 +406,8 @@ class _NoopChannel {
 }
 
 class _FilterEntry {
+  const _FilterEntry(this.column, this.value, this.op);
   final String column;
   final String value;
   final String op;
-  const _FilterEntry(this.column, this.value, this.op);
 }

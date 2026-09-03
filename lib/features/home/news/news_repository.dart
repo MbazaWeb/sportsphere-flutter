@@ -2,19 +2,6 @@ import 'package:flutter/foundation.dart';
 import '../../../core/data/vps_repository.dart';
 
 class NewsArticle {
-  final String id;
-  final String title;
-  final String summary;
-  final String body;
-  final String category;
-  final String source;
-  final String? sourceUrl;
-  final String? imageUrl;
-  final bool isBreaking;
-  final DateTime publishedAt;
-  final int likeCount;
-  final int commentCount;
-  final int shareCount;
 
   const NewsArticle({
     required this.id,
@@ -47,10 +34,23 @@ class NewsArticle {
         commentCount: (r['commentCount'] as int?) ?? 0,
         shareCount:   (r['shareCount'] as int?) ?? 0,
       );
+  final String id;
+  final String title;
+  final String summary;
+  final String body;
+  final String category;
+  final String source;
+  final String? sourceUrl;
+  final String? imageUrl;
+  final bool isBreaking;
+  final DateTime publishedAt;
+  final int likeCount;
+  final int commentCount;
+  final int shareCount;
 }
 
 class NewsRepository {
-  static final _vps = const VpsRepository();
+  static const _vps = VpsRepository();
 
   Future<List<NewsArticle>> fetch({required String category}) async {
     try {

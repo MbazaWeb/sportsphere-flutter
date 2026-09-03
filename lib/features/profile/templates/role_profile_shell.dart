@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,8 +16,8 @@ import 'role_profile_model.dart';
 import '../../../core/data/social_graph.dart';
 
 class RoleProfileShell extends ConsumerStatefulWidget {
-  final RoleProfileModel profile;
   const RoleProfileShell({super.key, required this.profile});
+  final RoleProfileModel profile;
 
   @override
   ConsumerState<RoleProfileShell> createState() => _RoleProfileShellState();
@@ -318,19 +317,6 @@ class _TabSpec {
 }
 
 class _Header extends StatelessWidget {
-  final RoleProfileModel p;
-  final bool following;
-  final bool isFan;
-  final bool showFan;
-  final VoidCallback onFollow;
-  final VoidCallback onBecomeFan;
-  final VoidCallback? onClaim;
-  final VoidCallback onBack;
-  final VoidCallback onShare;
-  final VoidCallback onMore;
-  final VoidCallback onMembers;
-  final VoidCallback? onShop;
-  final VoidCallback? onEditProfile;
   const _Header({
     required this.p,
     required this.following,
@@ -346,6 +332,19 @@ class _Header extends StatelessWidget {
     this.onShop,
     this.onEditProfile,
   });
+  final RoleProfileModel p;
+  final bool following;
+  final bool isFan;
+  final bool showFan;
+  final VoidCallback onFollow;
+  final VoidCallback onBecomeFan;
+  final VoidCallback? onClaim;
+  final VoidCallback onBack;
+  final VoidCallback onShare;
+  final VoidCallback onMore;
+  final VoidCallback onMembers;
+  final VoidCallback? onShop;
+  final VoidCallback? onEditProfile;
 
   @override
   Widget build(BuildContext context) {
@@ -466,14 +465,14 @@ class _Header extends StatelessWidget {
                             borderRadius: BorderRadius.circular(23),
                             color: p.accent,
                           ),
-                          child: Center(
+                          child: const Center(
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.edit_rounded, color: Colors.white, size: 18),
-                                const SizedBox(width: 8),
+                                Icon(Icons.edit_rounded, color: Colors.white, size: 18),
+                                SizedBox(width: 8),
                                 Text('Edit profile',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.w700,
                                     )),
@@ -639,8 +638,8 @@ class _Header extends StatelessWidget {
 }
 
 class _Sportlights extends StatelessWidget {
-  final RoleProfileModel p;
   const _Sportlights({required this.p});
+  final RoleProfileModel p;
 
   @override
   Widget build(BuildContext context) {
@@ -662,8 +661,8 @@ class _Sportlights extends StatelessWidget {
 }
 
 class _About extends StatelessWidget {
-  final RoleProfileModel p;
   const _About({required this.p});
+  final RoleProfileModel p;
 
   @override
   Widget build(BuildContext context) {
@@ -696,8 +695,8 @@ class _About extends StatelessWidget {
 }
 
 class _Members extends StatelessWidget {
-  final RoleProfileModel p;
   const _Members({required this.p});
+  final RoleProfileModel p;
 
   @override
   Widget build(BuildContext context) {
@@ -725,8 +724,8 @@ class _Members extends StatelessWidget {
 }
 
 class _Stats extends StatelessWidget {
-  final RoleProfileModel p;
   const _Stats({required this.p});
+  final RoleProfileModel p;
 
   @override
   Widget build(BuildContext context) {
@@ -755,8 +754,8 @@ class _Stats extends StatelessWidget {
 /// #6.5 — Bottom sheet that lists an entity's preloaded members
 /// (teams for a league, players for a coach/academy, etc.).
 class _MembersSheet extends StatelessWidget {
-  final RoleProfileModel p;
   const _MembersSheet({required this.p});
+  final RoleProfileModel p;
 
   @override
   Widget build(BuildContext context) {

@@ -1,8 +1,8 @@
 import '../../../core/data/vps_repository.dart';
-import '../../../core/data/vps_supabase_compat.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../auth/data/auth_repository.dart';
 
 import '../../../core/admin/app_admin.dart';
 import '../../../core/theme/colors.dart';
@@ -78,12 +78,11 @@ class _BecomeProSheetState extends ConsumerState<BecomeProSheet> {
       setState(() => _message = 'Please log in first.');
       return;
     }
-    final uid = VpsSupabaseCompat.client.auth.currentUser?.id;
+    final uid = const AuthRepository().currentSession?.user?.id;
     if (uid == null) return;
 
     setState(() { _saving = true; _message = null; });
     try {
-      final sb = VpsSupabaseCompat.client;
       final reqId = 'pro-${role.id}-$uid-${DateTime.now().millisecondsSinceEpoch}';
       final notesText = [
         if (_entity.text.trim().isNotEmpty) 'Entity: ${_entity.text.trim()}',
@@ -240,10 +239,10 @@ class _BecomeProSheetState extends ConsumerState<BecomeProSheet> {
 }
 
 class _Field extends StatelessWidget {
+  const _Field(this.label, this.ctrl, {this.maxLines = 1});
   final String label;
   final TextEditingController ctrl;
   final int maxLines;
-  const _Field(this.label, this.ctrl, {this.maxLines = 1});
 
   @override
   Widget build(BuildContext ctx) => Padding(

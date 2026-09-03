@@ -19,10 +19,6 @@ class NoopRealtimeChannel {
 }
 
 class PeerProfile {
-  final String id;
-  final String name;
-  final String handle;
-  final String? avatarUrl;
 
   const PeerProfile({
     required this.id,
@@ -30,13 +26,17 @@ class PeerProfile {
     required this.handle,
     this.avatarUrl,
   });
+  final String id;
+  final String name;
+  final String handle;
+  final String? avatarUrl;
 
   String get display => name.trim().isNotEmpty ? name : '@$handle';
   String get atHandle => handle.isEmpty ? '' : '@$handle';
 }
 
 class MessagingRepository {
-  static final _vps = const VpsRepository();
+  static const _vps = VpsRepository();
 
   Future<Map<String, PeerProfile>> resolvePeers(Iterable<String> ids) async {
     final unique = ids.where((e) => e.isNotEmpty).toSet().toList();

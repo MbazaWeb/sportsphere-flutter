@@ -13,7 +13,7 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreen> {
   // to other tab state changes). The future is invalidated whenever the
   // resolved handle changes.
   String? _cachedHandle;
-  int _profileVersion = 0; // increments after edit to force re-resolve
+  final int _profileVersion = 0; // increments after edit to force re-resolve
   late Future<FanProfileModel> _profileFuture;
 
   Future<FanProfileModel> _resolveFuture() {

@@ -1,14 +1,14 @@
 /// Simple in-memory rate limiter to prevent abuse on client-side actions
 /// (like, vote, STK, share).
 class RateLimiter {
-  final int maxAttempts;
-  final Duration window;
-  final Map<String, List<DateTime>> _attempts = {};
 
   RateLimiter({
     this.maxAttempts = 5,
     this.window = const Duration(minutes: 1),
   });
+  final int maxAttempts;
+  final Duration window;
+  final Map<String, List<DateTime>> _attempts = {};
 
   /// Returns true if the action is allowed, false if rate-limited.
   bool allow(String key) {

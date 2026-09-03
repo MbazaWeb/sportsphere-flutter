@@ -251,7 +251,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                   },
                                   child: const Text(
                                     'Forgot password?',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: PlayifyColors.electricBlue,
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
@@ -373,8 +373,8 @@ class _LogoSection extends StatelessWidget {
 // ── Glass card ─────────────────────────────────────────────────────────────────
 
 class _GlassCard extends StatelessWidget {
-  final Widget child;
   const _GlassCard({required this.child});
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
@@ -409,17 +409,6 @@ class _GlassCard extends StatelessWidget {
 // ── Glass input field ──────────────────────────────────────────────────────────
 
 class _GlassField extends StatefulWidget {
-  final TextEditingController controller;
-  final String label;
-  final String hint;
-  final IconData prefixIcon;
-  final bool obscure;
-  final bool focused;
-  final Widget? suffixIcon;
-  final String? Function(String?)? validator;
-  final TextInputAction? textInputAction;
-  final ValueChanged<bool>? onFocusChange;
-  final ValueChanged<String>? onSubmitted;
 
   const _GlassField({
     required this.controller,
@@ -434,6 +423,17 @@ class _GlassField extends StatefulWidget {
     this.onFocusChange,
     this.onSubmitted,
   });
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final IconData prefixIcon;
+  final bool obscure;
+  final bool focused;
+  final Widget? suffixIcon;
+  final String? Function(String?)? validator;
+  final TextInputAction? textInputAction;
+  final ValueChanged<bool>? onFocusChange;
+  final ValueChanged<String>? onSubmitted;
 
   @override
   State<_GlassField> createState() => _GlassFieldState();
@@ -517,15 +517,15 @@ class _GlassFieldState extends State<_GlassField> {
 // ── Primary button ─────────────────────────────────────────────────────────────
 
 class _PrimaryButton extends StatelessWidget {
-  final String label;
-  final bool loading;
-  final VoidCallback onTap;
 
   const _PrimaryButton({
     required this.label,
     required this.loading,
     required this.onTap,
   });
+  final String label;
+  final bool loading;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -585,15 +585,15 @@ class _PrimaryButton extends StatelessWidget {
 // ── Outline button ─────────────────────────────────────────────────────────────
 
 class _OutlineButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
 
   const _OutlineButton({
     required this.label,
     required this.icon,
     required this.onTap,
   });
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -681,10 +681,10 @@ class _OrDivider extends StatelessWidget {
 // ── Error banner ───────────────────────────────────────────────────────────────
 
 class _ErrorBanner extends StatelessWidget {
-  final String message;
-  final VoidCallback onDismiss;
 
   const _ErrorBanner({required this.message, required this.onDismiss});
+  final String message;
+  final VoidCallback onDismiss;
 
   @override
   Widget build(BuildContext context) {
@@ -742,7 +742,7 @@ class _TermsText extends StatelessWidget {
           const TextSpan(text: 'By continuing, you agree to our\n'),
           const TextSpan(
             text: 'Terms of Service',
-            style: const TextStyle(
+            style: TextStyle(
               color: PlayifyColors.electricBlue,
               fontWeight: FontWeight.w600,
             ),
@@ -750,7 +750,7 @@ class _TermsText extends StatelessWidget {
           const TextSpan(text: '  and  '),
           const TextSpan(
             text: 'Privacy Policy',
-            style: const TextStyle(
+            style: TextStyle(
               color: PlayifyColors.electricBlue,
               fontWeight: FontWeight.w600,
             ),
@@ -764,9 +764,9 @@ class _TermsText extends StatelessWidget {
 // ── Ambient orb ────────────────────────────────────────────────────────────────
 
 class _AmbientOrb extends StatelessWidget {
+  const _AmbientOrb({required this.color, required this.size});
   final Color color;
   final double size;
-  const _AmbientOrb({required this.color, required this.size});
 
   @override
   Widget build(BuildContext context) {

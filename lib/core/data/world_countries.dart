@@ -1,16 +1,17 @@
 /// Complete list of world countries with ISO codes for dropdown selectors.
 /// Data sourced from ISO 3166-1 standard.
+library;
 
 class WorldCountry {
-  final String name;
-  final String code;
-  final String dialCode;
 
   const WorldCountry({
     required this.name,
     required this.code,
     required this.dialCode,
   });
+  final String name;
+  final String code;
+  final String dialCode;
 }
 
 const kWorldCountries = <WorldCountry>[

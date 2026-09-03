@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/colors.dart';
 
 class ProfileBadge extends StatelessWidget {
-  final String label;
-  final Color? color;
 
   const ProfileBadge({
     super.key,
     required this.label,
     this.color,
   });
+  final String label;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {

@@ -40,9 +40,6 @@ Color? parseHexColor(String? raw) {
 }
 
 class TeamColorPicker extends StatelessWidget {
-  final String? valueHex;
-  final ValueChanged<String> onChanged;
-  final String label;
 
   const TeamColorPicker({
     super.key,
@@ -50,6 +47,9 @@ class TeamColorPicker extends StatelessWidget {
     required this.onChanged,
     this.label = 'Team colour',
   });
+  final String? valueHex;
+  final ValueChanged<String> onChanged;
+  final String label;
 
   @override
   Widget build(BuildContext context) {

@@ -1,5 +1,5 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/data/vps_repository.dart';
+import '../../auth/data/auth_repository.dart';
 import 'package:flutter/material.dart';
 
 import '../../shop/models/shop_models.dart';
@@ -9,7 +9,7 @@ import '../templates/role_profile_model.dart';
 /// Unified DB loader for all non-fan/team/player roles.
 Future<RoleProfileModel> lookupRoleProfile(String role, String handle) async {
   // VPS-based lookup — replaces Supabase direct calls
-  final _vps = const VpsRepository();
+  const vps = VpsRepository();
   final key = handle.replaceAll('@', '').trim().toLowerCase();
   final roleKey =
       role.toLowerCase().replaceAll('-', '_').replaceAll(' ', '_');
@@ -19,8 +19,8 @@ Future<RoleProfileModel> lookupRoleProfile(String role, String handle) async {
   Map<String, dynamic>? entity;
 
   try {
-    final _u = await _vps.get<Map<String,dynamic>>('/v1/social/profile/$key');
-    user = _u.data?['user'] as Map<String,dynamic>?;
+    final u = await vps.get<Map<String,dynamic>>('/v1/social/profile/$key');
+    user = u.data?['user'] as Map<String,dynamic>?;
   } catch (e) {
     debugPrint('lookupRoleProfile: User select by handle failed: $e');
   }
@@ -30,11 +30,11 @@ Future<RoleProfileModel> lookupRoleProfile(String role, String handle) async {
     debugPrint('lookupRoleProfile: profiles select by handle failed: $e');
   }
 
-  entity = await _fetchEntity(_vps, roleKey, key, slugDash, user?['id']?.toString());
+  entity = await _fetchEntity(vps, roleKey, key, slugDash, user?['id']?.toString());
 
   // Also load the role-specific Profile row (e.g. AgentProfile, AnalystProfile…)
   // and merge its fields into the entity dict so they are available downstream.
-  final profileRow = await _fetchRoleProfileRow(_vps, roleKey, user?['id']?.toString());
+  final profileRow = await _fetchRoleProfileRow(vps, roleKey, user?['id']?.toString());
   if (profileRow != null) {
     entity = <String, dynamic>{
       if (entity != null) ...entity,
@@ -51,9 +51,9 @@ Future<RoleProfileModel> lookupRoleProfile(String role, String handle) async {
 
   if (user == null && entity?['accountUserId'] != null) {
     try {
-      final _u2 = await _vps.get<Map<String,dynamic>>(
+      final u2 = await vps.get<Map<String,dynamic>>(
           '/v1/social/profile/\${entity!["accountUserId"]}');
-      user = _u2.data?['user'] as Map<String,dynamic>?;
+      user = u2.data?['user'] as Map<String,dynamic>?;
     } catch (e) {
       debugPrint('lookupRoleProfile: User select by accountUserId failed: $e');
     }
@@ -106,19 +106,19 @@ Future<RoleProfileModel> lookupRoleProfile(String role, String handle) async {
       (entity?['photo_url'] as String?) ??
       (entity?['avatarUrl'] as String?);
 
-  final posts = await _loadPosts(_vps, uid);
+  final posts = await _loadPosts(vps, uid);
   if (postCount == 0) postCount = posts.length;
 
   final about = await _aboutFields(
-    _vps,
+    vps,
     roleKey: roleKey,
     user: user,
     entity: entity,
     label: label,
   );
-  final members = await _members(_vps, roleKey: roleKey, entity: entity);
+  final members = await _members(vps, roleKey: roleKey, entity: entity);
   final statsRows = await _statsRows(
-    _vps,
+    vps,
     roleKey: roleKey,
     entity: entity,
     user: user,
@@ -135,7 +135,7 @@ Future<RoleProfileModel> lookupRoleProfile(String role, String handle) async {
   ShopCatalog? shop;
   if (shape == RoleShape.commerce) {
     shop = await _loadShopCatalog(
-      _vps,
+      vps,
       sellerName: display,
       sellerHandle: (user?['handle'] as String?) ?? key,
       accent: accent,
@@ -180,7 +180,7 @@ Future<RoleProfileModel> lookupRoleProfile(String role, String handle) async {
         (entity?['is_verified'] as bool?) == true ||
         (user?['isVerified'] as bool?) == true ||
         (user?['is_verified'] as bool?) == true,
-    isOwnProfile: uid != null && uid == Supabase.instance.client.auth.currentUser?.id,
+    isOwnProfile: uid != null && uid == const AuthRepository().currentSession?.user?.id,
     coverIcon: _iconFor(roleKey),
     shop: shop,
   );
@@ -206,7 +206,7 @@ Future<Map<String, dynamic>?> _fetchEntity(
   String? userId,
 ) async {
   try {
-    final vps = const VpsRepository();
+    const vps = VpsRepository();
     // Try to find entity via search
     final res = await vps.get<Map<String,dynamic>>('/v1/social/search?q=${Uri.encodeComponent(key)}&limit=5');
     final results = (res.data?['results'] as List? ?? []).cast<Map<String,dynamic>>();
@@ -292,10 +292,9 @@ String? _profileTableFor(String roleKey) {
 }
 
 Future<List<ProfilePost>> _loadPosts(dynamic vpsParam, String? uid) async {
-  final vpsInst = vpsParam is VpsRepository ? vpsParam : const VpsRepository();
   if (uid == null || uid.isEmpty) return [];
   try {
-    final res = await const VpsRepository().getUserPosts(uid!, limit: 30);
+    final res = await const VpsRepository().getUserPosts(uid, limit: 30);
     final posts = <ProfilePost>[];
     for (final r in res) {
       final media = r['mediaUrls'];
@@ -351,7 +350,7 @@ Future<List<AboutField>> _aboutFields(
           entity?['currentTeam']?.toString();
       if (teamId != null) {
         try {
-          final team =
+          const team =
               null; // Team lookup from VPS — stub
 
           add('Club', team?['name'] as String?);
@@ -516,7 +515,7 @@ Future<List<RoleMember>> _members(
         // Teams in same country / active — best effort
         final teams = [];
         return [
-          for (final r in teams as List)
+          for (final r in teams)
             RoleMember(
               name: (r as Map)['name']?.toString() ?? 'Team',
               handle: (r['slug'] as String?)?.replaceAll('-', '_') ??
@@ -551,7 +550,7 @@ Future<List<RoleMember>> _members(
         if (teamId == null) return [];
         final players = [];
         return [
-          for (final r in players as List)
+          for (final r in players)
             RoleMember(
               name: (r as Map)['name']?.toString() ?? 'Player',
               handle: (r['slug'] as String?)?.replaceAll('-', '_') ?? 'player',
@@ -568,7 +567,7 @@ Future<List<RoleMember>> _members(
         try {
           final players = [];
           return [
-            for (final r in players as List)
+            for (final r in players)
               RoleMember(
                 name: (r as Map)['name']?.toString() ?? 'Player',
                 handle:
@@ -587,7 +586,7 @@ Future<List<RoleMember>> _members(
         try {
           final rows = [];
           final out = <RoleMember>[];
-          for (final raw in rows as List) {
+          for (final raw in rows) {
             final m = raw as Map;
             final u = m['User'] as Map?;
             final h = (u?['handle'] as String?)?.replaceAll('-', '_') ??

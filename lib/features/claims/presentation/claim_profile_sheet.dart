@@ -39,13 +39,6 @@ Future<void> showClaimProfileSheet(
 }
 
 class ClaimProfileSheet extends ConsumerStatefulWidget {
-  final String profileType;
-  final String profileId;
-  final String profileName;
-  final String? teamId;
-  final String? playerId;
-  final String? coachId;
-  final String? leagueId;
 
   const ClaimProfileSheet({
     super.key,
@@ -57,6 +50,13 @@ class ClaimProfileSheet extends ConsumerStatefulWidget {
     this.coachId,
     this.leagueId,
   });
+  final String profileType;
+  final String profileId;
+  final String profileName;
+  final String? teamId;
+  final String? playerId;
+  final String? coachId;
+  final String? leagueId;
 
   @override
   ConsumerState<ClaimProfileSheet> createState() => _ClaimProfileSheetState();

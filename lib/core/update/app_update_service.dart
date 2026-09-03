@@ -9,7 +9,7 @@ import '../theme/colors.dart';
 const _kBlue = PlayifyColors.electricBlue;
 
 class AppUpdateService {
-  static final _vps = const VpsRepository();
+  static const _vps = VpsRepository();
 
   static Future<void> checkForUpdate(BuildContext context) async {
     if (kIsWeb) return;

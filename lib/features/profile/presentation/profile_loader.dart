@@ -1,6 +1,5 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../../../core/admin/app_admin.dart';
+import '../../auth/data/auth_repository.dart';
 import '../../../core/branding.dart';
 import 'package:flutter/material.dart';
 import '../../../core/data/vps_repository.dart';
@@ -64,7 +63,7 @@ class ProfileLoader {
     final isAdmin = isAdminRole || AppAdmin.isSessionAdmin;
 
     final profileId = row?['id']?.toString() ?? '';
-    final authId = Supabase.instance.client.auth.currentUser?.id ?? '';
+    final authId = const AuthRepository().currentSession?.user?.id ?? '';
 
     // Live counts for every role (not only admin)
     var counts = await _liveCounts(profileId);

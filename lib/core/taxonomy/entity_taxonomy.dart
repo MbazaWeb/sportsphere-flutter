@@ -1,10 +1,10 @@
 /// Composable Playify taxonomy. Do not collapse into one mega-enum.
 class TaxonomyTerm {
+  const TaxonomyTerm(this.domain, this.slug, this.label, [this.parentSlug]);
   final String domain;
   final String slug;
   final String label;
   final String? parentSlug;
-  const TaxonomyTerm(this.domain, this.slug, this.label, [this.parentSlug]);
 }
 
 abstract final class Taxonomy {

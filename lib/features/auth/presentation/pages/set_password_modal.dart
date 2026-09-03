@@ -27,8 +27,8 @@ Future<bool> showSetPasswordModal(BuildContext context, String email) async {
 }
 
 class _SetPasswordModal extends ConsumerStatefulWidget {
-  final String email;
   const _SetPasswordModal({required this.email});
+  final String email;
   @override
   ConsumerState<_SetPasswordModal> createState() => _SetPasswordModalState();
 }
@@ -55,7 +55,7 @@ class _SetPasswordModalState extends ConsumerState<_SetPasswordModal> {
   bool _loading = false;
   String? _error;
 
-  static final _vps = const VpsRepository();
+  static const _vps = VpsRepository();
 
   @override
   void dispose() {
@@ -81,8 +81,11 @@ class _SetPasswordModalState extends ConsumerState<_SetPasswordModal> {
     _countdown = 60;
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (_countdown > 0) setState(() => _countdown--);
-      else _timer?.cancel();
+      if (_countdown > 0) {
+        setState(() => _countdown--);
+      } else {
+        _timer?.cancel();
+      }
     });
   }
 
@@ -340,10 +343,10 @@ class _SetPasswordModalState extends ConsumerState<_SetPasswordModal> {
 // ── Sub-widgets ────────────────────────────────────────────────────────────────
 
 class _MethodTile extends StatelessWidget {
-  final IconData icon; final String title, subtitle;
-  final bool selected; final VoidCallback onTap;
   const _MethodTile({required this.icon, required this.title, required this.subtitle,
       required this.selected, required this.onTap});
+  final IconData icon; final String title, subtitle;
+  final bool selected; final VoidCallback onTap;
   @override
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
@@ -372,8 +375,8 @@ class _MethodTile extends StatelessWidget {
 }
 
 class _ActionBtn extends StatelessWidget {
-  final String label; final VoidCallback? onTap; final Color? color;
   const _ActionBtn({required this.label, required this.onTap, this.color});
+  final String label; final VoidCallback? onTap; final Color? color;
   @override
   Widget build(BuildContext context) => SizedBox(width: double.infinity,
     child: FilledButton(
@@ -389,10 +392,10 @@ class _ActionBtn extends StatelessWidget {
 }
 
 class _PassField extends StatelessWidget {
-  final TextEditingController ctrl; final String label;
-  final bool show; final VoidCallback onToggle;
   const _PassField({required this.ctrl, required this.label,
       required this.show, required this.onToggle});
+  final TextEditingController ctrl; final String label;
+  final bool show; final VoidCallback onToggle;
   @override
   Widget build(BuildContext context) => TextField(
     controller: ctrl, obscureText: !show,

@@ -110,8 +110,8 @@ class _ScoresPageState extends ConsumerState<ScoresPage>
 // ── Matches view ───────────────────────────────────────────────────────────────
 
 class _MatchesView extends ConsumerWidget {
-  final TabController tabController;
   const _MatchesView({required this.tabController});
+  final TabController tabController;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -218,7 +218,7 @@ class _MatchListSkeletonState extends State<_MatchListSkeleton>
               const SizedBox(height: 16),
               const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: const [
+                children: [
                   _SkeletonAvatar(),
                   _SkeletonScore(),
                   _SkeletonAvatar(),
@@ -232,7 +232,7 @@ class _MatchListSkeletonState extends State<_MatchListSkeleton>
               const SizedBox(height: 12),
               const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: const [
+                children: [
                   _SkeletonAction(),
                   _SkeletonAction(),
                   _SkeletonAction(),
@@ -316,8 +316,8 @@ class _SkeletonAction extends StatelessWidget {
 // ── Live list (no date strip — by definition "in play now") ────────────────
 
 class _LiveMatchList extends ConsumerWidget {
-  final FutureProvider<List<MatchModel>> provider;
   const _LiveMatchList({required this.provider});
+  final FutureProvider<List<MatchModel>> provider;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -344,7 +344,7 @@ class _LiveMatchList extends ConsumerWidget {
                 ),
               ),
               const Spacer(),
-              Text(
+              const Text(
                 'Updates in real time',
                 style: TextStyle(
                   color: PlayifyColors.muted,
@@ -363,8 +363,8 @@ class _LiveMatchList extends ConsumerWidget {
 // ── Today list (shows today's date — no picker; today = today) ─────────────
 
 class _TodayMatchList extends ConsumerWidget {
-  final FutureProvider<List<MatchModel>> provider;
   const _TodayMatchList({required this.provider});
+  final FutureProvider<List<MatchModel>> provider;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -404,14 +404,14 @@ class _TodayMatchList extends ConsumerWidget {
 // ── Match list body (handles loading / error / data + refresh) ─────────────
 
 class _MatchListBody extends ConsumerStatefulWidget {
-  final FutureProvider<List<MatchModel>> provider;
-  final String emptyTitle;
-  final String emptyHint;
   const _MatchListBody({
     required this.provider,
     required this.emptyTitle,
     required this.emptyHint,
   });
+  final FutureProvider<List<MatchModel>> provider;
+  final String emptyTitle;
+  final String emptyHint;
 
   @override
   ConsumerState<_MatchListBody> createState() => _MatchListBodyState();
@@ -421,10 +421,6 @@ class _MatchListBodyState extends ConsumerState<_MatchListBody> {
   final ScrollController _scrollCtrl = ScrollController();
   // Per-item keys so we can measure their position to scroll into view.
   final Map<String, GlobalKey> _matchKeys = {};
-  // Tracks the currently highlighted match so the MatchCard can show a
-  // subtle glow / border (consumed by MatchCard via its `highlighted` flag —
-  // see MatchCard impl). For now we just trigger a brief scroll + snackbar.
-  String? _highlightedId;
 
   @override
   void dispose() {
@@ -455,13 +451,7 @@ class _MatchListBodyState extends ConsumerState<_MatchListBody> {
       curve: Curves.easeOutCubic,
       alignment: 0.35, // place the card about a third from the top
     );
-    if (mounted) {
-      setState(() => _highlightedId = matchId);
-      // Clear highlight after a few seconds.
-      Future.delayed(const Duration(seconds: 4), () {
-        if (mounted) setState(() => _highlightedId = null);
-      });
-    }
+    if (mounted) setState(() {});
   }
 
   @override
@@ -566,9 +556,9 @@ class _MatchListBodyState extends ConsumerState<_MatchListBody> {
 }
 
 class _EmptyMatches extends StatelessWidget {
+  const _EmptyMatches({required this.title, required this.hint});
   final String title;
   final String hint;
-  const _EmptyMatches({required this.title, required this.hint});
 
   @override
   Widget build(BuildContext context) {
@@ -624,7 +614,7 @@ class _StandingsViewState extends State<_StandingsView> {
   // so when season filtering lands, just wiring this field to a UI control
   // will trigger re-queries automatically. Currently always '' (no season
   // filter in the schema yet).
-  String _season = '';
+  final String _season = '';
   List<String> _leagues = const [];
   bool _loadingLeagues = true;
 
@@ -718,17 +708,17 @@ class _StandingsViewState extends State<_StandingsView> {
           const SizedBox(height: 16),
           Expanded(
             child: (!_loadingLeagues && _leagues.isEmpty)
-              ? Center(child: Column(
+              ? const Center(child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.sports_rounded,
+                    Icon(Icons.sports_rounded,
                         color: PlayifyColors.muted, size: 48),
-                    const SizedBox(height: 12),
-                    const Text('No league table available',
+                    SizedBox(height: 12),
+                    Text('No league table available',
                         style: TextStyle(color: PlayifyColors.white,
                             fontSize: 16, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 6),
-                    const Text('No standings found for this sport',
+                    SizedBox(height: 6),
+                    Text('No standings found for this sport',
                         style: TextStyle(color: PlayifyColors.muted, fontSize: 13)),
                   ],
                 ))
@@ -812,8 +802,8 @@ class _StandingsViewState extends State<_StandingsView> {
 }
 
 class _StandingsHeader extends StatelessWidget {
-  final bool showDraws;
   const _StandingsHeader({required this.showDraws});
+  final bool showDraws;
 
   @override
   Widget build(BuildContext context) {
@@ -887,14 +877,14 @@ class _StandingsHeader extends StatelessWidget {
 }
 
 class _StandingRow extends StatelessWidget {
-  final StandingRow data;
-  final int rank;
-  final bool showDraws;
   const _StandingRow({
     required this.data,
     required this.rank,
     required this.showDraws,
   });
+  final StandingRow data;
+  final int rank;
+  final bool showDraws;
 
   @override
   Widget build(BuildContext context) {
@@ -1060,11 +1050,6 @@ class _StandingsSkeletonState extends State<_StandingsSkeleton>
 }
 
 class _Dropdown extends StatelessWidget {
-  final String label;
-  final String value;
-  final List<String> items;
-  final ValueChanged<String?> onChanged;
-  final String Function(String)? labelOf;
 
   const _Dropdown({
     required this.label,
@@ -1073,6 +1058,11 @@ class _Dropdown extends StatelessWidget {
     required this.onChanged,
     this.labelOf,
   });
+  final String label;
+  final String value;
+  final List<String> items;
+  final ValueChanged<String?> onChanged;
+  final String Function(String)? labelOf;
 
   @override
   Widget build(BuildContext context) {
@@ -1117,11 +1107,6 @@ class _Dropdown extends StatelessWidget {
 // ── Dated match list (Upcoming / Results) ──────────────────────────────────
 
 class _DatedMatchList extends ConsumerWidget {
-  final FutureProvider<List<MatchModel>> provider;
-  final NotifierProvider<DateNotifier, DateTime> dateProvider;
-  final bool future;
-  final String emptyTitle;
-  final String emptyHint;
   const _DatedMatchList({
     required this.provider,
     required this.dateProvider,
@@ -1129,6 +1114,11 @@ class _DatedMatchList extends ConsumerWidget {
     required this.emptyTitle,
     required this.emptyHint,
   });
+  final FutureProvider<List<MatchModel>> provider;
+  final NotifierProvider<DateNotifier, DateTime> dateProvider;
+  final bool future;
+  final String emptyTitle;
+  final String emptyHint;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1211,7 +1201,7 @@ class _DatedMatchList extends ConsumerWidget {
                                   : PlayifyColors.muted,
                               fontSize: 11)),
                       Text('${d.day}',
-                          style: TextStyle(
+                          style: const TextStyle(
                               color: PlayifyColors.white,
                               fontWeight: FontWeight.w800)),
                     ],

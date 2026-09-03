@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class PdfViewerPage extends StatelessWidget {
+  const PdfViewerPage({super.key, required this.url, this.title = 'Document'});
   final String url;
   final String title;
-  const PdfViewerPage({super.key, required this.url, this.title = 'Document'});
 
   @override
   Widget build(BuildContext context) {

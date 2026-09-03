@@ -220,9 +220,9 @@ class _SearchSheetState extends State<_SearchSheet> {
 }
 
 class _SearchResultTile extends StatelessWidget {
-  final Map<String, dynamic> item;
 
   const _SearchResultTile({required this.item});
+  final Map<String, dynamic> item;
 
   IconData get _icon {
     switch (item['type']) {
@@ -397,14 +397,14 @@ class _SearchEmptyState extends StatelessWidget {
 }
 
 class _MessageSheet extends StatefulWidget {
-  final String? initialPeerId;
-  final String? initialPeerName;
-  final String? initialPeerHandle;
   const _MessageSheet({
     this.initialPeerId,
     this.initialPeerName,
     this.initialPeerHandle,
   });
+  final String? initialPeerId;
+  final String? initialPeerName;
+  final String? initialPeerHandle;
   @override
   State<_MessageSheet> createState() => _MessageSheetState();
 }
@@ -421,7 +421,6 @@ class _MessageSheetState extends State<_MessageSheet> {
   String? _peerLabel;
   String? _peerHandle;
   bool _loading = true;
-  RealtimeChannel? _channel;
 
   @override
   void initState() {
@@ -453,7 +452,6 @@ class _MessageSheetState extends State<_MessageSheet> {
     // MessagingRepository.subscribeThread stub returns a no-op placeholder
     // (see messaging_repository.dart) so there is nothing to dispose here
     // — we just drop the reference and let GC clean it up.
-    _channel = null;
   }
 
   Future<void> _loadInbox() async {
@@ -477,7 +475,7 @@ class _MessageSheetState extends State<_MessageSheet> {
       _thread = rows;
       _loading = false;
     });
-    _channel = _repo.subscribeThread(
+    _repo.subscribeThread(
       peerId: peerId,
       onInsert: (row) {
         if (!mounted) return;
@@ -746,15 +744,15 @@ class _MessageSheetState extends State<_MessageSheet> {
 
 // ignore: unused_element
 class _ActivitySheet extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final List<_ActivityItem> items;
 
   const _ActivitySheet({
     required this.title,
     required this.icon,
     required this.items,
   });
+  final String title;
+  final IconData icon;
+  final List<_ActivityItem> items;
 
   @override
   Widget build(BuildContext context) {
@@ -891,10 +889,6 @@ class _ActivitySheet extends StatelessWidget {
 }
 
 class _ActivityItem {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final String time;
 
   const _ActivityItem({
     required this.icon,
@@ -902,4 +896,8 @@ class _ActivityItem {
     required this.subtitle,
     required this.time,
   });
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String time;
 }

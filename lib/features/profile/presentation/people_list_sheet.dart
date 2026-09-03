@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -7,10 +6,10 @@ import '../../../core/data/social_graph.dart';
 enum PeopleListKind { fans, followers, following }
 
 class PeopleListSheet extends StatefulWidget {
+  const PeopleListSheet({super.key, required this.userId, required this.handle, required this.kind});
   final String userId;
   final String handle;
   final PeopleListKind kind;
-  const PeopleListSheet({super.key, required this.userId, required this.handle, required this.kind});
 
   @override
   State<PeopleListSheet> createState() => _PeopleListSheetState();

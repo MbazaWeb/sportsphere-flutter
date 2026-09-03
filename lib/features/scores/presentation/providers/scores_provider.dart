@@ -127,7 +127,7 @@ Future<List<MatchModel>> _source() async {
   try {
     return await fetchLiveMatches();
   } catch (_) {
-    final repo = const ScoresRepository();
+    const repo = ScoresRepository();
     // M16 — The previous implementation awaited the four queries one after
     // another. They're independent reads against the same table, so run
     // them in parallel via Future.wait — this collapses ~4× RTT into ~1×.

@@ -1,8 +1,5 @@
-import '../../../core/data/vps_repository.dart';
-import '../../../../core/data/vps_supabase_compat.dart';
-import 'package:flutter/foundation.dart';
+import '../../../../core/data/vps_repository.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/admin/app_admin.dart';
 import '../../../../core/theme/colors.dart';
@@ -57,14 +54,12 @@ class _CoachProfileViewState extends State<CoachProfileView>
       _loading = true;
       _error = null;
     });
-    final sb = VpsSupabaseCompat.client;
     try {
       Map<String, dynamic>? row;
       final id = widget.coachId;
       if (id != null && id.isNotEmpty) {
         try {
-          final coachRes = await const VpsRepository().get<Map<String,dynamic>>('/v1/admin/coaches');
-          final coaches = (coachRes.data?['coaches'] as List? ?? []).cast<Map<String,dynamic>>();
+          final coaches = await const VpsRepository().getAdminCoaches();
           row = coaches.where((c) => c['id'] == id).firstOrNull;
         } catch (e) {
           debugPrint('coach load by id: $e');
@@ -74,12 +69,11 @@ class _CoachProfileViewState extends State<CoachProfileView>
         final key = (widget.handle ?? '').replaceAll('@', '').trim();
         if (key.isNotEmpty) {
           try {
-            row = await sb
-                // coach from VPS
-                .select()
-                .or('slug.eq.$key,name.ilike.%$key%')
-                .limit(1)
-                .maybeSingle();
+            final coaches = await const VpsRepository().getAdminCoaches();
+            row = coaches.where((c) =>
+              (c['slug'] as String? ?? '').toLowerCase() == key.toLowerCase() ||
+              ((c['name'] as String? ?? '').toLowerCase().contains(key.toLowerCase()))
+            ).firstOrNull;
           } catch (e) {
             debugPrint('coach load by slug: $e');
           }
@@ -100,8 +94,7 @@ class _CoachProfileViewState extends State<CoachProfileView>
       final teamId = row['teamId']?.toString();
       if (teamId != null && teamId.isNotEmpty) {
         try {
-          final teamRes = await const VpsRepository().get<Map<String,dynamic>>('/v1/admin/teams');
-          final teams = (teamRes.data?['teams'] as List? ?? []).cast<Map<String,dynamic>>();
+          final teams = await const VpsRepository().getAdminTeams();
           team = teams.where((t) => t['id'] == teamId).firstOrNull;
         } catch (e) {
           debugPrint('coach team load: $e');
@@ -112,13 +105,8 @@ class _CoachProfileViewState extends State<CoachProfileView>
       List<Map<String, dynamic>> players = [];
       if (teamId != null && teamId.isNotEmpty) {
         try {
-          final rows = await sb
-              // player from VPS
-              .select()
-              .eq('teamId', teamId)
-              .order('shirtNumber')
-              .limit(50);
-          players = List<Map<String, dynamic>>.from(rows as List);
+          final teamPlayers = await const VpsRepository().getAdminPlayers(teamId: teamId);
+          players = teamPlayers;
         } catch (e) {
           debugPrint('coach players load: $e');
         }
@@ -491,7 +479,7 @@ class _StatsTab extends StatelessWidget {
         const Text(
           'Detailed coach statistics (matches managed, win rate, trophies) '
           'will appear here once the analytics pipeline populates them.',
-          style: const TextStyle(color: PlayifyColors.muted, fontSize: 12),
+          style: TextStyle(color: PlayifyColors.muted, fontSize: 12),
         ),
         if (_s(coach['metadata']).isNotEmpty) ...[
           const SizedBox(height: 12),

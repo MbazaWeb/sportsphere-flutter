@@ -14,8 +14,8 @@ cd "$PROJECT_ROOT"
 SKIP_WEB=false
 SKIP_APK=false
 SKIP_SERVER=false
-SERVER_HOST="${SERVER_HOST:-104.152.50.173}"
-SERVER_USER="${SERVER_USER:-deploy}"
+SERVER_HOST="${SERVER_HOST:-95.217.20.12}"
+SERVER_USER="${SERVER_USER:-david}"
 WEB_PATH="${WEB_PATH:-/var/www/playify}"
 APK_PATH="${APK_PATH:-/var/www/playify/downloads}"
 

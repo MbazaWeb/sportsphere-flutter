@@ -81,7 +81,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   late final Animation<double> _progressAnim;
   double _progressTarget = 0;
 
-  static final _vps = const VpsRepository();
+  static const _vps = VpsRepository();
 
   @override
   void initState() {
@@ -170,10 +170,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
       final bytes = await file.readAsBytes();
       final ext   = file.name.split('.').last.toLowerCase();
       final mime  = ext == 'png' ? 'image/png' : 'image/jpeg';
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _avatarBytes   = bytes;
         _avatarDataUri = 'data:$mime;base64,${base64Encode(bytes)}';
       });
+      }
     } catch (e) {
       _snack('Could not pick photo');
     }
@@ -253,9 +255,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
       backgroundColor: PlayifyColors.background,
       body: Stack(children: [
         // Ambient orbs
-        Positioned(top:-80, right:-60,
+        const Positioned(top:-80, right:-60,
           child: _Orb(color: _kBlue, size: 300)),
-        Positioned(bottom: 100, left:-80,
+        const Positioned(bottom: 100, left:-80,
           child: _Orb(color: _kGreen, size: 250)),
 
         SafeArea(child: Column(children: [
@@ -359,8 +361,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                 searchCtrl:     _teamSearch,
                 loading:        loading,
                 onToggleSport: (slug) => setState(() {
-                  if (_selectedSports.contains(slug)) _selectedSports.remove(slug);
-                  else _selectedSports.add(slug);
+                  if (_selectedSports.contains(slug)) {
+                    _selectedSports.remove(slug);
+                  } else {
+                    _selectedSports.add(slug);
+                  }
                 }),
                 onToggleTeam: (id, name) => setState(() {
                   if (_selectedTeamIds.contains(id)) {
@@ -386,11 +391,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
 // STEP 1 — Account details
 // ══════════════════════════════════════════════════════════════════════════════
 class _Step1 extends StatelessWidget {
-  final GlobalKey<FormState> formKey;
-  final TextEditingController firstCtrl, lastCtrl, emailCtrl, handleCtrl,
-      passCtrl, confirmCtrl;
-  final bool showPass, showConfirm;
-  final VoidCallback onTogglePass, onToggleConfirm, onNext;
   const _Step1({
     required this.formKey, required this.firstCtrl, required this.lastCtrl,
     required this.emailCtrl, required this.handleCtrl,
@@ -399,6 +399,11 @@ class _Step1 extends StatelessWidget {
     required this.onTogglePass, required this.onToggleConfirm,
     required this.onNext,
   });
+  final GlobalKey<FormState> formKey;
+  final TextEditingController firstCtrl, lastCtrl, emailCtrl, handleCtrl,
+      passCtrl, confirmCtrl;
+  final bool showPass, showConfirm;
+  final VoidCallback onTogglePass, onToggleConfirm, onNext;
 
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
@@ -486,17 +491,17 @@ class _Step1 extends StatelessWidget {
 // STEP 2 — Profile setup
 // ══════════════════════════════════════════════════════════════════════════════
 class _Step2 extends StatelessWidget {
-  final Uint8List? avatarBytes;
-  final String? country;
-  final DateTime? dob;
-  final TextEditingController phoneCtrl;
-  final VoidCallback onPickAvatar, onPickCountry, onPickDob, onNext;
   const _Step2({
     required this.avatarBytes, required this.country, required this.dob,
     required this.phoneCtrl,
     required this.onPickAvatar, required this.onPickCountry, required this.onPickDob,
     required this.onNext,
   });
+  final Uint8List? avatarBytes;
+  final String? country;
+  final DateTime? dob;
+  final TextEditingController phoneCtrl;
+  final VoidCallback onPickAvatar, onPickCountry, onPickDob, onNext;
 
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
@@ -578,13 +583,6 @@ class _Step2 extends StatelessWidget {
 // STEP 3 — Fan setup
 // ══════════════════════════════════════════════════════════════════════════════
 class _Step3 extends StatelessWidget {
-  final List<Map<String,dynamic>> sports, teams;
-  final bool loadingTeams, loading;
-  final Set<String> selectedSports, selectedTeams, selectedTeamNames;
-  final TextEditingController searchCtrl;
-  final void Function(String slug) onToggleSport;
-  final void Function(String id, String name) onToggleTeam;
-  final VoidCallback onSubmit, onSkip;
   const _Step3({
     required this.sports, required this.teams, required this.loadingTeams,
     required this.loading, required this.selectedSports,
@@ -592,6 +590,13 @@ class _Step3 extends StatelessWidget {
     required this.searchCtrl, required this.onToggleSport,
     required this.onToggleTeam, required this.onSubmit, required this.onSkip,
   });
+  final List<Map<String,dynamic>> sports, teams;
+  final bool loadingTeams, loading;
+  final Set<String> selectedSports, selectedTeams, selectedTeamNames;
+  final TextEditingController searchCtrl;
+  final void Function(String slug) onToggleSport;
+  final void Function(String id, String name) onToggleTeam;
+  final VoidCallback onSubmit, onSkip;
 
   @override
   Widget build(BuildContext context) {
@@ -802,8 +807,8 @@ class _MiniLogo extends StatelessWidget {
 }
 
 class _SectionHeader extends StatelessWidget {
-  final String title, subtitle;
   const _SectionHeader(this.title, this.subtitle);
+  final String title, subtitle;
   @override
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.center,
     children: [
@@ -817,8 +822,8 @@ class _SectionHeader extends StatelessWidget {
 }
 
 class _Card extends StatelessWidget {
-  final Widget child;
   const _Card({required this.child});
+  final Widget child;
   @override
   Widget build(BuildContext context) => Container(
     width: double.infinity,
@@ -833,14 +838,6 @@ class _Card extends StatelessWidget {
 }
 
 class _Field extends StatelessWidget {
-  final TextEditingController ctrl;
-  final String label, hint;
-  final IconData icon;
-  final TextInputType keyboard;
-  final bool obscure;
-  final String? Function(String?)? validator;
-  final TextInputAction action;
-  final Widget? suffix;
   const _Field({
     required this.ctrl, required this.label, required this.hint,
     required this.icon,
@@ -850,6 +847,14 @@ class _Field extends StatelessWidget {
     this.action = TextInputAction.next,
     this.suffix,
   });
+  final TextEditingController ctrl;
+  final String label, hint;
+  final IconData icon;
+  final TextInputType keyboard;
+  final bool obscure;
+  final String? Function(String?)? validator;
+  final TextInputAction action;
+  final Widget? suffix;
 
   @override
   Widget build(BuildContext context) => TextFormField(
@@ -884,12 +889,12 @@ class _Field extends StatelessWidget {
 }
 
 class _TapField extends StatelessWidget {
+  const _TapField({required this.label, required this.hint, this.value,
+      required this.icon, required this.onTap});
   final String label, hint;
   final String? value;
   final IconData icon;
   final VoidCallback onTap;
-  const _TapField({required this.label, required this.hint, this.value,
-      required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) => GestureDetector(
@@ -919,11 +924,11 @@ class _TapField extends StatelessWidget {
 }
 
 class _Btn extends StatelessWidget {
+  const _Btn({required this.label, required this.icon, this.color = _kBlue, required this.onTap});
   final String label;
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
-  const _Btn({required this.label, required this.icon, this.color = _kBlue, required this.onTap});
 
   @override
   Widget build(BuildContext context) => SizedBox(
@@ -942,8 +947,8 @@ class _Btn extends StatelessWidget {
 }
 
 class _Orb extends StatelessWidget {
-  final Color color; final double size;
   const _Orb({required this.color, required this.size});
+  final Color color; final double size;
   @override
   Widget build(BuildContext context) => Container(width: size, height: size,
     decoration: BoxDecoration(shape: BoxShape.circle,
@@ -954,9 +959,9 @@ class _Orb extends StatelessWidget {
 // COUNTRY PICKER
 // ══════════════════════════════════════════════════════════════════════════════
 class _CountryPicker extends StatefulWidget {
+  const _CountryPicker({this.selected, required this.onSelect});
   final String? selected;
   final ValueChanged<String> onSelect;
-  const _CountryPicker({this.selected, required this.onSelect});
   @override
   State<_CountryPicker> createState() => _CountryPickerState();
 }

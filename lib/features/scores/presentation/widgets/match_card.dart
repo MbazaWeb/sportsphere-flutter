@@ -8,7 +8,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../../../core/data/social_repository.dart';
 import '../../../../core/data/vps_repository.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/utils/friendly_error.dart';
@@ -23,10 +22,6 @@ import '../../domain/models/match_status.dart';
 const String _kAlertStoragePrefix = 'match_alert_';
 
 class MatchCard extends StatefulWidget {
-  final MatchModel match;
-  final VoidCallback? onTeamTap;
-  final VoidCallback? onCardTap;
-  final VoidCallback? onLongPress;
 
   const MatchCard({
     super.key,
@@ -35,6 +30,10 @@ class MatchCard extends StatefulWidget {
     this.onCardTap,
     this.onLongPress,
   });
+  final MatchModel match;
+  final VoidCallback? onTeamTap;
+  final VoidCallback? onCardTap;
+  final VoidCallback? onLongPress;
 
   @override
   State<MatchCard> createState() => _MatchCardState();
@@ -363,8 +362,8 @@ class _MatchCardState extends State<MatchCard> {
 // ── Kickoff / venue subtitle ───────────────────────────────────────────────
 
 class _KickoffVenueRow extends StatelessWidget {
-  final MatchModel match;
   const _KickoffVenueRow({required this.match});
+  final MatchModel match;
 
   @override
   Widget build(BuildContext context) {
@@ -396,15 +395,15 @@ class _KickoffVenueRow extends StatelessWidget {
 // ── Alert sheet (stateful toggles, persisted to FlutterSecureStorage) ──────
 
 class _AlertSheet extends StatefulWidget {
-  final String matchId;
   const _AlertSheet({required this.matchId});
+  final String matchId;
 
   @override
   State<_AlertSheet> createState() => _AlertSheetState();
 }
 
 class _AlertSheetState extends State<_AlertSheet> {
-  static final _storage = FlutterSecureStorage();
+  static const _storage = FlutterSecureStorage();
 
   bool _matchStart = true;
   bool _goals = true;
@@ -488,7 +487,7 @@ class _AlertSheetState extends State<_AlertSheet> {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
+          const Text(
             'Stored locally on this device.',
             style: TextStyle(
               color: PlayifyColors.muted,
@@ -547,14 +546,14 @@ class _AlertSheetState extends State<_AlertSheet> {
 }
 
 class _Toggle extends StatelessWidget {
-  final String label;
-  final bool value;
-  final ValueChanged<bool> onChanged;
   const _Toggle({
     required this.label,
     required this.value,
     required this.onChanged,
   });
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -577,8 +576,8 @@ class _Toggle extends StatelessWidget {
 // ── Team avatar (uses cached_network_image when available) ─────────────────
 
 class _TeamAvatar extends StatelessWidget {
-  final String logo;
   const _TeamAvatar({required this.logo});
+  final String logo;
 
   @override
   Widget build(BuildContext context) {
@@ -615,16 +614,16 @@ class _TeamAvatar extends StatelessWidget {
 // ── Match action ───────────────────────────────────────────────────────────
 
 class _MatchAction extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color iconColor;
-  final VoidCallback? onTap;
   const _MatchAction({
     required this.icon,
     required this.label,
     this.iconColor = PlayifyColors.muted,
     this.onTap,
   });
+  final IconData icon;
+  final String label;
+  final Color iconColor;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {

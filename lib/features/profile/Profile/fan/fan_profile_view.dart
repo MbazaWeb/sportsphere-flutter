@@ -1,6 +1,5 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/data/vps_supabase_compat.dart';
 import '../../../../core/data/vps_repository.dart';
+import '../../../auth/data/auth_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,10 +11,8 @@ import '../../../../core/data/social_graph.dart';
 import '../../../../core/theme/colors.dart';
 import '../../presentation/edit_profile_sheet.dart';
 import '../../presentation/become_pro_sheet.dart';
-import '../../shared/profile_widgets.dart';
 import '../../../auth/presentation/auth_controller.dart';
 import '../../../home/widgets/sportlights_tab.dart';
-import '../../../../core/utils/media_type.dart';
 // ══════════════════════════════════════════════════════════════════════════════
 // MODEL
 // ══════════════════════════════════════════════════════════════════════════════
@@ -85,12 +82,12 @@ class FanProfileModel {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class FanProfileView extends StatefulWidget {
-  final FanProfileModel profile;
 
   const FanProfileView({
     super.key,
     required this.profile,
   });
+  final FanProfileModel profile;
 
   @override
   State<FanProfileView> createState() => _FanProfileViewState();
@@ -116,11 +113,11 @@ class _FanProfileViewState extends State<FanProfileView>
 
   Future<void> _seedFollowState() async {
     try {
-      final me = Supabase.instance.client.auth.currentUser?.id;
+      final me = const AuthRepository().currentSession?.user?.id;
       if (me == null) return;
       final targetHandle =
           widget.profile.handle.replaceAll('@', '').trim();
-      final graph = const SocialGraph();
+      const graph = SocialGraph();
       final targetId = await graph.resolveId(targetHandle);
       if (targetId == null) return;
       final ok = await graph.isFollowing(me, targetId);
@@ -142,13 +139,13 @@ class _FanProfileViewState extends State<FanProfileView>
       _following = !wasFollowing;
     });
     try {
-      final me = Supabase.instance.client.auth.currentUser?.id;
+      final me = const AuthRepository().currentSession?.user?.id;
       if (me == null) {
         // Not signed in — revert UI and bail.
         if (mounted) setState(() => _following = wasFollowing);
         return;
       }
-      final graph = const SocialGraph();
+      const graph = SocialGraph();
       final targetId = await graph.resolveId(
           widget.profile.handle.replaceAll('@', '').trim());
       if (targetId == null) throw StateError('profile not found');
@@ -218,13 +215,6 @@ class _FanProfileViewState extends State<FanProfileView>
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _ProfileHeader extends StatelessWidget {
-  final FanProfileModel profile;
-  final bool following;
-  final bool followBusy;
-  final Future<void> Function() onFollow;
-  final VoidCallback onBack;
-  final VoidCallback onMore;
-  final VoidCallback onInfo;
 
   const _ProfileHeader({
     required this.profile,
@@ -235,6 +225,13 @@ class _ProfileHeader extends StatelessWidget {
     required this.onInfo,
     this.followBusy = false,
   });
+  final FanProfileModel profile;
+  final bool following;
+  final bool followBusy;
+  final Future<void> Function() onFollow;
+  final VoidCallback onBack;
+  final VoidCallback onMore;
+  final VoidCallback onInfo;
 
   @override
   Widget build(BuildContext context) {
@@ -337,7 +334,7 @@ class _ProfileHeader extends StatelessWidget {
             ),
           ],
         ),
-        SizedBox(height: avatarR * 0.5 + 10),
+        const SizedBox(height: avatarR * 0.5 + 10),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
@@ -466,8 +463,8 @@ class _ProfileHeader extends StatelessWidget {
 }
 
 class _CoverGradient extends StatelessWidget {
-  final Color accent;
   const _CoverGradient({required this.accent});
+  final Color accent;
 
   @override
   Widget build(BuildContext context) {
@@ -495,10 +492,10 @@ class _CoverGradient extends StatelessWidget {
 }
 
 class _Avatar extends StatelessWidget {
+  const _Avatar({required this.asset, required this.radius, required this.accentColor});
   final String? asset;
   final double radius;
   final Color accentColor;
-  const _Avatar({required this.asset, required this.radius, required this.accentColor});
 
   @override
   Widget build(BuildContext context) {
@@ -548,8 +545,8 @@ String _sanitizeAvatarUrl(String url) {
 }
 
 class _AvatarFallback extends StatelessWidget {
-  final Color accent;
   const _AvatarFallback({required this.accent});
+  final Color accent;
 
   @override
   Widget build(BuildContext context) {
@@ -561,9 +558,9 @@ class _AvatarFallback extends StatelessWidget {
 }
 
 class _FanOfBadge extends StatelessWidget {
+  const _FanOfBadge({required this.teamName, required this.accent});
   final String teamName;
   final Color accent;
-  const _FanOfBadge({required this.teamName, required this.accent});
 
   @override
   Widget build(BuildContext context) {
@@ -572,7 +569,7 @@ class _FanOfBadge extends StatelessWidget {
       children: [
         const Text(
           'Fan of ',
-          style: const TextStyle(
+          style: TextStyle(
             color: PlayifyColors.muted,
             fontSize: 13,
           ),
@@ -602,8 +599,8 @@ class _FanOfBadge extends StatelessWidget {
 }
 
 class _StatsRow extends StatelessWidget {
-  final FanProfileModel profile;
   const _StatsRow({required this.profile});
+  final FanProfileModel profile;
 
   @override
   Widget build(BuildContext context) {
@@ -620,9 +617,9 @@ class _StatsRow extends StatelessWidget {
 }
 
 class _Stat extends StatelessWidget {
+  const _Stat({required this.value, required this.label});
   final String value;
   final String label;
-  const _Stat({required this.value, required this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -663,16 +660,16 @@ class _Divider extends StatelessWidget {
 }
 
 class _ActionButtons extends StatelessWidget {
-  final bool following;
-  final bool followBusy;
-  final Future<void> Function() onFollow;
-  final Color fanOfAccent;
   const _ActionButtons({
     required this.following,
     required this.onFollow,
     required this.fanOfAccent,
     this.followBusy = false,
   });
+  final bool following;
+  final bool followBusy;
+  final Future<void> Function() onFollow;
+  final Color fanOfAccent;
 
   @override
   Widget build(BuildContext context) {
@@ -801,36 +798,6 @@ class _EditProfileButton extends ConsumerWidget {
   }
 }
 
-class _BecomeProButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => showBecomeProSheet(context),
-      child: Container(
-        width: double.infinity,
-        height: 38,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: const LinearGradient(
-            colors: [Color(0xFF009DFF), Color(0xFF7B4FFF)],
-          ),
-        ),
-        child: const Center(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.star_rounded, color: Colors.white, size: 16),
-              SizedBox(width: 6),
-              Text('Become PRO', style: TextStyle(
-                  color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 // ══════════════════════════════════════════════════════════════════════════════
 // SETTINGS BUTTON + SETTINGS SHEET
 // ══════════════════════════════════════════════════════════════════════════════
@@ -841,8 +808,8 @@ class _BecomeProButton extends StatelessWidget {
 //     fake settings that do nothing.
 
 class _SettingsButton extends StatelessWidget {
-  final FanProfileModel profile;
   const _SettingsButton({required this.profile});
+  final FanProfileModel profile;
 
   @override
   Widget build(BuildContext context) {
@@ -1042,11 +1009,6 @@ class _SettingsButton extends StatelessWidget {
 }
 
 class _SettingsTile extends StatelessWidget {
-  final IconData icon;
-  final Color? iconColor;
-  final String label;
-  final String? subtitle;
-  final VoidCallback? onTap;
   const _SettingsTile({
     required this.icon,
     this.iconColor,
@@ -1054,6 +1016,11 @@ class _SettingsTile extends StatelessWidget {
     this.subtitle,
     this.onTap,
   });
+  final IconData icon;
+  final Color? iconColor;
+  final String label;
+  final String? subtitle;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1077,8 +1044,8 @@ class _SettingsTile extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _ProfileTabBar extends StatelessWidget {
-  final TabController controller;
   const _ProfileTabBar({required this.controller});
+  final TabController controller;
 
   @override
   Widget build(BuildContext context) {
@@ -1114,8 +1081,8 @@ class _ProfileTabBar extends StatelessWidget {
 }
 
 class _TabBarDelegate extends SliverPersistentHeaderDelegate {
-  final Widget tabBar;
   const _TabBarDelegate({required this.tabBar});
+  final Widget tabBar;
 
   @override
   double get minExtent => 48;
@@ -1136,8 +1103,8 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _SportlightsFeed extends StatefulWidget {
-  final FanProfileModel profile;
   const _SportlightsFeed({required this.profile});
+  final FanProfileModel profile;
   @override
   State<_SportlightsFeed> createState() => _SportlightsFeedState();
 }
@@ -1164,7 +1131,7 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
       }
 
       // If viewing own profile, include the current session's UID
-      final authId = Supabase.instance.client.auth.currentUser?.id;
+      final authId = const AuthRepository().currentSession?.user?.id;
       if (widget.profile.isOwnProfile && authId != null) ids.add(authId);
 
       // Resolve each handle to a user ID via VPS
@@ -1204,13 +1171,14 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
         final postType = (r['postType'] as String?) ?? 'text';
         final media = r['mediaUrls'] ?? r['media_urls'];
         String? asset;
-        if (media is List && media.isNotEmpty) asset = media.first.toString();
-        else if (media is String && media.isNotEmpty) asset = media;
+        if (media is List && media.isNotEmpty) {
+          asset = media.first.toString();
+        } else if (media is String && media.isNotEmpty) asset = media;
 
         String? pollId;
         List<String> pollOptions = [];
         int? pollVotes, myVote;
-        Map<int,int> pollCounts = {};
+        final Map<int,int> pollCounts = {};
         String? predHome, predAway;
         int? predHs, predAs;
 
@@ -1222,10 +1190,12 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
             if (poll != null) {
               pollId = poll['id']?.toString();
               final opts = poll['options'];
-              if (opts is List) pollOptions = opts.map((e) {
+              if (opts is List) {
+                pollOptions = opts.map((e) {
                 if (e is Map) return e['label']?.toString() ?? '';
                 return e.toString();
               }).toList();
+              }
               pollVotes = poll['totalVotes'] as int?;
               if (pollId != null) {
                 final vRes = await const VpsRepository().get<Map<String,dynamic>>(
@@ -1242,7 +1212,7 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
 
         if (postType == 'prediction') {
           try {
-            final pred = null; // Prediction from VPS — stub
+            const pred = null; // Prediction from VPS — stub
             if (pred != null) {
               predHome = pred['homeTeam'] as String?;
               predAway = pred['awayTeam'] as String?;
@@ -1260,8 +1230,9 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
         String age = '';
         if (dt != null) {
           final d = DateTime.now().difference(dt);
-          if (d.inMinutes < 1) age = 'now';
-          else if (d.inMinutes < 60) age = '${d.inMinutes}m';
+          if (d.inMinutes < 1) {
+            age = 'now';
+          } else if (d.inMinutes < 60) age = '${d.inMinutes}m';
           else if (d.inHours < 24) age = '${d.inHours}h';
           else if (d.inDays < 7) age = '${d.inDays}d';
           else age = '${dt.day}/${dt.month}';
@@ -1344,8 +1315,8 @@ class _SportlightsFeedState extends State<_SportlightsFeed> {
 }
 
 class _AboutTab extends StatelessWidget {
-  final FanProfileModel profile;
   const _AboutTab({required this.profile});
+  final FanProfileModel profile;
 
   @override
   Widget build(BuildContext context) {
@@ -1373,7 +1344,7 @@ class _AboutTab extends StatelessWidget {
             children: [
               if (profile.isAdmin) ...[
                 // Official account — show "Official account" instead of "Fan of"
-                _AboutRow(
+                const _AboutRow(
                   icon: Icons.verified_rounded,
                   iconColor: PlayifyColors.electricBlue,
                   label: 'Account',
@@ -1425,9 +1396,9 @@ class _AboutTab extends StatelessWidget {
 }
 
 class _AboutSection extends StatelessWidget {
+  const _AboutSection({required this.title, required this.child});
   final String title;
   final Widget child;
-  const _AboutSection({required this.title, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -1461,12 +1432,6 @@ class _AboutSection extends StatelessWidget {
 }
 
 class _AboutRow extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String label;
-  final String value;
-  final Color? valueColor;
-  final bool isLast;
 
   const _AboutRow({
     required this.icon,
@@ -1476,6 +1441,12 @@ class _AboutRow extends StatelessWidget {
     this.valueColor,
     this.isLast = false,
   });
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String value;
+  final Color? valueColor;
+  final bool isLast;
 
   @override
   Widget build(BuildContext context) {
@@ -1530,8 +1501,8 @@ class _AboutRow extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _MoreSheet extends ConsumerWidget {
-  final bool isOwnProfile;
   const _MoreSheet({required this.isOwnProfile});
+  final bool isOwnProfile;
 
   Future<void> _doLogout(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
@@ -1603,16 +1574,16 @@ class _MoreSheet extends ConsumerWidget {
 }
 
 class _SheetOption extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final bool isDestructive;
   const _SheetOption({
     required this.icon,
     required this.label,
     required this.onTap,
     this.isDestructive = false,
   });
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool isDestructive;
 
   @override
   Widget build(BuildContext context) {

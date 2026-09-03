@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -21,9 +20,9 @@ Future<void> openCheckout(
 }
 
 class _CheckoutSheet extends StatefulWidget {
+  const _CheckoutSheet({required this.catalog, required this.line});
   final ShopCatalog catalog;
   final CartLine line;
-  const _CheckoutSheet({required this.catalog, required this.line});
 
   @override
   State<_CheckoutSheet> createState() => _CheckoutSheetState();
@@ -402,9 +401,9 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
 }
 
 class _QtyBtn extends StatelessWidget {
+  const _QtyBtn({required this.icon, required this.onTap});
   final IconData icon;
   final VoidCallback onTap;
-  const _QtyBtn({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {

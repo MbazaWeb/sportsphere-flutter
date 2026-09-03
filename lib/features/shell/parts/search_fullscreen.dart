@@ -390,7 +390,7 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
   /// Get the current user's GPS location using geolocator.
   Future<void> _getMyLocation() async {
     try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         // Fall back to country-based matching
         return;
@@ -464,7 +464,7 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
       }
 
       // Load my sports
-      final mySports = await _sb
+      final mySports = _sb
           .from('UserSport')
           .select('sportId')
           .eq('userId', uid);
@@ -792,14 +792,14 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: Row(
             children: [
-              Icon(Icons.radar_rounded,
+              const Icon(Icons.radar_rounded,
                   size: 14, color: PlayifyColors.electricBlue),
               const SizedBox(width: 6),
               Text(
                 _myLat != null
                     ? 'Location: ${_myLat!.toStringAsFixed(3)}, ${_myLng!.toStringAsFixed(3)}'
                     : 'GPS unavailable — showing text-based matches',
-                style: TextStyle(
+                style: const TextStyle(
                   color: PlayifyColors.muted,
                   fontSize: 11,
                 ),
@@ -807,11 +807,11 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
               const Spacer(),
               GestureDetector(
                 onTap: _triggerScan,
-                child: Row(
+                child: const Row(
                   children: [
                     Icon(Icons.refresh_rounded,
                         size: 14, color: PlayifyColors.electricBlue),
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4),
                     Text(
                       'Rescan',
                       style: TextStyle(
@@ -870,13 +870,13 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _RadarScanOverlay extends StatelessWidget {
-  final Animation<double> animation;
-  final String message;
 
   const _RadarScanOverlay({
     required this.animation,
     required this.message,
   });
+  final Animation<double> animation;
+  final String message;
 
   @override
   Widget build(BuildContext context) {
@@ -942,9 +942,9 @@ class _RadarScanOverlay extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _RadarPainter extends CustomPainter {
-  final double progress;
 
   _RadarPainter(this.progress);
+  final double progress;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1052,15 +1052,6 @@ class _RadarPainter extends CustomPainter {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _NearbyFanCard extends StatelessWidget {
-  final String uid;
-  final String name;
-  final String handle;
-  final String? avatarUrl;
-  final String role;
-  final String? country;
-  final String reason;
-  final String? distance;
-  final String? bio;
 
   const _NearbyFanCard({
     required this.uid,
@@ -1073,6 +1064,15 @@ class _NearbyFanCard extends StatelessWidget {
     required this.distance,
     required this.bio,
   });
+  final String uid;
+  final String name;
+  final String handle;
+  final String? avatarUrl;
+  final String role;
+  final String? country;
+  final String reason;
+  final String? distance;
+  final String? bio;
 
   @override
   Widget build(BuildContext context) {
@@ -1139,13 +1139,13 @@ class _NearbyFanCard extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.place_rounded,
+                              const Icon(Icons.place_rounded,
                                   size: 10,
                                   color: PlayifyColors.sportGreen),
                               const SizedBox(width: 2),
                               Text(
                                 distance!,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: PlayifyColors.sportGreen,
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
@@ -1166,7 +1166,7 @@ class _NearbyFanCard extends StatelessWidget {
                           ),
                           child: Text(
                             country!,
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: PlayifyColors.sportGreen,
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
@@ -1224,22 +1224,21 @@ class _NearbyFanCard extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _FanActionButtons extends StatefulWidget {
-  final String uid;
-  final String handle;
-  final String name;
 
   const _FanActionButtons({
     required this.uid,
     required this.handle,
     required this.name,
   });
+  final String uid;
+  final String handle;
+  final String name;
 
   @override
   State<_FanActionButtons> createState() => _FanActionButtonsState();
 }
 
 class _FanActionButtonsState extends State<_FanActionButtons> {
-  final _sb = VpsSupabaseCompat.client;
   bool _following = false;
   bool _busy = false;
 
@@ -1347,7 +1346,7 @@ class _FanActionButtonsState extends State<_FanActionButtons> {
                 color: PlayifyColors.sportGreen.withValues(alpha: 0.3),
               ),
             ),
-            child: Icon(
+            child: const Icon(
               Icons.chat_bubble_outline_rounded,
               color: PlayifyColors.sportGreen,
               size: 18,
@@ -1364,10 +1363,6 @@ class _FanActionButtonsState extends State<_FanActionButtons> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _FilterChip extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
 
   const _FilterChip({
     required this.label,
@@ -1375,6 +1370,10 @@ class _FilterChip extends StatelessWidget {
     required this.selected,
     required this.onTap,
   });
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1426,8 +1425,8 @@ class _FilterChip extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
-  final _NearbyFilter filter;
   const _EmptyState({required this.filter});
+  final _NearbyFilter filter;
 
   @override
   Widget build(BuildContext context) {
@@ -1520,13 +1519,13 @@ class _Discover extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        _DiscoverChip(
+        const _DiscoverChip(
             label: 'Players', icon: Icons.sports_soccer_rounded),
-        _DiscoverChip(
+        const _DiscoverChip(
             label: 'Teams', icon: Icons.groups_rounded),
-        _DiscoverChip(
+        const _DiscoverChip(
             label: 'Coaches', icon: Icons.sports_rounded),
-        _DiscoverChip(
+        const _DiscoverChip(
             label: 'Communities', icon: Icons.forum_rounded),
       ],
     );
@@ -1534,9 +1533,9 @@ class _Discover extends StatelessWidget {
 }
 
 class _DiscoverChip extends StatelessWidget {
+  const _DiscoverChip({required this.label, required this.icon});
   final String label;
   final IconData icon;
-  const _DiscoverChip({required this.label, required this.icon});
 
   @override
   Widget build(BuildContext context) {

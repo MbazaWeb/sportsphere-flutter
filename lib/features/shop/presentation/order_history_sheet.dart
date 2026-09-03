@@ -142,10 +142,12 @@ class _OrderHistorySheetState extends State<_OrderHistorySheet> {
                 Expanded(
                   child: GestureDetector(
                     onTap: () {
-                      if (_tab != 0) setState(() {
+                      if (_tab != 0) {
+                        setState(() {
                         _tab = 0;
                         _load();
                       });
+                      }
                     },
                     child: Container(
                       height: 36,
@@ -179,10 +181,12 @@ class _OrderHistorySheetState extends State<_OrderHistorySheet> {
                 Expanded(
                   child: GestureDetector(
                     onTap: () {
-                      if (_tab != 1) setState(() {
+                      if (_tab != 1) {
+                        setState(() {
                         _tab = 1;
                         _load();
                       });
+                      }
                     },
                     child: Container(
                       height: 36,

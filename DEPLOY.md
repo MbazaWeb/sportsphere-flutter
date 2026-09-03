@@ -2,7 +2,7 @@
 
 ## Server info
 
-- **Server**: deploy@104.152.50.173
+- **Server**: david@95.217.20.12
 - **Domain**: playifysport.fun
 - **Web path**: /var/www/playify/
 - **APK download**: /var/www/playify/download/Playify.apk
@@ -43,21 +43,21 @@ echo Web: build\web\
 ### Step 2 — Upload APK to server
 
 ```bash
-scp build\app\outputs\flutter-apk\app-release.apk deploy@104.152.50.173:/tmp/playify.apk
+scp build\app\outputs\flutter-apk\app-release.apk david@95.217.20.12:/tmp/playify.apk
 ```
 
 ### Step 3a — Upload Web build (from Windows to server)
 
 ```bash
 # If building on Windows, upload the web build:
-scp -r build\web/* deploy@104.152.50.173:/tmp/playify-web/
+scp -r build\web/* david@95.217.20.12:/tmp/playify-web/
 ```
 
 ### Step 3b — Server (deploy with git rebase + restart API)
 
 ```bash
 # SSH to server
-ssh deploy@104.152.50.173
+ssh david@95.217.20.12
 
 # Run the fix script (one-time) to resolve git divergence
 sudo bash /var/playify/app/vps/fix_deployment.sh
@@ -121,7 +121,7 @@ npx serve -s dist -l 4173
 Deploy to server:
 
 ```bash
-ssh deploy@104.152.50.173
+ssh david@95.217.20.12
 # rsync admin/dist to /var/www/playify-admin
 ```
 

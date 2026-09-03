@@ -21,8 +21,8 @@ Future<String?> showCountryPicker(
 }
 
 class _CountryPickerSheet extends StatefulWidget {
-  final String? selected;
   const _CountryPickerSheet({this.selected});
+  final String? selected;
 
   @override
   State<_CountryPickerSheet> createState() => _CountryPickerSheetState();
@@ -147,11 +147,6 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
 
 /// Tappable field that opens [showCountryPicker].
 class CountryPickerField extends StatelessWidget {
-  final String label;
-  final String? value;
-  final ValueChanged<String> onChanged;
-  final String placeholder;
-  final String? Function(String?)? validator;
 
   const CountryPickerField({
     super.key,
@@ -161,6 +156,11 @@ class CountryPickerField extends StatelessWidget {
     this.placeholder = 'Select country',
     this.validator,
   });
+  final String label;
+  final String? value;
+  final ValueChanged<String> onChanged;
+  final String placeholder;
+  final String? Function(String?)? validator;
 
   @override
   Widget build(BuildContext context) {

@@ -1,16 +1,10 @@
-import '../../core/data/vps_supabase_compat.dart';
+import '../../features/auth/data/auth_repository.dart';
 import '../../core/data/vps_repository.dart';
+import '../../core/data/vps_supabase_compat.dart';
 import 'package:flutter/foundation.dart';
 
 /// Represents a person in the social graph
 class GraphPerson {
-  final String id;
-  final String handle;
-  final String name;
-  final String? avatarUrl;
-  final String role;
-  final bool youFollow;
-  final bool youFan;
 
   const GraphPerson({
     required this.id,
@@ -21,6 +15,13 @@ class GraphPerson {
     this.youFollow = false,
     this.youFan = false,
   });
+  final String id;
+  final String handle;
+  final String name;
+  final String? avatarUrl;
+  final String role;
+  final bool youFollow;
+  final bool youFan;
 
   /// Creates a copy with updated follow/fan status
   GraphPerson copyWith({
@@ -43,9 +44,9 @@ class GraphPerson {
 class SocialGraph {
   const SocialGraph();
 
-  get _sb => VpsSupabaseCompat.client;
+  static final _sb = VpsSupabaseCompat.client;
 
-  String? get _uid => _sb.auth.currentUser?.id;
+  String? get _uid => const AuthRepository().currentSession?.user?.id;
   String? get currentUid => _uid;
 
   /// Resolve an ID or handle to a user ID.
@@ -221,7 +222,7 @@ class SocialGraph {
   Future<List<GraphPerson>> followers(String userId) async {
     final id = await _resolve(userId);
     if (id == null) return [];
-    final rows = await _sb
+    final rows = _sb
         .from('Follow')
         .select('followerId')
         .eq('followingId', id);
@@ -233,7 +234,7 @@ class SocialGraph {
   Future<List<GraphPerson>> following(String userId) async {
     final id = await _resolve(userId);
     if (id == null) return [];
-    final rows = await _sb
+    final rows = _sb
         .from('Follow')
         .select('followingId')
         .eq('followerId', id);
@@ -245,7 +246,7 @@ class SocialGraph {
   Future<List<GraphPerson>> fans(String userId) async {
     final id = await _resolve(userId);
     if (id == null) return [];
-    final rows = await _sb
+    final rows = _sb
         .from('fans')
         .select('fan_id')
         .eq('target_id', id);
@@ -260,7 +261,7 @@ class SocialGraph {
       if (clean.isEmpty) return [];
 
       // Fetch user details
-      final rows = await _sb
+      final rows = _sb
           .from('User')
           .select('id,handle,name,avatarUrl,role')
           .inFilter('id', clean);
@@ -272,7 +273,7 @@ class SocialGraph {
       // Only fetch relationships if logged in
       if (me != null) {
         // Batch fetch follows
-        final followRows = await _sb
+        final followRows = _sb
             .from('Follow')
             .select('followingId')
             .eq('followerId', me)
@@ -283,7 +284,7 @@ class SocialGraph {
         };
 
         // Batch fetch fans
-        final fanRows = await _sb
+        final fanRows = _sb
             .from('fans')
             .select('target_id')
             .eq('fan_id', me)
@@ -334,7 +335,7 @@ class SocialGraph {
           'createdAt': DateTime.now().toIso8601String(),
         });
       } else {
-        await _sb
+        _sb
             .from('Follow')
             .delete()
             .eq('followerId', uid)
@@ -380,7 +381,7 @@ class SocialGraph {
           'target_id': targetId,
         });
       } else {
-        await _sb.from('fans').delete()
+        _sb.from('fans').delete()
             .eq('fan_id', uid).eq('target_id', targetId);
       }
 

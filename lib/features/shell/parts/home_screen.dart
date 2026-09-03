@@ -1,4 +1,3 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
 part of '../app_shell.dart';
 
 // VpsRepository is re-exported via the parent app_shell.dart import chain
@@ -22,7 +21,7 @@ class _HomeScreenState extends State<_HomeScreen>
     return Column(
       children: [
         // ── Sticky header + tab bar ───────────────────────────
-        _Header(),
+        const _Header(),
         _HomeTabBar(
           tabs: _tabs,
           selectedIndex: _tab,
@@ -50,15 +49,15 @@ class _HomeScreenState extends State<_HomeScreen>
 // ── Tab bar ────────────────────────────────────────────────
 
 class _HomeTabBar extends StatelessWidget {
-  final List<String> tabs;
-  final int selectedIndex;
-  final ValueChanged<int> onChanged;
 
   const _HomeTabBar({
     required this.tabs,
     required this.selectedIndex,
     required this.onChanged,
   });
+  final List<String> tabs;
+  final int selectedIndex;
+  final ValueChanged<int> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -267,7 +266,7 @@ class _CommunityContentState extends State<_CommunityContent> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final vps = const VpsRepository();
+      const vps = VpsRepository();
       List<Map<String, dynamic>> list = [];
       try {
         list = await vps.getCommunities(limit: 40);
@@ -421,9 +420,9 @@ class _CommunityContentState extends State<_CommunityContent> {
 
 // ignore: unused_element
 class _SimpleCard extends StatelessWidget {
+  const _SimpleCard({required this.title, required this.subtitle});
   final String title;
   final String subtitle;
-  const _SimpleCard({required this.title, required this.subtitle});
 
   @override
   Widget build(BuildContext context) {

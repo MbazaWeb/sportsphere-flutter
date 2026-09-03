@@ -1,7 +1,6 @@
 import '../../../../core/data/vps_supabase_compat.dart';
 import '../../../../core/data/vps_repository.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -176,12 +175,12 @@ class PlayerProfileModel {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class PlayerProfileView extends StatefulWidget {
-  final PlayerProfileModel profile;
 
   const PlayerProfileView({
     super.key,
     required this.profile,
   });
+  final PlayerProfileModel profile;
 
   @override
   State<PlayerProfileView> createState() => _PlayerProfileViewState();
@@ -255,12 +254,14 @@ class _PlayerProfileViewState extends State<PlayerProfileView>
                 try {
                   final entityId = widget.profile.handle.replaceAll('@', '');
                   await const VpsRepository().toggleFan(entityId);
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: Text(next
                         ? 'You are now a ${widget.profile.name} fan!'
                         : 'Removed fan status'),
                     duration: const Duration(seconds: 2),
                   ));
+                  }
                 } catch (e) {
                   debugPrint('onBecomeFan: $e');
                   if (mounted) setState(() => _isFan = !next);
@@ -361,15 +362,6 @@ class _PlayerProfileViewState extends State<PlayerProfileView>
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _PlayerHeader extends StatelessWidget {
-  final PlayerProfileModel profile;
-  final bool following;
-  final bool isFan;
-  final VoidCallback onFollow;
-  final VoidCallback? onBecomeFan;
-  final VoidCallback onBack;
-  final VoidCallback onShare;
-  final VoidCallback onMore;
-  final VoidCallback onInfo;
 
   const _PlayerHeader({
     required this.profile,
@@ -382,6 +374,15 @@ class _PlayerHeader extends StatelessWidget {
     required this.onMore,
     required this.onInfo,
   });
+  final PlayerProfileModel profile;
+  final bool following;
+  final bool isFan;
+  final VoidCallback onFollow;
+  final VoidCallback? onBecomeFan;
+  final VoidCallback onBack;
+  final VoidCallback onShare;
+  final VoidCallback onMore;
+  final VoidCallback onInfo;
 
   @override
   Widget build(BuildContext context) {
@@ -520,7 +521,7 @@ class _PlayerHeader extends StatelessWidget {
                         // Player badge — purple, text only
                         const RoleBadge(
                           label: 'Player',
-                          color: const Color(0xFF9B6DFF),
+                          color: Color(0xFF9B6DFF),
                         ),
                         // Club pill
                         _ClubPill(
@@ -1220,10 +1221,6 @@ class _StatsTabState extends State<_StatsTab> {
 // ── Filter pill ────────────────────────────────────────────────────────────────
 
 class _FilterPill extends StatelessWidget {
-  final String label;
-  final String value;
-  final List<String> options;
-  final ValueChanged<String> onChanged;
 
   const _FilterPill({
     required this.label,
@@ -1231,6 +1228,10 @@ class _FilterPill extends StatelessWidget {
     required this.options,
     required this.onChanged,
   });
+  final String label;
+  final String value;
+  final List<String> options;
+  final ValueChanged<String> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -1368,10 +1369,6 @@ class _CareerTotalsGrid extends StatelessWidget {
 }
 
 class _StatEntry {
-  final IconData icon;
-  final Color iconColor;
-  final String label;
-  final String value;
 
   const _StatEntry({
     required this.icon,
@@ -1379,6 +1376,10 @@ class _StatEntry {
     required this.label,
     required this.value,
   });
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String value;
 }
 
 class _StatCard extends StatelessWidget {
@@ -1471,10 +1472,6 @@ class _CareerTimeline extends StatelessWidget {
 }
 
 class _CareerRow extends StatelessWidget {
-  final PlayerCareerEntry entry;
-  final Color accent;
-  final bool isLast;
-  final bool isFirst;
 
   const _CareerRow({
     required this.entry,
@@ -1482,6 +1479,10 @@ class _CareerRow extends StatelessWidget {
     required this.isLast,
     required this.isFirst,
   });
+  final PlayerCareerEntry entry;
+  final Color accent;
+  final bool isLast;
+  final bool isFirst;
 
   @override
   Widget build(BuildContext context) {

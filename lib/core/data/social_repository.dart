@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter/foundation.dart';
@@ -15,7 +14,7 @@ import '../taxonomy/sport_catalog.dart';
 class SocialRepository {
   const SocialRepository();
 
-  static final _vps = const VpsRepository();
+  static const _vps = VpsRepository();
 
   Future<String?> _getUid() async {
     final prefs = await SharedPreferences.getInstance();
@@ -221,7 +220,7 @@ class SocialRepository {
 
   Future<Map<int, int>> pollOptionCounts(String pollId) async {
     try {
-      final res = await _vps.get<Map<String, dynamic>>('/v1/social/polls/$pollId/my-vote');
+      await _vps.get<Map<String, dynamic>>('/v1/social/polls/$pollId/my-vote');
       // Return counts from poll
       final poll = await _vps.get<Map<String, dynamic>>('/v1/social/polls/by-poll/$pollId');
       final opts = (poll.data?['poll']?['options'] as List? ?? []);
@@ -334,18 +333,4 @@ class SocialRepository {
   }
 
   // ── MIME helper ───────────────────────────────────────────────────────────
-  String _mimeFor(String ext) {
-    switch (ext) {
-      case 'jpg': case 'jpeg': return 'image/jpeg';
-      case 'png':  return 'image/png';
-      case 'webp': return 'image/webp';
-      case 'gif':  return 'image/gif';
-      case 'mp4': case 'm4v': return 'video/mp4';
-      case 'mov':  return 'video/quicktime';
-      case 'mkv':  return 'video/x-matroska';
-      case 'webm': return 'video/webm';
-      case 'pdf':  return 'application/pdf';
-      default:     return 'application/octet-stream';
-    }
-  }
 }

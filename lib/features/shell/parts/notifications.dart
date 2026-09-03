@@ -164,9 +164,9 @@ class _NotificationsScreenState
 // ── Tile ───────────────────────────────────────────────────────────────────────
 
 class _NotificationTile extends StatelessWidget {
+  const _NotificationTile({required this.item, required this.onTap});
   final NotificationItem item;
   final VoidCallback onTap;
-  const _NotificationTile({required this.item, required this.onTap});
 
   IconData get _icon {
     switch (item.type) {

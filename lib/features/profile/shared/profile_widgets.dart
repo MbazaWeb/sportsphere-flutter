@@ -51,36 +51,7 @@ ProfileMediaType _inferMediaType(List<String> urls) {
 
 // ── Post model ─────────────────────────────────────────────────────────────────
 
-class ProfilePost {
-  final String text;
-  final List<String> hashtags;
-  final String timeAgo;
-  final int likes;
-  final int comments;
-  final int shares;
-
-  /// Flat list of media URLs attached to the post (images and/or videos).
-  final List<String> mediaUrls;
-
-  /// Whether the post carries image/video/mixed media.
-  final ProfileMediaType? mediaType;
-
-  // ── Poll fields ────────────────────────────────────────────
-  final String? pollId;
-  final List<String> pollOptions;
-  final int? pollTotalVotes;
-  final int? myPollVote;
-  final Map<int, int> pollCounts;
-
-  // ── Prediction fields ──────────────────────────────────────
-  final String? predHome;
-  final String? predAway;
-  final int? predHomeScore;
-  final int? predAwayScore;
-  final String? myPrediction;
-
-  // ── Post type ──────────────────────────────────────────────
-  final String postType; // text, media, poll, prediction, video
+class ProfilePost { // text, media, poll, prediction, video
 
   /// Backwards-compatible constructor.
   ///
@@ -117,6 +88,35 @@ class ProfilePost {
   })  : mediaUrls = (mediaUrls.isEmpty && imageUrl != null && imageUrl.isNotEmpty)
             ? [imageUrl]
             : mediaUrls;
+  final String text;
+  final List<String> hashtags;
+  final String timeAgo;
+  final int likes;
+  final int comments;
+  final int shares;
+
+  /// Flat list of media URLs attached to the post (images and/or videos).
+  final List<String> mediaUrls;
+
+  /// Whether the post carries image/video/mixed media.
+  final ProfileMediaType? mediaType;
+
+  // ── Poll fields ────────────────────────────────────────────
+  final String? pollId;
+  final List<String> pollOptions;
+  final int? pollTotalVotes;
+  final int? myPollVote;
+  final Map<int, int> pollCounts;
+
+  // ── Prediction fields ──────────────────────────────────────
+  final String? predHome;
+  final String? predAway;
+  final int? predHomeScore;
+  final int? predAwayScore;
+  final String? myPrediction;
+
+  // ── Post type ──────────────────────────────────────────────
+  final String postType;
 
   /// Legacy constructor flag — ignored when [mediaUrls] is populated.
   /// Prefer checking [effectiveMediaType] / [hasImageMedia] getter instead.
@@ -185,13 +185,13 @@ String formatCount(int n) {
 // ── Cover gradient fallback ────────────────────────────────────────────────────
 
 class ProfileCoverGradient extends StatelessWidget {
-  final Color accent;
-  final IconData icon;
   const ProfileCoverGradient({
     super.key,
     required this.accent,
     this.icon = Icons.groups_rounded,
   });
+  final Color accent;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -217,15 +217,15 @@ class ProfileCoverGradient extends StatelessWidget {
 // ── Circular avatar ────────────────────────────────────────────────────────────
 
 class ProfileAvatar extends StatelessWidget {
-  final String? asset;
-  final double radius;
-  final Color accentColor;
   const ProfileAvatar({
     super.key,
     required this.asset,
     required this.radius,
     required this.accentColor,
   });
+  final String? asset;
+  final double radius;
+  final Color accentColor;
 
   @override
   Widget build(BuildContext context) {
@@ -258,8 +258,8 @@ class ProfileAvatar extends StatelessWidget {
 }
 
 class _AvatarFallback extends StatelessWidget {
-  final Color accent;
   const _AvatarFallback({required this.accent});
+  final Color accent;
 
   @override
   Widget build(BuildContext context) {
@@ -273,15 +273,15 @@ class _AvatarFallback extends StatelessWidget {
 // ── Stat column ────────────────────────────────────────────────────────────────
 
 class ProfileStat extends StatelessWidget {
-  final String value;
-  final String label;
-  final VoidCallback? onTap;
   const ProfileStat({
     super.key,
     required this.value,
     required this.label,
     this.onTap,
   });
+  final String value;
+  final String label;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -330,8 +330,8 @@ class ProfileStatDivider extends StatelessWidget {
 // ── Tab bar delegate ───────────────────────────────────────────────────────────
 
 class ProfileTabBarDelegate extends SliverPersistentHeaderDelegate {
-  final Widget tabBar;
   const ProfileTabBarDelegate({required this.tabBar});
+  final Widget tabBar;
 
   @override double get minExtent => 48;
   @override double get maxExtent => 48;
@@ -347,15 +347,15 @@ class ProfileTabBarDelegate extends SliverPersistentHeaderDelegate {
 // ── Floating nav button (back / more / share) ──────────────────────────────────
 
 class ProfileNavButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  final String semanticsLabel;
   const ProfileNavButton({
     super.key,
     required this.icon,
     required this.onTap,
     required this.semanticsLabel,
   });
+  final IconData icon;
+  final VoidCallback onTap;
+  final String semanticsLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -381,14 +381,14 @@ class ProfileNavButton extends StatelessWidget {
 // ── Role badge pill ────────────────────────────────────────────────────────────
 
 class RoleBadge extends StatelessWidget {
-  final String label;
-  final Color color;
 
   const RoleBadge({
     super.key,
     required this.label,
     required this.color,
   });
+  final String label;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
@@ -415,12 +415,6 @@ class RoleBadge extends StatelessWidget {
 // ── Post card ──────────────────────────────────────────────────────────────────
 
 class ProfilePostCard extends StatefulWidget {
-  final ProfilePost post;
-  final String authorName;
-  final String authorHandle;
-  final String? authorAvatarAsset;
-  final bool isVerified;
-  final Color accentColor;
 
   const ProfilePostCard({
     super.key,
@@ -431,6 +425,12 @@ class ProfilePostCard extends StatefulWidget {
     this.authorAvatarAsset,
     this.isVerified = false,
   });
+  final ProfilePost post;
+  final String authorName;
+  final String authorHandle;
+  final String? authorAvatarAsset;
+  final bool isVerified;
+  final Color accentColor;
 
   @override
   State<ProfilePostCard> createState() => _ProfilePostCardState();
@@ -671,9 +671,9 @@ class _ProfilePostCardState extends State<ProfilePostCard> {
 }
 
 class _AuthorAvatar extends StatelessWidget {
+  const _AuthorAvatar({required this.asset, required this.accent});
   final String? asset;
   final Color accent;
-  const _AuthorAvatar({required this.asset, required this.accent});
 
   @override
   Widget build(BuildContext context) {
@@ -739,15 +739,15 @@ class _EngagementBtn extends StatelessWidget {
 // ── Post media grid ────────────────────────────────────────────────────────────
 
 class PostMedia extends StatelessWidget {
-  final int imageCount;
-  final bool hasVideo;
-  final Color accent;
   const PostMedia({
     super.key,
     required this.imageCount,
     required this.hasVideo,
     required this.accent,
   });
+  final int imageCount;
+  final bool hasVideo;
+  final Color accent;
 
   @override
   Widget build(BuildContext context) {
@@ -765,15 +765,15 @@ class PostMedia extends StatelessWidget {
 }
 
 class PostMediaTile extends StatelessWidget {
-  final Color accent;
-  final bool hasVideo;
-  final double aspectRatio;
   const PostMediaTile({
     super.key,
     required this.accent,
     required this.hasVideo,
     required this.aspectRatio,
   });
+  final Color accent;
+  final bool hasVideo;
+  final double aspectRatio;
 
   @override
   Widget build(BuildContext context) {
@@ -826,15 +826,15 @@ class PostMediaTile extends StatelessWidget {
 // fall back to Image.asset / Image.network as appropriate.
 
 class _ProfilePostMedia extends StatelessWidget {
-  final List<String> urls;
-  final ProfileMediaType mediaType;
-  final Color accent;
 
   const _ProfilePostMedia({
     required this.urls,
     required this.mediaType,
     required this.accent,
   });
+  final List<String> urls;
+  final ProfileMediaType mediaType;
+  final Color accent;
 
   @override
   Widget build(BuildContext context) {
@@ -891,15 +891,15 @@ class _ProfilePostMedia extends StatelessWidget {
 
 /// Horizontal pager for multiple media URLs (images or videos).
 class _ProfilePostImagePager extends StatefulWidget {
-  final List<String> urls;
-  final Color accent;
-  final bool allVideos;
 
   const _ProfilePostImagePager({
     required this.urls,
     required this.accent,
     this.allVideos = false,
   });
+  final List<String> urls;
+  final Color accent;
+  final bool allVideos;
 
   @override
   State<_ProfilePostImagePager> createState() => _ProfilePostImagePagerState();
@@ -958,11 +958,6 @@ class _ProfilePostImagePagerState extends State<_ProfilePostImagePager> {
 
 /// Renders a single media URL — video or image, network or asset.
 class _ProfilePostMediaItem extends StatelessWidget {
-  final String url;
-  final bool isVideo;
-  final Color accent;
-  final BoxFit fit;
-  final double? height;
 
   const _ProfilePostMediaItem({
     required this.url,
@@ -971,6 +966,11 @@ class _ProfilePostMediaItem extends StatelessWidget {
     this.fit = BoxFit.cover,
     this.height,
   });
+  final String url;
+  final bool isVideo;
+  final Color accent;
+  final BoxFit fit;
+  final double? height;
 
   @override
   Widget build(BuildContext context) {
@@ -1028,10 +1028,6 @@ class _ProfilePostMediaItem extends StatelessWidget {
 /// Initialises lazily on first build, shows a tappable thumbnail with a
 /// play button overlay until the user taps to start playback.
 class _ProfilePostVideo extends StatefulWidget {
-  final String url;
-  final Color accent;
-  final BoxFit fit;
-  final double? height;
 
   const _ProfilePostVideo({
     required this.url,
@@ -1039,6 +1035,10 @@ class _ProfilePostVideo extends StatefulWidget {
     this.fit = BoxFit.cover,
     this.height,
   });
+  final String url;
+  final Color accent;
+  final BoxFit fit;
+  final double? height;
 
   @override
   State<_ProfilePostVideo> createState() => _ProfilePostVideoState();
@@ -1192,9 +1192,9 @@ class _ProfilePostVideoState extends State<_ProfilePostVideo> {
 // ── About section card ─────────────────────────────────────────────────────────
 
 class AboutSection extends StatelessWidget {
+  const AboutSection({super.key, required this.title, required this.child});
   final String title;
   final Widget child;
-  const AboutSection({super.key, required this.title, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -1224,12 +1224,6 @@ class AboutSection extends StatelessWidget {
 }
 
 class AboutRow extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String label;
-  final String value;
-  final Color? valueColor;
-  final bool isLast;
 
   const AboutRow({
     super.key,
@@ -1240,6 +1234,12 @@ class AboutRow extends StatelessWidget {
     this.valueColor,
     this.isLast = false,
   });
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String value;
+  final Color? valueColor;
+  final bool isLast;
 
   @override
   Widget build(BuildContext context) {
@@ -1285,13 +1285,13 @@ class AboutRow extends StatelessWidget {
 // ── More sheet ─────────────────────────────────────────────────────────────────
 
 class ProfileMoreSheet extends StatelessWidget {
-  final bool isOwnProfile;
-  final List<ProfileMoreOption> options;
   const ProfileMoreSheet({
     super.key,
     required this.isOwnProfile,
     required this.options,
   });
+  final bool isOwnProfile;
+  final List<ProfileMoreOption> options;
 
   @override
   Widget build(BuildContext context) {
@@ -1348,23 +1348,23 @@ class ProfileMoreSheet extends StatelessWidget {
 }
 
 class ProfileMoreOption {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final bool destructive;
   const ProfileMoreOption({
     required this.icon,
     required this.label,
     required this.onTap,
     this.destructive = false,
   });
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool destructive;
 }
 
 // ══ Poll widget for profile Spotlights ════════════════════════════════════════
 
 class _ProfilePollWidget extends StatefulWidget {
-  final ProfilePost post;
   const _ProfilePollWidget({required this.post});
+  final ProfilePost post;
   @override State<_ProfilePollWidget> createState() => _ProfilePollWidgetState();
 }
 
@@ -1474,8 +1474,8 @@ class _ProfilePollWidgetState extends State<_ProfilePollWidget> {
 // ══ Prediction widget for profile Spotlights ══════════════════════════════════
 
 class _ProfilePredictionWidget extends StatelessWidget {
-  final ProfilePost post;
   const _ProfilePredictionWidget({required this.post});
+  final ProfilePost post;
 
   @override
   Widget build(BuildContext context) {
@@ -1492,10 +1492,10 @@ class _ProfilePredictionWidget extends StatelessWidget {
         border: Border.all(color: const Color(0xFF7FD820).withValues(alpha: 0.5)),
       ),
       child: Column(children: [
-        Row(children: [
-          const Icon(Icons.analytics_outlined, color: Color(0xFF7FD820), size: 16),
-          const SizedBox(width: 6),
-          const Text('PREDICTION', style: TextStyle(color: Color(0xFF7FD820),
+        const Row(children: [
+          Icon(Icons.analytics_outlined, color: Color(0xFF7FD820), size: 16),
+          SizedBox(width: 6),
+          Text('PREDICTION', style: TextStyle(color: Color(0xFF7FD820),
               fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.1)),
         ]),
         const SizedBox(height: 12),

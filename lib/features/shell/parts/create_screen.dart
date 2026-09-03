@@ -1,4 +1,3 @@
-import 'dart:io';
 part of '../app_shell.dart';
 
 // VpsRepository is re-exported via the parent app_shell.dart import chain
@@ -56,7 +55,7 @@ class _CreateScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return const Scaffold(
       backgroundColor: PlayifyColors.background,
       body: SafeArea(
         child: _CreateComposer(),
@@ -329,7 +328,6 @@ class _CreateComposerState extends State<_CreateComposer>
           if (!context.mounted) break;
           final editedVid = await openVideoEditor(context, File(rawVid.path));
           final vidToUpload = editedVid != null ? XFile(editedVid.path) : rawVid;
-          if (vidToUpload == null) return;
           setState(() => _posting = true);
           final url = await _social.uploadPickedFile(
             bucket: 'media', folder: 'videos', file: vidToUpload,
@@ -417,7 +415,7 @@ class _CreateComposerState extends State<_CreateComposer>
     FocusScope.of(context).unfocus();
     setState(() => _posting = true);
 
-    final repo = SocialRepository();
+    const repo = SocialRepository();
 
     try {
       // Extract hashtags from text
@@ -770,12 +768,12 @@ class _CreateComposerState extends State<_CreateComposer>
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _ComposerHeader extends StatelessWidget {
-  final String audience;
-  final ValueChanged<String> onAudienceChanged;
   const _ComposerHeader({
     required this.audience,
     required this.onAudienceChanged,
   });
+  final String audience;
+  final ValueChanged<String> onAudienceChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -787,9 +785,9 @@ class _ComposerHeader extends StatelessWidget {
           Container(
             width: 44,
             height: 44,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 colors: [
                   PlayifyColors.electricBlue,
                   PlayifyColors.sportGreen,
@@ -848,7 +846,7 @@ class _ComposerHeader extends StatelessWidget {
                               .withValues(alpha: 0.35),
                         ),
                       ),
-                      child: Text(
+                      child: const Text(
                         'Fan',
                         style: TextStyle(
                           color: PlayifyColors.sportGreen,
@@ -888,14 +886,14 @@ class _ComposerHeader extends StatelessWidget {
                         const SizedBox(width: 4),
                         Text(
                           audience,
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: PlayifyColors.electricBlue,
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                         const SizedBox(width: 3),
-                        Icon(
+                        const Icon(
                           Icons.expand_more_rounded,
                           color: PlayifyColors.electricBlue,
                           size: 13,
@@ -953,9 +951,9 @@ class _ComposerHeader extends StatelessWidget {
 }
 
 class _AudiencePicker extends StatelessWidget {
+  const _AudiencePicker({required this.selected, required this.onSelect});
   final String selected;
   final ValueChanged<String> onSelect;
-  const _AudiencePicker({required this.selected, required this.onSelect});
 
   static const _options = [
     (label: 'Everyone', icon: Icons.public_rounded, sub: 'Visible to all Playify users'),
@@ -1014,7 +1012,7 @@ class _AudiencePicker extends StatelessWidget {
                     ),
                   ),
                   if (active)
-                    Icon(Icons.check_circle_rounded,
+                    const Icon(Icons.check_circle_rounded,
                         color: PlayifyColors.electricBlue, size: 20),
                 ],
               ),
@@ -1031,14 +1029,14 @@ class _AudiencePicker extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _TextArea extends StatelessWidget {
-  final TextEditingController controller;
-  final int charsLeft;
-  final int maxChars;
   const _TextArea({
     required this.controller,
     required this.charsLeft,
     required this.maxChars,
   });
+  final TextEditingController controller;
+  final int charsLeft;
+  final int maxChars;
 
   @override
   Widget build(BuildContext context) {
@@ -1111,10 +1109,10 @@ class _TextArea extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _MediaStrip extends StatelessWidget {
+  const _MediaStrip({required this.tiles, required this.isVideo, required this.onRemove});
   final List<String> tiles;
   final List<bool> isVideo;
   final ValueChanged<int> onRemove;
-  const _MediaStrip({required this.tiles, required this.isVideo, required this.onRemove});
 
   @override
   Widget build(BuildContext context) {
@@ -1209,15 +1207,6 @@ class _MediaStrip extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _PollPanel extends StatefulWidget {
-  final List<TextEditingController> options;
-  final List<Map<String,dynamic>> teams;
-  final List<Map<String,dynamic>> players;
-  final Duration duration;
-  final ValueChanged<Duration> onDurationChanged;
-  final VoidCallback onAddOption;
-  final ValueChanged<int> onRemoveOption;
-  final ValueChanged<String> onAddTeam;
-  final ValueChanged<String> onAddPlayer;
 
   const _PollPanel({
     required this.options,
@@ -1230,6 +1219,15 @@ class _PollPanel extends StatefulWidget {
     required this.onAddTeam,
     required this.onAddPlayer,
   });
+  final List<TextEditingController> options;
+  final List<Map<String,dynamic>> teams;
+  final List<Map<String,dynamic>> players;
+  final Duration duration;
+  final ValueChanged<Duration> onDurationChanged;
+  final VoidCallback onAddOption;
+  final ValueChanged<int> onRemoveOption;
+  final ValueChanged<String> onAddTeam;
+  final ValueChanged<String> onAddPlayer;
 
   @override
   State<_PollPanel> createState() => _PollPanelState();
@@ -1282,7 +1280,7 @@ class _PollPanelState extends State<_PollPanel> {
     if (_loadingPlayers) return;
     setState(() => _loadingPlayers = true);
     try {
-      final rows = await VpsSupabaseCompat.client
+      final rows = VpsSupabaseCompat.client
           .from('Player')
           .select('name')
           .order('name')
@@ -1560,20 +1558,6 @@ class _PollPanelState extends State<_PollPanel> {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _PredictionPanel extends StatelessWidget {
-  final TextEditingController homeCtrl;
-  final TextEditingController awayCtrl;
-  final int homeScore;
-  final int awayScore;
-  final String predType;
-  final List<Map<String,dynamic>> matches;
-  final List<Map<String,dynamic>> players;
-  final Map<String,dynamic>? selectedMatch;
-  final Map<String,dynamic>? selectedPlayer;
-  final ValueChanged<String> onPredTypeChanged;
-  final ValueChanged<Map<String,dynamic>?> onMatchSelected;
-  final ValueChanged<Map<String,dynamic>?> onPlayerSelected;
-  final ValueChanged<int> onHomeScoreChanged;
-  final ValueChanged<int> onAwayScoreChanged;
 
   const _PredictionPanel({
     required this.homeCtrl,
@@ -1591,6 +1575,20 @@ class _PredictionPanel extends StatelessWidget {
     required this.onHomeScoreChanged,
     required this.onAwayScoreChanged,
   });
+  final TextEditingController homeCtrl;
+  final TextEditingController awayCtrl;
+  final int homeScore;
+  final int awayScore;
+  final String predType;
+  final List<Map<String,dynamic>> matches;
+  final List<Map<String,dynamic>> players;
+  final Map<String,dynamic>? selectedMatch;
+  final Map<String,dynamic>? selectedPlayer;
+  final ValueChanged<String> onPredTypeChanged;
+  final ValueChanged<Map<String,dynamic>?> onMatchSelected;
+  final ValueChanged<Map<String,dynamic>?> onPlayerSelected;
+  final ValueChanged<int> onHomeScoreChanged;
+  final ValueChanged<int> onAwayScoreChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -1651,7 +1649,7 @@ class _PredictionPanel extends StatelessWidget {
                   fontSize: 13, fontWeight: FontWeight.w600,
                 ),
               )),
-              Icon(Icons.arrow_drop_down_rounded,
+              const Icon(Icons.arrow_drop_down_rounded,
                   color: PlayifyColors.white54, size: 20),
             ]),
           ),
@@ -1722,7 +1720,7 @@ class _PredictionPanel extends StatelessWidget {
                     fontSize: 13, fontWeight: FontWeight.w600,
                   ),
                 )),
-                Icon(Icons.arrow_drop_down_rounded,
+                const Icon(Icons.arrow_drop_down_rounded,
                     color: PlayifyColors.white54, size: 20),
               ]),
             ),
@@ -1879,9 +1877,9 @@ class _PredictionPanel extends StatelessWidget {
 
 // ── Outcome Selector: HOME | X | AWAY ────────────────────────────────────────
 class _OutcomeSelector extends StatelessWidget {
+  const _OutcomeSelector({required this.selected, required this.onSelected});
   final String? selected; // 'home' | 'draw' | 'away' | null
   final ValueChanged<String> onSelected;
-  const _OutcomeSelector({required this.selected, required this.onSelected});
 
   @override
   Widget build(BuildContext context) {
@@ -1896,12 +1894,12 @@ class _OutcomeSelector extends StatelessWidget {
 }
 
 class _OutcomeBtn extends StatelessWidget {
+  const _OutcomeBtn({required this.label, required this.value,
+      required this.selected, required this.onTap});
   final String label;
   final String value;
   final String? selected;
   final ValueChanged<String> onTap;
-  const _OutcomeBtn({required this.label, required this.value,
-      required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1932,12 +1930,12 @@ class _OutcomeBtn extends StatelessWidget {
 }
 
 class _PredTypeChip extends StatelessWidget {
+  const _PredTypeChip({required this.label, required this.icon,
+      required this.selected, required this.onTap});
   final String label;
   final IconData icon;
   final bool selected;
   final VoidCallback onTap;
-  const _PredTypeChip({required this.label, required this.icon,
-      required this.selected, required this.onTap});
   @override
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
@@ -1964,12 +1962,12 @@ class _PredTypeChip extends StatelessWidget {
 }
 
 class _EventChip extends StatelessWidget {
+  const _EventChip({required this.label, required this.icon,
+      required this.color, required this.onTap});
   final String label;
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
-  const _EventChip({required this.label, required this.icon,
-      required this.color, required this.onTap});
   @override
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
@@ -1990,9 +1988,9 @@ class _EventChip extends StatelessWidget {
 }
 
 class _ScoreStepper extends StatelessWidget {
+  const _ScoreStepper({required this.value, required this.onChanged});
   final int value;
   final ValueChanged<int> onChanged;
-  const _ScoreStepper({required this.value, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -2024,9 +2022,9 @@ class _ScoreStepper extends StatelessWidget {
 }
 
 class _StepBtn extends StatelessWidget {
+  const _StepBtn({required this.icon, this.onTap});
   final IconData icon;
   final VoidCallback? onTap;
-  const _StepBtn({required this.icon, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -2063,14 +2061,14 @@ class _StepBtn extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _LocationPanel extends StatelessWidget {
-  final String? selected;
-  final ValueChanged<String> onSelect;
-  final VoidCallback onClear;
   const _LocationPanel({
     required this.selected,
     required this.onSelect,
     required this.onClear,
   });
+  final String? selected;
+  final ValueChanged<String> onSelect;
+  final VoidCallback onClear;
 
   @override
   Widget build(BuildContext context) {
@@ -2127,7 +2125,7 @@ class _LocationPanel extends StatelessWidget {
                     ),
                   ),
                   if (active)
-                    Icon(
+                    const Icon(
                       Icons.check_rounded,
                       color: PlayifyColors.sportOrange,
                       size: 18,
@@ -2147,14 +2145,14 @@ class _LocationPanel extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _DisappearingPanel extends StatelessWidget {
-  final String? selected;
-  final ValueChanged<String> onSelect;
-  final VoidCallback onClear;
   const _DisappearingPanel({
     required this.selected,
     required this.onSelect,
     required this.onClear,
   });
+  final String? selected;
+  final ValueChanged<String> onSelect;
+  final VoidCallback onClear;
 
   @override
   Widget build(BuildContext context) {
@@ -2224,9 +2222,9 @@ class _DisappearingPanel extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _TagPanel extends StatelessWidget {
+  const _TagPanel({required this.added, required this.onAdd});
   final List<String> added;
   final ValueChanged<String> onAdd;
-  const _TagPanel({required this.added, required this.onAdd});
 
   @override
   Widget build(BuildContext context) {
@@ -2263,7 +2261,7 @@ class _TagPanel extends StatelessWidget {
                   Container(
                     width: 34,
                     height: 34,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       shape: BoxShape.circle,
                       color: PlayifyColors.surface2,
                     ),
@@ -2320,9 +2318,9 @@ class _TagPanel extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _TagChips extends StatelessWidget {
+  const _TagChips({required this.tags, required this.onRemove});
   final List<String> tags;
   final ValueChanged<String> onRemove;
-  const _TagChips({required this.tags, required this.onRemove});
 
   @override
   Widget build(BuildContext context) {
@@ -2344,7 +2342,7 @@ class _TagChips extends StatelessWidget {
             children: [
               Text(
                 t,
-                style: TextStyle(
+                style: const TextStyle(
                   color: PlayifyColors.electricBlue,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -2373,10 +2371,6 @@ class _TagChips extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _MetaBadges extends StatelessWidget {
-  final String? location;
-  final String? disappearsIn;
-  final VoidCallback onRemoveLocation;
-  final VoidCallback onRemoveDisappearing;
 
   const _MetaBadges({
     required this.location,
@@ -2384,6 +2378,10 @@ class _MetaBadges extends StatelessWidget {
     required this.onRemoveLocation,
     required this.onRemoveDisappearing,
   });
+  final String? location;
+  final String? disappearsIn;
+  final VoidCallback onRemoveLocation;
+  final VoidCallback onRemoveDisappearing;
 
   @override
   Widget build(BuildContext context) {
@@ -2411,16 +2409,16 @@ class _MetaBadges extends StatelessWidget {
 }
 
 class _MetaBadge extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onRemove;
   const _MetaBadge({
     required this.icon,
     required this.label,
     required this.color,
     required this.onRemove,
   });
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -2464,26 +2462,6 @@ class _MetaBadge extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _AttachmentBar extends StatelessWidget {
-  final bool expanded;
-  final Animation<double> anim;
-  final _PostType activeType;
-  final bool showLocation;
-  final bool showDisappearing;
-  final bool showTag;
-  final VoidCallback onToggle;
-  final VoidCallback onMedia;
-  final VoidCallback onPoll;
-  final VoidCallback onPrediction;
-  final VoidCallback onLocation;
-  final VoidCallback onDisappearing;
-  final VoidCallback onTag;
-  final bool canPost;
-  final bool submitted;
-  final bool posting;
-  final Animation<double> submitScale;
-  final VoidCallback onPost;
-  final int charsLeft;
-  final int maxChars;
 
   const _AttachmentBar({
     required this.expanded,
@@ -2507,6 +2485,26 @@ class _AttachmentBar extends StatelessWidget {
     required this.charsLeft,
     required this.maxChars,
   });
+  final bool expanded;
+  final Animation<double> anim;
+  final _PostType activeType;
+  final bool showLocation;
+  final bool showDisappearing;
+  final bool showTag;
+  final VoidCallback onToggle;
+  final VoidCallback onMedia;
+  final VoidCallback onPoll;
+  final VoidCallback onPrediction;
+  final VoidCallback onLocation;
+  final VoidCallback onDisappearing;
+  final VoidCallback onTag;
+  final bool canPost;
+  final bool submitted;
+  final bool posting;
+  final Animation<double> submitScale;
+  final VoidCallback onPost;
+  final int charsLeft;
+  final int maxChars;
 
   @override
   Widget build(BuildContext context) {
@@ -2674,9 +2672,9 @@ class _AttachmentBar extends StatelessWidget {
                         ),
                         child: Center(
                           child: submitted
-                              ? Row(
+                              ? const Row(
                                   mainAxisSize: MainAxisSize.min,
-                                  children: const [
+                                  children: [
                                     Icon(
                                       Icons.check_circle_rounded,
                                       color: PlayifyColors.white,
@@ -2726,11 +2724,6 @@ class _AttachmentBar extends StatelessWidget {
 }
 
 class _AttachChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool active;
-  final Color color;
-  final VoidCallback onTap;
 
   const _AttachChip({
     required this.icon,
@@ -2739,6 +2732,11 @@ class _AttachChip extends StatelessWidget {
     required this.color,
     required this.onTap,
   });
+  final IconData icon;
+  final String label;
+  final bool active;
+  final Color color;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -2792,10 +2790,6 @@ class _AttachChip extends StatelessWidget {
 
 /// Labelled content panel (Poll, Prediction, Location, etc.)
 class _ContentPanel extends StatelessWidget {
-  final String label;
-  final Color color;
-  final IconData icon;
-  final Widget child;
 
   const _ContentPanel({
     required this.label,
@@ -2803,6 +2797,10 @@ class _ContentPanel extends StatelessWidget {
     required this.icon,
     required this.child,
   });
+  final String label;
+  final Color color;
+  final IconData icon;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
@@ -2841,15 +2839,15 @@ class _ContentPanel extends StatelessWidget {
 
 /// Single-line text field inside a panel
 class _PanelField extends StatelessWidget {
-  final TextEditingController controller;
-  final String hint;
-  final IconData icon;
 
   const _PanelField({
     required this.controller,
     required this.hint,
     required this.icon,
   });
+  final TextEditingController controller;
+  final String hint;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -2890,9 +2888,9 @@ class _PanelField extends StatelessWidget {
 
 /// Generic bottom-sheet wrapper
 class _BottomSheet extends StatelessWidget {
+  const _BottomSheet({required this.title, required this.child});
   final String title;
   final Widget child;
-  const _BottomSheet({required this.title, required this.child});
 
   @override
   Widget build(BuildContext context) {

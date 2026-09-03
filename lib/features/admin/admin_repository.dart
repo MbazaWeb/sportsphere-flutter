@@ -25,7 +25,7 @@ import '../../core/data/vps_repository.dart';
 class AdminRepository {
   const AdminRepository();
 
-  static final _vps = const VpsRepository();
+  static const _vps = VpsRepository();
 
   // ── Entity Identity ────────────────────────────────────────────────────────
 

@@ -7,8 +7,8 @@ import '../models/shop_models.dart';
 import 'checkout_flow.dart';
 
 class ShopTab extends StatelessWidget {
-  final ShopCatalog catalog;
   const ShopTab({super.key, required this.catalog});
+  final ShopCatalog catalog;
 
   @override
   Widget build(BuildContext context) {
@@ -34,8 +34,8 @@ class ShopTab extends StatelessWidget {
 // ── Empty state ───────────────────────────────────────────────────────────────
 
 class _ShopEmptyState extends StatelessWidget {
-  final ShopCatalog catalog;
   const _ShopEmptyState({required this.catalog});
+  final ShopCatalog catalog;
 
   @override
   Widget build(BuildContext context) {
@@ -103,11 +103,11 @@ class _ShopEmptyState extends StatelessWidget {
 }
 
 class _PreviewCard extends StatelessWidget {
+  const _PreviewCard({required this.icon, required this.accent,
+      required this.title, required this.subtitle});
   final IconData icon;
   final Color accent;
   final String title, subtitle;
-  const _PreviewCard({required this.icon, required this.accent,
-      required this.title, required this.subtitle});
 
   @override
   Widget build(BuildContext context) {
@@ -148,11 +148,11 @@ class _PreviewCard extends StatelessWidget {
 }
 
 class _Section extends StatelessWidget {
+  const _Section({required this.title, required this.icon, required this.items, required this.catalog});
   final String title;
   final IconData icon;
   final List<ShopItem> items;
   final ShopCatalog catalog;
-  const _Section({required this.title, required this.icon, required this.items, required this.catalog});
 
   @override
   Widget build(BuildContext context) {
@@ -175,9 +175,9 @@ class _Section extends StatelessWidget {
 }
 
 class _ShopCard extends StatelessWidget {
+  const _ShopCard({required this.item, required this.catalog});
   final ShopItem item;
   final ShopCatalog catalog;
-  const _ShopCard({required this.item, required this.catalog});
 
   @override
   Widget build(BuildContext context) {

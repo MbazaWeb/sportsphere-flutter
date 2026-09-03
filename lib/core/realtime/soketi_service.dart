@@ -11,7 +11,6 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:pusher_channels_flutter/pusher_channels_flutter.dart';
 
 import '../../app/config/env.dart';

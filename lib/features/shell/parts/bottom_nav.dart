@@ -6,15 +6,15 @@ part of '../app_shell.dart';
 // Auth   → Home | Scores | + (FAB) | Profile
 
 class _BottomNavigation extends ConsumerWidget {
-  final int currentIndex;
-  final ValueChanged<int> onChanged;
-  final bool isGuest;
 
   const _BottomNavigation({
     required this.currentIndex,
     required this.onChanged,
     required this.isGuest,
   });
+  final int currentIndex;
+  final ValueChanged<int> onChanged;
+  final bool isGuest;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -61,13 +61,13 @@ class _BottomNavigation extends ConsumerWidget {
 // ── Guest nav: Home | Scores | Log In ──────────────────────────────────────────
 
 class _GuestNav extends StatelessWidget {
-  final int currentIndex;
-  final ValueChanged<int> onChanged;
 
   const _GuestNav({
     required this.currentIndex,
     required this.onChanged,
   });
+  final int currentIndex;
+  final ValueChanged<int> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -138,13 +138,13 @@ class _GuestNav extends StatelessWidget {
 // ── Authenticated nav: Home | Scores | + | Profile ────────────────────────────
 
 class _AuthNav extends StatelessWidget {
-  final int currentIndex;
-  final ValueChanged<int> onChanged;
 
   const _AuthNav({
     required this.currentIndex,
     required this.onChanged,
   });
+  final int currentIndex;
+  final ValueChanged<int> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -209,10 +209,6 @@ class _AuthNav extends StatelessWidget {
 // ── Shared nav item ────────────────────────────────────────────────────────────
 
 class _NavItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
 
   const _NavItem({
     required this.icon,
@@ -220,6 +216,10 @@ class _NavItem extends StatelessWidget {
     required this.active,
     required this.onTap,
   });
+  final IconData icon;
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {

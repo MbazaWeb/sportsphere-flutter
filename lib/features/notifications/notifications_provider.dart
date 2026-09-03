@@ -33,12 +33,6 @@ enum NotificationType {
 // `.title`, `.subtitle`, `.time`, `.id`, `.unread`), so we wrap each row
 // in a [NotificationItem] with a parsed type + pre-formatted relative time.
 class NotificationItem {
-  final String id;
-  final NotificationType type;
-  final String title;
-  final String subtitle;
-  final String time;
-  final bool unread;
 
   const NotificationItem({
     required this.id,
@@ -64,6 +58,12 @@ class NotificationItem {
       unread:   m['read'] != true,
     );
   }
+  final String id;
+  final NotificationType type;
+  final String title;
+  final String subtitle;
+  final String time;
+  final bool unread;
 
   static NotificationType _parseType(dynamic t) {
     switch (t?.toString().toLowerCase()) {
@@ -146,7 +146,7 @@ class NotificationState {
 
 // ── Notifier (Riverpod 3.x — extends Notifier, not StateNotifier) ───────────
 class NotificationsNotifier extends Notifier<NotificationState> {
-  static final _vps = const VpsRepository();
+  static const _vps = VpsRepository();
   Timer? _pollTimer;
 
   @override

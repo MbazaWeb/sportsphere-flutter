@@ -60,8 +60,8 @@ class PersonAboutField {
 // ── PersonProfileView ──────────────────────────────────────────────────────────
 
 class PersonProfileView extends StatefulWidget {
-  final PersonProfileModel profile;
   const PersonProfileView({super.key, required this.profile});
+  final PersonProfileModel profile;
   @override
   State<PersonProfileView> createState() => _PersonProfileViewState();
 }
@@ -79,6 +79,10 @@ class _PersonProfileViewState extends State<PersonProfileView> {
   Future<void> _fetchPosts() async {
     try {
       final profile = await const VpsRepository().getProfile(widget.profile.handle);
+      if (profile == null) {
+        if (mounted) setState(() => _loading = false);
+        return;
+      }
       final uid = profile['id']?.toString() ?? '';
       if (uid.isEmpty) { if (mounted) setState(() => _loading = false); return; }
       final posts = await const VpsRepository().getUserPosts(uid, limit: 30);
@@ -125,7 +129,7 @@ class _PersonProfileViewState extends State<PersonProfileView> {
         Expanded(child: _loading
             ? const Center(child: CircularProgressIndicator(color: PlayifyColors.electricBlue, strokeWidth: 2))
             : _posts.isEmpty
-                ? Center(child: Text('No posts yet', style: const TextStyle(color: PlayifyColors.muted)))
+                ? const Center(child: Text('No posts yet', style: TextStyle(color: PlayifyColors.muted)))
                 : RefreshIndicator(
                     onRefresh: _fetchPosts,
                     color: PlayifyColors.electricBlue,

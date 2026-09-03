@@ -124,15 +124,15 @@ class _Header extends ConsumerWidget {
 }
 
 class _HeaderButton extends StatelessWidget {
-  final IconData icon;
-  final String? badge;
-  final VoidCallback onTap;
 
   const _HeaderButton({
     required this.icon,
     required this.onTap,
     this.badge,
   });
+  final IconData icon;
+  final String? badge;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {

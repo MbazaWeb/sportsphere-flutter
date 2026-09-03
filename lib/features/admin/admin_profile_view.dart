@@ -38,8 +38,6 @@ class AdminProfileView extends ConsumerStatefulWidget {
 class _AdminProfileViewState extends ConsumerState<AdminProfileView>
     with SingleTickerProviderStateMixin {
   late TabController _tab;
-  bool _isSelf = true; // admin is always viewing own profile here
-
   // Social counts
   int _postCount = 0, _followerCount = 0, _followingCount = 0;
 
@@ -51,7 +49,7 @@ class _AdminProfileViewState extends ConsumerState<AdminProfileView>
   Map<String, int> _stats = {};
   bool _statsLoading = true;
 
-  static final _vps = const VpsRepository();
+  static const _vps = VpsRepository();
 
   @override
   void initState() {
@@ -73,11 +71,14 @@ class _AdminProfileViewState extends ConsumerState<AdminProfileView>
       final userId = auth.user?.id ?? '';
       if (userId.isEmpty) return;
       final profile = await _vps.getProfile(userId);
-      if (mounted) setState(() {
+      if (profile == null) return;
+      if (mounted) {
+        setState(() {
         _postCount      = (profile['postCount']      as int?) ?? 0;
         _followerCount  = (profile['followerCount']  as int?) ?? 0;
         _followingCount = (profile['followingCount'] as int?) ?? 0;
       });
+      }
     } catch (_) {}
   }
 
@@ -97,7 +98,8 @@ class _AdminProfileViewState extends ConsumerState<AdminProfileView>
     setState(() => _statsLoading = true);
     try {
       final s = await _vps.getAdminStats();
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _stats = {
           'users':        (s['users']        as num?)?.toInt() ?? 0,
           'posts':        (s['posts']        as num?)?.toInt() ?? 0,
@@ -109,6 +111,7 @@ class _AdminProfileViewState extends ConsumerState<AdminProfileView>
         };
         _statsLoading = false;
       });
+      }
     } catch (_) {
       if (mounted) setState(() => _statsLoading = false);
     }
@@ -117,10 +120,12 @@ class _AdminProfileViewState extends ConsumerState<AdminProfileView>
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authControllerProvider).user;
-    if (user == null) return const Scaffold(
+    if (user == null) {
+      return const Scaffold(
       backgroundColor: PlayifyColors.background,
       body: Center(child: CircularProgressIndicator(color: _kGold, strokeWidth: 2)),
     );
+    }
 
     return Scaffold(
       backgroundColor: PlayifyColors.background,
@@ -194,14 +199,14 @@ class _AdminProfileViewState extends ConsumerState<AdminProfileView>
 
 // ── Profile header ─────────────────────────────────────────────────────────────
 class _ProfileHeader extends ConsumerWidget {
-  final dynamic user;
-  final int postCount, followerCount, followingCount;
-  final VoidCallback onRefresh;
   const _ProfileHeader({
     required this.user, required this.postCount,
     required this.followerCount, required this.followingCount,
     required this.onRefresh,
   });
+  final dynamic user;
+  final int postCount, followerCount, followingCount;
+  final VoidCallback onRefresh;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -278,10 +283,10 @@ class _ProfileHeader extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(99),
                   border: Border.all(color: _kGold.withValues(alpha: 0.4), width: 1.5),
                 ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.admin_panel_settings_rounded, color: _kGold, size: 13),
-                  const SizedBox(width: 5),
-                  const Text('Playify Official',
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.admin_panel_settings_rounded, color: _kGold, size: 13),
+                  SizedBox(width: 5),
+                  Text('Playify Official',
                       style: TextStyle(color: _kGold, fontSize: 11, fontWeight: FontWeight.w800,
                           letterSpacing: 0.3)),
                 ]),
@@ -346,8 +351,8 @@ class _ProfileHeader extends ConsumerWidget {
 
 // ── Counter widget ─────────────────────────────────────────────────────────────
 class _Counter extends StatelessWidget {
-  final int count; final String label;
   const _Counter({required this.count, required this.label});
+  final int count; final String label;
   @override
   Widget build(BuildContext context) => Column(children: [
     Text(_fmt(count),
@@ -362,8 +367,8 @@ class _Counter extends StatelessWidget {
 
 // ── Post card (admin posts feed) ──────────────────────────────────────────────
 class _PostCard extends StatefulWidget {
-  final Map<String, dynamic> post;
   const _PostCard({required this.post});
+  final Map<String, dynamic> post;
   @override
   State<_PostCard> createState() => _PostCardState();
 }
@@ -371,7 +376,7 @@ class _PostCard extends StatefulWidget {
 class _PostCardState extends State<_PostCard> {
   bool _liked = false;
   int  _likes = 0;
-  static final _vps = const VpsRepository();
+  static const _vps = VpsRepository();
 
   @override
   void initState() {
@@ -409,11 +414,11 @@ class _PostCardState extends State<_PostCard> {
           ),
           const SizedBox(width: 10),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              const Text('Playify Official',
+            const Row(children: [
+              Text('Playify Official',
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
-              const SizedBox(width: 4),
-              const Icon(Icons.verified_rounded, color: _kGold, size: 14),
+              SizedBox(width: 4),
+              Icon(Icons.verified_rounded, color: _kGold, size: 14),
             ]),
             Text(age, style: const TextStyle(color: PlayifyColors.muted, fontSize: 11)),
           ])),
@@ -510,14 +515,14 @@ class _PostCardState extends State<_PostCard> {
 
 // ── About tab ─────────────────────────────────────────────────────────────────
 class _AboutTab extends StatelessWidget {
-  final dynamic user;
   const _AboutTab({required this.user});
+  final dynamic user;
 
   @override
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.all(20),
     children: [
-      _Section('About Playify Official', [
+      const _Section('About Playify Official', [
         _InfoRow(Icons.info_outline_rounded, 'Playify Official',
             'The official Playify account — announcements, features, and community updates.'),
         _InfoRow(Icons.admin_panel_settings_rounded, 'Role', 'Platform Administrator'),
@@ -525,11 +530,11 @@ class _AboutTab extends StatelessWidget {
         _InfoRow(Icons.language_rounded, 'Website', 'playifysport.fun'),
       ]),
       const SizedBox(height: 16),
-      _Section('Social rules for Admin', [
+      const _Section('Social rules for Admin', [
         _InfoRow(Icons.check_circle_outline_rounded, 'Can follow users',
-            'Admin follows fans, athletes and creators.', color: const Color(0xFF4CAF50)),
+            'Admin follows fans, athletes and creators.', color: Color(0xFF4CAF50)),
         _InfoRow(Icons.check_circle_outline_rounded, 'Fans can follow admin',
-            'Following admin shows official posts in your feed.', color: const Color(0xFF4CAF50)),
+            'Following admin shows official posts in your feed.', color: Color(0xFF4CAF50)),
         _InfoRow(Icons.cancel_outlined, 'Cannot fan teams/players',
             'Admin manages entities — cannot fan them.', color: PlayifyColors.muted),
       ]),
@@ -538,8 +543,8 @@ class _AboutTab extends StatelessWidget {
 }
 
 class _Section extends StatelessWidget {
-  final String title; final List<Widget> children;
   const _Section(this.title, this.children);
+  final String title; final List<Widget> children;
   @override
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     Text(title, style: const TextStyle(color: Colors.white,
@@ -557,9 +562,9 @@ class _Section extends StatelessWidget {
 }
 
 class _InfoRow extends StatelessWidget {
+  const _InfoRow(this.icon, this.label, this.value, {this.color});
   final IconData icon; final String label, value;
   final Color? color;
-  const _InfoRow(this.icon, this.label, this.value, {this.color});
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -578,10 +583,10 @@ class _InfoRow extends StatelessWidget {
 
 // ── Admin tab ──────────────────────────────────────────────────────────────────
 class _AdminTab extends StatelessWidget {
+  const _AdminTab({required this.stats, required this.loading, required this.onRefresh});
   final Map<String, int> stats;
   final bool loading;
   final VoidCallback onRefresh;
-  const _AdminTab({required this.stats, required this.loading, required this.onRefresh});
 
   @override
   Widget build(BuildContext context) => RefreshIndicator(
@@ -669,8 +674,8 @@ class _AdminTab extends StatelessWidget {
 
 // ── Tab bar delegate ───────────────────────────────────────────────────────────
 class _TabDelegate extends SliverPersistentHeaderDelegate {
-  final TabBar tabBar;
   const _TabDelegate(this.tabBar);
+  final TabBar tabBar;
   @override double get minExtent => tabBar.preferredSize.height + 1;
   @override double get maxExtent => tabBar.preferredSize.height + 1;
   @override

@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 class VideoEditResult {
+  const VideoEditResult({required this.path, required this.mute});
   final String path;
   final bool mute;
-  const VideoEditResult({required this.path, required this.mute});
 }
 
 class VideoEditPage extends StatelessWidget {
-  final String path;
   const VideoEditPage({super.key, required this.path});
+  final String path;
 
   @override
   Widget build(BuildContext context) {

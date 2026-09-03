@@ -4,7 +4,7 @@
 import '../../../core/data/vps_repository.dart';
 
 class ClaimRepository {
-  static final _vps = const VpsRepository();
+  static const _vps = VpsRepository();
 
   Future<void> submitClaim({
     required String profileType,

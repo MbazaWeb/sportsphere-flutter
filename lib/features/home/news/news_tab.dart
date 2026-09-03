@@ -75,10 +75,10 @@ class _NewsTabState extends State<NewsTab> with SingleTickerProviderStateMixin {
 }
 
 class _NewsList extends StatefulWidget {
+  const _NewsList({required this.repo, required this.category, required this.emptyLabel});
   final NewsRepository repo;
   final String category;
   final String emptyLabel;
-  const _NewsList({required this.repo, required this.category, required this.emptyLabel});
 
   @override
   State<_NewsList> createState() => _NewsListState();
@@ -128,8 +128,8 @@ class _NewsListState extends State<_NewsList> {
 }
 
 class _NewsCard extends StatefulWidget {
-  final NewsArticle article;
   const _NewsCard({required this.article});
+  final NewsArticle article;
 
   @override
   State<_NewsCard> createState() => _NewsCardState();
@@ -308,7 +308,8 @@ class _NewsCardState extends State<_NewsCard> {
                       if (ctrl.text.trim().isEmpty) return;
                       await _repo.addComment(article.id, ctrl.text);
                       if (ctx.mounted) Navigator.pop(ctx);
-                      if (mounted) setState(() {
+                      if (mounted) {
+                        setState(() {
                         article = NewsArticle(
                           id: article.id, title: article.title, summary: article.summary, body: article.body,
                           category: article.category, source: article.source, sourceUrl: article.sourceUrl,
@@ -316,6 +317,7 @@ class _NewsCardState extends State<_NewsCard> {
                           likeCount: article.likeCount, commentCount: article.commentCount + 1, shareCount: article.shareCount,
                         );
                       });
+                      }
                     },
                     icon: const Icon(Icons.send_rounded, color: Color(0xFF168CFF)),
                   ),
@@ -367,11 +369,11 @@ class _NewsCardState extends State<_NewsCard> {
 
 
 class _Act extends StatelessWidget {
+  const _Act({required this.icon, required this.count, required this.onTap, this.color = Colors.white70});
   final IconData icon;
   final int count;
   final VoidCallback onTap;
   final Color color;
-  const _Act({required this.icon, required this.count, required this.onTap, this.color = Colors.white70});
   @override
   Widget build(BuildContext context) {
     return GestureDetector(

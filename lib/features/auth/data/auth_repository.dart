@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'dart:convert';
 // lib/features/auth/data/auth_repository.dart
 // All auth via VPS API — JWT stored locally, no Supabase SDK dependency.
@@ -15,9 +14,9 @@ import '../domain/auth_state.dart';
 /// [AuthRepository.hydrateProfile]. Returns `null` when no session
 /// has been observed yet (e.g. fresh install, before login completes).
 class _AuthSessionStub {
+  const _AuthSessionStub({this.accessToken, this.userId});
   final String? accessToken;
   final String? userId;
-  const _AuthSessionStub({this.accessToken, this.userId});
 
   /// Mirrors `supabase.auth.currentSession.user.id` — used by callers
   /// that need the authenticated user's id without awaiting prefs.
@@ -26,14 +25,14 @@ class _AuthSessionStub {
 }
 
 class _AuthUserStub {
-  final String? id;
   const _AuthUserStub({this.id});
+  final String? id;
 }
 
 class AuthRepository {
   const AuthRepository();
 
-  static final _vps = const VpsRepository();
+  static const _vps = VpsRepository();
 
   static const _kToken        = 'auth_access_token';
   static const _kRefresh      = 'auth_refresh_token';
