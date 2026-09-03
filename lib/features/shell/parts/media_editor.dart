@@ -5,6 +5,7 @@
 
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:pro_image_editor/pro_image_editor.dart';
 
 import '../../../core/theme/colors.dart';
@@ -15,6 +16,9 @@ Future<Uint8List?> openMediaEditor(
   Uint8List imageBytes, {
   String? filename,
 }) async {
+  // pro_image_editor not supported on web
+  if (kIsWeb) return imageBytes;
+  
   Uint8List? result;
 
   await Navigator.push(
