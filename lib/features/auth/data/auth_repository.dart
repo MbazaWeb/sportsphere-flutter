@@ -215,9 +215,21 @@ class AuthRepository {
           debugPrint('[AUTH] hydrateProfile: persist userId failed: $e');
         }
       }
-      return _profileFrom(data);
+      final profile = _profileFrom(data);
+      // If profile is empty/invalid, clear corrupted session
+      if (profile.id.isEmpty) {
+        await _clearSession();
+        return null;
+      }
+      return profile;
     } catch (e) {
       debugPrint('[AUTH] hydrateProfile failed: $e');
+      // Clear potentially corrupted token so guest mode works cleanly
+      if (e.toString().contains('FormatException') ||
+          e.toString().contains('401') ||
+          e.toString().contains('expired')) {
+        await _clearSession();
+      }
       return null;
     }
   }
