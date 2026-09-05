@@ -10,7 +10,7 @@ const _kBlue = PlayifyColors.electricBlue;
 
 class AppUpdateService {
   static bool _checkedThisSession = false;
-  static final _vps = const VpsRepository();
+  static const _vps = VpsRepository();
 
   static Future<void> checkForUpdate(BuildContext context) async {
     if (kIsWeb) return;

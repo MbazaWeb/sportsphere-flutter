@@ -55,8 +55,8 @@ class UserProfile {
   /// Number of users this user is following.
   final int followingCount;
 
-  String get displayName => '\$firstName \$lastName';
-  String get atHandle => '@\$handle';
+  String get displayName => '$firstName $lastName';
+  String get atHandle => '@$handle';
 
   UserProfile copyWith({
     String? id,
