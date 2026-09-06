@@ -308,7 +308,7 @@ class _NearbyFansTab extends ConsumerStatefulWidget {
   const _NearbyFansTab();
 
   @override
-  State<_NearbyFansTab> createState() => _NearbyFansTabState();
+  ConsumerState<_NearbyFansTab> createState() => _NearbyFansTabState();
 }
 
 class _NearbyFansTabState extends ConsumerState<_NearbyFansTab>
@@ -462,13 +462,14 @@ class _NearbyFansTabState extends ConsumerState<_NearbyFansTab>
         if (id != null && id.isNotEmpty) _myTeamIds.add(id);
       }
 
-      // Load my sports
-      final mySports = null // VPS stub
-      .from('UserSport')
-          .select('sportId')
-          .eq('userId', uid);
-      for (final r in mySports as List) {
-        final id = (r as Map)['sportId'] as String?;
+      // Load my sports from VPS
+      final mySports = <Map<String,dynamic>>[];
+      try {
+        final res = await const VpsRepository().get<Map<String,dynamic>>('/v1/social/sports/mine');
+        mySports.addAll((res.data?['sports'] as List? ?? []).cast<Map<String,dynamic>>());
+      } catch (_) {}
+      for (final r in mySports) {
+        final id = r['sportId'] as String? ?? r['id'] as String?;
         if (id != null && id.isNotEmpty) _mySportIds.add(id);
       }
     } catch (e) {
@@ -1234,7 +1235,7 @@ class _FanActionButtons extends ConsumerStatefulWidget {
   final String name;
 
   @override
-  State<_FanActionButtons> createState() => _FanActionButtonsState();
+  ConsumerState<_FanActionButtons> createState() => _FanActionButtonsState();
 }
 
 class _FanActionButtonsState extends ConsumerState<_FanActionButtons> {

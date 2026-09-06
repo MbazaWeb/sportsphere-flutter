@@ -405,7 +405,7 @@ class _MessageSheet extends ConsumerStatefulWidget {
   final String? initialPeerName;
   final String? initialPeerHandle;
   @override
-  State<_MessageSheet> createState() => _MessageSheetState();
+  ConsumerState<_MessageSheet> createState() => _MessageSheetState();
 }
 
 class _MessageSheetState extends ConsumerState<_MessageSheet> {

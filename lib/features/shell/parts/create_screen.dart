@@ -1230,7 +1230,7 @@ class _PollPanel extends ConsumerStatefulWidget {
   final ValueChanged<String> onAddPlayer;
 
   @override
-  State<_PollPanel> createState() => _PollPanelState();
+  ConsumerState<_PollPanel> createState() => _PollPanelState();
 }
 
 class _PollPanelState extends ConsumerState<_PollPanel> {
