@@ -240,8 +240,14 @@ socialRouter.delete('/comments/:id/like', async (c) => {
 // ── FOLLOWS (user→user) ───────────────────────────────────────────────────────
 
 socialRouter.post('/follow/:targetId', async (c) => {
-  const userId   = c.get('userId') as string
-  const targetId = c.req.param('targetId')
+  const userId = c.get('userId') as string
+  let targetId = c.req.param('targetId')
+  // Accept handle OR uuid
+  if (!targetId.includes('-')) {
+    const row = await queryOne<{id:string}>(`SELECT id FROM public."User" WHERE handle=$1`, [targetId.replace('@','')])
+    if (!row) return c.json({ error: 'User not found' }, 404)
+    targetId = row.id
+  }
   if (userId === targetId) return c.json({ error: 'Cannot follow yourself' }, 400)
   await query(`
     WITH ins AS (
@@ -261,8 +267,13 @@ socialRouter.post('/follow/:targetId', async (c) => {
 })
 
 socialRouter.delete('/follow/:targetId', async (c) => {
-  const userId   = c.get('userId') as string
-  const targetId = c.req.param('targetId')
+  const userId = c.get('userId') as string
+  let targetId = c.req.param('targetId')
+  if (!targetId.includes('-')) {
+    const row = await queryOne<{id:string}>(`SELECT id FROM public."User" WHERE handle=$1`, [targetId.replace('@','')])
+    if (!row) return c.json({ error: 'User not found' }, 404)
+    targetId = row.id
+  }
   await query(`
     WITH del AS (
       DELETE FROM public."Follow" WHERE "followerId"=$1 AND "followingId"=$2 RETURNING 1
@@ -502,15 +513,26 @@ socialRouter.get('/communities/:id/membership', async (c) => {
 socialRouter.post('/polls', async (c) => {
   const userId = c.get('userId') as string
   const b = await c.req.json<any>()
-  if (!b.postId || !b.question) return c.json({ error: 'postId and question required' }, 400)
+  if (!b.question) return c.json({ error: 'question required' }, 400)
+  if ((b.options ?? []).length < 2) return c.json({ error: 'At least 2 options required' }, 400)
+
+  // If no postId provided, create a post automatically
+  let postId = b.postId
+  if (!postId) {
+    const postRows = await query(
+      `INSERT INTO public."Post"(id,"userId",content,"likeCount","commentCount","shareCount","createdAt","updatedAt")
+       VALUES(gen_random_uuid()::text,$1,$2,0,0,0,NOW(),NOW()) RETURNING id`,
+      [userId, `Poll: ${b.question}`]
+    )
+    postId = (postRows[0] as any).id
+  }
+
   const rows = await query(
     `INSERT INTO public."Poll"(id,"postId","matchId",question,options,"totalVotes","endsAt","createdAt")
      VALUES(gen_random_uuid()::text,$1,$2,$3,$4::jsonb,0,$5,NOW()) RETURNING *`,
-    [b.postId, b.matchId??null, b.question,
-     JSON.stringify(b.options??[]),
-     b.endsAt??null]
+    [postId, b.matchId??null, b.question, JSON.stringify(b.options??[]), b.endsAt??null]
   )
-  return c.json({ ok: true, poll: rows[0] }, 201)
+  return c.json({ ok: true, poll: rows[0], postId }, 201)
 })
 
 // Route order matters — /by-poll/:id before /:postId
