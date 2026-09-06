@@ -31,6 +31,7 @@ aiRouter.post('/', async (c) => {
   // Default: DeepSeek
   const key = Bun.env.DEEPSEEK_API_KEY ?? ''
   if (!key) return c.json({ error: 'DeepSeek not configured' }, 503)
+  console.log('[AI] DeepSeek key length:', key.length)
   const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
@@ -41,5 +42,7 @@ aiRouter.post('/', async (c) => {
     }),
   })
   const data = await res.json() as any
+  console.log('[AI] DeepSeek status:', res.status, JSON.stringify(data).slice(0,200))
+  if (!res.ok) return c.json({ error: data?.error?.message ?? 'DeepSeek error', status: res.status }, 502)
   return c.json({ ok: true, reply: data.choices?.[0]?.message?.content ?? '', model: 'deepseek' })
 })
