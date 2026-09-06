@@ -1265,9 +1265,9 @@ class _DatedMatchListState extends ConsumerState<_DatedMatchList> {
         ),
         Expanded(
           child: _MatchListBody(
-            widget.provider: widget.provider,
-            widget.emptyTitle: widget.emptyTitle,
-            widget.emptyHint: widget.emptyHint,
+            provider: widget.provider,
+            emptyTitle: widget.emptyTitle,
+            emptyHint: widget.emptyHint,
           ),
         ),
       ],
