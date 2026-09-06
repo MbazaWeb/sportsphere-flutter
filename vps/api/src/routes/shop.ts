@@ -22,7 +22,6 @@ shopRouter.post('/orders', async (c) => {
   }
 
   const id     = `ord-${Date.now()}`
-  const ref    = `SS-${id.substring(4)}`
   const amount = unitPriceTzs * quantity
   if (!Number.isFinite(unitPriceTzs) || unitPriceTzs <= 0 || !Number.isInteger(quantity) || quantity < 1 || quantity > 100) return c.json({ error: 'Invalid price or quantity' }, 400)
   if (paymentMethod === 'demo') return c.json({ error: 'Demo payments are disabled' }, 400)
@@ -30,12 +29,12 @@ shopRouter.post('/orders', async (c) => {
 
   const rows = await query(
     `INSERT INTO public."ShopOrder"
-       (id, ref, "userId", "sellerHandle", "sellerName",
+       (id, "userId", "sellerHandle", "sellerName",
         "itemId", "itemName", kind, quantity,
         "unitPriceTzs", "amountTzs", status, "paymentMethod", "createdAt")
-     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW())
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW())
      RETURNING *`,
-    [id, ref, userId, sellerHandle ?? null, sellerName ?? null,
+    [id, userId, sellerHandle ?? null, sellerName ?? null,
      itemId, itemName, kind, quantity,
      unitPriceTzs, amount, status, paymentMethod]
   )

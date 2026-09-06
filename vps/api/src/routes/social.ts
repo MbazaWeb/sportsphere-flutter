@@ -767,11 +767,13 @@ socialRouter.patch('/posts/:id', async (c) => {
   if (b.isBreaking  !== undefined) allowed.isBreaking  = !!b.isBreaking
   const keys = Object.keys(allowed)
   if (!keys.length) return c.json({ error: 'Nothing to update' }, 400)
+  // Placeholders: $1 = postId, $2..$(N+1) = SET values, $(N+2) = userId
   const sets = keys.map((k, i) => `"${k}"=$${i + 2}`).join(', ')
+  const userIdPlaceholder = `$${keys.length + 2}`
   const rows = await query(
     `UPDATE public."Post" SET ${sets}, "updatedAt"=NOW()
-      WHERE id=$1 AND "userId"=$2 RETURNING *`,
-    [postId, userId, ...keys.map(k => allowed[k])]
+      WHERE id=$1 AND "userId"=${userIdPlaceholder} RETURNING *`,
+    [postId, ...keys.map(k => allowed[k]), userId]
   )
   if (!rows.length) return c.json({ error: 'Post not found or not yours' }, 404)
   return c.json({ ok: true, post: rows[0] })
