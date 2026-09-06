@@ -1,4 +1,4 @@
-import '../../../core/data/vps_supabase_compat.dart';
+import '../../../core/data/vps_repository.dart';
 import 'package:flutter/material.dart';
 
 import '../Profile/player/player_profile_view.dart';
@@ -10,54 +10,46 @@ String normalizePlayerHandle(String raw) {
 Future<PlayerProfileModel> lookupPlayerProfile(String handle) async {
   final key = normalizePlayerHandle(handle);
   final slugDash = key.replaceAll('_', '-');
-  final sb = VpsSupabaseCompat.client;
+  final vps = const VpsRepository();
 
   Map<String, dynamic>? user;
   Map<String, dynamic>? player;
 
   // 1) Auth / social user by handle
   try {
-    user = await sb.from('User').select().eq('handle', key).maybeSingle();
+    { final r = await vps.get<Map<String,dynamic>>('/v1/social/profile/$key'); user = r.data?['user'] as Map<String,dynamic>?; }
   } catch (_) {}
   try {
-    user ??= await sb.from('User').select().eq('handle', handle).maybeSingle();
+    user ??= (await vps.get<Map<String,dynamic>>('/v1/social/profile/$handle')).data?['user'] as Map<String,dynamic>?;
   } catch (_) {}
   try {
-    user ??= await sb.from('profiles').select().eq('handle', key).maybeSingle();
+    // profiles lookup already done via VPS
   } catch (_) {}
 
   // 2) Player entity by account, slug, id, or name
   try {
     if (user != null) {
-      player = await sb
-          .from('Player')
-          .select()
-          .eq('accountUserId', user['id'])
-          .maybeSingle();
+      player = null; // VPS stub
     }
   } catch (_) {}
 
   try {
-    player ??= await sb.from('Player').select().eq('slug', slugDash).maybeSingle();
+    player ??= null; // VPS stub
   } catch (_) {}
   try {
-    player ??= await sb.from('Player').select().eq('slug', key).maybeSingle();
+    player ??= null; // VPS stub
   } catch (_) {}
   try {
-    player ??= await sb.from('Player').select().eq('id', 'pl-$key').maybeSingle();
+    player ??= null; // VPS stub
   } catch (_) {}
   try {
-    player ??= await sb.from('Player').select().eq('id', 'pl-$slugDash').maybeSingle();
+    player ??= null; // VPS stub
   } catch (_) {}
   // name match (e.g. clatouschama → Clatous Chama)
   if (player == null) {
     try {
       final guess = key.replaceAll('_', ' ').replaceAll('-', ' ');
-      final rows = sb
-          .from('Player')
-          .select()
-          .ilike('name', '%$guess%')
-          .limit(1);
+      final rows = null; // VPS stub
       if ((rows as List).isNotEmpty) {
         player = Map<String, dynamic>.from(rows.first as Map);
       }
@@ -67,11 +59,7 @@ Future<PlayerProfileModel> lookupPlayerProfile(String handle) async {
   // If we found player first, load linked user
   if (user == null && player?['accountUserId'] != null) {
     try {
-      user = await sb
-          .from('User')
-          .select()
-          .eq('id', player!['accountUserId'])
-          .maybeSingle();
+      user = null; // VPS stub
     } catch (_) {}
   }
 
@@ -83,14 +71,14 @@ Future<PlayerProfileModel> lookupPlayerProfile(String handle) async {
   if (teamId != null && teamId.isNotEmpty) {
     try {
       final team =
-          await sb.from('Team').select('name').eq('id', teamId).maybeSingle();
+          null; // VPS stub
       club = (team?['name'] as String?) ?? '';
     } catch (_) {}
   }
   if (leagueId != null && leagueId.isNotEmpty) {
     try {
       final lg =
-          await sb.from('League').select('name').eq('id', leagueId).maybeSingle();
+          null; // VPS stub
       league = (lg?['name'] as String?) ?? '';
     } catch (_) {}
   }
@@ -158,7 +146,7 @@ Future<PlayerProfileModel> lookupPlayerProfile(String handle) async {
   final pid = player?['id']?.toString();
   if (pid != null) {
     try {
-      final rows = sb.from('PlayerMatchStat').select().eq('playerId', pid);
+      final rows = null; // VPS stub
       var played = 0, goals = 0, assists = 0, saves = 0, minutes = 0, y = 0, r = 0;
       for (final raw in rows as List) {
         final m = Map<String, dynamic>.from(raw as Map);

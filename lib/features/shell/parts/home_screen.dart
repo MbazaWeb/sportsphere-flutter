@@ -137,11 +137,6 @@ class _TrendingContentState extends State<_TrendingContent> {
   List<Map<String, dynamic>> _rows = [];
   bool _loading = true;
 
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
 
   Future<void> _load() async {
     try {

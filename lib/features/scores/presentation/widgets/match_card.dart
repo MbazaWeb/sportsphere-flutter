@@ -43,11 +43,6 @@ class _MatchCardState extends State<MatchCard> {
   bool _liked = false;
   bool _likeBusy = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _seedLikedState();
-  }
 
   Future<void> _seedLikedState() async {
     final postId = widget.match.postId;

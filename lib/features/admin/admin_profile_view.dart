@@ -51,12 +51,6 @@ class _AdminProfileViewState extends ConsumerState<AdminProfileView>
 
   static const _vps = VpsRepository();
 
-  @override
-  void initState() {
-    super.initState();
-    _tab = TabController(length: 3, vsync: this);
-    _load();
-  }
 
   @override
   void dispose() { _tab.dispose(); super.dispose(); }

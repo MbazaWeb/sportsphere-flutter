@@ -1050,11 +1050,6 @@ class _ProfilePostVideoState extends State<_ProfilePostVideo> {
   bool _failed = false;
   bool _showPlayOverlay = true;
 
-  @override
-  void initState() {
-    super.initState();
-    _init();
-  }
 
   Future<void> _init() async {
     try {

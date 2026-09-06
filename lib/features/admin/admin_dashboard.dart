@@ -43,16 +43,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard>
   late TabController _tabs;
   Map<String, int> _stats = {};
   bool _statsLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabs = TabController(length: 7, vsync: this);
-    // Refresh token then load — ensures admin API calls work on web
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      try {
-        await ref.read(authControllerProvider.notifier).refreshToken();
-      } catch (_) {}
+ catch (_) {}
       if (mounted) _loadStats();
     });
   }

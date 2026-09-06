@@ -192,12 +192,7 @@ class _PlayerProfileViewState extends State<PlayerProfileView>
   bool _following = false;
   bool _isFan = false;
   final _graph = const SocialGraph();
-
-  @override
-  void initState() {
-    super.initState();
-    _tabCtrl = TabController(length: 3, vsync: this);
-    _tabCtrl.addListener(() => setState(() {}));
+));
     _loadSocial();
   }
 
@@ -830,11 +825,6 @@ class _SportlightsTab extends StatefulWidget {
 class _SportlightsTabState extends State<_SportlightsTab> {
   late Future<List<ProfilePost>> _future;
 
-  @override
-  void initState() {
-    super.initState();
-    _future = _loadPosts();
-  }
 
   @override
   void didUpdateWidget(covariant _SportlightsTab oldWidget) {

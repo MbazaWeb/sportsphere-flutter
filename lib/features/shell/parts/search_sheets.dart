@@ -23,16 +23,6 @@ class _SearchSheetState extends State<_SearchSheet> {
 
   List<Map<String, dynamic>> _results = [];
 
-  @override
-  void initState() {
-    super.initState();
-
-    _controller.addListener(_onChanged);
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _focusNode.requestFocus();
-      }
     });
   }
 
@@ -75,13 +65,6 @@ class _SearchSheetState extends State<_SearchSheet> {
     });
   }
 
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    _controller.dispose();
-    _focusNode.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {

@@ -165,12 +165,7 @@ class _TeamProfileViewState extends State<TeamProfileView>
   bool _busyFollow = false;
   bool _busyFan = false;
   final _graph = const SocialGraph();
-
-  @override
-  void initState() {
-    super.initState();
-    _tabCtrl = TabController(length: 5, vsync: this);
-    _tabCtrl.addListener(() => setState(() {}));
+));
     _loadSocial();
   }
 

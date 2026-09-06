@@ -305,13 +305,7 @@ class _SportlightsTabState extends State<SportlightsTab> {
   final ScrollController _scrollController = ScrollController();
   List<SpotlightItem> _live = const [];
   // polling timer replaces realtime channel
-
-  @override
-  void initState() {
-    super.initState();
-    AppAdmin.resolveIsAdmin().then((v) {
-      if (mounted) setState(() => _isAdmin = v);
-    });
+);
     _loadPosts();
     // Realtime: polling every 30s (Soketi wiring in next PR)
     
@@ -609,12 +603,6 @@ class _SportlightsTabState extends State<SportlightsTab> {
     return '${dt.day}/${dt.month}';
   }
 
-  @override
-  void dispose() {
-    // polling cleanup
-    _scrollController.dispose();
-    super.dispose();
-  }
 
   List<SpotlightItem> get _items => _live;
 
@@ -1130,16 +1118,7 @@ class _VideoContentState extends State<_VideoContent> {
   bool _initialized = false;
   bool _playing = false;
   bool _error = false;
-
-  @override
-  void initState() {
-    super.initState();
-    final url = widget.item.asset;
-    if (url != null && url.startsWith('http')) {
-      _ctrl = VideoPlayerController.networkUrl(Uri.parse(url))
-        ..initialize().then((_) {
-          if (mounted) setState(() => _initialized = true);
-        }).catchError((_) {
+).catchError((_) {
           if (mounted) setState(() => _error = true);
         });
       _ctrl!.setLooping(false);
@@ -1149,11 +1128,6 @@ class _VideoContentState extends State<_VideoContent> {
     }
   }
 
-  @override
-  void dispose() {
-    _ctrl?.dispose();
-    super.dispose();
-  }
 
   void _togglePlay() {
     if (_ctrl == null || !_initialized) return;
@@ -1270,13 +1244,6 @@ class _PollContentState extends State<_PollContent> {
   bool _busy = false;
   final _social = SocialRepository();
 
-  @override
-  void initState() {
-    super.initState();
-    _voted = widget.item.myPollVote;
-    _total = widget.item.pollTotalVotes ?? 0;
-    _counts = Map<int, int>.from(widget.item.pollCounts);
-  }
 
   Future<void> _onVote(int i) async {
     final pollId = widget.item.pollId;
@@ -2253,18 +2220,7 @@ class _EngagementRowState extends ConsumerState<_EngagementRow> {
   late int _comments;
   late int _shares;
   final _social = SocialRepository();
-
-  @override
-  void initState() {
-    super.initState();
-    _likes = widget.item.likes;
-    _comments = widget.item.comments;
-    _shares = widget.item.shares;
-    final id = widget.item.postId;
-    if (id != null) {
-      _social.hasShared(id).then((v) {
-        if (mounted) setState(() => _shared = v);
-      });
+);
       // #7.6: also load the like state from the DB so the heart icon reflects
       // the user's actual like state on first paint (was previously hard-coded
       // to `false`, causing the icon to flash from outlined to filled).
@@ -2534,11 +2490,6 @@ class _CommentSheetState extends State<_CommentSheet> {
   String? _replyPreview;
   static const _stickers = ['⚽', '🔥', '👏', '😂', '😱', '💪', '🏆', '❤️', '🦁', '⭐'];
 
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
 
   List<Map<String, dynamic>> _threadComments(List<Map<String, dynamic>> rows) {
     final roots = <Map<String, dynamic>>[];

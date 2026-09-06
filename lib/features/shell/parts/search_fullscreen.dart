@@ -19,13 +19,6 @@ class _FullScreenSearchState extends State<_FullScreenSearch>
   bool _loading = false;
   Timer? _debounce;
 
-  @override
-  void initState() {
-    super.initState();
-    _tabCtrl = TabController(length: 2, vsync: this);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _focusNode.requestFocus());
-    _controller.addListener(_onChanged);
-  }
 
   void _onChanged() {
     final q = _controller.text.trim();
@@ -59,14 +52,6 @@ class _FullScreenSearchState extends State<_FullScreenSearch>
     }
   }
 
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    _controller.dispose();
-    _focusNode.dispose();
-    _tabCtrl.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -337,20 +322,6 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
   final Set<String> _myTeamIds = {};
   final Set<String> _mySportIds = {};
 
-  @override
-  void initState() {
-    super.initState();
-    _radarCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2200),
-    );
-    _radarAnim = CurvedAnimation(
-      parent: _radarCtrl,
-      curve: Curves.easeOutCubic,
-    );
-    // Trigger radar scan on tab open
-    _triggerScan();
-  }
 
   @override
   void dispose() {
