@@ -20,7 +20,6 @@ import { mpesaRouter, mpesaCallbackHandler } from './routes/mpesa.js'
 import { fcmRouter }       from './routes/fcm.js'
 import { claimsRouter }    from './routes/claims.js'
 import { adminRouter }     from './routes/admin.js'
-import { aiRouter }        from './routes/ai.js'
 import { nearbyRouter }    from './routes/nearby.js'
 import { notifRouter }     from './routes/notifications.js'
 import { socialRouter }    from './routes/social.js'
@@ -164,7 +163,6 @@ app.route('/v1/fcm',           fcmRouter)
 app.route('/v1/claims',        claimsRouter)
 app.route('/v1/nearby',        nearbyRouter)
 app.route('/v1/notifications', notifRouter)
-app.route('/v1/ai',            aiRouter)
 app.route('/v1/social',        socialRouter)
 app.route('/v1/shop',          shopRouter)
 app.route('/v1/realtime',      realtimeRouter)
