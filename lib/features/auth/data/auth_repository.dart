@@ -236,6 +236,25 @@ class AuthRepository {
 
   Future<UserProfile?> refreshProfile() => hydrateProfile();
 
+  /// Refresh the access token using stored refresh token.
+  Future<void> refreshSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final refresh = prefs.getString(_kRefresh);
+    if (refresh == null) return;
+    try {
+      final data = await _vps.refreshToken(refresh);
+      final newToken = data['accessToken'] as String?;
+      if (newToken != null) {
+        await prefs.setString(_kToken, newToken);
+        _cachedToken = newToken;
+        final newRefresh = data['refreshToken'] as String?;
+        if (newRefresh != null) await prefs.setString(_kRefresh, newRefresh);
+      }
+    } catch (e) {
+      debugPrint('[AUTH] refreshSession: $e');
+    }
+  }
+
   // ── Update profile ─────────────────────────────────────────────────────────
   Future<UserProfile?> updateProfile({
     required String userId,

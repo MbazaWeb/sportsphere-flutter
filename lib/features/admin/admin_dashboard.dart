@@ -48,7 +48,13 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard>
   void initState() {
     super.initState();
     _tabs = TabController(length: 7, vsync: this);
-    _loadStats();
+    // Refresh token then load — ensures admin API calls work on web
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await ref.read(authControllerProvider.notifier).refreshToken();
+      } catch (_) {}
+      if (mounted) _loadStats();
+    });
   }
 
   @override
@@ -56,8 +62,19 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard>
 
   Future<void> _loadStats() async {
     setState(() => _statsLoading = true);
-    final s = await _repo.platformStats();
-    if (mounted) setState(() { _stats = s; _statsLoading = false; });
+    try {
+      final s = await _repo.platformStats();
+      if (mounted) setState(() { _stats = s; _statsLoading = false; });
+    } catch (e) {
+      debugPrint('[Admin] _loadStats error: $e');
+      if (mounted) setState(() => _statsLoading = false);
+      // Token may be expired — try refresh
+      if (e.toString().contains('401') || e.toString().contains('expired')) {
+        await ref.read(authControllerProvider.notifier).refreshToken();
+        final s = await _repo.platformStats();
+        if (mounted) setState(() { _stats = s; _statsLoading = false; });
+      }
+    }
   }
 
   @override
@@ -168,8 +185,13 @@ class _UsersTabState extends State<_UsersTab> {
   @override void initState(){super.initState();_load('');}
   Future<void> _load(String q) async {
     setState(()=>_loading=true);
-    final rows=await _repo.listUsers(q:q);
-    if(mounted) setState((){_users=rows;_loading=false;});
+    try {
+      final rows = await _repo.listUsers(q:q);
+      if (mounted) setState(() { _users=rows; _loading=false; });
+    } catch (e) {
+      debugPrint('[Admin.Users] _load error: $e');
+      if (mounted) setState(() => _loading=false);
+    }
   }
   @override
   Widget build(BuildContext context) {

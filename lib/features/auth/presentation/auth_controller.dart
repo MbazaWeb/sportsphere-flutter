@@ -205,6 +205,15 @@ class AuthController extends Notifier<AuthState> {
   // ── Clear error ────────────────────────────────────────────────────────────
   void clearError() => state = state.clearError();
 
+  // ── Token refresh ─────────────────────────────────────────────────────────────
+  Future<void> refreshToken() async {
+    try {
+      await ref.read(authRepositoryProvider).refreshSession();
+    } catch (e) {
+      debugPrint('[AuthController.refreshToken] $e');
+    }
+  }
+
   // ── Token refresh hook (called by ApiClient interceptor if needed) ─────────
   /// Returns the current VPS access token for authenticated requests.
   Future<String?> freshToken() async {
