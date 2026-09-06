@@ -502,7 +502,24 @@ socialRouter.get('/communities/:id/member', async (c) => {
 })
 
 socialRouter.get('/communities/:id/membership', async (c) => {
-  const userId = c.get('userId') as string | undefined
+  // Public endpoint (allow guests) — but if a Bearer token is provided, verify it
+  // so authenticated users get their real membership state. The /v1/* middleware
+  // bypasses auth for paths ending in /membership, so we manually extract userId.
+  let userId: string | undefined = c.get('userId') as string | undefined
+  if (!userId) {
+    const header = c.req.header('Authorization') ?? ''
+    const token  = header.replace(/^Bearer\s+/i, '').trim()
+    if (token) {
+      try {
+        const { jwtVerify } = await import('jose')
+        const JWT_SECRET = Bun.env.JWT_SECRET ?? ''
+        if (JWT_SECRET) {
+          const { payload } = await jwtVerify(token, new TextEncoder().encode(JWT_SECRET))
+          userId = (payload.sub as string) ?? undefined
+        }
+      } catch { /* invalid token — treat as guest */ }
+    }
+  }
   if (!userId) return c.json({ ok: true, isMember: false, role: null })
   const row = await queryOne(`SELECT role FROM public."CommunityMember" WHERE "communityId"=$1 AND "userId"=$2`, [c.req.param('id'), userId])
   return c.json({ ok: true, isMember: !!row, role: (row as any)?.role ?? null })
