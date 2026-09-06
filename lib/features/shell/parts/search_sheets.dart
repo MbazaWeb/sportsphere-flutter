@@ -683,7 +683,7 @@ class _MessageSheetState extends State<_MessageSheet> {
                           itemBuilder: (_, i) {
                             final m = _thread[i];
                             final mine = m['senderId'] ==
-                                Supabase.instance.client.auth.currentUser?.id;
+                                ref.read(authControllerProvider).user?.id;
                             return Align(
                               alignment: mine
                                   ? Alignment.centerRight

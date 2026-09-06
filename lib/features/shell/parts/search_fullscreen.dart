@@ -313,7 +313,7 @@ class _NearbyFansTab extends StatefulWidget {
 
 class _NearbyFansTabState extends State<_NearbyFansTab>
     with SingleTickerProviderStateMixin {
-  final _sb = Supabase.instance.client;
+  // _sb removed — using VPS
   List<Map<String, dynamic>> _fans = [];
   bool _loading = true;
   bool _scanning = false;
@@ -417,7 +417,7 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
       _myLng = position.longitude;
 
       // Save location to profile for future queries
-      if (Supabase.instance.client.auth.currentUser != null) {
+      if (ref.read(authControllerProvider).user != null) {
         try {
           await const VpsRepository().updateLocation(_myLat!, _myLng!);
         } catch (_) {}
@@ -1248,7 +1248,7 @@ class _FanActionButtonsState extends State<_FanActionButtons> {
   }
 
   Future<void> _checkFollowStatus() async {
-    if (Supabase.instance.client.auth.currentUser == null) return;
+    if (ref.read(authControllerProvider).user == null) return;
     try {
       final following = await const VpsRepository().isFollowing(widget.uid);
       if (mounted) setState(() => _following = following);
@@ -1257,7 +1257,7 @@ class _FanActionButtonsState extends State<_FanActionButtons> {
 
   Future<void> _toggleFollow() async {
     if (_busy) return;
-    if (Supabase.instance.client.auth.currentUser == null) return;
+    if (ref.read(authControllerProvider).user == null) return;
     setState(() => _busy = true);
     final wasFollowing = _following;
     setState(() => _following = !wasFollowing);

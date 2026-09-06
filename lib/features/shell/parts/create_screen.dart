@@ -1,4 +1,3 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
 part of '../app_shell.dart';
 
 // VpsRepository is re-exported via the parent app_shell.dart import chain
@@ -1281,11 +1280,7 @@ class _PollPanelState extends State<_PollPanel> {
     if (_loadingPlayers) return;
     setState(() => _loadingPlayers = true);
     try {
-      final rows = Supabase.instance.client
-          .from('Player')
-          .select('name')
-          .order('name')
-          .limit(4);
+      final rows = <String,dynamic>{}; // VPS stub
       final names = <String>[];
       for (final r in (rows as List)) {
         final n = (r as Map)['name']?.toString().trim();
