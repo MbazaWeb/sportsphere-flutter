@@ -7,9 +7,11 @@ import { sendEmail } from '../lib/email.js'
 import { Hono } from 'hono'
 import { query, queryOne, execute, transaction } from '../lib/db.js'
 // jose imported dynamically inside signToken/verifyJwt to avoid top-level await issues
-import { createHash, randomBytes } from 'crypto'
+import { createHash, randomBytes, randomInt } from 'crypto'
+import { authRateLimit } from '../middleware/auth-rate-limit.js'
 
 export const authRouter = new Hono()
+for (const path of ['/login', '/register', '/forgot-password', '/reset-password', '/otp/send', '/verify-identity', '/set-password']) authRouter.use(path, authRateLimit)
 
 // ── JWT helpers ───────────────────────────────────────────────────────────────
 const JWT_SECRET = Bun.env.JWT_SECRET ?? randomBytes(64).toString('hex')
@@ -23,11 +25,17 @@ const encoder = new TextEncoder()
 async function signToken(payload: Record<string, unknown>, secret: string, expiresIn: string): Promise<string> {
   const secret_bytes = encoder.encode(secret)
   const { SignJWT: Sign } = await import('jose')
-  return new Sign(payload)
+  const token = await new Sign(payload)
     .setProtectedHeader({ alg: 'HS256' })
+    .setJti(crypto.randomUUID())
     .setIssuedAt()
     .setExpirationTime(expiresIn)
     .sign(secret_bytes)
+  if (payload.type === 'refresh') {
+    const { decodeJwt } = await import('jose')
+    await execute('INSERT INTO public.refresh_tokens(id,user_id,token_hash,expires_at,created_at) VALUES(gen_random_uuid()::text,$1,$2,to_timestamp($3),NOW())', [payload.sub, createHash('sha256').update(token).digest('hex'), decodeJwt(token).exp])
+  }
+  return token
 }
 
 async function verifyJwt(token: string, secret: string): Promise<any> {
@@ -81,7 +89,7 @@ authRouter.post('/register', async (c) => {
   const hash       = await hashPassword(password)
   const finalHandle = await uniqueHandle(handle ?? normalEmail.split('@')[0])
   const name       = [firstName, lastName].filter(Boolean).join(' ') || finalHandle
-  const userRole   = role ?? 'fan'
+  const userRole = 'fan' // Public registration cannot grant privileges.
 
   await transaction(async (client) => {
     // Insert into User table
@@ -186,6 +194,9 @@ authRouter.post('/refresh', async (c) => {
   try { payload = await verifyJwt(refreshToken, REFRESH_SECRET) }
   catch { return c.json({ error: 'Invalid or expired refresh token' }, 401) }
 
+  if (payload.type !== 'refresh' || typeof payload.sub !== 'string') return c.json({ error: 'Invalid refresh token' }, 401)
+  const consumed = await queryOne('DELETE FROM public.refresh_tokens WHERE user_id=$1 AND token_hash=$2 AND expires_at>NOW() RETURNING id', [payload.sub, createHash('sha256').update(refreshToken).digest('hex')])
+  if (!consumed) return c.json({ error: 'Refresh token revoked or expired' }, 401)
   const userId = payload.sub as string
   const user   = await queryOne(
     `SELECT id, name, email, handle, role, "avatarUrl", "isVerified" FROM public."User" WHERE id=$1`,
@@ -354,9 +365,14 @@ authRouter.post('/reset-password', async (c) => {
   }
 
   const newHash = await Bun.password.hash(password, { algorithm: 'bcrypt', cost: 12 })
-  await execute(`UPDATE public."User" SET "passwordHash"=$1, "updatedAt"=NOW() WHERE id=$2`, [newHash, reset.user_id])
-  await execute(`UPDATE public.password_resets SET used_at=NOW() WHERE id=$1`, [reset.id])
-  await execute(`DELETE FROM public.refresh_tokens WHERE user_id=$1`, [reset.user_id]).catch(()=>{})
+  const changed = await transaction(async client => {
+    const consumed = await client.query('UPDATE public.password_resets SET used_at=NOW() WHERE id=$1 AND used_at IS NULL AND expires_at>NOW() RETURNING id', [reset.id])
+    if (!consumed.rowCount) return false
+    await client.query('UPDATE public."User" SET "passwordHash"=$1, "updatedAt"=NOW() WHERE id=$2', [newHash, reset.user_id])
+    await client.query('DELETE FROM public.refresh_tokens WHERE user_id=$1', [reset.user_id])
+    return true
+  })
+  if (!changed) return c.json({ error: 'Invalid or expired reset link' }, 400)
 
   // Issue new tokens so user is immediately logged in
   const userRow = await queryOne<any>(
@@ -372,9 +388,7 @@ authRouter.post('/reset-password', async (c) => {
   const accessToken = await new SignJWT({ sub: userRow.id, role: userRow.role, handle: userRow.handle })
     .setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('2h')
     .sign(enc.encode(JWT_SECRET))
-  const refreshToken = await new SignJWT({ sub: userRow.id, type: 'refresh' })
-    .setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('30d')
-    .sign(enc.encode(REFRESH_SECRET))
+  const refreshToken = await signToken({ sub: userRow.id, type: 'refresh' }, REFRESH_SECRET, REFRESH_EXPIRES)
 
   return c.json({ ok: true, accessToken, refreshToken, user: userRow })
 })
@@ -438,7 +452,7 @@ authRouter.post('/otp/send', async (c) => {
   if (!user) return c.json({ ok: true }) // silent — don't reveal if email exists
 
   // Generate 6-digit OTP valid 10 min
-  const otp      = Math.floor(100000 + Math.random() * 900000).toString()
+  const otp      = randomInt(100000, 1000000).toString()
   const otpHash  = createHash('sha256').update(otp).digest('hex')
   const expires  = new Date(Date.now() + 10 * 60 * 1000).toISOString()
 
@@ -484,19 +498,12 @@ authRouter.post('/verify-identity', async (c) => {
   )
   if (!user) return c.json({ error: 'Verification failed' }, 400)
 
-  if (method === 'dob') {
-    const userDob = (user.dob ?? user.dateOfBirth ?? '').toString().slice(0,10)
-    const inputDob = new Date(dob).toISOString().slice(0,10)
-    if (!userDob || userDob !== inputDob) {
-      return c.json({ error: 'Date of birth does not match our records' }, 400)
-    }
-    return c.json({ ok: true, verified: true })
-  }
+  if (method === 'dob') return c.json({ error: 'Use the email verification code to recover your account' }, 400)
 
   if (method === 'otp') {
     const otpHash = createHash('sha256').update(otp ?? '').digest('hex')
     const reset   = await queryOne<any>(
-      `SELECT id, expires_at FROM public.password_resets WHERE user_id=$1 AND token_hash=$2`,
+      `SELECT id, expires_at FROM public.password_resets WHERE user_id=$1 AND token_hash=$2 AND used_at IS NULL AND expires_at > NOW()`,
       [user.id, otpHash]
     )
     if (!reset) return c.json({ error: 'Invalid or expired code' }, 400)
@@ -524,26 +531,28 @@ authRouter.post('/set-password', async (c) => {
 
   // Re-verify identity
   let verified = false
-  if (method === 'dob') {
-    const userDob  = (user.dob ?? user.dateOfBirth ?? '').toString().slice(0,10)
-    const inputDob = new Date(dob).toISOString().slice(0,10)
-    verified = !!(userDob && userDob === inputDob)
-  } else if (method === 'otp') {
+  if (method === 'otp') {
     const otpHash = createHash('sha256').update(otp ?? '').digest('hex')
     const reset   = await queryOne<any>(
-      `SELECT id, expires_at FROM public.password_resets WHERE user_id=$1 AND token_hash=$2`,
+      `SELECT id, expires_at FROM public.password_resets WHERE user_id=$1 AND token_hash=$2 AND used_at IS NULL AND expires_at > NOW()`,
       [user.id, otpHash]
     )
     verified = !!(reset && new Date(reset.expires_at) >= new Date())
-    if (verified) await execute(`UPDATE public.password_resets SET used_at=NOW() WHERE id=$1`, [reset.id])
+
   }
 
   if (!verified) return c.json({ error: 'Identity verification failed' }, 401)
 
   // Set password
   const hash = await Bun.password.hash(password, { algorithm: 'bcrypt', cost: 12 })
-  await execute(`UPDATE public."User" SET "passwordHash"=$1,"updatedAt"=NOW() WHERE id=$2`, [hash, user.id])
-  await execute(`DELETE FROM public.refresh_tokens WHERE user_id=$1`, [user.id]).catch(()=>{})
+  const changed = await transaction(async client => {
+    const consumed = await client.query('UPDATE public.password_resets SET used_at=NOW() WHERE user_id=$1 AND token_hash=$2 AND used_at IS NULL AND expires_at>NOW() RETURNING id', [user.id, createHash('sha256').update(otp ?? '').digest('hex')])
+    if (!consumed.rowCount) return false
+    await client.query('UPDATE public."User" SET "passwordHash"=$1,"updatedAt"=NOW() WHERE id=$2', [hash, user.id])
+    await client.query('DELETE FROM public.refresh_tokens WHERE user_id=$1', [user.id])
+    return true
+  })
+  if (!changed) return c.json({ error: 'Invalid or expired code' }, 400)
 
   // Issue new tokens (auto-login)
   const JWT_SECRET     = Bun.env.JWT_SECRET ?? ''
@@ -554,9 +563,7 @@ authRouter.post('/set-password', async (c) => {
   const accessToken  = await new SignJWT({ sub: user.id, role: user.role, handle: user.handle })
     .setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('2h')
     .sign(enc.encode(JWT_SECRET))
-  const refreshToken = await new SignJWT({ sub: user.id, type: 'refresh' })
-    .setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('30d')
-    .sign(enc.encode(REFRESH_SECRET))
+  const refreshToken = await signToken({ sub: user.id, type: 'refresh' }, REFRESH_SECRET, REFRESH_EXPIRES)
 
   return c.json({ ok: true, accessToken, refreshToken,
     user: { id: user.id, name: user.name, handle: user.handle, role: user.role } })

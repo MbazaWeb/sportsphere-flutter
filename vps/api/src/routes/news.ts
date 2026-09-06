@@ -3,7 +3,9 @@
 import { Hono } from 'hono'
 import { query, queryOne, execute } from '../lib/db.js'
 
+import { authMiddleware } from '../middleware/auth.js'
 export const newsRouter = new Hono()
+newsRouter.use('*', (c, next) => c.req.method === 'GET' ? next() : authMiddleware(c, next))
 
 // GET /v1/news?category=&status=published&limit=40
 newsRouter.get('/', async (c) => {

@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import type { Session } from '@supabase/supabase-js'
-import { supabase } from './lib/supabase'
+import { getSession, api, type AdminSession } from './lib/http'
+
 import { Shell } from './components/Shell'
 import { LoginPage } from './pages/LoginPage'
 import { DashboardPage } from './pages/DashboardPage'
@@ -16,16 +16,16 @@ import { MatchesPage } from './pages/MatchesPage'
 import AiAssistantPage from './pages/AiAssistantPage'
 
 export default function App() {
-  const [session, setSession] = useState<Session | null>(null)
+  const [session, setSession] = useState<AdminSession | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-      setLoading(false)
-    })
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
-    return () => sub.subscription.unsubscribe()
+    const update = () => setSession(getSession())
+    const current = getSession()
+    if (current) api('/v1/admin/stats').then(() => setSession(current)).catch(() => setSession(null)).finally(() => setLoading(false))
+    else setLoading(false)
+    window.addEventListener('admin-session', update)
+    return () => window.removeEventListener('admin-session', update)
   }, [])
 
   if (loading) {

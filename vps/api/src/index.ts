@@ -1,3 +1,6 @@
+import { randomUUID } from 'crypto'
+import { validSubscription } from './lib/channel-auth.js'
+import { appVersion } from './lib/app-version.js'
 // vps/api/src/index.ts — Playify VPS API
 // Data: VPS PostgreSQL (direct pg)
 // Auth: Supabase JWT verification only
@@ -11,7 +14,7 @@ import { adminMiddleware } from './middleware/admin.js'
 
 import { healthRouter }    from './routes/health.js'
 import { feedRouter }      from './routes/feed.js'
-import { mediaRouter }     from './routes/media.js'
+import { mediaRouter, storageRouter } from './routes/media.js'
 import { matchRouter }     from './routes/matches.js'
 import { mpesaRouter, mpesaCallbackHandler } from './routes/mpesa.js'
 import { fcmRouter }       from './routes/fcm.js'
@@ -30,7 +33,7 @@ const app = new Hono()
 
 // ── Global middleware ─────────────────────────────────────────────────────────
 app.use('*', secureHeaders())
-app.use('*', logger())
+app.use('*', (c, next) => c.req.path === '/v1/mpesa/callback' ? next() : logger()(c, next))
 app.use('*', cors({
   origin: (origin) => {
     if (!origin) return null
@@ -45,6 +48,7 @@ app.use('*', cors({
 
 // ── Public routes (no JWT) ────────────────────────────────────────────────────
 app.route('/health',   healthRouter)
+app.route('/storage', storageRouter)
 app.route('/v1/matches', matchRouter)
 
 
@@ -61,12 +65,7 @@ app.post('/v1/mpesa/callback', mpesaCallbackHandler)
 // ── Public auth routes (no JWT required) ─────────────────────────────────────
 
 // WebSocket stats — internal monitoring (no auth)
-app.get('/v1/app/version', (c) => c.json({
-  ok: true, version: '1.2.1', versionCode: 5,
-  downloadUrl: 'https://playifysport.fun/downloads/playify.apk',
-  releaseNotes: 'Bug fixes, improved feed, password reset, community features.',
-  forceUpdate: false, minVersionCode: 1,
-}))
+app.get('/v1/app/version', (c) => c.json(appVersion))
 
 app.get('/ws/stats', async (c) => {
   return c.json({ ok: true, ...getStats() })
@@ -150,7 +149,7 @@ app.use('/v1/*', async (c, next) => {
   if (path.startsWith('/v1/social/communities/') && path.endsWith('/member')) {
     return next()
   }
-  if (publicPaths.includes(path)) return next()
+  if (publicPaths.includes(path) && (c.req.method === 'GET' || path.startsWith('/v1/auth/'))) return next()
   return authMiddleware(c, next)
 })
 
@@ -179,7 +178,7 @@ app.route('/v1/admin', adminRouter)
 app.notFound((c) => c.json({ error: 'Not found' }, 404))
 app.onError((err, c) => {
   console.error('[API Error]', err)
-  return c.json({ error: err.message ?? 'Internal server error' }, 500)
+  return c.json({ error: 'Internal server error' }, 500)
 })
 
 const port = Number(Bun.env.PORT ?? 3000)
@@ -208,7 +207,7 @@ function getStats() {
 
 const wsHandler = {
   open(ws: any) {
-    const sid = `${Math.floor(Math.random()*999999)}.${Math.floor(Math.random()*999999)}`
+    const sid = randomUUID()
     if (!ws.data) ws.data = {}
     ws.data.socketId = sid
     ws.data.channels = new Set<string>()
@@ -228,7 +227,11 @@ const wsHandler = {
     if (msg.event === 'pusher:subscribe') {
       let d: any = {}
       try { d = typeof msg.data==='string' ? JSON.parse(msg.data) : msg.data } catch {}
-      const ch = d.channel as string; if (!ch) return
+      const ch = d?.channel
+      if (!validSubscription(ws.data.socketId, ch, d?.auth) || ws.data.channels.size >= 100) {
+        ws.send(JSON.stringify({ event: 'pusher:error', data: { code: 4009, message: 'Subscription denied' } }))
+        return
+      }
       ws.data.channels.add(ch)
       if (!_chSockets.has(ch)) _chSockets.set(ch, new Set())
       _chSockets.get(ch)!.add(ws.data.socketId)
@@ -242,7 +245,7 @@ const wsHandler = {
       const ch = d.channel as string; if (!ch) return
       ws.data.channels?.delete(ch); _chSockets.get(ch)?.delete(ws.data?.socketId); return
     }
-    if (msg.event?.startsWith('client-') && msg.channel) {
+    if (msg.event === 'client-typing' && typeof msg.channel === 'string' && /^private[:-]chat-/.test(msg.channel) && ws.data.channels.has(msg.channel)) {
       broadcastToChannel(msg.channel, msg.event, msg.data ?? {}, ws.data?.socketId)
     }
   },
@@ -261,7 +264,8 @@ const wsHandler = {
 // Bun server: handles HTTP (Hono) + WebSocket (Pusher protocol)
 const honoFetch = app.fetch.bind(app)
 export default {
-  port: 3000,
+  port,
+  hostname: Bun.env.HOST ?? '127.0.0.1',
   async fetch(req: Request, server: any) {
     const path = new URL(req.url).pathname
     // Intercept /app/* — always try WebSocket upgrade first
@@ -275,5 +279,5 @@ export default {
     }
     return honoFetch(req, server)
   },
-  websocket: wsHandler,
+  websocket: { ...wsHandler, maxPayloadLength: 64 * 1024 },
 }

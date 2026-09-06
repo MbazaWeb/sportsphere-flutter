@@ -2,7 +2,10 @@
 import { Hono } from 'hono'
 import { query, queryOne, execute } from '../lib/db.js'
 
+import { adminMiddleware } from '../middleware/admin.js'
 export const claimsRouter = new Hono()
+claimsRouter.use('/approve', adminMiddleware)
+claimsRouter.use('/reject', adminMiddleware)
 
 claimsRouter.post('/approve', async (c) => {
   const adminId = c.get('userId') as string

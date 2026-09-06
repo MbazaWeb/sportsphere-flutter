@@ -3,10 +3,12 @@
 // Soketi uses the Pusher protocol for private/presence channel auth.
 
 import { Hono } from 'hono'
-import { createHmac } from 'crypto'
+import { channelSignature, canAccessChannel } from '../lib/channel-auth.js'
+import { authMiddleware } from '../middleware/auth.js'
 import { query } from '../lib/db.js'
 
 export const realtimeRouter = new Hono()
+realtimeRouter.use('*', authMiddleware)
 
 
 // ── POST /v1/realtime/auth ─────────────────────────────────────────────────────
@@ -22,36 +24,8 @@ realtimeRouter.post('/auth', async (c) => {
     return c.json({ error: 'socket_id and channel_name required' }, 400)
   }
 
-  // Validate channel access
-  if (channelName.startsWith('private:user-')) {
-    // Only allow auth if the channel belongs to this user
-    const channelUserId = channelName.replace('private:user-', '')
-    if (channelUserId !== userId) {
-      return c.json({ error: 'Forbidden: channel not yours' }, 403)
-    }
-  } else if (channelName.startsWith('private:chat-')) {
-    // Allow if user is participant in this thread
-    // thread id format: chat-{userId1}-{userId2} sorted
-    const parts = channelName.replace('private:chat-', '').split('-')
-    if (!parts.includes(userId)) {
-      return c.json({ error: 'Forbidden: not a participant' }, 403)
-    }
-  } else if (channelName.startsWith('presence:')) {
-    // Allow all authenticated users in presence channels
-  } else if (!channelName.startsWith('public:')) {
-    return c.json({ error: 'Unknown channel type' }, 400)
-  }
-
-  // Generate Pusher-compatible auth signature
-  const toSign = `${socketId}:${channelName}`
-  const auth   = `${SOKETI_APP_KEY}:${createHmac('sha256', SOKETI_SECRET).update(toSign).digest('hex')}`
-
-  // For presence channels, include user data
-  const channelData = channelName.startsWith('presence:')
-    ? JSON.stringify({ user_id: userId })
-    : undefined
-
-  return c.json({ auth, ...(channelData ? { channel_data: channelData } : {}) })
+  if (!canAccessChannel(channelName, userId)) return c.json({ error: 'Forbidden: channel access denied' }, 403)
+  return c.json({ auth: channelSignature(socketId, channelName) })
 })
 
 // ── Broadcast helper — uses global registry set by index.ts ──────────────────

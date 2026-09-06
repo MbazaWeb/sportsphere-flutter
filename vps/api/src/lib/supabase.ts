@@ -33,5 +33,5 @@ export async function isAdmin(userId: string): Promise<boolean> {
     [userId]
   )
   const role = String(row?.role ?? '').toLowerCase()
-  return ['admin', 'official', 'organization', 'moderator'].includes(role)
+  return role === 'admin'
 }

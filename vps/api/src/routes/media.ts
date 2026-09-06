@@ -4,7 +4,7 @@
 // DELETE /v1/media/:key  — delete a media object
 
 import { Hono } from 'hono'
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
 import sharp from 'sharp'
 
 export const mediaRouter = new Hono()
@@ -22,6 +22,26 @@ const s3 = new S3Client({
 
 const CDN = () => Bun.env.CDN_BASE_URL ?? 'https://playifysport.fun/storage'
 const BUCKET = 'media'
+
+// Public media URLs use this origin; keep R2 credentials on the server.
+export const storageRouter = new Hono()
+storageRouter.get('/:key{.+}', async c => {
+  const key = c.req.param('key')
+  if (key.includes('..') || key.startsWith('/') || key.length > 1024) return c.json({ error: 'Invalid media key' }, 400)
+  try {
+    const object = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: key, Range: c.req.header('Range') }))
+    if (!object.Body) return c.json({ error: 'Media not found' }, 404)
+    const headers = new Headers({ 'Content-Type': object.ContentType ?? 'application/octet-stream', 'Cache-Control': object.CacheControl ?? 'public, max-age=3600', 'Accept-Ranges': 'bytes', 'X-Content-Type-Options': 'nosniff' })
+    if (object.ContentLength !== undefined) headers.set('Content-Length', String(object.ContentLength))
+    if (object.ETag) headers.set('ETag', object.ETag)
+    if (object.ContentRange) headers.set('Content-Range', object.ContentRange)
+    return new Response(object.Body.transformToWebStream(), { status: object.ContentRange ? 206 : 200, headers })
+  } catch (error: any) {
+    if (error.$metadata?.httpStatusCode === 404) return c.json({ error: 'Media not found' }, 404)
+    if (error.$metadata?.httpStatusCode === 416) return c.body(null, 416)
+    throw error
+  }
+})
 
 // Image variant specs — matches storage strategy from our schema design
 const VARIANTS = {

@@ -35,7 +35,7 @@ class _SetPasswordModal extends ConsumerStatefulWidget {
 
 class _SetPasswordModalState extends ConsumerState<_SetPasswordModal> {
   _Step _step = _Step.chooseMethod;
-  _VerifyMethod _method = _VerifyMethod.dob;
+  _VerifyMethod _method = _VerifyMethod.otp;
 
   // DOB verification
   DateTime? _dob;
@@ -208,19 +208,10 @@ class _SetPasswordModalState extends ConsumerState<_SetPasswordModal> {
   };
 
   Widget _buildChooseMethod() => Column(children: [
-    // DOB option
-    _MethodTile(
-      icon: Icons.cake_outlined,
-      title: 'Date of Birth',
-      subtitle: 'Verify using your date of birth',
-      selected: _method == _VerifyMethod.dob,
-      onTap: () => setState(() => _method = _VerifyMethod.dob),
-    ),
-    const SizedBox(height: 10),
     // OTP option
     _MethodTile(
       icon: Icons.sms_outlined,
-      title: 'Email / SMS Code',
+      title: 'Email Code',
       subtitle: 'Get a one-time code sent to ${widget.email}',
       selected: _method == _VerifyMethod.otp,
       onTap: () => setState(() => _method = _VerifyMethod.otp),

@@ -1,7 +1,8 @@
+import { roleProfiles } from '../lib/role-profiles.js'
 import { broadcast } from './realtime.js'
 // vps/api/src/routes/admin.ts — admin routes (JWT + admin role required)
 import { Hono } from 'hono'
-import { query, queryOne, execute } from '../lib/db.js'
+import { query, queryOne, execute, transaction } from '../lib/db.js'
 import { createClient } from '@supabase/supabase-js'
 
 export const adminRouter = new Hono()
@@ -169,30 +170,27 @@ adminRouter.get('/players/search', async (c) => {
 // ── USERS ─────────────────────────────────────────────────────────────────────
 
 // POST /v1/admin/users — create user (admin creates on behalf)
-adminRouter.post('/users', async (c) => {
-  const { email, password, firstName, lastName, handle, role, avatarUrl } =
-    await c.req.json<any>()
-  if (!email || !password) return c.json({ error: 'email and password required' }, 400)
-
-  const userId     = crypto.randomUUID()
-  const hash       = await Bun.password.hash(password, { algorithm: 'bcrypt', cost: 12 })
-  const userRole   = role ?? 'fan'
-  const finalHandle = ((handle ?? email.split('@')[0]) as string)
-    .toLowerCase().replace(/[^a-z0-9_]/g,'').slice(0,30) || 'user'
-  const name       = [firstName, lastName].filter(Boolean).join(' ') || finalHandle
-
-  await execute(
-    `INSERT INTO public."User"(id,name,email,handle,role,"passwordHash","avatarUrl","emailVerified","registeredAt","updatedAt")
-     VALUES($1,$2,$3,$4,$5,$6,$7,true,NOW(),NOW())
-     ON CONFLICT(email) DO NOTHING`,
-    [userId, name, email.toLowerCase(), finalHandle, userRole, hash, avatarUrl??null]
-  )
-  await execute(
-    `INSERT INTO public.profiles(id,handle,role,first_name,last_name,email,created_at,updated_at)
-     VALUES($1::uuid,$2,$3,$4,$5,$6,NOW(),NOW()) ON CONFLICT(id) DO NOTHING`,
-    [userId, finalHandle, userRole, firstName??'', lastName??'', email.toLowerCase()]
-  )
-  return c.json({ ok: true, id: userId, handle: finalHandle }, 201)
+adminRouter.post('/users', async c => {
+  const { email, password, firstName, lastName, handle, role = 'fan', avatarUrl, country, bio, profileData } = await c.req.json<any>()
+  if (typeof email !== 'string' || !email.includes('@') || typeof password !== 'string' || password.length < 8) return c.json({ error: 'Valid email and password of at least 8 characters required' }, 400)
+  const allowedRoles = ['fan','player','team','coach','scout','agent','analyst','journalist','creator','official','moderator','admin','organization','media_broadcast','sponsor','commercial_partner','venue','academy','league','competition','community','business','support_staff','commentator']
+  if (!allowedRoles.includes(role)) return c.json({ error: 'Invalid role' }, 400)
+  const normalizedEmail = email.trim().toLowerCase()
+  const finalHandle = String(handle ?? normalizedEmail.split('@')[0]).toLowerCase().replace(/[^a-z0-9_]/g,'').slice(0,30)
+  if (await queryOne('SELECT id FROM public."User" WHERE email=$1 OR handle=$2', [normalizedEmail, finalHandle])) return c.json({ error: 'Email or handle already exists' }, 409)
+  const userId = crypto.randomUUID()
+  const hash = await Bun.password.hash(password, { algorithm: 'bcrypt', cost: 12 })
+  await transaction(async client => {
+    await client.query('INSERT INTO public."User"(id,name,email,handle,role,"passwordHash","avatarUrl","emailVerified","registeredAt","updatedAt") VALUES($1,$2,$3,$4,$5,$6,$7,false,NOW(),NOW())', [userId,[firstName,lastName].filter(Boolean).join(' ') || finalHandle,normalizedEmail,finalHandle,role,hash,avatarUrl ?? null])
+    await client.query('INSERT INTO public.profiles(id,handle,role,first_name,last_name,email,country,bio,created_at,updated_at) VALUES($1::uuid,$2,$3,$4,$5,$6,$7,$8,NOW(),NOW())', [userId,finalHandle,role,firstName ?? '',lastName ?? '',normalizedEmail,country ?? null,bio ?? null])
+    const config = roleProfiles[role]
+    if (config && profileData && Object.keys(profileData).length) {
+      const columns = ['userId', ...config.fields.filter(key => profileData[key] !== undefined)]
+      const values = [userId, ...columns.slice(1).map(key => profileData[key])]
+      await client.query('INSERT INTO public."' + config.table + '" (' + columns.map(key => '"' + key + '"').join(',') + ') VALUES (' + values.map((_,i) => '$' + (i+1)).join(',') + ')', values)
+    }
+  })
+  return c.json({ ok:true, id:userId, handle:finalHandle },201)
 })
 
 // PATCH /v1/admin/users/:id/verify
@@ -772,3 +770,12 @@ adminRouter.patch('/role-requests/:id', async (c) => {
   }
   return c.json({ ok: true })
 })
+
+adminRouter.get('/services', c => c.json({ ok: true, services: {
+  database: !!Bun.env.DATABASE_URL,
+  email: !!(Bun.env.RESEND_API_KEY || Bun.env.MAILGUN_API_KEY || Bun.env.SMTP_URL),
+  media: !!(Bun.env.MINIO_ENDPOINT && Bun.env.MINIO_ROOT_USER && Bun.env.MINIO_ROOT_PASSWORD),
+  push: !!Bun.env.FIREBASE_SERVICE_ACCOUNT_JSON,
+  payments: !!(Bun.env.MPESA_CONSUMER_KEY && Bun.env.MPESA_CONSUMER_SECRET && Bun.env.MPESA_PASSKEY && Bun.env.MPESA_CALLBACK_SECRET),
+  ai: !!(Bun.env.ANTHROPIC_API_KEY || Bun.env.DEEPSEEK_API_KEY),
+} }))

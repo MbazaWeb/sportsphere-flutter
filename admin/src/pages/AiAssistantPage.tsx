@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/http'
+import { createNews } from '../lib/api'
 
 const MODES = [
   { id: 'news', label: 'Write news' },
@@ -22,19 +23,11 @@ export default function AiAssistantPage() {
     setError(null)
     setOut('')
     try {
-      const { data, error: fnErr } = await supabase.functions.invoke('ai-assistant', {
-        body: { mode, prompt, provider },
-      })
-      if (fnErr) throw fnErr
+      const data = await api('/v1/ai', 'POST', { mode, prompt, provider })
       setOut(typeof data?.text === 'string' ? data.text : JSON.stringify(data, null, 2))
     } catch (e: any) {
       setError(e?.message ?? String(e))
-      // Local fallback message when edge function is not deployed yet
-      setOut(
-        'AI edge function not reachable yet.\n' +
-          'Deploy supabase/functions/ai-assistant and set ANTHROPIC_API_KEY + DEEPSEEK_API_KEY as function secrets.\n' +
-          'Draft prompt was:\n' + prompt
-      )
+      setOut('')
     } finally {
       setLoading(false)
     }
@@ -42,20 +35,10 @@ export default function AiAssistantPage() {
 
   async function publishAsNews() {
     if (!out.trim()) return
-    const id = `news-ai-${Date.now()}`
-    const { error: err } = await supabase.from('NewsItem').insert({
-      id,
-      title: out.split('\n')[0].slice(0, 120) || 'AI draft',
-      slug: id,
-      body: out,
-      summary: out.slice(0, 180),
-      category: 'updates',
-      status: 'published',
-      source: 'Playify AI',
-      publishedAt: new Date().toISOString(),
-    })
-    if (err) setError(err.message)
-    else setError(null)
+    try {
+      await createNews({ title: out.split('\n')[0].slice(0,120) || 'AI draft', body: out, summary: out.slice(0,180), category: 'updates', source: 'Playify AI' })
+      setError(null)
+    } catch (e) { setError(e instanceof Error ? e.message : 'Publishing failed') }
   }
 
   return (

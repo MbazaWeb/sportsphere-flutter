@@ -24,7 +24,9 @@ shopRouter.post('/orders', async (c) => {
   const id     = `ord-${Date.now()}`
   const ref    = `SS-${id.substring(4)}`
   const amount = unitPriceTzs * quantity
-  const status = paymentMethod === 'demo' ? 'paid' : 'pending_confirm'
+  if (!Number.isFinite(unitPriceTzs) || unitPriceTzs <= 0 || !Number.isInteger(quantity) || quantity < 1 || quantity > 100) return c.json({ error: 'Invalid price or quantity' }, 400)
+  if (paymentMethod === 'demo') return c.json({ error: 'Demo payments are disabled' }, 400)
+  const status = 'pending_confirm'
 
   const rows = await query(
     `INSERT INTO public."ShopOrder"

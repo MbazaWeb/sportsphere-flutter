@@ -49,6 +49,7 @@ aiRouter.post('/', async (c) => {
       body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:1024, system,
         messages:[{ role:'user', content: prompt }] }),
     })
+    if (!res.ok) return c.json({ error: 'AI provider could not complete the request' }, 502)
     const d    = await res.json() as any
     const text = d?.content?.[0]?.text ?? ''
     return c.json({ ok:true, text, provider:'anthropic', remaining: rl.remaining })
@@ -63,6 +64,7 @@ aiRouter.post('/', async (c) => {
     body: JSON.stringify({ model:'deepseek-chat',
       messages:[{ role:'system', content:system }, { role:'user', content:prompt }] }),
   })
+  if (!res.ok) return c.json({ error: 'AI provider could not complete the request' }, 502)
   const d    = await res.json() as any
   const text = d?.choices?.[0]?.message?.content ?? ''
   return c.json({ ok:true, text, provider:'deepseek', remaining: rl.remaining })

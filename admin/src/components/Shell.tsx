@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { signOut } from '../lib/http'
 import type { ReactNode } from 'react'
 
 const links = [
@@ -31,7 +31,7 @@ export function Shell({ children }: { children: ReactNode }) {
           ))}
         </nav>
         <div style={{ marginTop: 28, padding: '0 8px' }}>
-          <button className="btn btn-sm" onClick={() => supabase.auth.signOut()}>
+          <button className="btn btn-sm" onClick={() => signOut()}>
             Sign out
           </button>
         </div>

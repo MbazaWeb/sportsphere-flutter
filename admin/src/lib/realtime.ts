@@ -1,18 +1,9 @@
-import { useEffect } from 'react'
-import { supabase } from './supabase'
-
+﻿import { useEffect, useRef } from 'react'
 export function useTableRealtime(table: string, onChange: () => void) {
+  const callback = useRef(onChange)
+  callback.current = onChange
   useEffect(() => {
-    const channel = supabase
-      .channel(`admin-${table}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table },
-        () => onChange(),
-      )
-      .subscribe()
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [table, onChange])
+    const timer = window.setInterval(() => { if (!document.hidden) callback.current() }, 15000)
+    return () => window.clearInterval(timer)
+  }, [table])
 }

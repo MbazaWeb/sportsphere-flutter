@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from 'crypto'
 // vps/api/src/routes/mpesa.ts
 import { Hono } from 'hono'
 import { queryOne, execute } from '../lib/db.js'
@@ -29,23 +30,21 @@ function normalizePhone(phone: string): string {
 export const mpesaCallbackHandler = async (c: any) => {
   let body: any
   try { body = await c.req.json() } catch { return c.json({error:'Invalid JSON'},500) }
-  console.log('[mpesa-callback]', JSON.stringify(body))
-
-  const result    = body?.Body?.stkCallback
-  const shortcode = (Bun.env.MPESA_SHORTCODE ?? '').trim()
-  if (shortcode && result?.BusinessShortCode !== undefined) {
-    if (String(result.BusinessShortCode) !== shortcode) {
-      return c.json({ error: 'Unauthorized' }, 401)
-    }
+  const secret = Bun.env.MPESA_CALLBACK_SECRET
+  if (!secret) return c.json({ error: 'Payments are not configured' }, 503)
+  const orderId = c.req.query('orderId') ?? ''
+  const provided = Buffer.from(c.req.query('token') ?? '')
+  const expected = Buffer.from(createHmac('sha256', secret).update(orderId).digest('hex'))
+  if (!orderId || provided.length !== expected.length || !timingSafeEqual(provided, expected)) return c.json({ error: 'Unauthorized' }, 401)
+  const result = body?.Body?.stkCallback
+  if (!result?.CheckoutRequestID || !Number.isInteger(result.ResultCode)) return c.json({ error: 'Invalid callback' }, 400)
+  const order = await queryOne<any>('SELECT * FROM public."ShopOrder" WHERE id=$1 AND "paymentRef"=$2', [orderId, result.CheckoutRequestID])
+  if (!order) return c.json({ error: 'Unknown payment' }, 400)
+  if (result.ResultCode === 0) {
+    const amount = result.CallbackMetadata?.Item?.find((item: any) => item.Name === 'Amount')?.Value
+    if (Number(amount) !== Number(order.amountTzs)) return c.json({ error: 'Payment amount mismatch' }, 400)
   }
-  const checkoutId = result?.CheckoutRequestID as string|undefined
-  const code       = result?.ResultCode
-  if (checkoutId) {
-    await execute(
-      `UPDATE public."ShopOrder" SET status = $1, "paymentRef" = $2, "updatedAt" = NOW() WHERE "paymentRef" = $3`,
-      [code===0?'paid':'failed', checkoutId, checkoutId]
-    )
-  }
+  await execute(`UPDATE public."ShopOrder" SET status=$1,"updatedAt"=NOW() WHERE id=$2 AND "paymentRef"=$3 AND status='stk_sent'`, [result.ResultCode === 0 ? 'paid' : 'failed', orderId, result.CheckoutRequestID])
   return c.json({ ResultCode: 0, ResultDesc: 'Accepted' })
 }
 
@@ -66,7 +65,11 @@ mpesaRouter.post('/stk', async (c) => {
   const passkey   = Bun.env.MPESA_PASSKEY   ?? ''
   const callback  = Bun.env.MPESA_CALLBACK_URL ?? `https://playifysport.fun/v1/mpesa/callback`
 
-  if (!Bun.env.MPESA_CONSUMER_KEY) return c.json({ error: 'M-Pesa not configured' }, 503)
+  if (!Bun.env.MPESA_CONSUMER_KEY || !Bun.env.MPESA_CONSUMER_SECRET || !passkey || !Bun.env.MPESA_CALLBACK_SECRET) return c.json({ error: 'M-Pesa is not configured' }, 503)
+  const callbackUrl = new URL(callback)
+  callbackUrl.searchParams.set('orderId', orderId)
+  callbackUrl.searchParams.set('token', createHmac('sha256', Bun.env.MPESA_CALLBACK_SECRET).update(orderId).digest('hex'))
+  if (order.status === 'paid' || order.status === 'stk_sent') return c.json({ error: 'Order already paid or payment pending' }, 409)
 
   const ts = timestamp(); const password = btoa(`${shortcode}${passkey}${ts}`)
   const token = await getMpesaToken()
@@ -74,7 +77,7 @@ mpesaRouter.post('/stk', async (c) => {
 
   const stkRes  = await fetch(`${mpesaBase()}/mpesa/stkpush/v1/processrequest`,{
     method:'POST', headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
-    body:JSON.stringify({BusinessShortCode:shortcode,Password:password,Timestamp:ts,TransactionType:'CustomerPayBillOnline',Amount:amount,PartyA:normalPhone,PartyB:shortcode,PhoneNumber:normalPhone,CallBackURL:callback,AccountReference:orderId.slice(0,12),TransactionDesc:'Playify'})
+    body:JSON.stringify({BusinessShortCode:shortcode,Password:password,Timestamp:ts,TransactionType:'CustomerPayBillOnline',Amount:amount,PartyA:normalPhone,PartyB:shortcode,PhoneNumber:normalPhone,CallBackURL:callbackUrl.toString(),AccountReference:orderId.slice(0,12),TransactionDesc:'Playify'})
   })
   const stkJson = await stkRes.json() as any
 
