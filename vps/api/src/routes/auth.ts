@@ -244,6 +244,15 @@ authRouter.post('/logout', async (c) => {
   return c.json({ ok: true })
 })
 
+// ── GET /v1/auth/has-password — check if user has VPS password set
+authRouter.get('/has-password', async (c) => {
+  const userId = c.get('userId') as string
+  const user = await queryOne<{ passwordHash: string | null }>(
+    `SELECT "passwordHash" FROM public."User" WHERE id=$1`, [userId]
+  )
+  return c.json({ ok: true, hasPassword: !!(user?.passwordHash) })
+})
+
 // ── POST /v1/auth/change-password ────────────────────────────────────────────
 authRouter.post('/change-password', async (c) => {
   const userId = c.get('userId') as string

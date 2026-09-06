@@ -6,6 +6,7 @@ import '../../../core/data/social_repository.dart';
 import '../../../core/data/world_countries.dart';
 import '../../../core/taxonomy/sport_catalog.dart';
 import '../../../core/theme/colors.dart';
+import '../../../core/data/vps_repository.dart';
 import '../../auth/presentation/pages/set_password_modal.dart';
 import '../../../core/widgets/grass_form.dart';
 import '../../../core/widgets/country_picker_field.dart';
@@ -361,15 +362,32 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
 // passed an empty string for the current password, which the old
 // repository silently accepted.
 Future<void> showChangePasswordDialog(BuildContext context, WidgetRef ref) async {
-  // Check if migrated user (no VPS password set) — use DOB/OTP flow instead
   final auth = ref.read(authControllerProvider);
   final email = auth.user?.email ?? '';
+
+  // Check if migrated user via API
+  bool isMigrated = false;
   if (email.isNotEmpty) {
     try {
-      // Try a dummy change to see if passwordHash exists
-      // Actually just check via the auth state — if user has no passwordHash we show set_password
-      // We detect this by trying change-password with empty current and catching the error
-    } catch (_) {}
+      final vps = const VpsRepository();
+      final res = await vps.get<Map<String,dynamic>>('/v1/auth/has-password');
+      isMigrated = res.data?['hasPassword'] == false;
+    } catch (_) {
+      isMigrated = false;
+    }
+  }
+
+  // Migrated user → show OTP/DOB verification flow
+  if (isMigrated && email.isNotEmpty && context.mounted) {
+    final success = await showSetPasswordModal(context, email);
+    if (success == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Password set successfully ✅'),
+        backgroundColor: Color(0xFF4CAF50),
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
+    return;
   }
 
   final cur = TextEditingController();
