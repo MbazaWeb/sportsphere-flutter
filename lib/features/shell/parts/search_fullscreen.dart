@@ -304,16 +304,16 @@ class _FullScreenSearchState extends State<_FullScreenSearch>
 
 enum _NearbyFilter { all, team, sport, country, engagements }
 
-class _NearbyFansTab extends StatefulWidget {
+class _NearbyFansTab extends ConsumerStatefulWidget {
   const _NearbyFansTab();
 
   @override
   State<_NearbyFansTab> createState() => _NearbyFansTabState();
 }
 
-class _NearbyFansTabState extends State<_NearbyFansTab>
+class _NearbyFansTabState extends ConsumerState<_NearbyFansTab>
     with SingleTickerProviderStateMixin {
-  // _sb removed — using VPS
+  
   List<Map<String, dynamic>> _fans = [];
   bool _loading = true;
   bool _scanning = false;
@@ -430,7 +430,7 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
 
   /// Load the current user's uid, country, favorite teams, and followed sports.
   Future<void> _loadMyContext() async {
-    final uid = _sb.auth.currentUser?.id;
+    final uid = ref.read(authControllerProvider).user?.id;
     if (uid == null) {
       if (mounted) {
         setState(() {
@@ -463,8 +463,8 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
       }
 
       // Load my sports
-      final mySports = _sb
-          .from('UserSport')
+      final mySports = null // VPS stub
+      .from('UserSport')
           .select('sportId')
           .eq('userId', uid);
       for (final r in mySports as List) {
@@ -1222,7 +1222,7 @@ class _NearbyFanCard extends StatelessWidget {
 // FAN ACTION BUTTONS — Follow + Message + View profile
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _FanActionButtons extends StatefulWidget {
+class _FanActionButtons extends ConsumerStatefulWidget {
 
   const _FanActionButtons({
     required this.uid,
@@ -1237,7 +1237,7 @@ class _FanActionButtons extends StatefulWidget {
   State<_FanActionButtons> createState() => _FanActionButtonsState();
 }
 
-class _FanActionButtonsState extends State<_FanActionButtons> {
+class _FanActionButtonsState extends ConsumerState<_FanActionButtons> {
   bool _following = false;
   bool _busy = false;
 

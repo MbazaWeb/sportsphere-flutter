@@ -395,7 +395,7 @@ class _SearchEmptyState extends StatelessWidget {
   }
 }
 
-class _MessageSheet extends StatefulWidget {
+class _MessageSheet extends ConsumerStatefulWidget {
   const _MessageSheet({
     this.initialPeerId,
     this.initialPeerName,
@@ -408,7 +408,7 @@ class _MessageSheet extends StatefulWidget {
   State<_MessageSheet> createState() => _MessageSheetState();
 }
 
-class _MessageSheetState extends State<_MessageSheet> {
+class _MessageSheetState extends ConsumerState<_MessageSheet> {
   final _repo = MessagingRepository();
   final _search = TextEditingController();
   final _compose = TextEditingController();

@@ -1206,7 +1206,7 @@ class _MediaStrip extends StatelessWidget {
 // POLL PANEL
 // ══════════════════════════════════════════════════════════════════════════════
 
-class _PollPanel extends StatefulWidget {
+class _PollPanel extends ConsumerStatefulWidget {
 
   const _PollPanel({
     required this.options,
@@ -1233,7 +1233,7 @@ class _PollPanel extends StatefulWidget {
   State<_PollPanel> createState() => _PollPanelState();
 }
 
-class _PollPanelState extends State<_PollPanel> {
+class _PollPanelState extends ConsumerState<_PollPanel> {
   bool _loadingTeams = false;
   bool _loadingPlayers = false;
 
@@ -1280,7 +1280,7 @@ class _PollPanelState extends State<_PollPanel> {
     if (_loadingPlayers) return;
     setState(() => _loadingPlayers = true);
     try {
-      final rows = <String,dynamic>{}; // VPS stub
+      final rows = <Map<String,dynamic>>[];
       final names = <String>[];
       for (final r in (rows as List)) {
         final n = (r as Map)['name']?.toString().trim();
