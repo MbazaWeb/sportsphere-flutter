@@ -1176,10 +1176,10 @@ class _DatedMatchListState extends ConsumerState<_DatedMatchList> {
                   final picked = await showDatePicker(
                     context: context,
                     initialDate: selected,
-                    firstDate: future
+                    firstDate: widget.future
                         ? base
                         : base.subtract(const Duration(days: 365 * 5)),
-                    lastDate: future
+                    lastDate: widget.future
                         ? base.add(const Duration(days: 365 * 2))
                         : base,
                     builder: (ctx, child) => Theme(
@@ -1265,9 +1265,9 @@ class _DatedMatchListState extends ConsumerState<_DatedMatchList> {
         ),
         Expanded(
           child: _MatchListBody(
-            provider: provider,
-            emptyTitle: emptyTitle,
-            emptyHint: emptyHint,
+            widget.provider: widget.provider,
+            widget.emptyTitle: widget.emptyTitle,
+            widget.emptyHint: widget.emptyHint,
           ),
         ),
       ],
