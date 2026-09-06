@@ -377,15 +377,56 @@ Future<void> showChangePasswordDialog(BuildContext context, WidgetRef ref) async
     }
   }
 
-  // Migrated user → show OTP/DOB verification flow
-  if (isMigrated && email.isNotEmpty && context.mounted) {
-    final success = await showSetPasswordModal(context, email);
-    if (success == true && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Password set successfully ✅'),
-        backgroundColor: Color(0xFF4CAF50),
-        behavior: SnackBarBehavior.floating,
-      ));
+  // Migrated user → simple set password (no verification needed first time)
+  if (isMigrated && context.mounted) {
+    final a = TextEditingController();
+    final b = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        backgroundColor: const Color(0xFF0D1F35),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Set Your Password',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('Create a password for your Playify account.',
+              style: TextStyle(color: Colors.white70, fontSize: 13)),
+          const SizedBox(height: 16),
+          TextField(controller: a, obscureText: true,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(labelText: 'New password',
+                  labelStyle: TextStyle(color: Colors.white54))),
+          const SizedBox(height: 8),
+          TextField(controller: b, obscureText: true,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(labelText: 'Confirm password',
+                  labelStyle: TextStyle(color: Colors.white54))),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false),
+              child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: PlayifyColors.electricBlue),
+            onPressed: () {
+              if (a.text.length < 8) return;
+              if (a.text != b.text) return;
+              Navigator.pop(d, true);
+            },
+            child: const Text('Set Password'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true && context.mounted) {
+      final updated = await ref.read(authControllerProvider.notifier)
+          .changePassword('', a.text);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(updated ? 'Password set successfully ✅' : 'Failed — try again'),
+          backgroundColor: updated ? const Color(0xFF4CAF50) : Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
     }
     return;
   }
