@@ -1,6 +1,5 @@
 part of '../app_shell.dart';
 
-// VpsRepository + VpsVPSCompat are re-exported via the parent
 // app_shell.dart import chain (core/data/* imported there).
 
 class _SearchSheet extends StatefulWidget {
@@ -684,7 +683,7 @@ class _MessageSheetState extends State<_MessageSheet> {
                           itemBuilder: (_, i) {
                             final m = _thread[i];
                             final mine = m['senderId'] ==
-                                VpsVPSCompat.client.auth.currentUser?.id;
+                                Supabase.instance.client.auth.currentUser?.id;
                             return Align(
                               alignment: mine
                                   ? Alignment.centerRight
