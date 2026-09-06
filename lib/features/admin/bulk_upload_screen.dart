@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:excel/excel.dart' hide Border;
 import 'package:flutter/material.dart';
 
-import '../../core/data/vps_supabase_compat.dart';
+import '../../core/data/legacy_compat.dart';
 import '../../core/theme/colors.dart';
 
 // ignore: avoid_web_libraries_in_flutter
@@ -270,7 +270,7 @@ class _BulkUploadScreenState extends State<BulkUploadScreen>
       }
 
       try {
-        await VpsSupabaseCompat.client.from(tableName).upsert(insert);
+        await LegacyCompat.client.from(tableName).upsert(insert);
         count++;
       } catch (_) { failed++; }
     }

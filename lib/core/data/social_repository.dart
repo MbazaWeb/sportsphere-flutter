@@ -8,7 +8,7 @@ import 'vps_repository.dart';
 import '../taxonomy/sport_catalog.dart';
 
 /// Social repository — all data ops route through VPS API.
-/// Supabase is used ONLY for:
+/// VPS is used ONLY for:
 ///   - auth.currentUser (JWT identity)
 ///   - storage.uploadBinary (media upload, proxied to R2 via VPS)
 class SocialRepository {
@@ -22,7 +22,7 @@ class SocialRepository {
     return token;
   }
 
-  // ── Storage (still via Supabase Storage → will move to VPS /v1/media) ──────
+  // ── Storage (still via VPS MinIO storage → will move to VPS /v1/media) ──────
   Future<String> uploadBytes({
     required String bucket,
     required String path,

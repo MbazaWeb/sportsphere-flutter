@@ -1,6 +1,6 @@
 import { sendEmail } from '../lib/email.js'
 // vps/api/src/routes/auth.ts
-// Full auth system on VPS — no Supabase Auth dependency
+// Full auth system on VPS — bcrypt password hashing + jose JWT
 // Uses: bcrypt (password hashing) + jose (JWT RS256)
 // Tables: public."User" + public.profiles
 

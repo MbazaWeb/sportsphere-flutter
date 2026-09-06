@@ -1,6 +1,5 @@
 // vps/api/src/lib/db.ts
-// Direct PostgreSQL connection — replaces supabase-js for all data queries.
-// Supabase JS is kept ONLY for auth.getUser() JWT verification.
+// Direct PostgreSQL connection — the only data source for the VPS API.
 
 import { Pool, type PoolClient } from 'pg'
 

@@ -1,5 +1,5 @@
 // vps/api/src/middleware/auth.ts
-// Verifies VPS JWT (HS256) only — Supabase removed.
+// Verifies VPS JWT (HS256) using jose.
 import type { MiddlewareHandler } from 'hono'
 
 const JWT_SECRET = Bun.env.JWT_SECRET ?? ''

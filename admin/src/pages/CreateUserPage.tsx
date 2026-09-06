@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { adminCreateUser } from '../lib/api'
-import { ALL_ROLES, ROLE_CONFIGS, type RoleFieldDef } from '../lib/supabase'
+import { ALL_ROLES, ROLE_CONFIGS, type RoleFieldDef } from '../lib/types'
 
 export function CreateUserPage() {
   const [msg, setMsg] = useState<string | null>(null)

@@ -8,7 +8,7 @@ import '../templates/role_profile_model.dart';
 
 /// Unified DB loader for all non-fan/team/player roles.
 Future<RoleProfileModel> lookupRoleProfile(String role, String handle) async {
-  // VPS-based lookup — replaces Supabase direct calls
+  // VPS-based lookup — replaces VPS direct calls
   const vps = VpsRepository();
   final key = handle.replaceAll('@', '').trim().toLowerCase();
   final roleKey =

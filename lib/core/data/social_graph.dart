@@ -1,6 +1,6 @@
 import '../../features/auth/data/auth_repository.dart';
 import '../../core/data/vps_repository.dart';
-import '../../core/data/vps_supabase_compat.dart';
+import '../../core/data/legacy_compat.dart';
 import 'package:flutter/foundation.dart';
 
 /// Represents a person in the social graph
@@ -44,7 +44,7 @@ class GraphPerson {
 class SocialGraph {
   const SocialGraph();
 
-  static final _sb = VpsSupabaseCompat.client;
+  static final _sb = LegacyCompat.client;
 
   String? get _uid => const AuthRepository().currentSession?.user?.id;
   String? get currentUid => _uid;

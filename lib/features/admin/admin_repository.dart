@@ -2,7 +2,7 @@
 //
 // Admin operations for the Playify admin console.
 //
-// SECURITY: This file used to construct a `SupabaseClient` with the
+// SECURITY: This file used to construct a `VPSClient` with the
 // service-role JWT hardcoded inline. That key grants full read/write
 // access to every table and bypasses RLS — shipping it in the mobile
 // client bundle was a critical vulnerability.
@@ -15,7 +15,7 @@
 // 404 — surfacing a friendly error in the UI. Each such method has a
 // `TODO(VPS)` comment so the backend team knows what to add.
 //
-// No `SupabaseClient` type annotations, no `import 'package:supabase_flutter/...'`,
+// No external SDK dependencies — talks to the VPS API via VpsRepository only.
 // no service-role credentials. JWT is attached automatically by ApiClient.
 
 import 'package:flutter/foundation.dart';
@@ -219,7 +219,7 @@ class AdminRepository {
 
   Future<void> deleteUser(String uid) async {
     // C8 — Do NOT use the client-side `_sb.auth.admin.deleteUser(...)`.
-    // The VPS DELETE /v1/admin/users/:id route handles Supabase Auth user
+    // The VPS DELETE /v1/admin/users/:id route handles VPS JWT auth user
     // deletion server-side using the service role key (never shipped to the
     // client). It also cascade-cleans profiles + User rows.
     //

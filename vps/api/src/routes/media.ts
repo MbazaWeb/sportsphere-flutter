@@ -149,9 +149,12 @@ mediaRouter.delete('/:key{.+}', async (c) => {
   // Keys are structured as: {folder}/{userId}/{ts}/{variant}.webp or avatars/{userId}.webp
   // Verify the key belongs to this user (contains their userId)
   if (!key.includes(userId)) {
-    // Allow admin to delete anything
-    const { isAdmin: checkAdmin } = await import('../lib/supabase.js') // stub
-    const ok = await checkAdmin(userId)
+    // Allow admin to delete anything — check via VPS PostgreSQL
+    const { queryOne } = await import('../lib/db.js')
+    const row = await queryOne<{ role: string }>(
+      `SELECT role FROM public.profiles WHERE id = $1`, [userId]
+    )
+    const ok = ['admin','moderator'].includes(String(row?.role ?? '').toLowerCase())
     if (!ok) return c.json({ error: 'Forbidden: key does not belong to you' }, 403)
   }
   await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }))

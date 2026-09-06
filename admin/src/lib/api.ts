@@ -1,5 +1,5 @@
 ﻿import { api } from './http'
-import type { Profile, TeamRow, LeagueRow, PlayerRow, CoachRow, MatchRow, PostRow, NewsRow } from './supabase'
+import type { Profile, TeamRow, LeagueRow, PlayerRow, CoachRow, MatchRow, PostRow, NewsRow } from './types'
 const idPath = (id: string) => encodeURIComponent(id)
 export async function fetchDashboardStats() {
   const [{ stats }, { claims }] = await Promise.all([api('/v1/admin/stats'), api('/v1/admin/claims')])

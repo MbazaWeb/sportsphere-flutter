@@ -1,5 +1,5 @@
 // vps/api/src/routes/news.ts
-// Full news CRUD — replaces all Supabase calls in news_repository.dart
+// Full news CRUD on VPS PostgreSQL
 import { Hono } from 'hono'
 import { query, queryOne, execute } from '../lib/db.js'
 

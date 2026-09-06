@@ -6,6 +6,8 @@
 - **Domain**: playifysport.fun
 - **Web path**: /var/www/playify/
 - **APK download**: /var/www/playify/download/Playify.apk
+- **Database**: PostgreSQL 18 on the VPS (database `playify`, user `playify`)
+- **API**: Bun + Hono on port 3000, PM2 process name `playify-api`
 
 ---
 
@@ -27,15 +29,13 @@ flutter pub get
 
 # Build APK
 flutter build apk --release \
-  --dart-define=SUPABASE_URL=https://fffqjbrethogesgghjsn.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+  --dart-define=API_BASE_URL=https://playifysport.fun
 
 echo APK: build\app\outputs\flutter-apk\app-release.apk
 
 # Build Web
 flutter build web --release \
-  --dart-define=SUPABASE_URL=https://fffqjbrethogesgghjsn.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+  --dart-define=API_BASE_URL=https://playifysport.fun
 
 echo Web: build\web\
 ```
@@ -97,16 +97,23 @@ echo "✅ All deployments verified"
 
 ---
 
-## Supabase setup (one-time)
+## Database setup (one-time)
+
+The VPS PostgreSQL database is provisioned by the Prisma migration shipped in
+`prisma/migrations/20260825999999_consolidated/migration.sql`. To apply on a
+fresh VPS:
 
 ```bash
-npx supabase link --project-ref fffqjbrethogesgghjsn
-npx supabase db push
-npx supabase functions deploy ai-assistant
-npx supabase secrets set ANTHROPIC_API_KEY=*** DEEPSEEK_API_KEY=***
+ssh david@95.217.20.12
+cd /var/playify/app
+# Apply the consolidated migration
+sudo -u postgres psql -d playify -f prisma/migrations/20260825999999_consolidated/migration.sql
+# Or, if you have Prisma installed locally:
+npx prisma migrate deploy
 ```
 
-Never put AI keys in the Flutter APK or public GitHub.
+The database connection string lives in `/var/playify/app/vps/api/.env` as
+`DATABASE_URL=postgresql://playify:***@localhost:5432/playify`.
 
 ## Admin console (Vite)
 
@@ -147,8 +154,7 @@ storeFile=../upload-keystore.jks
 ```bash
 flutter pub get
 flutter build appbundle --release \
-  --dart-define=SUPABASE_URL=https://fffqjbrethogesgghjsn.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+  --dart-define=API_BASE_URL=https://playifysport.fun
 ```
 
 Output: `build/app/outputs/bundle/release/app-release.aab`
@@ -158,7 +164,7 @@ Output: `build/app/outputs/bundle/release/app-release.aab`
 5. Optional APK for testers:
 
 ```bash
-flutter build apk --release --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...
+flutter build apk --release --dart-define=API_BASE_URL=https://playifysport.fun
 ```
 
 ## Security note

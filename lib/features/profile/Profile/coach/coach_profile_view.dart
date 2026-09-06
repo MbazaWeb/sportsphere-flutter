@@ -8,7 +8,7 @@ import '../../presentation/edit_profile_sheet.dart'
 
 // ══════════════════════════════════════════════════════════════════════════════
 // COACH PROFILE VIEW  —  data-driven (#5.6)
-// Previously a hardcoded stub. Now loads a Coach row from Supabase by
+// Previously a hardcoded stub. Now loads a Coach row from VPS by
 // `coachId` (preferred) or `handle` (slug), renders header + tabs, and
 // exposes an admin-only "Edit Profile" entry that opens EntityEditSheet.
 // ══════════════════════════════════════════════════════════════════════════════

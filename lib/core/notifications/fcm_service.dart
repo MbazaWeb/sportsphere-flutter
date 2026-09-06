@@ -6,7 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// FCM device token registration via VPS API — no Supabase dependency.
+/// FCM device token registration via VPS API — no VPS dependency.
 class FcmService {
   FcmService._();
   static final instance = FcmService._();

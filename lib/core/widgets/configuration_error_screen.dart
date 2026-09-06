@@ -54,7 +54,7 @@ class ConfigurationErrorScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       const Text(
-                        '2. Example: flutter run --dart-define=SUPABASE_URL=...',
+                        '2. Example: flutter run --dart-define=API_BASE_URL=https://playifysport.fun',
                         style: TextStyle(
                           fontSize: 14,
                           fontFamily: 'monospace',
@@ -68,8 +68,7 @@ class ConfigurationErrorScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Text(
-                          'SUPABASE_URL=https://your-project.supabase.co\n'
-                          'SUPABASE_ANON_KEY=your-anon-key',
+                          'API_BASE_URL=https://playifysport.fun',
                           style: TextStyle(
                             fontSize: 12,
                             fontFamily: 'monospace',

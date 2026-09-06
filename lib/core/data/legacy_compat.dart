@@ -1,16 +1,17 @@
-// lib/core/data/vps_supabase_compat.dart
+// lib/core/data/legacy_compat.dart
 //
-// MIGRATION SHIM — provides a VpsSupabaseCompat.client object that
-// satisfies the remaining Supabase call sites while we migrate them
-// to native VPS calls. Once all files are migrated, this file is deleted.
+// LEGACY ADAPTER — exposes a VPS-shaped client surface that
+// internally routes every call to the VPS API via VpsRepository.
+// The app talks ONLY to the VPS API; this file just keeps the call
+// sites unchanged while we progressively refactor them to native VPS calls.
 
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'vps_repository.dart';
 
-class VpsSupabaseCompat {
-  VpsSupabaseCompat._();
+class LegacyCompat {
+  LegacyCompat._();
   static final client = _VpsCompatClient();
 }
 
@@ -40,11 +41,11 @@ class _VpsCompatClient {
         case 'nearby_fans':
           return <Map<String, dynamic>>[];
         default:
-          debugPrint('VpsSupabaseCompat.rpc: unhandled $name');
+          debugPrint('LegacyCompat.rpc: unhandled $name');
           return null;
       }
     } catch (e) {
-      debugPrint('VpsSupabaseCompat.rpc($name): $e');
+      debugPrint('LegacyCompat.rpc($name): $e');
       return null;
     }
   }
@@ -78,7 +79,7 @@ class _VpsCompatUser {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// QUERY BUILDER — mimics Supabase's PostgrestQueryBuilder pattern.
+// QUERY BUILDER — mimics VPS's PostgrestQueryBuilder pattern.
 // from(table).select().eq(col, val).order(col).limit(n) → await result
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -221,7 +222,7 @@ class _VpsCompatFilterBuilder {
       }
       return await _executeSelect();
     } catch (e) {
-      debugPrint('VpsSupabaseCompat._execute($_table): $e');
+      debugPrint('LegacyCompat._execute($_table): $e');
       return [];
     }
   }
@@ -381,7 +382,7 @@ class _VpsCompatWriteHelper {
           break;
       }
     } catch (e) {
-      debugPrint('VpsSupabaseCompat.insert($table): $e');
+      debugPrint('LegacyCompat.insert($table): $e');
     }
   }
 }

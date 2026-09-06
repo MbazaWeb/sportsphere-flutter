@@ -1,5 +1,5 @@
 // lib/features/claims/data/claim_repository.dart
-// All claim ops via VPS API — no Supabase dependency.
+// All claim ops via VPS API — no VPS dependency.
 
 import '../../../core/data/vps_repository.dart';
 

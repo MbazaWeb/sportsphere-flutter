@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTableRealtime } from '../lib/realtime'
 import { listNews, createNews, deleteNews } from '../lib/api'
-import type { NewsRow } from '../lib/supabase'
+import type { NewsRow } from '../lib/types'
 
 const NEWS_CATEGORIES = [
   'general', 'transfers', 'match-report', 'analysis',

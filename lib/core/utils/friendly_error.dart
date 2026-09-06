@@ -2,7 +2,7 @@
 /// Never surfaces stack traces, Postgrest payloads, or console-style text.
 ///
 /// CRITICAL RULE: A PostgREST (data query) failure must NEVER be classified
-/// as an authentication/session failure. Only Supabase Auth itself can
+/// as an authentication/session failure. Only VPS JWT auth itself can
 /// establish that authentication is invalid.
 library;
 
@@ -17,9 +17,9 @@ String friendlyError(Object? error, {String fallback = 'Something went wrong. Pl
   final raw = error.toString();
   final lower = raw.toLowerCase();
 
-  // Data-access and auth problems from legacy Supabase code paths are handled
+  // Data-access and auth problems from legacy VPS code paths are handled
   // generically here. The app is now VPS-first, and these messages are kept
-  // user-friendly without importing Supabase SDK types directly.
+  // user-friendly without importing VPS SDK types directly.
   final lowerDataChecks = lower;
   if (_matches(lowerDataChecks, const [
     'permission denied', 'row-level security', 'pgrst301', 'pgrst116',

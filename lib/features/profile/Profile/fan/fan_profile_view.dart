@@ -127,7 +127,7 @@ class _FanProfileViewState extends State<FanProfileView>
     }
   }
 
-  /// Toggle follow state — persists to Supabase via SocialGraph, then updates
+  /// Toggle follow state — persists to VPS via SocialGraph, then updates
   /// UI locally. Wrapped in try/catch so a network failure doesn't leave the
   /// button in a flipped state. (#7.1)
   Future<void> _toggleFollow() async {
@@ -536,12 +536,12 @@ class _Avatar extends StatelessWidget {
   }
 }
 
-/// Sanitize avatar URL — replaces stale old domains with current Supabase URL.
+/// Sanitize avatar URL — replaces stale old domains with current VPS URL.
 String _sanitizeAvatarUrl(String url) {
   if (url.startsWith('assets/')) return url; // local asset
   return url
-      .replaceAll('sportssphere.fun', 'fffqjbrethogesgghjsn.supabase.co')
-      .replaceAll('playify.fun', 'fffqjbrethogesgghjsn.supabase.co');
+      .replaceAll('sportssphere.fun', 'playifysport.fun')
+      .replaceAll('playify.fun', 'playifysport.fun');
 }
 
 class _AvatarFallback extends StatelessWidget {

@@ -9,18 +9,18 @@ Dark UI. Live scores. Communities. Shop.
 - Riverpod 3
 - go_router 17
 - Dio + flutter_secure_storage
-- Supabase (auth + database)
+- **VPS PostgreSQL 18** (auth + database + realtime) on `95.217.20.12`
+- Bun + Hono API server (PM2-managed on the VPS)
 - Package id: `com.playify.playify`
 
 ## Environment variables
 
-Secrets are passed as **compile-time constants** via `--dart-define` — they are
-never stored in files bundled with the app.
+The app talks to a single backend — the VPS API at `https://playifysport.fun`.
+The API base URL is passed as a **compile-time constant** via `--dart-define`:
 
 ```
 flutter run \
-  --dart-define=SUPABASE_URL=https://your-project.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=your-anon-key
+  --dart-define=API_BASE_URL=https://playifysport.fun
 ```
 
 > **Never** add `.env` back to `pubspec.yaml` assets. Bundled `.env` files
@@ -37,8 +37,7 @@ For VS Code, add a `.vscode/launch.json`:
       "request": "launch",
       "type": "dart",
       "args": [
-        "--dart-define=SUPABASE_URL=https://your-project.supabase.co",
-        "--dart-define=SUPABASE_ANON_KEY=your-anon-key"
+        "--dart-define=API_BASE_URL=https://playifysport.fun"
       ]
     }
   ]
@@ -50,8 +49,7 @@ For VS Code, add a `.vscode/launch.json`:
 ```
 flutter pub get
 flutter run \
-  --dart-define=SUPABASE_URL=https://your-project.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=your-anon-key
+  --dart-define=API_BASE_URL=https://playifysport.fun
 ```
 
 ## What it is today
@@ -77,7 +75,7 @@ lib/
   app/config/env.dart        # dart-define constant accessors (no dotenv)
   core/network/              # Dio client, errors, auth header interceptor
   core/storage/              # secure token store (Keystore / Secure Enclave)
-  features/auth/             # Supabase auth repository + Riverpod controller
+  features/auth/             # VPS JWT auth repository + Riverpod controller
   features/shell/            # tab shell (parts/ for screens)
   features/scores/           # Ligi Kuu Bara fixture calendar + live detection
   features/profile/          # 22 role profile views
@@ -100,8 +98,7 @@ For release builds:
 
 ```
 flutter build apk --release \
-  --dart-define=SUPABASE_URL=https://your-project.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=your-anon-key
+  --dart-define=API_BASE_URL=https://playifysport.fun
 ```
 
 ## CI

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTableRealtime } from '../lib/realtime'
 import { listPosts, deletePost } from '../lib/api'
-import type { PostRow } from '../lib/supabase'
+import type { PostRow } from '../lib/types'
 
 export function ModerationPage() {
   const [posts, setPosts] = useState<PostRow[]>([])

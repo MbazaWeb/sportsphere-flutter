@@ -8,7 +8,7 @@ import '../../presentation/edit_profile_sheet.dart'
 
 // ══════════════════════════════════════════════════════════════════════════════
 // COMPETITION PROFILE VIEW  —  data-driven (#5.5)
-// Previously a hardcoded stub. Now loads a Competition row from Supabase by
+// Previously a hardcoded stub. Now loads a Competition row from VPS by
 // `competitionId` (preferred) or `handle` (slug), renders header + tabs, and
 // exposes an admin-only "Edit Profile" entry that opens EntityEditSheet.
 // ══════════════════════════════════════════════════════════════════════════════

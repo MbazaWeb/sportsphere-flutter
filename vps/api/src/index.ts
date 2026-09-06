@@ -3,7 +3,7 @@ import { validSubscription } from './lib/channel-auth.js'
 import { appVersion } from './lib/app-version.js'
 // vps/api/src/index.ts — Playify VPS API
 // Data: VPS PostgreSQL (direct pg)
-// Auth: Supabase JWT verification only
+// Auth: VPS JWT (jose / HS256)
 import { Hono }            from 'hono'
 import { cors }            from 'hono/cors'
 import { logger }          from 'hono/logger'

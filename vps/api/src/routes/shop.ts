@@ -1,4 +1,4 @@
-// vps/api/src/routes/shop.ts — shop orders (VPS PostgreSQL, no Supabase)
+// vps/api/src/routes/shop.ts — shop orders (VPS PostgreSQL)
 import { Hono } from 'hono'
 import { query, execute, queryOne } from '../lib/db.js'
 

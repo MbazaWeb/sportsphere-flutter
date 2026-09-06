@@ -1,7 +1,7 @@
 // =============================================================================
 // SportSphere — Consolidated Production Prisma Schema
 // Source: 40 migration files across 3 batches (2026-08-19 → 2026-08-25)
-// Target: PostgreSQL 15+ via Supabase (fffqjbrethogesgghjsn)
+// Target: PostgreSQL 18 via VPS (95.217.20.12 — Ubuntu 24.04)
 // Deduplication: zero — each model appears exactly once, latest column wins
 // Scale target: 100M users, realtime media, live scores, video/podcast streams
 // =============================================================================
@@ -346,7 +346,7 @@ model Notification {
 
   @@index([userId, isRead, createdAt(sort: Desc)])
   @@index([actorId])
-  // Realtime: supabase_realtime publication, REPLICA IDENTITY FULL
+  // Realtime: VPS Soketi (Pusher-protocol) — publication replaced by app-level broadcasts
   // Clients must subscribe with filter: userId=eq.<uid>
   @@map("Notification")
 }
@@ -363,7 +363,7 @@ model Message {
 
   @@index([senderId])
   @@index([receiverId])
-  // Realtime: supabase_realtime, REPLICA IDENTITY FULL
+  // Realtime: vps_realtime, REPLICA IDENTITY FULL
   @@map("Message")
 }
 

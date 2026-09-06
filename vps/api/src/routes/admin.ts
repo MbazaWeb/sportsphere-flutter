@@ -6,13 +6,6 @@ import { query, queryOne, execute, transaction } from '../lib/db.js'
 
 export const adminRouter = new Hono()
 
-// Admin client for user deletion (only admin operation needing Supabase Auth)
-function getAdminClient() {
-  return createClient(Bun.env.SUPABASE_URL!, Bun.env.SUPABASE_SERVICE_ROLE_KEY!, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  })
-}
-
 // GET /v1/admin/stats
 adminRouter.get('/stats', async (c) => {
   const [users, posts, players, news, matches, teams, coaches, leagues] = await Promise.all([
@@ -84,11 +77,6 @@ adminRouter.delete('/users/:id', async (c) => {
   const targetId = c.req.param('id')
   if (targetId === callerId) return c.json({ error: 'Cannot delete own account' }, 400)
 
-  // Delete from Supabase Auth (only remaining Supabase dependency)
-  if (Bun.env.SUPABASE_SERVICE_ROLE_KEY) {
-    const { error } = await getAdminClient().auth.admin.deleteUser(targetId)
-    if (error) return c.json({ error: error.message }, 500)
-  }
   // Cascade cleanup on VPS PostgreSQL
   await execute(`DELETE FROM public."User" WHERE id = $1`, [targetId])
   await execute(`DELETE FROM public.profiles WHERE id = $1::uuid`, [targetId])

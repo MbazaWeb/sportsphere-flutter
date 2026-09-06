@@ -1,15 +1,13 @@
 // lib/core/data/vps_repository.dart
 //
-// Routes that benefit from server-side processing go through the VPS Hono API.
-// Everything else (auth, realtime, direct DB reads) stays on Supabase.
+// All app data flows through the VPS Hono API.
 //
 // Architecture:
-//   Flutter → Supabase directly  : auth, realtime, public reads (matches/posts)
-//   Flutter → VPS API (this file): media upload, M-Pesa, FCM, feed, nearby fans,
-//                                   notifications, admin, AI assistant
+//   Flutter → VPS API (this file): auth, media, M-Pesa, FCM, feed, nearby fans,
+//                                  notifications, admin, AI assistant, realtime
 //
-// The ApiClient reads API_BASE_URL from --dart-define (default: https://api.playify.app)
-// and attaches the Supabase JWT as Authorization: Bearer <token> on every call.
+// The ApiClient reads API_BASE_URL from --dart-define (default: https://playifysport.fun)
+// and attaches the VPS-issued JWT as Authorization: Bearer <token> on every call.
 
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
@@ -331,7 +329,7 @@ class VpsRepository {
     }
   }
   // ─────────────────────────────────────────────────────────────────────────
-  // AUTH — VPS native (no Supabase dependency)
+  // AUTH — VPS native (no VPS dependency)
   // ─────────────────────────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> register({

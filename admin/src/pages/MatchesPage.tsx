@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTableRealtime } from '../lib/realtime'
 import { listMatches, updateMatchResult, postponeMatch, createMatch, listLeagues, listTeams } from '../lib/api'
-import type { MatchRow, LeagueRow, TeamRow } from '../lib/supabase'
+import type { MatchRow, LeagueRow, TeamRow } from '../lib/types'
 
 export function MatchesPage() {
   const [matches, setMatches] = useState<MatchRow[]>([])

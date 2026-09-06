@@ -1,4 +1,4 @@
-import '../../../../core/data/vps_supabase_compat.dart';
+import '../../../../core/data/legacy_compat.dart';
 import 'dart:convert';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -47,7 +47,7 @@ class _MatchCardState extends State<MatchCard> {
   Future<void> _seedLikedState() async {
     final postId = widget.match.postId;
     if (postId == null || postId.isEmpty) return;
-    if (VpsSupabaseCompat.client.auth.currentUser == null) return;
+    if (LegacyCompat.client.auth.currentUser == null) return;
     try {
       final liked = await const VpsRepository().isPostLiked(postId);
       if (mounted && liked) setState(() => _liked = true);
@@ -248,7 +248,7 @@ class _MatchCardState extends State<MatchCard> {
       _toast(_liked ? 'Liked' : 'Like removed');
       return;
     }
-    if (VpsSupabaseCompat.client.auth.currentUser == null) {
+    if (LegacyCompat.client.auth.currentUser == null) {
       _toast('Sign in to like');
       return;
     }
@@ -302,7 +302,7 @@ class _MatchCardState extends State<MatchCard> {
       // Record the share if there's a linked post (best-effort).
       final postId = m.postId;
       if (postId != null && postId.isNotEmpty &&
-          VpsSupabaseCompat.client.auth.currentUser != null) {
+          LegacyCompat.client.auth.currentUser != null) {
         try {
           await const VpsRepository().sharePost(postId);
         } catch (_) {

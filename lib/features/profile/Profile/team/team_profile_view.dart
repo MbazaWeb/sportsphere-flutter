@@ -1,4 +1,4 @@
-import '../../../../core/data/vps_supabase_compat.dart';
+import '../../../../core/data/legacy_compat.dart';
 import '../../../../core/data/vps_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -227,7 +227,7 @@ class _TeamProfileViewState extends State<TeamProfileView>
     HapticFeedback.mediumImpact();
     final next = !_isFan;
     setState(() { _isFan = next; _busyFan = true; });
-    final uid = VpsSupabaseCompat.client.auth.currentUser?.id;
+    final uid = LegacyCompat.client.auth.currentUser?.id;
     if (uid == null) {
       setState(() { _isFan = !next; _busyFan = false; });
       return;

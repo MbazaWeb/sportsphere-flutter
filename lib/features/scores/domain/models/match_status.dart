@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 /// Canonical status vocabulary for [MatchModel].
 ///
-/// The Supabase `Match.status` column is a free-form string that has drifted
+/// The VPS `Match.status` column is a free-form string that has drifted
 /// across many writers (`live`, `in_play`, `ht`, `1h`, `2h`, `finished`, `ft`,
 /// `completed`, `full_time`, `postponed`, `cancelled`, `scheduled`, `upcoming`).
 /// This enum + parser centralises that sprawl so the UI/data layers always

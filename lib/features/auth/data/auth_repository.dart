@@ -1,6 +1,6 @@
 import 'dart:convert';
 // lib/features/auth/data/auth_repository.dart
-// All auth via VPS API — JWT stored locally, no Supabase SDK dependency.
+// All auth via VPS API — JWT stored locally, no VPS SDK dependency.
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,7 +18,7 @@ class _AuthSessionStub {
   final String? accessToken;
   final String? userId;
 
-  /// Mirrors `supabase.auth.currentSession.user.id` — used by callers
+  /// Mirrors the VPS JWT's `sub` claim — used by callers
   /// that need the authenticated user's id without awaiting prefs.
   _AuthUserStub? get user =>
       userId == null ? null : _AuthUserStub(id: userId);

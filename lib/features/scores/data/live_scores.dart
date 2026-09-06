@@ -5,7 +5,7 @@ import '../domain/models/match_model.dart';
 import '../domain/models/match_status.dart';
 import 'scores_repository.dart' show kMaxMatchesPerFetch;
 
-/// Builds a [MatchModel] from a raw Supabase `Match` row.
+/// Builds a [MatchModel] from a raw VPS `Match` row.
 ///
 /// This is the **single shared row mapper** for the scores feature — the
 /// repository and any ad-hoc helper that needs to convert a row should call

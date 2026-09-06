@@ -51,5 +51,5 @@ flutter:
   assets:
     - assets/images/
     # NOTE: .env is intentionally NOT listed here.
-    # Use --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=... at build time.
+    # Use --dart-define=API_BASE_URL=https://playifysport.fun at build time.
     # See README.md#environment-variables

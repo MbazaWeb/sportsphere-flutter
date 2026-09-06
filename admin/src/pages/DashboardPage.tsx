@@ -68,7 +68,7 @@ export function DashboardPage() {
               <p className="hint">Latency: {health.latencyMs} ms</p>
               {health.error && <p className="error">{health.error}</p>}
               <p className="hint" style={{ marginTop: 16 }}>
-                Connected to Supabase project used by the Flutter app. Match results, profiles, posts, and claims share the same tables.
+                Connected to VPS project used by the Flutter app. Match results, profiles, posts, and claims share the same tables.
               </p>
             </>
           ) : (

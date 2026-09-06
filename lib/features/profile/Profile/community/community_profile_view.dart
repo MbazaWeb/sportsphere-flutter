@@ -9,7 +9,7 @@ import '../../../shared/org_profile_view.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // COMMUNITY PROFILE VIEW
-// Loads real community data from Supabase by handle or id.
+// Loads real community data from VPS by handle or id.
 // ══════════════════════════════════════════════════════════════════════════════
 
 class CommunityProfileView extends StatefulWidget {

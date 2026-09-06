@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { listTeams, upsertTeam, listLeagues, createLeague, listPlayers, createPlayer, listCoaches, createCoach } from '../lib/api'
-import type { TeamRow, LeagueRow, PlayerRow, CoachRow } from '../lib/supabase'
+import type { TeamRow, LeagueRow, PlayerRow, CoachRow } from '../lib/types'
 
 
 type Tab = 'teams' | 'leagues' | 'players' | 'coaches'

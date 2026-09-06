@@ -18,7 +18,7 @@ import '../../../core/utils/friendly_error.dart';
 import '../profile/presentation/edit_profile_sheet.dart' show showEntityEditSheet, EntityType;
 
 /// Fetches the current admin's user id via the VPS /v1/auth/me endpoint.
-/// Replaces every `Supabase.instance.client.auth.currentUser?.id` call
+/// Uses the VPS JWT to identify the current admin user
 /// site — the admin's JWT is attached by ApiClient and the VPS resolves
 /// the uid server-side.
 Future<String?> _currentAdminUid() async {
@@ -1461,10 +1461,8 @@ Future<void> _showCreateMatch(BuildContext ctx) async {
                 season:seasonCtrl.text.trim().isEmpty?null:seasonCtrl.text.trim());
               // #8.1 — Optionally push a Post row linked via matchId.
               // #8.7 — No dedicated sub_post / parent_post table exists; the
-              // migration 20260824010000 adds `matchId` to Post and Poll, which
-              // is the linking mechanism between a fixture and its derived
-              // posts (match/poll/prediction). See:
-              //   supabase/migrations/20260824010000_fix_all_remaining_db_issues.sql
+              // schema adds `matchId` to Post and Poll, which is the linking
+              // mechanism between a fixture and its derived posts (match/poll/prediction).
               if (postToFeed) {
                 final uid = await _currentAdminUid();
                 if (uid != null) {

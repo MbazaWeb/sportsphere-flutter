@@ -1,5 +1,5 @@
 // lib/core/data/commerce_repository.dart
-// All commerce operations via VPS API — no Supabase dependency.
+// All commerce operations via VPS API — no VPS dependency.
 
 import 'package:flutter/foundation.dart';
 

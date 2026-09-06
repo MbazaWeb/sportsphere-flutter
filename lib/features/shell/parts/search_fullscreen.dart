@@ -1,6 +1,6 @@
 part of '../app_shell.dart';
 
-// VpsRepository + VpsSupabaseCompat are re-exported via the parent
+// VpsRepository + VpsVPSCompat are re-exported via the parent
 // app_shell.dart import chain (core/data/* imported there).
 
 class _FullScreenSearch extends StatefulWidget {
@@ -314,7 +314,7 @@ class _NearbyFansTab extends StatefulWidget {
 
 class _NearbyFansTabState extends State<_NearbyFansTab>
     with SingleTickerProviderStateMixin {
-  final _sb = VpsSupabaseCompat.client;
+  final _sb = VpsVPSCompat.client;
   List<Map<String, dynamic>> _fans = [];
   bool _loading = true;
   bool _scanning = false;
@@ -418,7 +418,7 @@ class _NearbyFansTabState extends State<_NearbyFansTab>
       _myLng = position.longitude;
 
       // Save location to profile for future queries
-      if (VpsSupabaseCompat.client.auth.currentUser != null) {
+      if (VpsVPSCompat.client.auth.currentUser != null) {
         try {
           await const VpsRepository().updateLocation(_myLat!, _myLng!);
         } catch (_) {}
@@ -1249,7 +1249,7 @@ class _FanActionButtonsState extends State<_FanActionButtons> {
   }
 
   Future<void> _checkFollowStatus() async {
-    if (VpsSupabaseCompat.client.auth.currentUser == null) return;
+    if (VpsVPSCompat.client.auth.currentUser == null) return;
     try {
       final following = await const VpsRepository().isFollowing(widget.uid);
       if (mounted) setState(() => _following = following);
@@ -1258,7 +1258,7 @@ class _FanActionButtonsState extends State<_FanActionButtons> {
 
   Future<void> _toggleFollow() async {
     if (_busy) return;
-    if (VpsSupabaseCompat.client.auth.currentUser == null) return;
+    if (VpsVPSCompat.client.auth.currentUser == null) return;
     setState(() => _busy = true);
     final wasFollowing = _following;
     setState(() => _following = !wasFollowing);

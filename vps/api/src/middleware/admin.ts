@@ -1,5 +1,5 @@
 // vps/api/src/middleware/admin.ts
-// Admin check using VPS PostgreSQL only — no Supabase.
+// Admin check using VPS PostgreSQL.
 import type { MiddlewareHandler } from 'hono'
 import { queryOne } from '../lib/db.js'
 

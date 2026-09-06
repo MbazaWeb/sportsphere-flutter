@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { listProfiles, listClaims, resolveClaim, verifyProfile, updateProfile } from '../lib/api'
-import type { Profile } from '../lib/supabase'
+import type { Profile } from '../lib/types'
 
 export function UsersPage() {
   const [users, setUsers] = useState<Profile[]>([])

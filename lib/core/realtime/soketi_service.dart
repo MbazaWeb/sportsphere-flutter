@@ -1,5 +1,5 @@
 // lib/core/realtime/soketi_service.dart
-// Soketi WebSocket client — replaces Supabase Realtime.
+// Soketi WebSocket client — replaces VPS Soketi realtime.
 // Soketi is Pusher-protocol compatible — uses pusher_channels_flutter.
 //
 // Channel conventions:

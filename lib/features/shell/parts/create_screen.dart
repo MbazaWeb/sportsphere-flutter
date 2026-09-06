@@ -1280,7 +1280,7 @@ class _PollPanelState extends State<_PollPanel> {
     if (_loadingPlayers) return;
     setState(() => _loadingPlayers = true);
     try {
-      final rows = VpsSupabaseCompat.client
+      final rows = VpsVPSCompat.client
           .from('Player')
           .select('name')
           .order('name')

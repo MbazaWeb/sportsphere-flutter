@@ -6,8 +6,7 @@
       "request": "launch",
       "type": "dart",
       "args": [
-        "--dart-define=SUPABASE_URL=https://your-project.supabase.co",
-        "--dart-define=SUPABASE_ANON_KEY=your-anon-key-here"
+        "--dart-define=API_BASE_URL=https://playifysport.fun"
       ]
     }
   ]

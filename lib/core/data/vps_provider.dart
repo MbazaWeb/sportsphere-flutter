@@ -1,6 +1,6 @@
 // lib/core/data/vps_provider.dart
 // Riverpod providers for the VPS API.
-// Import this wherever you need VPS calls instead of direct Supabase.
+// Riverpod provider for VpsRepository — used everywhere the app talks to the VPS API.
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'vps_repository.dart';

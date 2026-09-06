@@ -12,7 +12,7 @@ import '../data/player_profile_lookup.dart';
 import '../data/role_profile_lookup.dart';
 import '../templates/role_profile_model.dart';
 
-/// Loads profiles from Supabase only (no role_mocks).
+/// Loads profiles from VPS only (no role_mocks).
 class ProfileLoader {
   const ProfileLoader._();
 

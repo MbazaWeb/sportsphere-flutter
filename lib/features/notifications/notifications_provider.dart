@@ -1,5 +1,5 @@
 // lib/features/notifications/notifications_provider.dart
-// All notification ops via VPS API — no Supabase dependency.
+// All notification ops via VPS API — no VPS dependency.
 //
 // Riverpod 3.x: `StateNotifier`/`StateNotifierProvider` were removed.
 // This file now uses `Notifier`/`NotifierProvider`. The polling timer is

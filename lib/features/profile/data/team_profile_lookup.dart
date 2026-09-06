@@ -1,4 +1,4 @@
-import '../../../core/data/vps_supabase_compat.dart';
+import '../../../core/data/legacy_compat.dart';
 import 'package:flutter/material.dart';
 import '../../../core/widgets/team_color_picker.dart';
 
@@ -11,7 +11,7 @@ String normalizeTeamHandle(String raw) {
 
 Future<TeamProfileModel> lookupTeamProfile(String handle) async {
   final key = normalizeTeamHandle(handle);
-  final sb = VpsSupabaseCompat.client;
+  final sb = LegacyCompat.client;
 
   Map<String, dynamic>? team;
   Map<String, dynamic>? user;

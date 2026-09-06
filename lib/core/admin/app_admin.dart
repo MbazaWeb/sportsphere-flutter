@@ -1,8 +1,8 @@
 import '../../features/auth/domain/auth_state.dart';
-import '../data/vps_supabase_compat.dart';
+import '../data/legacy_compat.dart';
 
 /// In-app admin: Playify Official account + explicit admin role.
-/// Fully migrated to VPS — no direct Supabase calls.
+/// Fully migrated to VPS — no direct VPS calls.
 class AppAdmin {
   AppAdmin._();
 
@@ -31,9 +31,9 @@ class AppAdmin {
     return false;
   }
 
-  /// Synchronous check — uses cached user from VpsSupabaseCompat.
+  /// Synchronous check — uses cached user from LegacyCompat.
   static bool get isSessionAdmin {
-    final u = VpsSupabaseCompat.client.auth.currentUser;
+    final u = LegacyCompat.client.auth.currentUser;
     if (u == null) return false;
     if (_adminUids.contains(u.id)) return true;
     // Role-based check requires async fetch — use resolveIsAdmin() for
@@ -45,12 +45,12 @@ class AppAdmin {
 
   /// Resolves admin from VPS — queries profile via VpsRepository.
   static Future<bool> resolveIsAdmin() async {
-    final uid = VpsSupabaseCompat.client.auth.currentUser?.id;
+    final uid = LegacyCompat.client.auth.currentUser?.id;
     if (uid == null) return false;
     if (_adminUids.contains(uid)) return true;
 
     try {
-      final profile = await VpsSupabaseCompat.client
+      final profile = await LegacyCompat.client
           .from('profiles')
           .select()
           .eq('id', uid)
@@ -65,7 +65,7 @@ class AppAdmin {
     } catch (_) {}
 
     try {
-      final user = await VpsSupabaseCompat.client
+      final user = await LegacyCompat.client
           .from('User')
           .select()
           .eq('id', uid)

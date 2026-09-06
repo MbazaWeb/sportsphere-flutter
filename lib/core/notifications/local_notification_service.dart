@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-/// Local/system notifications driven by Supabase Realtime events.
+/// Local/system notifications driven by VPS Soketi realtime events.
 /// Full remote FCM requires Firebase project keys — this covers realtime in-app + device tray.
 class LocalNotificationService {
   LocalNotificationService._();

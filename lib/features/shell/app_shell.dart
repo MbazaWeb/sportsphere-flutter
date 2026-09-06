@@ -18,7 +18,7 @@ import '../../core/data/social_repository.dart';
 import '../../core/data/commerce_repository.dart';
 import '../../core/data/messaging_repository.dart';
 import '../../core/data/vps_repository.dart';
-import '../../core/data/vps_supabase_compat.dart';
+import '../../core/data/legacy_compat.dart';
 import '../../core/widgets/glass_container.dart';
 import '../../features/auth/domain/auth_state.dart';
 import '../../features/auth/presentation/auth_controller.dart';
