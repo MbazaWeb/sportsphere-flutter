@@ -5,7 +5,7 @@ import { Hono } from 'hono'
 export const aiRouter = new Hono()
 
 aiRouter.post('/', async (c) => {
-  const { prompt, model = 'deepseek' } = await c.req.json<{ prompt: string; model?: string }>()
+  const { prompt, model = 'anthropic' } = await c.req.json<{ prompt: string; model?: string }>()
   if (!prompt) return c.json({ error: 'prompt required' }, 400)
 
   if (model === 'anthropic') {
