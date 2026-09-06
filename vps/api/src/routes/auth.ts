@@ -254,10 +254,13 @@ authRouter.post('/change-password', async (c) => {
   const user = await queryOne<{ passwordHash: string }>(
     `SELECT "passwordHash" FROM public."User" WHERE id=$1`, [userId]
   )
-  if (!user?.passwordHash) return c.json({ error: 'Cannot change password' }, 400)
-
-  const valid = await verifyPassword(currentPassword, user.passwordHash)
-  if (!valid) return c.json({ error: 'Current password is incorrect' }, 401)
+  // Migrated user (no VPS password yet) — skip current password check
+  // They're already authenticated via JWT so identity is proven
+  if (user?.passwordHash) {
+    const valid = await verifyPassword(currentPassword, user.passwordHash)
+    if (!valid) return c.json({ error: 'Current password is incorrect' }, 401)
+  }
+  // else: migrated user — allow setting new password directly
 
   const newHash = await hashPassword(newPassword)
   await execute(`UPDATE public."User" SET "passwordHash"=$1, "updatedAt"=NOW() WHERE id=$2`, [newHash, userId])
