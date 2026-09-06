@@ -1,448 +1,563 @@
 // vps/api/src/routes/ai-director.ts
-// AI Director — Autonomous manager of @playify account
-// Manages content, unclaimed users, news, polls, predictions, comments
+// AI Director — orchestrates the full content cycle for Playify.
+//
+// Capabilities (all under /v1/admin/ai-director, require admin JWT):
+//   POST /auto-run                 Full content cycle (fetch → analyze → post → poll)
+//   POST /generate-post            Football content post + image prompt
+//   POST /generate-poll            Fan poll with options
+//   POST /generate-prediction      Match outcome prediction
+//   POST /respond-comment          Auto-reply to a fan comment as @playify
+//   POST /update-fixture           Extract fixture data from text → upsert Match
+//   POST /team-profile             Generate team bio
+//   POST /player-profile           Generate player profile
+//   POST /generate-news            Breaking news / previews / reviews / features
+//   POST /generate-rumor           Transfer rumors (labeled speculation)
+//   POST /match-analysis           Post-match ratings + tactical breakdown
+//   POST /manage-scores            Live score + result + standings update
+//   POST /manage-unclaimed         Post content for unclaimed team accounts
+//   POST /research                 Deep research on any TZ football topic
+//   POST /chat                     Interactive AI football assistant
 
 import { Hono } from 'hono'
-import { query, queryOne, execute } from '../lib/db.js'
-import { AI_DIRECTOR_SYSTEM, TANZANIA_FOOTBALL_KNOWLEDGE } from '../lib/ai-knowledge.js'
+import { query, queryOne, execute, transaction } from '../lib/db.js'
 
 export const aiDirectorRouter = new Hono()
 
-const KEY   = () => Bun.env.ANTHROPIC_API_KEY ?? ''
-const MODEL = 'claude-haiku-4-5-20251001'
+// ─── AI core ──────────────────────────────────────────────────────────────
+const DEEPSEEK_KEY = Bun.env.DEEPSEEK_API_KEY ?? ''
+const ANTHROPIC_KEY = Bun.env.ANTHROPIC_API_KEY ?? ''
 
-// ── Core AI call ──────────────────────────────────────────────────────────────
-async function claude(prompt: string, system = AI_DIRECTOR_SYSTEM, maxTokens = 1024): Promise<string> {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+async function askAI(system: string, user: string, provider: 'deepseek' | 'anthropic' = 'deepseek'): Promise<string> {
+  if (provider === 'anthropic' && ANTHROPIC_KEY) {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type':'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version':'2023-06-01' },
+      body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:1024, system,
+        messages:[{ role:'user', content: user }] }),
+    })
+    if (!res.ok) throw new Error(`Anthropic ${res.status}`)
+    const d = await res.json() as any
+    return d?.content?.[0]?.text ?? ''
+  }
+
+  // Default: DeepSeek
+  if (!DEEPSEEK_KEY) throw new Error('DEEPSEEK_API_KEY not set')
+  const res = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
-    headers: { 'x-api-key': KEY(), 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system, messages: [{ role: 'user', content: prompt }] }),
-  })
-  const d = await res.json() as any
-  if (!res.ok) throw new Error(d?.error?.message ?? 'AI error')
-  return d.content?.[0]?.text ?? ''
-}
-
-async function claudeJSON<T>(prompt: string, system = AI_DIRECTOR_SYSTEM, maxTokens = 800): Promise<T> {
-  const raw = await claude(prompt, system, maxTokens)
-  return JSON.parse(raw.replace(/```json|```/g,'').trim()) as T
-}
-
-async function adminId(): Promise<string | null> {
-  const r = await queryOne<{id:string}>(`SELECT id FROM public."User" WHERE handle='playify' LIMIT 1`)
-  return r?.id ?? null
-}
-
-async function publishPost(userId: string, content: string, mediaUrls?: string[]): Promise<string> {
-  const rows = await query(
-    `INSERT INTO public."Post"(id,"userId",content,"mediaUrls","likeCount","commentCount","shareCount","createdAt","updatedAt")
-     VALUES(gen_random_uuid()::text,$1,$2,$3::jsonb,0,0,0,NOW(),NOW()) RETURNING id`,
-    [userId, content, JSON.stringify(mediaUrls ?? [])]
-  )
-  return (rows[0] as any).id
-}
-
-// ── STATUS ────────────────────────────────────────────────────────────────────
-aiDirectorRouter.get('/status', async (c) => {
-  const uid = await adminId()
-  const posts = await queryOne<{n:string}>(`SELECT COUNT(*) n FROM public."Post" WHERE "userId"=$1`, [uid??''])
-  const news  = await queryOne<{n:string}>(`SELECT COUNT(*) n FROM public."News" WHERE "authorId"=$1`, [uid??''])
-  const unclaimed = await queryOne<{n:string}>(
-    `SELECT COUNT(*) n FROM public."User" u
-     JOIN public."Team" t ON t."accountUserId"=u.id
-     WHERE t."identity_status"!='claimed' OR t."identity_status" IS NULL`)
-  return c.json({
-    ok: true, model: MODEL, configured: !!KEY(),
-    adminHandle: 'playify', adminId: uid,
-    stats: { postsPublished: parseInt(posts?.n??'0'), newsPublished: parseInt(news?.n??'0') },
-    unclaimedTeams: parseInt(unclaimed?.n??'0'),
-    capabilities: [
-      'status','chat','match-analysis','prediction','tactical-report',
-      'player-report','smart-alert','fantasy-tip','generate-post',
-      'generate-poll','generate-news','generate-rumor','respond-comment',
-      'fixture-extract','team-profile','player-profile',
-      'manage-unclaimed','auto-run','research'
-    ]
-  })
-})
-
-// ── CHAT (interactive AI assistant) ───────────────────────────────────────────
-aiDirectorRouter.post('/chat', async (c) => {
-  const { message, history = [], context } = await c.req.json<any>()
-  const messages = [
-    ...history.map((h:any) => ({ role: h.role, content: h.content })),
-    { role: 'user', content: message }
-  ]
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'x-api-key': KEY(), 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    headers: { 'content-type':'application/json', authorization:`Bearer ${DEEPSEEK_KEY}` },
     body: JSON.stringify({
-      model: MODEL, max_tokens: 512,
-      system: AI_DIRECTOR_SYSTEM + (context ? `\nCurrent context: ${context}` : ''),
-      messages,
+      model: 'deepseek-chat',
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user',   content: user },
+      ],
     }),
   })
+  if (!res.ok) throw new Error(`DeepSeek ${res.status}`)
   const d = await res.json() as any
-  return c.json({ ok: true, reply: d.content?.[0]?.text ?? '', model: MODEL })
-})
+  return d?.choices?.[0]?.message?.content ?? ''
+}
 
-// ── RESEARCH Tanzania Football ────────────────────────────────────────────────
-aiDirectorRouter.post('/research', async (c) => {
-  const { topic } = await c.req.json<{ topic: string }>()
-  const reply = await claude(
-    `Research and provide detailed, accurate information about: ${topic}
-     Focus on Tanzania football context. Include:
-     - Current status/facts
-     - Historical context  
-     - Key statistics if relevant
-     - Recent developments (based on your knowledge)
-     - Recommendations for the platform
-     Be thorough but factual. Label any speculation clearly.`,
-    AI_DIRECTOR_SYSTEM, 1024
-  )
-  return c.json({ ok: true, topic, research: reply })
-})
+// Parse the first JSON object from an AI response (LLMs sometimes wrap in ```json)
+function parseJSON<T = any>(text: string): T {
+  // Strip markdown code fences
+  let t = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()
+  // Find first { or [ ... last } or ]
+  const start = t.search(/[{\[]/)
+  const end = Math.max(t.lastIndexOf('}'), t.lastIndexOf(']'))
+  if (start >= 0 && end > start) t = t.slice(start, end + 1)
+  return JSON.parse(t) as T
+}
 
-// ── GENERATE NEWS ARTICLE ──────────────────────────────────────────────────────
-aiDirectorRouter.post('/generate-news', async (c) => {
-  const { topic, type = 'news', publish = false } = await c.req.json<any>()
-  // type: 'news' | 'rumor' | 'breaking' | 'preview' | 'review' | 'feature'
-
-  const typeInstructions: Record<string, string> = {
-    news:     'Write a factual news article.',
-    rumor:    'Write a transfer rumor article. CLEARLY label as "RUMOR" and use "reportedly","sources claim" etc.',
-    breaking: 'Write a BREAKING NEWS article. Urgent tone, key facts first.',
-    preview:  'Write a match preview article with tactical analysis and prediction.',
-    review:   'Write a match review with analysis, player ratings, and key moments.',
-    feature:  'Write a feature story about Tanzania football, engaging and detailed.',
-  }
-
-  const article = await claudeJSON<any>(`
-    ${typeInstructions[type] ?? typeInstructions.news}
-    Topic: ${topic}
-    
-    Return JSON:
-    {
-      "headline": "compelling headline under 80 chars",
-      "summary": "2-sentence summary for preview",
-      "body": "full article 300-500 words with paragraphs separated by \\n\\n",
-      "tags": ["tag1","tag2","tag3"],
-      "imagePrompt": "description for generating a relevant image",
-      "socialPost": "engaging post under 200 chars to share this article"
-    }`)
-
-  if (!publish) return c.json({ ok: true, type, article, published: false })
-
-  const uid = await adminId()
-  if (!uid) return c.json({ error: 'Admin not found' }, 404)
-
-  // Save as news
-  const rows = await query(
-    `INSERT INTO public."News"(id,title,summary,content,tags,"authorId","publishedAt","createdAt","updatedAt")
-     VALUES(gen_random_uuid()::text,$1,$2,$3,$4::jsonb,$5,NOW(),NOW(),NOW()) RETURNING id`,
-    [article.headline, article.summary, article.body,
-     JSON.stringify(article.tags ?? []), uid]
-  ).catch(async () => {
-    // News table may have different schema — fallback to Post
-    const pid = await publishPost(uid, `📰 ${article.headline}\n\n${article.summary}`)
-    return [{ id: pid }]
-  })
-
-  // Also create a social post
-  const pid = await publishPost(uid, article.socialPost ?? `📰 ${article.headline}`)
-
-  return c.json({ ok: true, type, article, published: true,
-    newsId: (rows[0] as any).id, postId: pid })
-})
-
-// ── GENERATE RUMOR ────────────────────────────────────────────────────────────
-aiDirectorRouter.post('/generate-rumor', async (c) => {
-  const { context, publish = false } = await c.req.json<any>()
-  const rumor = await claudeJSON<any>(`
-    Generate a realistic Tanzania football transfer rumor.
-    ${context ? `Context: ${context}` : 'Pick any interesting rumor involving TPL teams.'}
-    IMPORTANT: This is entertainment/speculation content. Always label clearly.
-    
-    Return JSON:
-    {
-      "headline": "RUMOR: ... (include RUMOR label)",
-      "player": "player name",
-      "fromClub": "current club",
-      "toClub": "rumored destination",
-      "fee": "reported fee or null",
-      "reliability": "Low|Medium",
-      "source": "Social media reports|Club insiders|Agent sources",
-      "body": "150-200 word article clearly labeled as rumor/speculation",
-      "socialPost": "🔁 RUMOR: ... under 180 chars"
-    }`)
-
-  if (!publish) return c.json({ ok: true, rumor, published: false })
-  const uid = await adminId()
-  if (!uid) return c.json({ error: 'Admin not found' }, 404)
-  const pid = await publishPost(uid, rumor.socialPost ?? `🔁 ${rumor.headline}`)
-  return c.json({ ok: true, rumor, published: true, postId: pid })
-})
-
-// ── MATCH ANALYSIS ────────────────────────────────────────────────────────────
-aiDirectorRouter.post('/match-analysis', async (c) => {
-  const { homeTeam, awayTeam, homeScore, awayScore, events, publish = false } = await c.req.json<any>()
-  const data = await claudeJSON<any>(`
-    Analyze Tanzania football match: ${homeTeam} ${homeScore??'?'}-${awayScore??'?'} ${awayTeam}
-    ${events ? `Events: ${JSON.stringify(events)}` : ''}
-    Return JSON: {
-      "analysis":"detailed 3-4 sentence analysis",
-      "manOfMatch":"player name and reason",
-      "tacticalNote":"key tactical observation",
-      "playerRatings":[{"name":"...","rating":6.5,"note":"..."}],
-      "socialPost":"engaging post under 200 chars"
-    }`)
-  if (publish && data.socialPost) {
-    const uid = await adminId()
-    if (uid) { data.postId = await publishPost(uid, `⚽ ${data.socialPost}`) }
-  }
-  return c.json({ ok: true, homeTeam, awayTeam, homeScore, awayScore, ...data })
-})
-
-// ── MATCH PREDICTION ──────────────────────────────────────────────────────────
-aiDirectorRouter.post('/prediction', async (c) => {
-  const { homeTeam, awayTeam, venue, league='Tanzania Premier League',
-          homeForm, awayForm, injuries, publish = false } = await c.req.json<any>()
-  const data = await claudeJSON<any>(`
-    Predict ${league}: ${homeTeam} vs ${awayTeam}
-    ${venue?`Venue: ${venue}`:''}
-    ${homeForm?`${homeTeam} form: ${homeForm}`:''}
-    ${awayForm?`${awayTeam} form: ${awayForm}`:''}
-    ${injuries?`Injuries: ${injuries}`:''}
-    Return JSON: {
-      "prediction":"Home Win|Draw|Away Win",
-      "confidence":"High|Medium|Low",
-      "predictedScore":"X-Y",
-      "keyFactors":["...","...","..."],
-      "rationale":"2-3 sentences",
-      "socialPost":"🔮 prediction post under 180 chars"
-    }`)
-  if (publish && data.socialPost) {
-    const uid = await adminId()
-    if (uid) { data.postId = await publishPost(uid, data.socialPost) }
-  }
-  return c.json({ ok: true, homeTeam, awayTeam, ...data })
-})
-
-// ── TACTICAL REPORT ───────────────────────────────────────────────────────────
-aiDirectorRouter.post('/tactical-report', async (c) => {
-  const { teamName, opponent } = await c.req.json<any>()
-  const data = await claudeJSON<any>(`
-    Tactical analysis for ${teamName}${opponent?` vs ${opponent}`:''}:
-    Return JSON: {
-      "formation":"e.g. 4-3-3",
-      "strengths":["...","..."],
-      "weaknesses":["...","..."],
-      "keyPlayers":["name - role","..."],
-      "recommendedStrategy":"2-3 sentences",
-      "pressurePoints":"where to exploit"
-    }`)
-  return c.json({ ok: true, teamName, ...data })
-})
-
-// ── PLAYER PERFORMANCE REPORT ─────────────────────────────────────────────────
-aiDirectorRouter.post('/player-report', async (c) => {
-  const { playerName, position, team, stats } = await c.req.json<any>()
-  const data = await claudeJSON<any>(`
-    Performance report for ${playerName} (${position??'player'}) at ${team??'Tanzania'}:
-    ${stats?`Stats: ${JSON.stringify(stats)}`:''}
-    Return JSON: {
-      "overallRating":7.5,
-      "technical":7,"tactical":7,"physical":7,
-      "strengths":["..."],
-      "improvements":["..."],
-      "summary":"2-3 sentence assessment",
-      "marketValue":"$X-Y million estimate"
-    }`)
-  return c.json({ ok: true, playerName, ...data })
-})
-
-// ── SMART ALERT FILTER ────────────────────────────────────────────────────────
-aiDirectorRouter.post('/smart-alert', async (c) => {
-  const { events } = await c.req.json<{ events: any[] }>()
-  const alerts = await claudeJSON<any[]>(`
-    Filter for HIGH significance events only from: ${JSON.stringify(events)}
-    Return JSON array: [{"event":"...","significance":"HIGH","alertText":"push notification under 80 chars"}]`)
-  return c.json({ ok: true, alerts })
-})
-
-// ── FANTASY TIP ───────────────────────────────────────────────────────────────
-aiDirectorRouter.post('/fantasy-tip', async (c) => {
-  const { gameweek, budget, currentSquad } = await c.req.json<any>()
-  const data = await claudeJSON<any>(`
-    Fantasy TPL tips for gameweek ${gameweek??'next'}, budget: ${budget??'any'}.
-    ${currentSquad?`Squad: ${JSON.stringify(currentSquad)}`:''}
-    Return JSON: {
-      "captainPick":{"player":"...","team":"...","reason":"..."},
-      "transfers":[{"out":"...","in":"...","reason":"..."}],
-      "watchlist":["player1","player2"],
-      "tip":"key insight for this gameweek"
-    }`)
-  return c.json({ ok: true, ...data })
-})
-
-// ── GENERATE POST ─────────────────────────────────────────────────────────────
-aiDirectorRouter.post('/generate-post', async (c) => {
-  const { topic, publish = false } = await c.req.json<any>()
-  const content = await claude(
-    `Write an engaging Tanzania football social media post: ${topic??'TPL latest news or matchday'}.
-     Max 250 chars. Include hashtags. Just the post text.`, AI_DIRECTOR_SYSTEM, 300)
-  if (!publish) return c.json({ ok: true, content, published: false })
-  const uid = await adminId()
-  if (!uid) return c.json({ error: 'Admin not found' }, 404)
-  return c.json({ ok: true, content, published: true, postId: await publishPost(uid, content) })
-})
-
-// ── GENERATE POLL ─────────────────────────────────────────────────────────────
-aiDirectorRouter.post('/generate-poll', async (c) => {
-  const { topic, publish = false } = await c.req.json<any>()
-  const poll = await claudeJSON<any>(`
-    Tanzania football poll: ${topic??'TPL this week'}.
-    Return JSON: {"question":"...","options":["...","...","...","..."]}`)
-  if (!publish) return c.json({ ok: true, poll, published: false })
-  const uid = await adminId()
-  if (!uid) return c.json({ error: 'Admin not found' }, 404)
-  const pid = await publishPost(uid, `📊 ${poll.question}`)
-  await query(
-    `INSERT INTO public."Poll"(id,"postId",question,options,"totalVotes","endsAt","createdAt")
-     VALUES(gen_random_uuid()::text,$1,$2,$3::jsonb,0,NOW()+'7 days'::interval,NOW())`,
-    [pid, poll.question, JSON.stringify(poll.options)])
-  return c.json({ ok: true, poll, published: true, postId: pid })
-})
-
-// ── RESPOND TO COMMENT ────────────────────────────────────────────────────────
-aiDirectorRouter.post('/respond-comment', async (c) => {
-  const { commentId, commentText, postContent, publish = false } = await c.req.json<any>()
-  const reply = await claude(
-    `Fan comment on Tanzania football post.
-     Post: "${postContent??'football'}" | Comment: "${commentText}"
-     Reply as @playify admin. Max 150 chars. Friendly and engaging.`, AI_DIRECTOR_SYSTEM, 200)
-  if (!publish) return c.json({ ok: true, reply, published: false })
-  const uid = await adminId()
-  if (!uid) return c.json({ error: 'Admin not found' }, 404)
-  const comment = await queryOne<{postId:string}>(`SELECT "postId" FROM public."Comment" WHERE id=$1`, [commentId])
-  if (!comment) return c.json({ error: 'Comment not found' }, 404)
+// ─── Get/Set the "playify" system user (used to author AI-generated content) ──
+async function getPlayifySystemUserId(): Promise<string> {
+  let row = await queryOne<{id: string}>(`SELECT id FROM public."User" WHERE handle='playify_bot'`)
+  if (row) return row.id
+  // Create the bot user if it doesn't exist
+  const id = crypto.randomUUID()
   await execute(
-    `INSERT INTO public."Comment"(id,"postId","userId",content,"likeCount","createdAt","updatedAt")
-     VALUES(gen_random_uuid()::text,$1,$2,$3,0,NOW(),NOW())`,
-    [comment.postId, uid, reply])
-  return c.json({ ok: true, reply, published: true })
+    `INSERT INTO public."User"(id, name, email, handle, role, "passwordHash", "emailVerified", "registeredAt", "updatedAt")
+     VALUES($1,'Playify AI','bot@playify.app','playify_bot','admin','__no_login__',true,NOW(),NOW())`,
+    [id]
+  ).catch(() => {})
+  await execute(
+    `INSERT INTO public.profiles(id, handle, role, first_name, last_name, email, country, created_at, updated_at)
+     VALUES($1::uuid,'playify_bot','admin','Playify','AI','bot@playify.app','Global',NOW(),NOW())
+     ON CONFLICT DO NOTHING`,
+    [id]
+  ).catch(() => {})
+  return id
+}
+
+// ─── Create a Post (as the playify_bot user) ──────────────────────────────
+async function createPost(content: string, postType = 'post', mediaUrls: string[] = [], extra: any = {}) {
+  const userId = await getPlayifySystemUserId()
+  const rows = await query(
+    `INSERT INTO public."Post"(id,"userId",content,"postType","mediaUrls","hashtags",
+       "teamTag","playerTag","sportTag","isBreaking","likeCount","commentCount","shareCount","viewCount","createdAt","updatedAt")
+     VALUES(gen_random_uuid()::text,$1,$2,$3,$4::jsonb,$5::jsonb,$6,$7,$8,$9,0,0,0,0,NOW(),NOW())
+     RETURNING *`,
+    [userId, content, postType, JSON.stringify(mediaUrls ?? []),
+     JSON.stringify(extra.hashtags ?? []),
+     extra.teamTag ?? null, extra.playerTag ?? null, extra.sportTag ?? 'football',
+     extra.isBreaking ?? false]
+  )
+  await execute(`UPDATE public.profiles SET post_count=COALESCE(post_count,0)+1 WHERE id::text=$1`, [userId]).catch(() => {})
+  return rows[0]
+}
+
+// ─── Create a Poll ────────────────────────────────────────────────────────
+async function createPoll(postId: string, question: string, options: string[], endsAt?: string) {
+  const rows = await query(
+    `INSERT INTO public."Poll"(id,"postId","matchId",question,options,"totalVotes","endsAt","createdAt")
+     VALUES(gen_random_uuid()::text,$1,$2,$3,$4::jsonb,0,$5,NOW()) RETURNING *`,
+    [postId, null, question, JSON.stringify(options), endsAt ?? null]
+  )
+  return rows[0]
+}
+
+// ─── Create a NewsItem ────────────────────────────────────────────────────
+async function createNews(item: any) {
+  const id = `ai-news-${Date.now()}-${Math.random().toString(36).slice(2,8)}`
+  const slug = (item.title ?? 'untitled').toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,80)
+  await execute(
+    `INSERT INTO public."NewsItem"(id,title,slug,body,summary,category,source,
+       "imageUrl",status,"is_breaking","likeCount","commentCount","shareCount","viewCount","publishedAt","createdAt","updatedAt")
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,'published',$9,0,0,0,0,NOW(),NOW(),NOW())
+     ON CONFLICT DO NOTHING`,
+    [id, item.title, slug, item.body ?? item.content, item.summary ?? '',
+     item.category ?? 'updates', item.source ?? 'Playify AI',
+     item.imageUrl ?? null, item.isBreaking ?? false]
+  ).catch(() => {})
+  return id
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// CAPABILITIES
+// ════════════════════════════════════════════════════════════════════════════
+
+// ─── POST /auto-run ───────────────────────────────────────────────────────
+// Full content cycle in one call: generate news → post → poll → prediction
+aiDirectorRouter.post('/auto-run', async (c) => {
+  const userId = c.get('userId') as string
+  const b = await c.req.json<any>().catch(() => ({}))
+  const topic = b.topic ?? 'Tanzania Ligi Kuu Bara — weekly recap'
+
+  const system = `You are the Playify AI Director for the Playify sports social app.
+You produce THREE pieces of content in one cycle:
+1. A short news article (3-4 paragraphs)
+2. A fan post (60-120 words, engaging tone, with 2-4 hashtags)
+3. A fan poll question with 3-4 options
+
+Always respond in valid JSON with this exact shape:
+{
+  "news":     { "title": "...", "body": "...", "summary": "...", "isBreaking": false, "category": "updates" },
+  "post":     { "content": "...", "hashtags": ["#ligikuu"], "postType": "post" },
+  "poll":     { "question": "...", "options": ["...","...","..."] }
+}
+Tanzania football (Ligi Kuu Bara, Simba SC, Young Africans) gets TOP priority.
+Use English with Swahili fan vocabulary where natural (timu, mechi, magoli).`
+
+  try {
+    const text = await askAI(system, `Topic: ${topic}`)
+    const parsed = parseJSON(text)
+    // Persist everything
+    let newsId: string | null = null
+    if (parsed.news) newsId = await createNews({ ...parsed.news, source: 'Playify AI Director' })
+    let post: any = null
+    if (parsed.post) post = await createPost(parsed.post.content, parsed.post.postType ?? 'post', [], { hashtags: parsed.post.hashtags })
+    let poll: any = null
+    if (parsed.poll && post) poll = await createPoll(post.id, parsed.poll.question, parsed.poll.options)
+    return c.json({ ok: true, newsId, post, poll, raw: text })
+  } catch (e: any) {
+    return c.json({ ok: false, error: e.message }, 500)
+  }
 })
 
-// ── MANAGE UNCLAIMED USERS ────────────────────────────────────────────────────
-// AI creates content for unclaimed team/player accounts
-aiDirectorRouter.post('/manage-unclaimed', async (c) => {
-  const { limit = 5 } = await c.req.json<any>()
+// ─── POST /generate-post ──────────────────────────────────────────────────
+aiDirectorRouter.post('/generate-post', async (c) => {
+  const b = await c.req.json<any>()
+  const topic = b.topic ?? 'Simba SC match preview'
+  const system = `You are the Playify content writer for a sports social app.
+Write an engaging fan post (60-120 words) in English with Swahili fan vocabulary where natural.
+Always respond in JSON: { "content": "...", "hashtags": ["#ligikuu"], "postType": "post" }`
+  try {
+    const text = await askAI(system, topic)
+    const parsed = parseJSON(text)
+    const auto = b.autoPublish !== false  // default: publish
+    let post = null
+    if (auto) post = await createPost(parsed.content, parsed.postType ?? 'post', [], { hashtags: parsed.hashtags })
+    return c.json({ ok: true, parsed, post, raw: text })
+  } catch (e: any) {
+    return c.json({ ok: false, error: e.message }, 500)
+  }
+})
 
-  // Get unclaimed team accounts
-  const teams = await query<{id:string, name:string, handle:string, accountUserId:string}>(
-    `SELECT t.id, t.name, u.handle, u.id as "accountUserId"
-     FROM public."Team" t
-     JOIN public."User" u ON u.id::text = t."accountUserId"
-     WHERE (t."identity_status" IS NULL OR t."identity_status" != 'claimed')
-     AND t."isActive" = true
-     LIMIT $1`, [limit])
-
-  const results = []
-
-  for (const team of teams) {
-    try {
-      // Generate a post for this team's account
-      const content = await claude(
-        `Write a short social media post as if you are ${team.name} football club in Tanzania.
-         Team handle: @${team.handle}
-         Write about: training update, fan engagement, or upcoming match excitement.
-         Max 200 chars. First person ("We are ready!", "Our fans are amazing!").
-         Just the post text.`, AI_DIRECTOR_SYSTEM, 200)
-
-      await publishPost(team.accountUserId, content)
-      results.push({ team: team.name, handle: team.handle, posted: true, content })
-    } catch (e: any) {
-      results.push({ team: team.name, handle: team.handle, posted: false, error: e.message })
+// ─── POST /generate-poll ──────────────────────────────────────────────────
+aiDirectorRouter.post('/generate-poll', async (c) => {
+  const b = await c.req.json<any>()
+  const topic = b.topic ?? 'Who wins the Ligi Kuu Bara this season?'
+  const system = `You are the Playify poll generator. Generate ONE fan engagement poll.
+Always respond in JSON: { "question": "...", "options": ["...","...","...","..."] }
+Provide 3-4 concise options. Tanzania topics get priority.`
+  try {
+    const text = await askAI(system, topic)
+    const parsed = parseJSON(text)
+    let poll = null, post = null
+    if (b.autoPublish) {
+      post = await createPost(`📊 ${parsed.question}`, 'poll')
+      poll = await createPoll(post.id, parsed.question, parsed.options)
     }
+    return c.json({ ok: true, parsed, post, poll, raw: text })
+  } catch (e: any) {
+    return c.json({ ok: false, error: e.message }, 500)
+  }
+})
+
+// ─── POST /generate-prediction ────────────────────────────────────────────
+aiDirectorRouter.post('/generate-prediction', async (c) => {
+  const b = await c.req.json<any>()
+  const homeTeam = b.homeTeam ?? 'Simba SC'
+  const awayTeam = b.awayTeam ?? 'Young Africans'
+  const system = `You are the Playify football analyst. Predict the match outcome.
+Always respond in JSON:
+{ "predictedHome": 2, "predictedAway": 1, "outcome": "home_win",
+  "confidence": 75, "reasoning": "short 2-sentence justification" }
+Use realistic scoring (0-4 goals per side). Confidence is 0-100.`
+  try {
+    const text = await askAI(system, `Match: ${homeTeam} vs ${awayTeam}`)
+    const parsed = parseJSON(text)
+    let post = null, prediction = null
+    if (b.autoPublish) {
+      post = await createPost(
+        `🔮 Prediction: ${homeTeam} ${parsed.predictedHome}-${parsed.predictedAway} ${awayTeam}\n${parsed.reasoning}`,
+        'prediction'
+      )
+      const rows = await query(
+        `INSERT INTO public."Prediction"(id,"userId","homeTeam","awayTeam","predictedHome","predictedAway","outcome","confidence","postId","createdAt")
+         VALUES(gen_random_uuid()::text,$1,$2,$3,$4,$5,$6,$7,$8,NOW()) RETURNING *`,
+        [await getPlayifySystemUserId(), homeTeam, awayTeam,
+         parsed.predictedHome, parsed.predictedAway, parsed.outcome, parsed.confidence, post.id]
+      )
+      prediction = rows[0]
+    }
+    return c.json({ ok: true, parsed, post, prediction, raw: text })
+  } catch (e: any) {
+    return c.json({ ok: false, error: e.message }, 500)
+  }
+})
+
+// ─── POST /respond-comment ────────────────────────────────────────────────
+aiDirectorRouter.post('/respond-comment', async (c) => {
+  const b = await c.req.json<any>()
+  const commentId = b.commentId
+  const comment   = b.comment
+  if (!comment) return c.json({ error: 'comment required' }, 400)
+  const system = `You are @playify, the friendly Playify bot. Reply to a fan comment in 1-2 sentences.
+Be supportive, upbeat, use Swahili fan vocabulary where natural (asante, timu, magoli).
+Always respond with plain text (not JSON).`
+  try {
+    const text = await askAI(system, comment)
+    let savedReply = null
+    if (b.autoPublish !== false && commentId) {
+      const botId = await getPlayifySystemUserId()
+      const rows = await query(
+        `INSERT INTO public."Comment"(id,"postId","userId",content,"createdAt")
+         VALUES(gen_random_uuid()::text,
+           (SELECT "postId" FROM public."Comment" WHERE id=$1),
+           $2, $3, NOW()) RETURNING *`,
+        [commentId, botId, text.trim()]
+      )
+      savedReply = rows[0]
+    }
+    return c.json({ ok: true, reply: text, savedReply, raw: text })
+  } catch (e: any) {
+    return c.json({ ok: false, error: e.message }, 500)
+  }
+})
+
+// ─── POST /update-fixture ─────────────────────────────────────────────────
+// Extract fixture data from free text → upsert Match
+aiDirectorRouter.post('/update-fixture', async (c) => {
+  const b = await c.req.json<any>()
+  const text_input = b.text
+  if (!text_input) return c.json({ error: 'text required' }, 400)
+  const system = `You extract structured fixture data from football text.
+Always respond in JSON:
+{ "homeTeam": "...", "awayTeam": "...", "kickoffAt": "ISO date",
+  "league": "...", "season": "2026/27", "homeScore": null, "awayScore": null,
+  "status": "scheduled", "country": "Tanzania" }
+Use null for unknown scores. Status: scheduled | live | finished | postponed | cancelled.`
+  try {
+    const text = await askAI(system, text_input)
+    const parsed = parseJSON(text)
+    const id = `ai-fixture-${Date.now()}`
+    const existing = await queryOne<{id:string}>(
+      `SELECT id FROM public."Match" WHERE "homeTeam"=$1 AND "awayTeam"=$2 AND league=$3`,
+      [parsed.homeTeam, parsed.awayTeam, parsed.league]
+    )
+    let matchId: string
+    if (existing) {
+      await execute(
+        `UPDATE public."Match" SET "homeScore"=$1, "awayScore"=$2, status=$3, "kickoffAt"=$4, "updatedAt"=NOW() WHERE id=$5`,
+        [parsed.homeScore, parsed.awayScore, parsed.status, parsed.kickoffAt, existing.id]
+      )
+      matchId = existing.id
+    } else {
+      await execute(
+        `INSERT INTO public."Match"(id, league, "homeTeam", "awayTeam", "homeScore", "awayScore",
+           status, "kickoffAt", season, country, "sportSlug", "createdAt", "updatedAt")
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW(),NOW())`,
+        [id, parsed.league, parsed.homeTeam, parsed.awayTeam, parsed.homeScore, parsed.awayScore,
+         parsed.status, parsed.kickoffAt, parsed.season, parsed.country, 'football']
+      )
+      matchId = id
+    }
+    return c.json({ ok: true, parsed, matchId, raw: text })
+  } catch (e: any) {
+    return c.json({ ok: false, error: e.message }, 500)
+  }
+})
+
+// ─── POST /team-profile ──────────────────────────────────────────────────
+aiDirectorRouter.post('/team-profile', async (c) => {
+  const b = await c.req.json<any>()
+  const teamName = b.teamName ?? 'Simba SC'
+  const system = `You are the Playify team bio writer. Write a 200-word team profile with:
+history, achievements, current status, key players, fan culture.
+Always respond in JSON:
+{ "name": "...", "bio": "...", "foundedYear": "1936", "country": "Tanzania",
+  "city": "Dar es Salaam", "stadium": "...", "league": "Ligi Kuu Bara" }`
+  try {
+    const text = await askAI(system, `Team: ${teamName}`)
+    const parsed = parseJSON(text)
+    if (b.autoPublish) {
+      // Upsert team profile
+      await execute(
+        `INSERT INTO public."TeamProfile"("id","teamId","bio","foundedYear","city","stadium","league","createdAt","updatedAt")
+         VALUES(gen_random_uuid()::text,$1,$2,$3,$4,$5,$6,NOW(),NOW())
+         ON CONFLICT DO NOTHING`,
+        [`team-${teamName.toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,40)}`,
+         parsed.bio, parsed.foundedYear, parsed.city, parsed.stadium, parsed.league]
+      ).catch(() => {})
+    }
+    return c.json({ ok: true, parsed, raw: text })
+  } catch (e: any) {
+    return c.json({ ok: false, error: e.message }, 500)
+  }
+})
+
+// ─── POST /player-profile ────────────────────────────────────────────────
+aiDirectorRouter.post('/player-profile', async (c) => {
+  const b = await c.req.json<any>()
+  const playerName = b.playerName ?? 'Twisenge Bakari'
+  const system = `You are the Playify player profile writer. Write a 150-word bio.
+Always respond in JSON:
+{ "name": "...", "bio": "...", "position": "Striker", "nationality": "Tanzanian",
+  "currentClub": "Simba SC", "careerStatus": "Active" }`
+  try {
+    const text = await askAI(system, `Player: ${playerName}`)
+    const parsed = parseJSON(text)
+    if (b.autoPublish) {
+      await execute(
+        `INSERT INTO public."PlayerProfile"("id","playerId","bio","position","nationality","currentClub","careerStatus","createdAt","updatedAt")
+         VALUES(gen_random_uuid()::text,$1,$2,$3,$4,$5,$6,NOW(),NOW())
+         ON CONFLICT DO NOTHING`,
+        [`player-${playerName.toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,40)}`,
+         parsed.bio, parsed.position, parsed.nationality, parsed.currentClub, parsed.careerStatus]
+      ).catch(() => {})
+    }
+    return c.json({ ok: true, parsed, raw: text })
+  } catch (e: any) {
+    return c.json({ ok: false, error: e.message }, 500)
+  }
+})
+
+// ─── POST /generate-news ──────────────────────────────────────────────────
+aiDirectorRouter.post('/generate-news', async (c) => {
+  const b = await c.req.json<any>()
+  const topic = b.topic ?? 'Ligi Kuu Bara matchday recap'
+  const isBreaking = b.isBreaking ?? false
+  const system = `You are the Playify news desk. Write a Tanzania sports news article (3-4 paragraphs, 200-400 words).
+Always respond in JSON: { "title": "...", "body": "...", "summary": "...", "category": "updates" }
+Tanzania football gets TOP priority. Use English with Swahili fan vocabulary where natural.`
+  try {
+    const text = await askAI(system, topic)
+    const parsed = parseJSON(text)
+    let newsId: string | null = null
+    if (b.autoPublish !== false) {
+      newsId = await createNews({ ...parsed, source: 'Playify AI Director', isBreaking })
+    }
+    return c.json({ ok: true, parsed, newsId, raw: text })
+  } catch (e: any) {
+    return c.json({ ok: false, error: e.message }, 500)
+  }
+})
+
+// ─── POST /generate-rumor ─────────────────────────────────────────────────
+aiDirectorRouter.post('/generate-rumor', async (c) => {
+  const b = await c.req.json<any>()
+  const topic = b.topic ?? 'Transfer rumors in Ligi Kuu Bara'
+  const system = `You are the Playify transfer-rumor mill. Generate a clearly-labeled speculative transfer rumor (1 paragraph, 60-100 words).
+Start with the prefix "RUMOR: " so it's never confused with verified news.
+Always respond in JSON: { "title": "RUMOR: ...", "body": "...", "summary": "...", "category": "rumors" }`
+  try {
+    const text = await askAI(system, topic)
+    const parsed = parseJSON(text)
+    let newsId: string | null = null
+    if (b.autoPublish !== false) {
+      newsId = await createNews({ ...parsed, source: 'Playify Rumor Mill (AI)', isBreaking: false })
+    }
+    return c.json({ ok: true, parsed, newsId, raw: text })
+  } catch (e: any) {
+    return c.json({ ok: false, error: e.message }, 500)
+  }
+})
+
+// ─── POST /match-analysis ─────────────────────────────────────────────────
+aiDirectorRouter.post('/match-analysis', async (c) => {
+  const b = await c.req.json<any>()
+  const matchId = b.matchId
+  if (!matchId) return c.json({ error: 'matchId required' }, 400)
+  // Pull match row from DB
+  const match = await queryOne<any>(`SELECT * FROM public."Match" WHERE id=$1`, [matchId])
+  if (!match) return c.json({ error: 'Match not found' }, 404)
+  const system = `You are the Playify tactical analyst. Generate a post-match analysis with:
+1. Player ratings (top 3 from each side)
+2. Tactical breakdown (formation, key moments)
+Always respond in JSON:
+{ "ratings": [{"team":"...","players":[{"name":"...","rating":8.5}]}],
+  "tactics": "2-paragraph tactical summary",
+  "keyMoments": ["minute — what happened", "..."] }`
+  try {
+    const text = await askAI(system,
+      `Match: ${match.homeTeam} ${match.homeScore ?? '?'} - ${match.awayScore ?? '?'} ${match.awayTeam} (league: ${match.league}, status: ${match.status})`)
+    const parsed = parseJSON(text)
+    let post: any = null
+    if (b.autoPublish) {
+      const summary = `📊 Match Analysis: ${match.homeTeam} vs ${match.awayTeam}\n\n${parsed.tactics}\n\nKey moments: ${(parsed.keyMoments ?? []).join(' | ')}`
+      post = await createPost(summary, 'analysis', [], { matchId: matchId, sportTag: 'football' })
+    }
+    return c.json({ ok: true, parsed, post, raw: text })
+  } catch (e: any) {
+    return c.json({ ok: false, error: e.message }, 500)
+  }
+})
+
+// ─── POST /manage-scores ──────────────────────────────────────────────────
+// Update a live score, finalize a result, or refresh league standings.
+aiDirectorRouter.post('/manage-scores', async (c) => {
+  const b = await c.req.json<any>()
+  const action = b.action ?? 'update-live'
+  const matchId = b.matchId
+  if (!matchId && action !== 'refresh-standings') return c.json({ error: 'matchId required' }, 400)
+
+  if (action === 'update-live' || action === 'finalize') {
+    const match = await queryOne<any>(`SELECT * FROM public."Match" WHERE id=$1`, [matchId])
+    if (!match) return c.json({ error: 'Match not found' }, 404)
+    const newHome = b.homeScore ?? match.homeScore ?? 0
+    const newAway = b.awayScore ?? match.awayScore ?? 0
+    const newStatus = action === 'finalize' ? 'finished' : 'live'
+    await execute(
+      `UPDATE public."Match" SET "homeScore"=$1, "awayScore"=$2, status=$3, "updatedAt"=NOW() WHERE id=$4`,
+      [newHome, newAway, newStatus, matchId]
+    )
+    // Auto-generate an analysis post on finalize
+    let post: any = null
+    if (action === 'finalize' && b.autoPublish) {
+      const sys = `Write a 60-90 word final-score post for a sports social app. English with Swahili fan vocabulary.`
+      const text = await askAI(sys, `Match finished: ${match.homeTeam} ${newHome}-${newAway} ${match.awayTeam} (${match.league})`)
+      post = await createPost(text.trim(), 'result', [], { matchId, sportTag: 'football' })
+    }
+    return c.json({ ok: true, action, matchId, homeScore: newHome, awayScore: newAway, status: newStatus, post })
   }
 
-  return c.json({ ok: true, managed: results.length, results })
+  if (action === 'refresh-standings') {
+    // Recompute standings from finished matches
+    const league = b.league ?? 'Ligi Kuu Bara'
+    const rows = await query(
+      `SELECT * FROM public."Match" WHERE league=$1 AND status='finished'`,
+      [league]
+    )
+    const table: Record<string, any> = {}
+    for (const m of rows as any[]) {
+      for (const [team, gs, gc] of [[m.homeTeam, m.homeScore ?? 0, m.awayScore ?? 0],
+                                     [m.awayTeam, m.awayScore ?? 0, m.homeScore ?? 0]] as [string,number,number][]) {
+        table[team] ??= { team, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0 }
+        table[team].p++; table[team].gf += gs; table[team].ga += gc
+        if (gs > gc) table[team].w++
+        else if (gs === gc) table[team].d++
+        else table[team].l++
+      }
+    }
+    const standings = Object.values(table)
+      .map((s: any) => ({ ...s, pts: s.w*3+s.d, gd: s.gf-s.ga }))
+      .sort((a: any, b: any) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf)
+      .map((s: any, i: number) => ({ ...s, pos: i+1 }))
+    return c.json({ ok: true, league, standings })
+  }
+
+  return c.json({ error: `Unknown action: ${action}` }, 400)
 })
 
-// ── FIXTURE EXTRACT ───────────────────────────────────────────────────────────
-aiDirectorRouter.post('/fixture-extract', async (c) => {
-  const { text } = await c.req.json<{ text: string }>()
-  const fixtures = await claudeJSON<any[]>(`
-    Extract all football fixtures from: "${text}"
-    Return JSON array: [{
-      "homeTeam":"...","awayTeam":"...","date":"YYYY-MM-DD",
-      "time":"HH:MM","venue":"...","league":"Tanzania Premier League",
-      "homeScore":null,"awayScore":null,"status":"scheduled"
-    }]`,
-    'Extract football fixture data. Return only valid JSON array.', 600)
-  return c.json({ ok: true, fixtures, count: fixtures.length })
-})
+// ─── POST /manage-unclaimed ──────────────────────────────────────────────
+// Posts content on behalf of team accounts that have no human owner yet.
+aiDirectorRouter.post('/manage-unclaimed', async (c) => {
+  const b = await c.req.json<any>()
+  const teamHandle = b.teamHandle
+  if (!teamHandle) return c.json({ error: 'teamHandle required' }, 400)
+  // Find the team account user (if any)
+  const teamUser = await queryOne<{id: string; name: string}>(
+    `SELECT id, name FROM public."User" WHERE handle=$1 AND role='team'`,
+    [teamHandle]
+  )
+  if (!teamUser) return c.json({ error: 'Team account not found' }, 404)
 
-// ── TEAM PROFILE ──────────────────────────────────────────────────────────────
-aiDirectorRouter.post('/team-profile', async (c) => {
-  const { teamName } = await c.req.json<{ teamName: string }>()
-  const profile = await claudeJSON<any>(`
-    Complete profile for Tanzania football club "${teamName}":
-    Return JSON: {
-      "bio":"2-3 sentence bio","founded":year,"stadium":"name",
-      "nickname":"...","colors":"...","achievements":"key honours",
-      "currentManager":"...","socialPost":"exciting 1-line description"
-    }`)
-  return c.json({ ok: true, teamName, ...profile })
-})
-
-// ── PLAYER PROFILE ────────────────────────────────────────────────────────────
-aiDirectorRouter.post('/player-profile', async (c) => {
-  const { playerName, teamName } = await c.req.json<any>()
-  const profile = await claudeJSON<any>(`
-    Profile for "${playerName}"${teamName?` at ${teamName}`:''} Tanzania football:
-    Return JSON: {
-      "bio":"2-3 sentences","position":"GK|CB|LB|RB|CM|CAM|LW|RW|ST",
-      "nationality":"...","strengths":"key attributes",
-      "marketValue":"USD estimate","socialPost":"engaging 1-line bio"
-    }`)
-  return c.json({ ok: true, playerName, ...profile })
-})
-
-// ── AUTO-RUN (full autonomous cycle) ─────────────────────────────────────────
-aiDirectorRouter.post('/auto-run', async (c) => {
-  const uid = await adminId()
-  if (!uid) return c.json({ error: 'Admin not found' }, 404)
-  const results: any[] = []
-
-  // 1. Generate football post
-  const postText = await claude(
-    `Write one engaging Tanzania football post for today. Pick from:
-     matchday preview, TPL table update, player spotlight, team news, or fan engagement.
-     Max 250 chars with hashtags.`, AI_DIRECTOR_SYSTEM, 300)
-  results.push({ type: 'post', content: postText, postId: await publishPost(uid, postText) })
-
-  // 2. Generate poll
+  const system = `You are the Playify AI posting on behalf of an unclaimed team account.
+Write a 60-90 word post (announcements, motivation, matchday content).
+Always respond with plain text (not JSON).`
+  const topic = b.topic ?? `Matchday post for ${teamUser.name}`
   try {
-    const poll = await claudeJSON<any>(`
-      Create an exciting TPL fan poll.
-      Return ONLY JSON: {"question":"...","options":["...","...","...","..."]}`)
-    const ppid = await publishPost(uid, `📊 ${poll.question}`)
-    await query(
-      `INSERT INTO public."Poll"(id,"postId",question,options,"totalVotes","endsAt","createdAt")
-       VALUES(gen_random_uuid()::text,$1,$2,$3::jsonb,0,NOW()+'7 days'::interval,NOW())`,
-      [ppid, poll.question, JSON.stringify(poll.options)])
-    results.push({ type: 'poll', poll, postId: ppid })
-  } catch (_) {}
+    const text = await askAI(system, topic)
+    const rows = await query(
+      `INSERT INTO public."Post"(id,"userId",content,"postType","mediaUrls","hashtags","likeCount","commentCount","shareCount","viewCount","createdAt","updatedAt")
+       VALUES(gen_random_uuid()::text,$1,$2,$3,$4::jsonb,$5::jsonb,0,0,0,0,NOW(),NOW()) RETURNING *`,
+      [teamUser.id, text.trim(), 'post', '[]', JSON.stringify(b.hashtags ?? ['#ligikuu'])]
+    )
+    await execute(`UPDATE public.profiles SET post_count=COALESCE(post_count,0)+1 WHERE id::text=$1`, [teamUser.id]).catch(() => {})
+    return c.json({ ok: true, post: rows[0], raw: text })
+  } catch (e: any) {
+    return c.json({ ok: false, error: e.message }, 500)
+  }
+})
 
-  // 3. Generate a news headline post
+// ─── POST /research ──────────────────────────────────────────────────────
+aiDirectorRouter.post('/research', async (c) => {
+  const b = await c.req.json<any>()
+  const topic = b.topic
+  if (!topic) return c.json({ error: 'topic required' }, 400)
+  const system = `You are the Playify research analyst. Produce a structured deep-dive on a Tanzania football topic.
+Return a 300-600 word markdown brief with sections: Background, Current State, Key Players, Outlook.`
   try {
-    const news = await claudeJSON<any>(`
-      Write a Tanzania football news headline post for today.
-      Return JSON: {"headline":"...","socialPost":"📰 news post under 200 chars"}`)
-    const npid = await publishPost(uid, news.socialPost)
-    results.push({ type: 'news', headline: news.headline, postId: npid })
-  } catch (_) {}
+    const text = await askAI(system, topic, b.provider ?? 'deepseek')
+    return c.json({ ok: true, brief: text })
+  } catch (e: any) {
+    return c.json({ ok: false, error: e.message }, 500)
+  }
+})
 
-  return c.json({ ok: true, results, ran_at: new Date().toISOString() })
+// ─── POST /chat ──────────────────────────────────────────────────────────
+aiDirectorRouter.post('/chat', async (c) => {
+  const b = await c.req.json<any>()
+  const message = b.message
+  if (!message) return c.json({ error: 'message required' }, 400)
+  const system = `You are the Playify AI football assistant. Be helpful, concise, and use Swahili fan vocabulary where natural.
+Tanzania football (Ligi Kuu Bara, Simba SC, Young Africans, Azam FC) is your specialty.
+Reply in plain text.`
+  try {
+    const text = await askAI(system, message, b.provider ?? 'deepseek')
+    return c.json({ ok: true, reply: text })
+  } catch (e: any) {
+    return c.json({ ok: false, error: e.message }, 500)
+  }
 })

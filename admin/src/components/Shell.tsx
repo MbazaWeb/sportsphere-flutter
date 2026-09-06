@@ -11,6 +11,7 @@ const links = [
   { to: '/news', label: 'News Management' },
   { to: '/playify', label: 'Playify Posts' },
   { to: '/moderation', label: 'Posts & Content Moderation' },
+  { to: '/data-fetch', label: '📡 Data Fetch & AI Director' },
   { to: '/ai', label: 'AI Assistant' },
   { to: '/sync', label: 'Data Sync & APIs' },
 ]

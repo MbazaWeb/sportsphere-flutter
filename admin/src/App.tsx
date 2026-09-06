@@ -13,6 +13,7 @@ import { NewsPage } from './pages/NewsPage'
 import { SyncPage } from './pages/SyncPage'
 import { ModerationPage } from './pages/ModerationPage'
 import { MatchesPage } from './pages/MatchesPage'
+import { DataFetchPage } from './pages/DataFetchPage'
 import AiAssistantPage from './pages/AiAssistantPage'
 
 export default function App() {
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="/ai" element={<AiAssistantPage />} />
         <Route path="/moderation" element={<ModerationPage />} />
         <Route path="/sync" element={<SyncPage />} />
+        <Route path="/data-fetch" element={<DataFetchPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Shell>

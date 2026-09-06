@@ -29,6 +29,8 @@ import { newsRouter }     from './routes/news.js'
 import { authRouter }     from './routes/auth.js'
 import { shopRouter }     from './routes/shop.js'
 import { realtimeRouter } from './routes/realtime.js'
+import { sportsDataRouter } from './routes/sports-data.js'
+import { aiDirectorRouter } from './routes/ai-director.js'
 
 const app = new Hono()
 
@@ -175,6 +177,10 @@ app.route('/v1/realtime',      realtimeRouter)
 // ── Admin routes (JWT + admin role) ───────────────────────────────────────────
 app.use('/v1/admin/*', adminMiddleware)
 app.route('/v1/admin', adminRouter)
+// Mount sports-data and AI Director under the admin gate.
+// All their endpoints require admin JWT (already enforced by the middleware above).
+app.route('/v1/admin/sports-data', sportsDataRouter)
+app.route('/v1/admin/ai-director', aiDirectorRouter)
 
 // ── Error handlers ────────────────────────────────────────────────────────────
 app.notFound((c) => c.json({ error: 'Not found' }, 404))
