@@ -1,37 +1,19 @@
 // vps/api/src/lib/supabase.ts
-// Supabase client ONLY for JWT verification (auth.getUser).
-// ALL data queries go through lib/db.ts (direct PostgreSQL).
-// This file is intentionally minimal.
+// STUB — Supabase fully removed. All auth uses VPS JWT (jose).
+// This file kept to avoid import errors during transition.
+// TODO: remove all imports of this file once confirmed clean.
 
-import { createClient } from '@supabase/supabase-js'
 import { queryOne } from './db.js'
 
-const url  = Bun.env.SUPABASE_URL!
-const anon = Bun.env.SUPABASE_ANON_KEY!
-
-if (!url || !anon) {
-  throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY required for JWT verification')
+/** @deprecated — returns null always. VPS JWT used instead. */
+export async function verifyToken(_token: string) {
+  return null
 }
 
-// Anon client — ONLY used for auth.getUser() JWT verification
-// Never used for data queries
-const supabaseAuth = createClient(url, anon, {
-  auth: { persistSession: false, autoRefreshToken: false },
-})
-
-/** Verify a Supabase JWT — returns the user or null */
-export async function verifyToken(token: string) {
-  const { data, error } = await supabaseAuth.auth.getUser(token)
-  if (error || !data?.user) return null
-  return data.user
-}
-
-/** Check if a user has admin role — reads from VPS PostgreSQL */
+/** Check admin role via VPS PostgreSQL */
 export async function isAdmin(userId: string): Promise<boolean> {
   const row = await queryOne<{ role: string }>(
-    `SELECT role FROM public.profiles WHERE id = $1`,
-    [userId]
+    `SELECT role FROM public.profiles WHERE id = $1`, [userId]
   )
-  const role = String(row?.role ?? '').toLowerCase()
-  return role === 'admin'
+  return ['admin','moderator'].includes(String(row?.role ?? '').toLowerCase())
 }

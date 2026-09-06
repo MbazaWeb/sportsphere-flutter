@@ -1,7 +1,6 @@
 // vps/api/src/routes/fcm.ts
 import { Hono } from 'hono'
 import { query, execute } from '../lib/db.js'
-import { isAdmin } from '../lib/supabase.js'
 
 export const fcmRouter = new Hono()
 

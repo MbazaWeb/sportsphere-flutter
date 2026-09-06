@@ -150,7 +150,7 @@ mediaRouter.delete('/:key{.+}', async (c) => {
   // Verify the key belongs to this user (contains their userId)
   if (!key.includes(userId)) {
     // Allow admin to delete anything
-    const { isAdmin: checkAdmin } = await import('../lib/supabase.js')
+    const { isAdmin: checkAdmin } = await import('../lib/supabase.js') // stub
     const ok = await checkAdmin(userId)
     if (!ok) return c.json({ error: 'Forbidden: key does not belong to you' }, 403)
   }

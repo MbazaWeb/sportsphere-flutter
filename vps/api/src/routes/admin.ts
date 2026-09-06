@@ -3,7 +3,6 @@ import { broadcast } from './realtime.js'
 // vps/api/src/routes/admin.ts — admin routes (JWT + admin role required)
 import { Hono } from 'hono'
 import { query, queryOne, execute, transaction } from '../lib/db.js'
-import { createClient } from '@supabase/supabase-js'
 
 export const adminRouter = new Hono()
 
