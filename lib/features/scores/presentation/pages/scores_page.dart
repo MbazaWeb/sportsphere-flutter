@@ -1106,7 +1106,7 @@ class _Dropdown extends StatelessWidget {
 
 // ── Dated match list (Upcoming / Results) ──────────────────────────────────
 
-class _DatedMatchList extends ConsumerWidget {
+class _DatedMatchList extends ConsumerStatefulWidget {
   const _DatedMatchList({
     required this.provider,
     required this.dateProvider,
@@ -1121,13 +1121,33 @@ class _DatedMatchList extends ConsumerWidget {
   final String emptyHint;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final selected = ref.watch(dateProvider);
+  ConsumerState<_DatedMatchList> createState() => _DatedMatchListState();
+}
+
+class _DatedMatchListState extends ConsumerState<_DatedMatchList> {
+  final _scrollCtrl = ScrollController();
+
+  @override
+  void dispose() { _scrollCtrl.dispose(); super.dispose(); }
+
+  void _scrollToCenter() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollCtrl.hasClients) {
+        // Center index is 15 (middle of 31 days), each item is 58px wide
+        try { _scrollCtrl.jumpTo((15 * 58.0).clamp(0.0, _scrollCtrl.position.maxScrollExtent)); } catch (_) {}
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = ref.watch(widget.dateProvider);
     final today = DateTime.now();
     final base = DateTime(today.year, today.month, today.day);
-    final days = future
-        ? [for (var i = 1; i <= 10; i++) base.add(Duration(days: i))]
-        : [for (var i = 10; i >= 1; i--) base.subtract(Duration(days: i))];
+    final selBase = DateTime(selected.year, selected.month, selected.day);
+    // 31-day strip centered around the selected date (15 before + today + 15 after)
+    final days = [for (var i = -15; i <= 15; i++) selBase.add(Duration(days: i))];
+    _scrollToCenter();
 
     return Column(
       children: [
@@ -1141,25 +1161,56 @@ class _DatedMatchList extends ConsumerWidget {
                         color: PlayifyColors.white,
                         fontWeight: FontWeight.w700)),
               ),
+              // Previous week
+              IconButton(
+                icon: const Icon(Icons.chevron_left_rounded,
+                    color: PlayifyColors.muted, size: 22),
+                onPressed: () => ref.read(widget.dateProvider.notifier).update(
+                    selected.subtract(const Duration(days: 7))),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+              const SizedBox(width: 4),
               TextButton.icon(
                 onPressed: () async {
                   final picked = await showDatePicker(
                     context: context,
                     initialDate: selected,
                     firstDate: future
-                        ? base.add(const Duration(days: 1))
-                        : base.subtract(const Duration(days: 30)),
+                        ? base
+                        : base.subtract(const Duration(days: 365 * 5)),
                     lastDate: future
-                        ? base.add(const Duration(days: 30))
-                        : base.subtract(const Duration(days: 1)),
+                        ? base.add(const Duration(days: 365 * 2))
+                        : base,
+                    builder: (ctx, child) => Theme(
+                      data: Theme.of(ctx).copyWith(
+                        colorScheme: const ColorScheme.dark(
+                          primary: PlayifyColors.electricBlue,
+                          surface: Color(0xFF0D1F35),
+                        ),
+                      ),
+                      child: child!,
+                    ),
                   );
                   if (picked != null) {
-                    ref.read(dateProvider.notifier).update(
+                    ref.read(widget.dateProvider.notifier).update(
                         DateTime(picked.year, picked.month, picked.day));
                   }
                 },
-                icon: const Icon(Icons.calendar_month_rounded, size: 16),
-                label: const Text('Pick date'),
+                icon: const Icon(Icons.calendar_month_rounded,
+                    color: PlayifyColors.electricBlue, size: 16),
+                label: const Text('Pick date',
+                    style: TextStyle(color: PlayifyColors.electricBlue)),
+              ),
+              const SizedBox(width: 4),
+              // Next week
+              IconButton(
+                icon: const Icon(Icons.chevron_right_rounded,
+                    color: PlayifyColors.muted, size: 22),
+                onPressed: () => ref.read(widget.dateProvider.notifier).update(
+                    selected.add(const Duration(days: 7))),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
               ),
             ],
           ),
@@ -1167,6 +1218,7 @@ class _DatedMatchList extends ConsumerWidget {
         SizedBox(
           height: 60,
           child: ListView.separated(
+            controller: _scrollCtrl,
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             itemCount: days.length,
@@ -1178,7 +1230,7 @@ class _DatedMatchList extends ConsumerWidget {
                   d.day == selected.day;
               return GestureDetector(
                 onTap: () =>
-                    ref.read(dateProvider.notifier).update(d),
+                    ref.read(widget.dateProvider.notifier).update(d),
                 child: Container(
                   width: 50,
                   decoration: BoxDecoration(
