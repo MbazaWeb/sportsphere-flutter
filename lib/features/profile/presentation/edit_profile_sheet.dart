@@ -59,7 +59,23 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
     '#A855F7',
     '#00C2A8',
   ];
- else {
+
+  @override
+  void initState() {
+    super.initState();
+    final u = widget.user;
+    _first = TextEditingController(text: u.firstName);
+    _last = TextEditingController(text: u.lastName);
+    _handle = TextEditingController(text: u.handle);
+    _country = TextEditingController(text: u.country);
+    // Match stored country to the seeded list
+    if (u.country.isNotEmpty) {
+      final match = kWorldCountries.where(
+        (c) => c.name.toLowerCase() == u.country.toLowerCase() || c.code.toLowerCase() == u.country.toLowerCase(),
+      );
+      if (match.isNotEmpty) {
+        _selectedCountryName = match.first.name;
+      } else {
         _selectedCountryName = u.country;
       }
     }
@@ -73,6 +89,15 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
     });
   }
 
+  @override
+  void dispose() {
+    _first.dispose();
+    _last.dispose();
+    _handle.dispose();
+    _country.dispose();
+    _bio.dispose();
+    super.dispose();
+  }
 
   Future<void> _pick(bool cover) async {
     final file = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);

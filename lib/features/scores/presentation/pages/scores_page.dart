@@ -28,9 +28,27 @@ class _ScoresPageState extends ConsumerState<ScoresPage>
   late TabController _mainTabController;
   late TabController _matchesTabController;
   bool _isAdmin = false;
-);
+
+  @override
+  void initState() {
+    super.initState();
+    // The realtime channel is owned by [matchRealtimeTickProvider] in
+    // scores_provider.dart — this page no longer subscribes on its own
+    // (previously both this page and the provider opened duplicate
+    // `public."Match"` channels).
+    _mainTabController = TabController(length: 2, vsync: this);
+    _matchesTabController = TabController(length: 4, vsync: this);
+    AppAdmin.resolveIsAdmin().then((v) {
+      if (mounted) setState(() => _isAdmin = v);
+    });
   }
 
+  @override
+  void dispose() {
+    _mainTabController.dispose();
+    _matchesTabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -155,7 +173,20 @@ class _MatchListSkeletonState extends State<_MatchListSkeleton>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
 
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+  }
 
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -391,6 +422,11 @@ class _MatchListBodyState extends ConsumerState<_MatchListBody> {
   // Per-item keys so we can measure their position to scroll into view.
   final Map<String, GlobalKey> _matchKeys = {};
 
+  @override
+  void dispose() {
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
 
   void _scrollToMatch(String matchId) {
     final key = _matchKeys[matchId];
@@ -587,6 +623,11 @@ class _StandingsViewState extends State<_StandingsView> {
   /// tables; the catalog itself is the single source of truth.
   List<String> get _sports => kAllSports;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadLeagues();
+  }
 
   Future<void> _loadLeagues() async {
     setState(() => _loadingLeagues = true);

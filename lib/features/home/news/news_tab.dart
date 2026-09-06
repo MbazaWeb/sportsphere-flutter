@@ -18,6 +18,11 @@ class _NewsTabState extends State<NewsTab> with SingleTickerProviderStateMixin {
   late final TabController _tabs;
   final _repo = NewsRepository();
 
+  @override
+  void initState() {
+    super.initState();
+    _tabs = TabController(length: 3, vsync: this);
+  }
 
   @override
   void dispose() {
@@ -82,6 +87,11 @@ class _NewsList extends StatefulWidget {
 class _NewsListState extends State<_NewsList> {
   late Future<List<NewsArticle>> _future;
 
+  @override
+  void initState() {
+    super.initState();
+    _future = widget.repo.fetch(category: widget.category);
+  }
 
   Future<void> _refresh() async {
     setState(() => _future = widget.repo.fetch(category: widget.category));

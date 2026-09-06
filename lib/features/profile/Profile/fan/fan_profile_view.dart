@@ -98,7 +98,12 @@ class _FanProfileViewState extends State<FanProfileView>
   late TabController _tabCtrl;
   bool _following = false;
   bool _followBusy = false;
-));
+
+  @override
+  void initState() {
+    super.initState();
+    _tabCtrl = TabController(length: 2, vsync: this);
+    _tabCtrl.addListener(() => setState(() {}));
     // Seed the follow toggle from the server (#7.1): we don't want the UI
     // showing "Follow" when the user already follows the target.
     if (!widget.profile.isOwnProfile) {
