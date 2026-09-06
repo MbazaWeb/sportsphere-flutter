@@ -13,6 +13,7 @@ import { authMiddleware }  from './middleware/auth.js'
 import { adminMiddleware } from './middleware/admin.js'
 
 import { healthRouter }    from './routes/health.js'
+import { aiRouter }        from './routes/ai.js'
 import { feedRouter }      from './routes/feed.js'
 import { mediaRouter, storageRouter } from './routes/media.js'
 import { matchRouter }     from './routes/matches.js'
@@ -156,6 +157,7 @@ app.use('/v1/*', async (c, next) => {
 app.route('/v1/auth', authRouter)
 
 // ── Authenticated routes ──────────────────────────────────────────────────────
+app.route('/v1/ai',           aiRouter)
 app.route('/v1/feed',          feedRouter)
 app.route('/v1/media',         mediaRouter)
 app.route('/v1/mpesa',         mpesaRouter)
