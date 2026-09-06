@@ -217,7 +217,7 @@ class AuthRepository {
       }
       final profile = _profileFrom(data);
       // If profile is empty/invalid, clear corrupted session
-      if (profile.id.isEmpty) {
+      if ((profile.id ?? '').isEmpty) {
         await _clearSession();
         return null;
       }
