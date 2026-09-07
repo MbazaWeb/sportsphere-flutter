@@ -85,6 +85,8 @@ sportsDataRouter.get('/leagues', (c) => {
 // ─── POST /fetch/tanzania — apifootball3 Ligi Kuu Bara fetcher ──────────────
 // apifootball3 free tier allows get_standings, get_events (fixtures/results).
 // This is the HIGH-PRIORITY Tanzania fetcher.
+// If the user's RapidAPI key isn't subscribed to apifootball3, we return a
+// clear error message and let the admin subscribe from the UI.
 sportsDataRouter.post('/fetch/tanzania', async (c) => {
   const action = c.req.query('action') ?? 'get_events'
   const from  = c.req.query('from') ?? todayPlus(-7)
@@ -96,7 +98,15 @@ sportsDataRouter.post('/fetch/tanzania', async (c) => {
     )
     return c.json({ ok: true, source: 'apifootball3', league: 'Ligi Kuu Bara (Tanzania)', data })
   } catch (e: any) {
-    return c.json({ ok: false, error: e.message }, 502)
+    const msg = e.message ?? ''
+    if (msg.includes('403') && msg.includes('not subscribed')) {
+      return c.json({
+        ok: false,
+        error: 'RapidAPI key is not subscribed to apifootball3. Subscribe at https://rapidapi.com/apifootball/api/apifootball3 (free tier available).',
+        subscribeUrl: 'https://rapidapi.com/apifootball/api/apifootball3',
+      }, 502)
+    }
+    return c.json({ ok: false, error: msg }, 502)
   }
 })
 

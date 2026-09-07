@@ -27,20 +27,32 @@ export const aiDirectorRouter = new Hono()
 const DEEPSEEK_KEY = Bun.env.DEEPSEEK_API_KEY ?? ''
 const ANTHROPIC_KEY = Bun.env.ANTHROPIC_API_KEY ?? ''
 
+// Try DeepSeek first (cheaper). If it fails with a billing/auth error, fall
+// back to Anthropic Claude if available. This makes the AI Director resilient
+// to one provider being down or out of credits.
 async function askAI(system: string, user: string, provider: 'deepseek' | 'anthropic' = 'deepseek'): Promise<string> {
-  if (provider === 'anthropic' && ANTHROPIC_KEY) {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'content-type':'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version':'2023-06-01' },
-      body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:1024, system,
-        messages:[{ role:'user', content: user }] }),
-    })
-    if (!res.ok) throw new Error(`Anthropic ${res.status}`)
-    const d = await res.json() as any
-    return d?.content?.[0]?.text ?? ''
+  // Explicit Anthropic request → go straight there
+  if (provider === 'anthropic') return askAnthropic(system, user)
+  // Default: try DeepSeek first, fall back to Anthropic on billing errors
+  if (DEEPSEEK_KEY) {
+    try {
+      return await askDeepSeek(system, user)
+    } catch (e: any) {
+      const msg = String(e.message || e)
+      // 402 = billing, 401 = invalid key, 429 = rate limit
+      if (/^(DeepSeek|Anthropic) (402|401|429)/.test(msg) && ANTHROPIC_KEY) {
+        console.warn('[AI Director] DeepSeek failed, falling back to Anthropic:', msg)
+        return await askAnthropic(system, user)
+      }
+      throw e
+    }
   }
+  // No DeepSeek key — try Anthropic directly
+  if (ANTHROPIC_KEY) return await askAnthropic(system, user)
+  throw new Error('DEEPSEEK_API_KEY and ANTHROPIC_API_KEY not set (need at least one)')
+}
 
-  // Default: DeepSeek
+async function askDeepSeek(system: string, user: string): Promise<string> {
   if (!DEEPSEEK_KEY) throw new Error('DEEPSEEK_API_KEY not set')
   const res = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
@@ -56,6 +68,27 @@ async function askAI(system: string, user: string, provider: 'deepseek' | 'anthr
   if (!res.ok) throw new Error(`DeepSeek ${res.status}`)
   const d = await res.json() as any
   return d?.choices?.[0]?.message?.content ?? ''
+}
+
+async function askAnthropic(system: string, user: string): Promise<string> {
+  if (!ANTHROPIC_KEY) throw new Error('ANTHROPIC_API_KEY not set')
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type':'application/json',
+      'x-api-key': ANTHROPIC_KEY,
+      'anthropic-version':'2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1024,
+      system,
+      messages:[{ role:'user', content: user }],
+    }),
+  })
+  if (!res.ok) throw new Error(`Anthropic ${res.status}`)
+  const d = await res.json() as any
+  return d?.content?.[0]?.text ?? ''
 }
 
 // Parse the first JSON object from an AI response (LLMs sometimes wrap in ```json)
