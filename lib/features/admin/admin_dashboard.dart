@@ -47,7 +47,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 7, vsync: this);
+    _tabs = TabController(length: 9, vsync: this);
     // Refresh token then load — ensures admin API calls work on web
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
@@ -122,6 +122,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard>
             Tab(text: '⚽ Matches'),
             Tab(text: '📝 Content'),
             Tab(text: '📰 News'),
+            Tab(text: '🤖 AI Director'),
+            Tab(text: '🌐 Data Fetch'),
             Tab(text: '⭐ PRO Queue'),
           ],
         ),
@@ -132,6 +134,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard>
           _MatchesTab(onRefresh: _loadStats, parentRef: ref),
           const _ContentTab(),
           _NewsTab(onRefresh: _loadStats),
+          const _AIDirectorTab(),
+          const _DataFetchTab(),
           const _ProQueueTab(),
         ])),
       ])),
@@ -2765,5 +2769,417 @@ class _Chip extends StatelessWidget {
       border: Border.all(color: color.withValues(alpha: 0.25)),
     ),
     child: Text(label, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w800)),
+  );
+}
+
+// ══ AI DIRECTOR ════════════════════════════════════════════════════════════════
+class _AIDirectorTab extends StatefulWidget {
+  const _AIDirectorTab();
+  @override
+  State<_AIDirectorTab> createState() => _AIDirectorTabState();
+}
+
+class _AIDirectorTabState extends State<_AIDirectorTab> {
+  final _vps = const VpsRepository();
+  bool _loading = false;
+  String _log = '';
+  Map<String, dynamic> _status = {};
+  final _topicCtrl = TextEditingController();
+  String _selectedAction = 'auto-run';
+
+  static const _actions = [
+    ('auto-run',          '🚀 Auto Run (Post+Poll+News)'),
+    ('generate-post',     '📝 Generate Post'),
+    ('generate-poll',     '📊 Generate Poll'),
+    ('generate-news',     '📰 Generate News Article'),
+    ('generate-rumor',    '🔁 Generate Rumor'),
+    ('manage-unclaimed',  '👥 Manage Unclaimed Accounts'),
+    ('prediction',        '🔮 Match Prediction'),
+    ('research',          '🔬 Research Topic'),
+    ('chat',              '💬 AI Chat'),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStatus();
+  }
+
+  @override
+  void dispose() { _topicCtrl.dispose(); super.dispose(); }
+
+  Future<void> _loadStatus() async {
+    try {
+      final res = await _vps.get<Map<String,dynamic>>('/v1/ai-director/status');
+      if (mounted) setState(() => _status = res.data ?? {});
+    } catch (_) {}
+  }
+
+  Future<void> _run() async {
+    if (_loading) return;
+    setState(() { _loading = true; _log = ''; });
+    try {
+      final body = <String, dynamic>{'publish': true};
+      if (_topicCtrl.text.isNotEmpty) {
+        body['topic'] = _topicCtrl.text.trim();
+        body['message'] = _topicCtrl.text.trim();
+        body['teamName'] = _topicCtrl.text.trim();
+        body['playerName'] = _topicCtrl.text.trim();
+      }
+      final res = await _vps.post<Map<String,dynamic>>(
+          '/v1/ai-director/$_selectedAction', data: body);
+      final d = res.data ?? {};
+      setState(() {
+        _log = _formatResult(d);
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() { _log = '❌ Error: $e'; _loading = false; });
+    }
+  }
+
+  String _formatResult(Map<String, dynamic> d) {
+    if (d['results'] != null) {
+      final results = (d['results'] as List);
+      return results.map((r) => '✅ ${r['type']}: ${(r['content'] ?? r['poll']?.toString() ?? '').toString().substring(0, (r['content'] ?? r['poll']?.toString() ?? '').toString().length.clamp(0, 80))}...').join('\n');
+    }
+    if (d['content'] != null) return '✅ Post: ${d['content']}';
+    if (d['poll'] != null) return '✅ Poll: ${d['poll']['question']}';
+    if (d['article'] != null) return '✅ Article: ${d['article']['headline']}';
+    if (d['reply'] != null) return '✅ Reply: ${d['reply']}';
+    if (d['research'] != null) return '✅ Research:\n${d['research'].toString().substring(0, 300)}...';
+    if (d['managed'] != null) return '✅ Managed ${d['managed']} unclaimed accounts';
+    return '✅ Done: ${d.toString().substring(0, d.toString().length.clamp(0, 200))}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final configured = _status['configured'] == true;
+    final posts = _status['stats']?['postsPublished'] ?? 0;
+    final unclaimed = _status['unclaimedTeams'] ?? 0;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // Status card
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: configured ? const Color(0xFF0D2A1F) : const Color(0xFF2A0D0D),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: configured ? PlayifyColors.sportGreen : Colors.redAccent),
+          ),
+          child: Row(children: [
+            Icon(configured ? Icons.smart_toy_rounded : Icons.error_outline,
+                color: configured ? PlayifyColors.sportGreen : Colors.redAccent, size: 28),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('AI Director — Claude Haiku',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
+              Text(configured ? '✅ Anthropic connected | Posts: $posts | Unclaimed teams: $unclaimed'
+                  : '❌ ANTHROPIC_API_KEY not configured',
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12)),
+            ])),
+            IconButton(icon: const Icon(Icons.refresh, color: PlayifyColors.muted, size: 18),
+                onPressed: _loadStatus),
+          ]),
+        ),
+        const SizedBox(height: 20),
+
+        // Action selector
+        const Text('Action', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.07),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white12),
+          ),
+          child: DropdownButton<String>(
+            value: _selectedAction,
+            isExpanded: true,
+            dropdownColor: const Color(0xFF0D1F35),
+            underline: const SizedBox(),
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+            items: _actions.map((a) => DropdownMenuItem(
+              value: a.$1,
+              child: Text(a.$2),
+            )).toList(),
+            onChanged: (v) => setState(() => _selectedAction = v!),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Topic input
+        TextField(
+          controller: _topicCtrl,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: 'Topic / team / player name (optional)',
+            hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+            filled: true,
+            fillColor: Colors.white.withValues(alpha: 0.06),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.white12)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.white12)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: PlayifyColors.electricBlue, width: 1.5)),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Run button
+        SizedBox(width: double.infinity, child: FilledButton.icon(
+          onPressed: configured && !_loading ? _run : null,
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFFFFD700),
+            foregroundColor: Colors.black,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          icon: _loading
+              ? const SizedBox(width: 18, height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+              : const Icon(Icons.play_arrow_rounded),
+          label: Text(_loading ? 'Running...' : 'Run AI Director',
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+        )),
+        const SizedBox(height: 16),
+
+        // Quick action chips
+        const Text('Quick Actions', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          _QuickChip('🚀 Auto Run', () { setState(() => _selectedAction = 'auto-run'); _run(); }),
+          _QuickChip('📰 Breaking News', () {
+            _topicCtrl.text = 'Tanzania Premier League latest news';
+            setState(() => _selectedAction = 'generate-news'); _run();
+          }),
+          _QuickChip('🔁 Transfer Rumor', () { setState(() => _selectedAction = 'generate-rumor'); _run(); }),
+          _QuickChip('👥 Manage Unclaimed', () { setState(() => _selectedAction = 'manage-unclaimed'); _run(); }),
+          _QuickChip('🔮 Predict Next Match', () {
+            _topicCtrl.text = 'next TPL match';
+            setState(() => _selectedAction = 'prediction'); _run();
+          }),
+        ]),
+        const SizedBox(height: 20),
+
+        // Log output
+        if (_log.isNotEmpty) Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF071420),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white12),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              const Icon(Icons.terminal_rounded, color: PlayifyColors.muted, size: 14),
+              const SizedBox(width: 6),
+              const Text('Output', style: TextStyle(color: PlayifyColors.muted, fontSize: 11)),
+              const Spacer(),
+              GestureDetector(onTap: () => setState(() => _log = ''),
+                  child: const Icon(Icons.close, color: PlayifyColors.muted, size: 14)),
+            ]),
+            const SizedBox(height: 8),
+            Text(_log, style: const TextStyle(color: Colors.greenAccent, fontSize: 13, fontFamily: 'monospace')),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
+class _QuickChip extends StatelessWidget {
+  final String label; final VoidCallback onTap;
+  const _QuickChip(this.label, this.onTap);
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: const Color(0xFF168CFF).withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF168CFF).withValues(alpha: 0.4)),
+      ),
+      child: Text(label, style: const TextStyle(color: Color(0xFF168CFF),
+          fontSize: 12, fontWeight: FontWeight.w700)),
+    ),
+  );
+}
+
+// ══ DATA FETCH ═════════════════════════════════════════════════════════════════
+class _DataFetchTab extends StatefulWidget {
+  const _DataFetchTab();
+  @override
+  State<_DataFetchTab> createState() => _DataFetchTabState();
+}
+
+class _DataFetchTabState extends State<_DataFetchTab> {
+  final _vps = const VpsRepository();
+  bool _loading = false;
+  String _result = '';
+  final _textCtrl = TextEditingController();
+
+  @override
+  void dispose() { _textCtrl.dispose(); super.dispose(); }
+
+  Future<void> _extractFixtures() async {
+    if (_textCtrl.text.isEmpty) return;
+    setState(() { _loading = true; _result = ''; });
+    try {
+      final res = await _vps.post<Map<String,dynamic>>(
+        '/v1/ai-director/fixture-extract',
+        data: {'text': _textCtrl.text.trim()},
+      );
+      final fixtures = res.data?['fixtures'] as List? ?? [];
+      setState(() {
+        _result = fixtures.isEmpty
+            ? 'No fixtures found'
+            : '✅ Found ${fixtures.length} fixtures:\n\n' +
+              fixtures.map((f) => '⚽ ${f['homeTeam']} vs ${f['awayTeam']}\n'
+                '📅 ${f['date'] ?? 'TBD'} ${f['time'] ?? ''}\n'
+                '🏟 ${f['venue'] ?? 'TBD'}\n').join('\n');
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() { _result = '❌ $e'; _loading = false; });
+    }
+  }
+
+  Future<void> _researchTopic(String topic) async {
+    setState(() { _loading = true; _result = ''; });
+    try {
+      final res = await _vps.post<Map<String,dynamic>>(
+        '/v1/ai-director/research',
+        data: {'topic': topic},
+      );
+      setState(() { _result = res.data?['research'] ?? 'No result'; _loading = false; });
+    } catch (e) {
+      setState(() { _result = '❌ $e'; _loading = false; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // Header
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0D1F35),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white12),
+          ),
+          child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('🌐 Sports Data Fetch', style: TextStyle(
+                color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+            SizedBox(height: 4),
+            Text('Paste fixture text or league data — AI will extract and structure it.',
+                style: TextStyle(color: Colors.white54, fontSize: 12)),
+          ]),
+        ),
+        const SizedBox(height: 16),
+
+        // Fixture extractor
+        const Text('Extract Fixtures from Text', style: TextStyle(
+            color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _textCtrl,
+          maxLines: 6,
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          decoration: InputDecoration(
+            hintText: 'Paste any fixture data here...\nExample: "Simba SC vs Yanga SC, Saturday 3pm, Benjamin Mkapa Stadium"',
+            hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.25), fontSize: 12),
+            filled: true,
+            fillColor: Colors.white.withValues(alpha: 0.06),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.white12)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.white12)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: PlayifyColors.electricBlue, width: 1.5)),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(width: double.infinity, child: FilledButton.icon(
+          onPressed: !_loading && _textCtrl.text.isNotEmpty ? _extractFixtures : null,
+          style: FilledButton.styleFrom(
+            backgroundColor: PlayifyColors.electricBlue,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          icon: _loading ? const SizedBox(width: 16, height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : const Icon(Icons.auto_fix_high_rounded, size: 18),
+          label: Text(_loading ? 'Extracting...' : 'Extract Fixtures with AI',
+              style: const TextStyle(fontWeight: FontWeight.w700)),
+        )),
+        const SizedBox(height: 20),
+
+        // Research quick buttons
+        const Text('AI Research', style: TextStyle(
+            color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          _ResearchChip('🏆 TPL 2026/27 Season', () => _researchTopic('Tanzania Premier League 2026/27 season overview')),
+          _ResearchChip('⚽ Simba SC 2026', () => _researchTopic('Simba SC 2026 season, transfers, coach, key players')),
+          _ResearchChip('🟡 Yanga SC 2026', () => _researchTopic('Young Africans SC 2026 season updates')),
+          _ResearchChip('🌍 AFCON Qualifiers', () => _researchTopic('Tanzania Taifa Stars AFCON qualification 2026')),
+          _ResearchChip('💰 TPL Transfers', () => _researchTopic('Tanzania Premier League transfer news and rumors 2026')),
+          _ResearchChip('📊 TPL Standings', () => _researchTopic('Tanzania Premier League standings and top scorers')),
+        ]),
+        const SizedBox(height: 20),
+
+        // Result
+        if (_result.isNotEmpty) Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF071420),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white12),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              const Icon(Icons.data_object_rounded, color: PlayifyColors.muted, size: 14),
+              const SizedBox(width: 6),
+              const Text('Result', style: TextStyle(color: PlayifyColors.muted, fontSize: 11)),
+              const Spacer(),
+              GestureDetector(onTap: () => setState(() => _result = ''),
+                  child: const Icon(Icons.close, color: PlayifyColors.muted, size: 14)),
+            ]),
+            const SizedBox(height: 8),
+            Text(_result, style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.5)),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
+class _ResearchChip extends StatelessWidget {
+  final String label; final VoidCallback onTap;
+  const _ResearchChip(this.label, this.onTap);
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Text(label, style: const TextStyle(color: Colors.white70,
+          fontSize: 12, fontWeight: FontWeight.w600)),
+    ),
   );
 }
