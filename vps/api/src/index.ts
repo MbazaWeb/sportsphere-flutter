@@ -13,8 +13,6 @@ import { authMiddleware }  from './middleware/auth.js'
 import { adminMiddleware } from './middleware/admin.js'
 
 import { healthRouter }    from './routes/health.js'
-import { aiRouter }
-import { aiDirectorRouter } from './routes/ai-director.js'        from './routes/ai.js'
 import { feedRouter }      from './routes/feed.js'
 import { mediaRouter, storageRouter } from './routes/media.js'
 import { matchRouter }     from './routes/matches.js'
@@ -22,6 +20,7 @@ import { mpesaRouter, mpesaCallbackHandler } from './routes/mpesa.js'
 import { fcmRouter }       from './routes/fcm.js'
 import { claimsRouter }    from './routes/claims.js'
 import { adminRouter }     from './routes/admin.js'
+import { aiRouter }        from './routes/ai.js'
 import { nearbyRouter }    from './routes/nearby.js'
 import { notifRouter }     from './routes/notifications.js'
 import { socialRouter }    from './routes/social.js'
@@ -160,7 +159,6 @@ app.use('/v1/*', async (c, next) => {
 app.route('/v1/auth', authRouter)
 
 // ── Authenticated routes ──────────────────────────────────────────────────────
-app.route('/v1/ai-director', aiDirectorRouter)
 app.route('/v1/ai',           aiRouter)
 app.route('/v1/feed',          feedRouter)
 app.route('/v1/media',         mediaRouter)
