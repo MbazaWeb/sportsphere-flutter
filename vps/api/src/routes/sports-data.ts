@@ -341,7 +341,6 @@ sportsDataRouter.post('/import/tanzania', async (c) => {
       const kickoffAt    = new Date(`${m.match_date} ${m.match_time || '00:00'}`).toISOString()
       const season       = m.season ?? '2026/27'
       const country      = 'Tanzania'
-      const sportSlug    = 'football'
 
       const existing = await queryOne(`SELECT id FROM public."Match" WHERE id=$1`, [id])
       if (existing) {
@@ -354,10 +353,10 @@ sportsDataRouter.post('/import/tanzania', async (c) => {
       } else {
         await execute(
           `INSERT INTO public."Match"(id, league, "homeTeam", "awayTeam", "homeScore", "awayScore",
-             status, "kickoffAt", season, country, "sportSlug", "createdAt", "updatedAt")
-           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW(),NOW())`,
+             status, "kickoffAt", season, country, "createdAt", "updatedAt")
+           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),NOW())`,
           [id, league, homeTeam, awayTeam, homeScore, awayScore,
-           status, kickoffAt, season, country, sportSlug]
+           status, kickoffAt, season, country]
         )
         inserted++
       }
@@ -414,7 +413,6 @@ sportsDataRouter.post('/import/fixtures/:code', async (c) => {
       const status       = mapFdStatus(m.status)
       const kickoffAt    = new Date(m.utcDate).toISOString()
       const season       = m.season ?? '2026/27'
-      const sportSlug    = 'football'
 
       const existing = await queryOne(`SELECT id FROM public."Match" WHERE id=$1`, [id])
       if (existing) {
@@ -426,10 +424,10 @@ sportsDataRouter.post('/import/fixtures/:code', async (c) => {
       } else {
         await execute(
           `INSERT INTO public."Match"(id, league, "homeTeam", "awayTeam", "homeScore", "awayScore",
-             status, "kickoffAt", season, "sportSlug", "createdAt", "updatedAt")
-           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),NOW())`,
+             status, "kickoffAt", season, "createdAt", "updatedAt")
+           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW(),NOW())`,
           [id, league, homeTeam, awayTeam, homeScore, awayScore,
-           status, kickoffAt, season, sportSlug]
+           status, kickoffAt, season]
         )
         inserted++
       }
